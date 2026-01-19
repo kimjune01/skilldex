@@ -1,0 +1,27 @@
+{
+  "name": "skilldex",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:web": "pnpm --filter @skilldex/web dev",
+    "dev:api": "pnpm --filter @skilldex/api dev",
+    "dev:ats": "pnpm --filter @skilldex/mock-ats dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "db:push": "pnpm --filter @skilldex/db push",
+    "db:migrate": "pnpm --filter @skilldex/db migrate",
+    "db:seed": "pnpm --filter @skilldex/db seed",
+    "sst:dev": "sst dev",
+    "sst:deploy": "sst deploy --stage production",
+    "sst:remove": "sst remove"
+  },
+  "devDependencies": {
+    "sst": "^3.17.25",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

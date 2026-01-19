@@ -1,0 +1,23 @@
+{
+  "id": "linkedin-lookup",
+  "slug": "linkedin-lookup",
+  "name": "LinkedIn Candidate Search",
+  "description": "Find candidates on LinkedIn matching a job description. Paste a JD and get a list of potential matches.",
+  "category": "sourcing",
+  "version": "1.1.0",
+  "requiredIntegrations": ["dev-browser"],
+  "requiredScopes": ["candidates:read"],
+  "intentions": [
+    "Find LinkedIn profiles matching a job description",
+    "Extract profile information and assess candidate fit",
+    "Build a sourcing pipeline from LinkedIn searches",
+    "Compare candidates against job requirements"
+  ],
+  "triggers": [
+    "find candidates on LinkedIn",
+    "search LinkedIn for this job",
+    "source candidates for",
+    "LinkedIn search",
+    "find people matching this JD"
+  ]
+}

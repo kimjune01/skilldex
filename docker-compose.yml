@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # React + Vite Frontend
+  web:
+    build:
+      context: .
+      dockerfile: ./docker/web.Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./packages:/app/packages
+    depends_on:
+      - api
+    command: pnpm --filter @skilldex/web dev --host
+
+  # Hono API Backend
+  api:
+    build:
+      context: .
+      dockerfile: ./docker/api.Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=file:/app/data/skilldex.db
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+      - MOCK_ATS_URL=http://mock-ats:3001
+      - NANGO_HOST=http://nango:3003
+      - NANGO_SECRET_KEY=${NANGO_SECRET_KEY:-}
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./packages:/app/packages
+      - ./skills:/app/skills
+      - skilldex-data:/app/data
+    depends_on:
+      - mock-ats
+    command: pnpm --filter @skilldex/api dev
+
+  # Mock ATS Server
+  mock-ats:
+    build:
+      context: .
+      dockerfile: ./docker/mock-ats.Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+    volumes:
+      - ./apps/mock-ats/src:/app/apps/mock-ats/src
+      - ./packages:/app/packages
+    command: pnpm --filter @skilldex/mock-ats dev
+
+  # Nango (Self-hosted) - Optional for OAuth
+  nango:
+    image: nangohq/nango:latest
+    ports:
+      - "3003:3003"
+    environment:
+      - NANGO_DB_HOST=nango-db
+      - NANGO_DB_PORT=5432
+      - NANGO_DB_NAME=nango
+      - NANGO_DB_USER=nango
+      - NANGO_DB_PASSWORD=${NANGO_DB_PASSWORD:-nango-dev-password}
+      - NANGO_SECRET_KEY=${NANGO_SECRET_KEY:-nango-dev-secret}
+      - NANGO_PUBLIC_KEY=${NANGO_PUBLIC_KEY:-nango-dev-public}
+      - NANGO_CALLBACK_URL=http://localhost:3003/oauth/callback
+      - SERVER_PORT=3003
+    depends_on:
+      - nango-db
+    profiles:
+      - full  # Only start with: docker-compose --profile full up
+
+  # Nango PostgreSQL Database
+  nango-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=nango
+      - POSTGRES_USER=nango
+      - POSTGRES_PASSWORD=${NANGO_DB_PASSWORD:-nango-dev-password}
+    volumes:
+      - nango-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    profiles:
+      - full  # Only start with: docker-compose --profile full up
+
+volumes:
+  skilldex-data:
+  nango-db-data:

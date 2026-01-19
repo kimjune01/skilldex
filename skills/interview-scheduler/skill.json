@@ -1,0 +1,23 @@
+{
+  "id": "interview-scheduler",
+  "slug": "interview-scheduler",
+  "name": "Interview Scheduler",
+  "description": "Schedule interviews with candidates",
+  "category": "scheduling",
+  "version": "0.1.0",
+  "requiredIntegrations": ["calendar"],
+  "requiredScopes": ["calendar:read", "calendar:write", "candidates:read"],
+  "intentions": [
+    "Check interviewer availability",
+    "Schedule interview slots",
+    "Send calendar invites",
+    "Reschedule interviews"
+  ],
+  "triggers": [
+    "schedule interview",
+    "book interview",
+    "interview times",
+    "calendar availability"
+  ],
+  "status": "stub"
+}

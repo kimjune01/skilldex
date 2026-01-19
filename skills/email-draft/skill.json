@@ -1,0 +1,22 @@
+{
+  "id": "email-draft",
+  "slug": "email-draft",
+  "name": "Recruitment Email Drafting",
+  "description": "Draft personalized recruitment emails for candidates",
+  "category": "communication",
+  "version": "0.1.0",
+  "requiredIntegrations": ["email"],
+  "requiredScopes": ["email:draft", "candidates:read"],
+  "intentions": [
+    "Draft outreach emails to candidates",
+    "Create follow-up emails for interviews",
+    "Generate offer letters and rejection emails"
+  ],
+  "triggers": [
+    "draft email",
+    "write email",
+    "outreach email",
+    "follow-up email"
+  ],
+  "status": "stub"
+}
