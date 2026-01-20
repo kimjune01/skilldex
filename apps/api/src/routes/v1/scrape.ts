@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { apiKeyAuth } from '../../middleware/apiKey.js';
 import { db } from '@skilldex/db';
 import { scrapeTasks } from '@skilldex/db/schema';
-import { eq, and, gt } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { eq, and, gt, desc } from 'drizzle-orm';
+import { randomUUID, createHash } from 'crypto';
 import type {
   ScrapeTaskPublic,
   CreateScrapeTaskRequest,
@@ -18,8 +18,60 @@ v1ScrapeRoutes.use('*', apiKeyAuth);
 
 // Constants
 const TASK_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours - reuse completed results
 const STALL_THRESHOLD_MS = 30 * 1000; // 30 seconds - suggest extension install
 const PROCESSING_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes - mark as expired
+
+// ============ URL Normalization & Hashing ============
+
+/**
+ * Normalize URL for deduplication:
+ * - Lowercase protocol and hostname
+ * - Remove default ports (80, 443)
+ * - Sort query parameters
+ * - Remove trailing slashes
+ * - Remove common tracking parameters (utm_*, fbclid, etc.)
+ */
+function normalizeUrl(urlString: string): string {
+  const url = new URL(urlString);
+
+  // Lowercase protocol and hostname
+  url.protocol = url.protocol.toLowerCase();
+  url.hostname = url.hostname.toLowerCase();
+
+  // Remove default ports
+  if ((url.protocol === 'http:' && url.port === '80') ||
+      (url.protocol === 'https:' && url.port === '443')) {
+    url.port = '';
+  }
+
+  // Remove trailing slash from pathname (except root)
+  if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+    url.pathname = url.pathname.slice(0, -1);
+  }
+
+  // Remove common tracking parameters
+  const trackingParams = [
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+    'fbclid', 'gclid', 'msclkid', 'ref', 'source'
+  ];
+  trackingParams.forEach(param => url.searchParams.delete(param));
+
+  // Sort remaining query parameters
+  url.searchParams.sort();
+
+  // Remove hash/fragment
+  url.hash = '';
+
+  return url.toString();
+}
+
+/**
+ * Create SHA-256 hash of normalized URL
+ */
+function hashUrl(normalizedUrl: string): string {
+  return createHash('sha256').update(normalizedUrl).digest('hex');
+}
 
 // Helper to format task for API response
 function formatTask(task: typeof scrapeTasks.$inferSelect): ScrapeTaskPublic {
@@ -56,22 +108,73 @@ function formatTask(task: typeof scrapeTasks.$inferSelect): ScrapeTaskPublic {
 }
 
 // POST /api/v1/scrape/tasks - Create scrape task, return pointer (task ID)
+// Supports deduplication: returns cached result if same URL was scraped recently
 v1ScrapeRoutes.post('/tasks', async (c) => {
   const user = c.get('apiKeyUser');
   const body = await c.req.json<CreateScrapeTaskRequest>();
+  const forceRefresh = c.req.query('refresh') === 'true';
 
   if (!body.url) {
     return c.json({ error: { message: 'URL is required' } }, 400);
   }
 
-  // Validate URL format
+  // Validate and normalize URL
+  let normalizedUrl: string;
+  let urlHash: string;
   try {
-    new URL(body.url);
+    normalizedUrl = normalizeUrl(body.url);
+    urlHash = hashUrl(normalizedUrl);
   } catch {
     return c.json({ error: { message: 'Invalid URL format' } }, 400);
   }
 
   const now = new Date();
+  const cacheThreshold = new Date(now.getTime() - CACHE_TTL_MS);
+
+  // Check for existing cached result (unless force refresh)
+  if (!forceRefresh) {
+    // Look for a completed task with the same URL hash within cache TTL
+    const [cached] = await db
+      .select()
+      .from(scrapeTasks)
+      .where(
+        and(
+          eq(scrapeTasks.userId, user.id),
+          eq(scrapeTasks.urlHash, urlHash),
+          eq(scrapeTasks.status, 'completed'),
+          gt(scrapeTasks.completedAt, cacheThreshold)
+        )
+      )
+      .orderBy(desc(scrapeTasks.completedAt))
+      .limit(1);
+
+    if (cached) {
+      // Return cached result with cache indicator
+      const response = formatTask(cached);
+      return c.json({ ...response, cached: true }, 200);
+    }
+
+    // Also check for pending/processing tasks to avoid duplicate work
+    const [inProgress] = await db
+      .select()
+      .from(scrapeTasks)
+      .where(
+        and(
+          eq(scrapeTasks.userId, user.id),
+          eq(scrapeTasks.urlHash, urlHash),
+          gt(scrapeTasks.expiresAt, now)
+        )
+      )
+      .orderBy(desc(scrapeTasks.createdAt))
+      .limit(1);
+
+    if (inProgress && ['pending', 'processing'].includes(inProgress.status)) {
+      // Return existing in-progress task
+      return c.json(formatTask(inProgress), 200);
+    }
+  }
+
+  // Create new task
   const taskId = randomUUID();
 
   const [task] = await db
@@ -81,6 +184,7 @@ v1ScrapeRoutes.post('/tasks', async (c) => {
       userId: user.id,
       apiKeyId: user.apiKeyId,
       url: body.url,
+      urlHash,
       status: 'pending',
       createdAt: now,
       expiresAt: new Date(now.getTime() + TASK_TTL_MS),

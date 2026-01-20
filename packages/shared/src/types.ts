@@ -316,6 +316,7 @@ export interface ScrapeTaskPublic {
   result?: string; // Markdown content when completed
   errorMessage?: string; // Error description when failed
   suggestion?: string; // Actionable guidance when task fails or stalls
+  cached?: boolean; // True if result was returned from cache
   createdAt: string;
   claimedAt?: string;
   completedAt?: string;

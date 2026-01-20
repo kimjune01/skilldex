@@ -138,6 +138,7 @@ export const scrapeTasks = sqliteTable('scrape_tasks', {
   apiKeyId: text('api_key_id').references(() => apiKeys.id),
 
   url: text('url').notNull(),
+  urlHash: text('url_hash').notNull(), // SHA-256 hash of normalized URL for deduplication
   status: text('status').notNull().default('pending'), // pending, processing, completed, failed, expired
   result: text('result'), // Markdown content
   errorMessage: text('error_message'),
