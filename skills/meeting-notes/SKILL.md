@@ -1,6 +1,10 @@
 ---
 name: meeting-notes
 description: Sync meeting notes from recording apps to ATS. Use when the user wants to import interview notes, attach meeting transcripts, or summarize interviews.
+intent: I want to sync my meeting notes to the ATS
+capabilities:
+  - Import meeting transcripts
+  - Attach notes to candidates
 allowed-tools:
   - Read
 ---

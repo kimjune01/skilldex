@@ -1,6 +1,10 @@
 ---
 name: interview-scheduler
 description: Schedule interviews with candidates. Use when the user wants to set up interview times, check availability, or send calendar invites.
+intent: I want to schedule interviews with candidates
+capabilities:
+  - Schedule interview slots
+  - Send calendar invites
 allowed-tools:
   - Read
 ---

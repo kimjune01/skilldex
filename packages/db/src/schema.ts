@@ -88,7 +88,7 @@ export const skills = sqliteTable('skills', {
   // Metadata stored as JSON strings
   requiredIntegrations: text('required_integrations'), // JSON array
   requiredScopes: text('required_scopes'), // JSON array
-  intentions: text('intentions'), // JSON array - what the skill can do
+  // Note: intent and capabilities are parsed from SKILL.md frontmatter, not stored in DB
 
   // File references
   skillMdPath: text('skill_md_path').notNull(), // Relative path to SKILL.md
@@ -130,6 +130,24 @@ export const skillUsageLogs = sqliteTable('skill_usage_logs', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// ============ SCRAPE TASKS ============
+
+export const scrapeTasks = sqliteTable('scrape_tasks', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  apiKeyId: text('api_key_id').references(() => apiKeys.id),
+
+  url: text('url').notNull(),
+  status: text('status').notNull().default('pending'), // pending, processing, completed, failed, expired
+  result: text('result'), // Markdown content
+  errorMessage: text('error_message'),
+
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  claimedAt: integer('claimed_at', { mode: 'timestamp' }),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+});
+
 // ============ SKILL PROPOSALS ============
 
 export const skillProposals = sqliteTable('skill_proposals', {
@@ -162,6 +180,18 @@ export const usersRelations = relations(users, ({ many }) => ({
   roles: many(userRoles),
   integrations: many(integrations),
   skillUsage: many(skillUsageLogs),
+  scrapeTasks: many(scrapeTasks),
+}));
+
+export const scrapeTasksRelations = relations(scrapeTasks, ({ one }) => ({
+  user: one(users, {
+    fields: [scrapeTasks.userId],
+    references: [users.id],
+  }),
+  apiKey: one(apiKeys, {
+    fields: [scrapeTasks.apiKeyId],
+    references: [apiKeys.id],
+  }),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -220,3 +250,5 @@ export type Permission = typeof permissions.$inferSelect;
 export type SkillProposal = typeof skillProposals.$inferSelect;
 export type NewSkillProposal = typeof skillProposals.$inferInsert;
 export type RoleSkill = typeof roleSkills.$inferSelect;
+export type ScrapeTask = typeof scrapeTasks.$inferSelect;
+export type NewScrapeTask = typeof scrapeTasks.$inferInsert;

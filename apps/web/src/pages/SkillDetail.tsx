@@ -18,6 +18,7 @@ import {
   Sparkles,
   Shield,
   Plug,
+  FileCode,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 
@@ -144,13 +145,25 @@ export default function SkillDetail() {
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
               <Sparkles className="h-4 w-4" />
-              What this skill can do
+              Intent
+            </div>
+            <p className="text-sm italic text-foreground bg-muted/50 px-3 py-2 rounded-md">
+              "{skill.intent}"
+            </p>
+          </div>
+
+          <Separator />
+
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Capabilities
             </div>
             <ul className="space-y-2">
-              {skill.intentions.map((intention, i) => (
+              {skill.capabilities.map((capability, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm">
                   <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                  {intention}
+                  {capability}
                 </li>
               ))}
             </ul>
@@ -181,6 +194,12 @@ export default function SkillDetail() {
             <Button onClick={handleDownload} size="lg">
               <Download className="h-4 w-4 mr-2" />
               Download Skill
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link to={`/skills/${slug}/raw`}>
+                <FileCode className="h-4 w-4 mr-2" />
+                View Raw
+              </Link>
             </Button>
             {downloadSuccess && (
               <span className="flex items-center gap-1 text-green-600 text-sm">

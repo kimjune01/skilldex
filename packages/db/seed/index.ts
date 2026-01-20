@@ -72,8 +72,11 @@ async function seed() {
     meetingNotes: 'skill-meeting-notes',
     skilldexSync: 'skill-skilldex-sync',
     proposeNewSkill: 'skill-propose-new-skill',
+    candidatePipelineBuilder: 'skill-candidate-pipeline-builder',
+    dailyReport: 'skill-daily-report',
   };
 
+  // Note: intent and capabilities are now in SKILL.md frontmatter, not DB
   const skillData = [
     {
       id: skillIds.skilldexSync,
@@ -83,7 +86,6 @@ async function seed() {
       category: 'system',
       requiredIntegrations: JSON.stringify([]),
       requiredScopes: JSON.stringify(['skills:read']),
-      intentions: JSON.stringify(['Download skills', 'Update local skill files', 'Remove revoked skills']),
       skillMdPath: 'skills/skilldex-sync/SKILL.md',
     },
     {
@@ -94,7 +96,6 @@ async function seed() {
       category: 'system',
       requiredIntegrations: JSON.stringify([]),
       requiredScopes: JSON.stringify(['proposals:write']),
-      intentions: JSON.stringify(['Submit skill idea', 'Describe desired functionality']),
       skillMdPath: 'skills/propose-new-skill/SKILL.md',
     },
     {
@@ -105,7 +106,6 @@ async function seed() {
       category: 'sourcing',
       requiredIntegrations: JSON.stringify(['linky-scraper']),
       requiredScopes: JSON.stringify(['candidates:read']),
-      intentions: JSON.stringify(['Search for candidate profiles', 'Extract profile information']),
       skillMdPath: 'skills/linkedin-lookup/SKILL.md',
     },
     {
@@ -116,7 +116,6 @@ async function seed() {
       category: 'ats',
       requiredIntegrations: JSON.stringify(['ats']),
       requiredScopes: JSON.stringify(['candidates:read']),
-      intentions: JSON.stringify(['Search candidates by skills', 'Filter by job requisition']),
       skillMdPath: 'skills/ats-candidate-search/SKILL.md',
     },
     {
@@ -127,7 +126,6 @@ async function seed() {
       category: 'ats',
       requiredIntegrations: JSON.stringify(['ats']),
       requiredScopes: JSON.stringify(['candidates:read', 'candidates:write']),
-      intentions: JSON.stringify(['Create new candidates', 'Update candidate information', 'Move candidates through pipeline']),
       skillMdPath: 'skills/ats-candidate-crud/SKILL.md',
     },
     {
@@ -138,7 +136,6 @@ async function seed() {
       category: 'communication',
       requiredIntegrations: JSON.stringify(['email']),
       requiredScopes: JSON.stringify(['email:draft', 'candidates:read']),
-      intentions: JSON.stringify(['Draft outreach emails', 'Create follow-up emails']),
       skillMdPath: 'skills/email-draft/SKILL.md',
       isEnabled: false, // Stub - not fully implemented
     },
@@ -150,7 +147,6 @@ async function seed() {
       category: 'scheduling',
       requiredIntegrations: JSON.stringify(['calendar']),
       requiredScopes: JSON.stringify(['calendar:write', 'candidates:read']),
-      intentions: JSON.stringify(['Schedule interview slots', 'Send calendar invites']),
       skillMdPath: 'skills/interview-scheduler/SKILL.md',
       isEnabled: false, // Stub
     },
@@ -162,9 +158,28 @@ async function seed() {
       category: 'productivity',
       requiredIntegrations: JSON.stringify(['granola']),
       requiredScopes: JSON.stringify(['meetings:read', 'candidates:write']),
-      intentions: JSON.stringify(['Import meeting transcripts', 'Attach notes to candidates']),
       skillMdPath: 'skills/meeting-notes/SKILL.md',
       isEnabled: false, // Stub
+    },
+    {
+      id: skillIds.candidatePipelineBuilder,
+      slug: 'candidate-pipeline-builder',
+      name: 'Candidate Pipeline Builder',
+      description: 'End-to-end candidate sourcing: scrape LinkedIn profiles from search results, add to ATS, generate personalized outreach emails, and log activity.',
+      category: 'sourcing',
+      requiredIntegrations: JSON.stringify(['linky-scraper', 'ats', 'email']),
+      requiredScopes: JSON.stringify(['candidates:read', 'candidates:write', 'email:draft']),
+      skillMdPath: 'skills/candidate-pipeline-builder/SKILL.md',
+    },
+    {
+      id: skillIds.dailyReport,
+      slug: 'daily-report',
+      name: 'Daily Recruiting Report',
+      description: 'Generate a summary report of recruiting activity from the ATS for standups, syncs, or tracking progress.',
+      category: 'productivity',
+      requiredIntegrations: JSON.stringify(['ats']),
+      requiredScopes: JSON.stringify(['candidates:read', 'applications:read', 'jobs:read']),
+      skillMdPath: 'skills/daily-report/SKILL.md',
     },
   ];
 
@@ -190,6 +205,7 @@ async function seed() {
     { roleId: adminRoleId, skillId: skillIds.emailDraft },
     { roleId: adminRoleId, skillId: skillIds.interviewScheduler },
     { roleId: adminRoleId, skillId: skillIds.meetingNotes },
+    { roleId: adminRoleId, skillId: skillIds.candidatePipelineBuilder },
 
     // Recruiter gets operational skills
     { roleId: recruiterRoleId, skillId: skillIds.linkedinLookup },
@@ -198,6 +214,7 @@ async function seed() {
     { roleId: recruiterRoleId, skillId: skillIds.emailDraft },
     { roleId: recruiterRoleId, skillId: skillIds.interviewScheduler },
     { roleId: recruiterRoleId, skillId: skillIds.meetingNotes },
+    { roleId: recruiterRoleId, skillId: skillIds.candidatePipelineBuilder },
 
     // Viewer gets read-only skills
     { roleId: viewerRoleId, skillId: skillIds.atsCandidateSearch },

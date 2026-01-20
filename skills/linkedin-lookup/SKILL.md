@@ -1,6 +1,10 @@
 ---
 name: linkedin-lookup
 description: Find candidate profiles on LinkedIn that match a job description. Paste a job description and this skill will search for matching candidates.
+intent: I want to find candidates on LinkedIn for this job
+capabilities:
+  - Search for candidate profiles
+  - Extract profile information
 allowed-tools:
   - Skill
   - Read

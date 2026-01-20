@@ -11,6 +11,7 @@ const JWT_EXPIRATION = '7d';
 
 export interface JWTPayload {
   sub: string; // user id
+  id: string; // alias for sub
   email: string;
   name: string;
   isAdmin: boolean;
@@ -38,8 +39,10 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
       audience: JWT_AUDIENCE,
     });
 
+    const sub = payload.sub as string;
     return {
-      sub: payload.sub as string,
+      sub,
+      id: sub, // alias for convenience
       email: payload.email as string,
       name: payload.name as string,
       isAdmin: payload.isAdmin as boolean,

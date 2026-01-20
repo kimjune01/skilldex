@@ -1,6 +1,11 @@
 ---
 name: linky-addon-setup
 description: Install and configure the Linky Scraper browser addon for LinkedIn profile extraction. Required for LinkedIn candidate search.
+intent: I want to set up the Linky browser addon
+capabilities:
+  - Download and install Linky Scraper
+  - Configure browser extension
+  - Verify LinkedIn access
 allowed-tools:
   - Bash
   - Read

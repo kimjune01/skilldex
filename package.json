@@ -12,6 +12,8 @@
     "test": "vitest run && cd apps/web && npx vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "db:push": "pnpm --filter @skilldex/db push",
     "db:migrate": "pnpm --filter @skilldex/db migrate",
     "db:seed": "pnpm --filter @skilldex/db seed",
@@ -20,6 +22,7 @@
     "sst:remove": "sst remove"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@vitest/coverage-v8": "^4.0.17",
     "sst": "^3.17.25",
     "typescript": "^5.3.3",

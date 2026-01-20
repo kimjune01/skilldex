@@ -1,14 +1,21 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import { BrandingProvider } from './hooks/useBranding';
+import { DemoProvider } from './hooks/useDemo';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Skills from './pages/Skills';
 import SkillDetail from './pages/SkillDetail';
+import SkillRaw from './pages/SkillRaw';
 import ApiKeys from './pages/ApiKeys';
 import Integrations from './pages/Integrations';
+import Usage from './pages/Usage';
 import AdminUsers from './pages/admin/Users';
 import AdminSkills from './pages/admin/Skills';
+import AdminAnalytics from './pages/admin/Analytics';
+import AdminProposals from './pages/admin/Proposals';
+import Chat from './pages/Chat';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -48,8 +55,10 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
+    <BrandingProvider>
+      <DemoProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
       <Route
         path="/"
@@ -60,10 +69,13 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="chat" element={<Chat />} />
         <Route path="skills" element={<Skills />} />
         <Route path="skills/:slug" element={<SkillDetail />} />
-        <Route path="api-keys" element={<ApiKeys />} />
+        <Route path="skills/:slug/raw" element={<SkillRaw />} />
+        <Route path="keys" element={<ApiKeys />} />
         <Route path="integrations" element={<Integrations />} />
+        <Route path="usage" element={<Usage />} />
 
         {/* Admin routes */}
         <Route
@@ -82,7 +94,25 @@ export default function App() {
             </AdminRoute>
           }
         />
+        <Route
+          path="admin/analytics"
+          element={
+            <AdminRoute>
+              <AdminAnalytics />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/proposals"
+          element={
+            <AdminRoute>
+              <AdminProposals />
+            </AdminRoute>
+          }
+        />
       </Route>
-    </Routes>
+      </Routes>
+      </DemoProvider>
+    </BrandingProvider>
   );
 }

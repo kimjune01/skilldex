@@ -6,6 +6,13 @@ import type {
   ApiKeyPublic,
   ApiKeyCreateResponse,
   IntegrationPublic,
+  SkillProposalPublic,
+  SkillProposalCreateRequest,
+  SkillProposalReviewRequest,
+  ChatRequest,
+  ChatEvent,
+  ScrapeTaskPublic,
+  CreateScrapeTaskResponse,
 } from '@skilldex/shared';
 
 // In production, VITE_API_URL points to the Lambda function URL
@@ -13,6 +20,12 @@ import type {
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api';
+
+const DEMO_STORAGE_KEY = 'skilldex_demo_mode';
+
+function isDemoModeEnabled(): boolean {
+  return localStorage.getItem(DEMO_STORAGE_KEY) === 'true';
+}
 
 async function request<T>(
   endpoint: string,
@@ -27,6 +40,11 @@ async function request<T>(
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Add demo mode header if enabled
+  if (isDemoModeEnabled()) {
+    headers['X-Demo-Mode'] = 'true';
   }
 
   const controller = new AbortController();
@@ -163,4 +181,190 @@ export const users = {
     request<{ message: string }>(`/users/${id}`, {
       method: 'DELETE',
     }),
+};
+
+// Analytics
+export interface UsageStats {
+  summary: {
+    totalExecutions: number;
+    successCount: number;
+    errorCount: number;
+    successRate: string;
+    avgDurationMs: number;
+    uniqueUsers?: number;
+  };
+  bySkill: Array<{
+    skillSlug: string;
+    skillName: string;
+    category?: string;
+    count: number;
+    uniqueUsers?: number;
+  }>;
+  daily: Array<{
+    date: string;
+    count: number;
+    uniqueUsers?: number;
+  }>;
+  recentLogs?: Array<{
+    id: string;
+    skillSlug: string;
+    skillName: string;
+    status: string;
+    durationMs?: number;
+    createdAt: string;
+  }>;
+  topUsers?: Array<{
+    userId: string;
+    userName: string;
+    userEmail: string;
+    count: number;
+  }>;
+  recentErrors?: Array<{
+    skillSlug: string;
+    skillName: string;
+    errorMessage: string;
+    count: number;
+  }>;
+}
+
+export const analytics = {
+  getUsage: (days = 30) => request<UsageStats>(`/analytics/usage?days=${days}`),
+
+  getAdminStats: (days = 30) => request<UsageStats>(`/analytics/admin?days=${days}`),
+};
+
+// Skill Proposals
+export const proposals = {
+  list: (status?: string) =>
+    request<SkillProposalPublic[]>(`/proposals${status ? `?status=${status}` : ''}`),
+
+  get: (id: string) => request<SkillProposalPublic>(`/proposals/${id}`),
+
+  create: (body: SkillProposalCreateRequest) =>
+    request<SkillProposalPublic>('/proposals', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  update: (id: string, body: SkillProposalCreateRequest) =>
+    request<SkillProposalPublic>(`/proposals/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  delete: (id: string) =>
+    request<{ success: boolean }>(`/proposals/${id}`, {
+      method: 'DELETE',
+    }),
+
+  review: (id: string, body: SkillProposalReviewRequest) =>
+    request<SkillProposalPublic>(`/proposals/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+};
+
+// Chat
+export const chat = {
+  /**
+   * Stream chat responses using SSE
+   * @param messages - Chat history
+   * @param onEvent - Callback for each event
+   * @param onError - Callback for errors
+   * @returns AbortController to cancel the stream
+   */
+  stream: (
+    messages: ChatRequest['messages'],
+    onEvent: (event: ChatEvent) => void,
+    onError: (error: Error) => void
+  ): AbortController => {
+    const controller = new AbortController();
+    const token = localStorage.getItem('token');
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (isDemoModeEnabled()) {
+      headers['X-Demo-Mode'] = 'true';
+    }
+
+    fetch(`${API_BASE}/chat`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ messages }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({ error: { message: 'Request failed' } }));
+          throw new Error(data.error?.message || `Request failed (${response.status})`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+            try {
+              const event = JSON.parse(trimmed.slice(6)) as ChatEvent;
+              onEvent(event);
+            } catch {
+              // Skip malformed lines
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          onError(err);
+        }
+      });
+
+    return controller;
+  },
+
+  executeSkill: (skillSlug: string, params?: Record<string, unknown>) =>
+    request<{
+      type: 'instructions' | 'api_ready';
+      skill: SkillPublic;
+      message: string;
+      instructions?: string;
+      params?: Record<string, unknown>;
+    }>('/chat/execute-skill', {
+      method: 'POST',
+      body: JSON.stringify({ skillSlug, params }),
+    }),
+};
+
+// Scrape Tasks (API key auth - used by extension and skills)
+// Note: These use the v1 API which requires API key authentication
+// For web UI, we use a wrapper that includes the user's API key
+export const scrape = {
+  createTask: (url: string) =>
+    request<CreateScrapeTaskResponse>('/v1/scrape/tasks', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
+
+  getTask: (id: string) => request<ScrapeTaskPublic>(`/v1/scrape/tasks/${id}`),
+
+  listTasks: () => request<{ tasks: ScrapeTaskPublic[]; total: number }>('/v1/scrape/tasks'),
 };

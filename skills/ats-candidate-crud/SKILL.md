@@ -1,6 +1,11 @@
 ---
 name: ats-candidate-crud
 description: Create, update, and manage candidates in your ATS. Use when the user wants to add a new candidate, update candidate information, or manage applications.
+intent: I want to manage candidates in my ATS
+capabilities:
+  - Create new candidates
+  - Update candidate information
+  - Move candidates through pipeline
 allowed-tools:
   - Bash
   - Read

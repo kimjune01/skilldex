@@ -63,7 +63,8 @@ export interface SkillPublic {
   version: string;
   requiredIntegrations: string[];
   requiredScopes: string[];
-  intentions: string[];
+  intent: string;
+  capabilities: string[];
   isEnabled: boolean;
 }
 
@@ -78,7 +79,8 @@ export interface SkillMetadata {
   version: string;
   requiredIntegrations: string[];
   requiredScopes: string[];
-  intentions: string[];
+  intent: string;
+  capabilities: string[];
   triggers?: string[];
   configuration?: Record<string, unknown>;
 }
@@ -234,4 +236,104 @@ export interface SkillProposalCreateRequest {
 export interface SkillProposalReviewRequest {
   status: 'approved' | 'denied';
   feedback?: string;
+}
+
+// ============ Chat Types ============
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  skillSuggestion?: ChatSkillSuggestion;
+  actionResult?: {
+    action: string;
+    result: unknown;
+  };
+  timestamp: number;
+}
+
+export interface ChatSkillSuggestion {
+  skill: SkillPublic;
+  executionType: 'api' | 'claude-desktop';
+  status?: 'pending' | 'executing' | 'completed' | 'error';
+  result?: unknown;
+}
+
+export interface ChatRequest {
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+}
+
+export type ChatEventType = 'text' | 'skill_suggestion' | 'skill_result' | 'error' | 'done';
+
+export interface ChatTextEvent {
+  type: 'text';
+  content: string;
+}
+
+export interface ChatSkillSuggestionEvent {
+  type: 'skill_suggestion';
+  skill: SkillPublic;
+  executionType: 'api' | 'claude-desktop';
+}
+
+export interface ChatSkillResultEvent {
+  type: 'skill_result';
+  success: boolean;
+  data: unknown;
+}
+
+export interface ChatActionResultEvent {
+  type: 'action_result';
+  action: string;
+  result: unknown;
+}
+
+export interface ChatErrorEvent {
+  type: 'error';
+  message: string;
+}
+
+export interface ChatDoneEvent {
+  type: 'done';
+}
+
+export type ChatEvent =
+  | ChatTextEvent
+  | ChatSkillSuggestionEvent
+  | ChatSkillResultEvent
+  | ChatActionResultEvent
+  | ChatErrorEvent
+  | ChatDoneEvent;
+
+// ============ Scrape Task Types ============
+
+export type ScrapeTaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'expired';
+
+export interface ScrapeTaskPublic {
+  id: string;
+  url: string;
+  status: ScrapeTaskStatus;
+  result?: string; // Markdown content when completed
+  errorMessage?: string; // Error description when failed
+  suggestion?: string; // Actionable guidance when task fails or stalls
+  createdAt: string;
+  claimedAt?: string;
+  completedAt?: string;
+}
+
+export interface CreateScrapeTaskRequest {
+  url: string;
+}
+
+export interface CreateScrapeTaskResponse {
+  id: string;
+  url: string;
+  status: 'pending';
+  createdAt: string;
+}
+
+export interface UpdateScrapeTaskRequest {
+  status: 'completed' | 'failed';
+  result?: string;
+  errorMessage?: string;
 }

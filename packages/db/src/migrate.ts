@@ -88,7 +88,6 @@ CREATE TABLE IF NOT EXISTS skills (
   version TEXT NOT NULL DEFAULT '1.0.0',
   required_integrations TEXT,
   required_scopes TEXT,
-  intentions TEXT,
   skill_md_path TEXT NOT NULL,
   is_enabled INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),

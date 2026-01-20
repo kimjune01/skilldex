@@ -56,13 +56,35 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 
 ## Quick Start
 
-### Prerequisites
+### For Recruiters (Using Skills)
+
+The fastest way to get started with Skilldex skills:
+
+```bash
+# 1. Sign up at your Skilldex instance and generate an API key
+#    https://skilldex.yourcompany.com/keys
+
+# 2. Run the setup CLI
+npx skilldex-setup
+```
+
+This installs everything you need:
+- Stores your API key securely (Keychain/Credential Manager)
+- Installs the Linky MCP server for LinkedIn scraping
+- Configures Claude Desktop/Claude Code
+- Downloads all available skills
+
+See **[Installation Guide](docs/INSTALLATION.md)** for manual setup or troubleshooting.
+
+### For Developers (Running the Platform)
+
+#### Prerequisites
 
 - Node.js 20+
 - pnpm 9+
 - Docker (for local development with Nango)
 
-### Local Development
+#### Local Development
 
 ```bash
 # Clone and install
@@ -105,17 +127,24 @@ pnpm db:seed
 ```
 skilldex/
 ├── apps/
-│   ├── web/           # React frontend
-│   ├── api/           # Hono API backend
-│   └── mock-ats/      # Mock ATS for development
+│   ├── web/              # React frontend
+│   ├── api/              # Hono API backend
+│   └── mock-ats/         # Mock ATS for development
 ├── packages/
-│   ├── db/            # Drizzle schema + migrations
-│   └── shared/        # Shared TypeScript types
-├── skills/            # Claude Code skill definitions
+│   ├── db/               # Drizzle schema + migrations
+│   ├── shared/           # Shared TypeScript types
+│   └── skilldex-setup/   # CLI installer for recruiters
+├── skills/               # Claude Code skill definitions
 │   ├── linkedin-lookup/
 │   ├── ats-candidate-search/
 │   └── ...
-├── docs/              # Documentation
+├── deploy/
+│   └── scripts/          # IT deployment scripts
+│       ├── skilldex-deploy.sh    # macOS/Linux
+│       └── Deploy-Skilldex.ps1   # Windows
+├── docs/                 # Documentation
+│   ├── INSTALLATION.md   # Setup guide for recruiters
+│   ├── IT_DEPLOYMENT.md  # Enterprise deployment guide
 │   ├── RECRUITER_GUIDE.md
 │   └── ADMIN_GUIDE.md
 └── docker-compose.yml
@@ -188,8 +217,24 @@ pnpm sst:remove
 
 ## Documentation
 
-- **[Recruiter Guide](docs/RECRUITER_GUIDE.md)** - How to set up and use Skilldex skills
+- **[Installation Guide](docs/INSTALLATION.md)** - Complete setup instructions for all platforms
+- **[IT Deployment Guide](docs/IT_DEPLOYMENT.md)** - Enterprise deployment, MDM, and bulk provisioning
+- **[Recruiter Guide](docs/RECRUITER_GUIDE.md)** - How to use Skilldex skills in your workflow
 - **[Admin Guide](docs/ADMIN_GUIDE.md)** - Managing users, skills, and integrations
+
+## MCP Client Support
+
+Skilldex skills work with any MCP-compatible client:
+
+| Client | Support | Notes |
+|--------|---------|-------|
+| Claude Desktop | Full | Primary target, auto-configured by setup CLI |
+| Claude Code | Full | Skills work as slash commands |
+| Cursor | Full | Configure MCP server in settings |
+| Continue | Full | Add MCP server to config |
+| Other MCP clients | Partial | Manual configuration required |
+
+Skills that don't require LinkedIn (ATS-only) work with just the API key. LinkedIn skills require the full Linky stack (MCP server + browser extension + native host).
 
 ## Skills
 
@@ -200,9 +245,43 @@ Skilldex includes several pre-built skills:
 | `linkedin-lookup` | Sourcing | Look up LinkedIn profiles using browser automation |
 | `ats-candidate-search` | ATS | Search candidates in your ATS |
 | `ats-candidate-crud` | ATS | Create, update, and manage candidates |
+| `daily-report` | Productivity | Generate recruiting activity reports with elicitation |
+| `candidate-pipeline-builder` | Sourcing | End-to-end candidate sourcing workflow |
 | `email-draft` | Communication | Draft emails to candidates |
 | `interview-scheduler` | Scheduling | Schedule interviews |
 | `meeting-notes` | Productivity | Sync meeting notes |
+
+## Demo Mode
+
+Skilldex includes a demo mode for demonstrations and testing without requiring a real ATS connection.
+
+### Enabling Demo Mode
+
+**Via Web UI:**
+Toggle the "Demo Mode" switch in the sidebar. When enabled, all ATS data and usage analytics will show realistic mock data.
+
+**Via API Headers:**
+```bash
+curl -H "X-Demo-Mode: true" -H "Authorization: Bearer $API_KEY" \
+  http://localhost:3000/api/v1/ats/candidates
+```
+
+**Via Query Parameters:**
+```bash
+curl "http://localhost:3000/api/v1/ats/candidates?demo=true" \
+  -H "Authorization: Bearer $API_KEY"
+```
+
+### Demo Data Included
+
+When demo mode is enabled, the following mock data is available:
+
+- **8 Candidates** - Realistic profiles with varied stages (New, Screening, Interview, Offer, Hired, Rejected)
+- **4 Job Requisitions** - Engineering roles with salary ranges and requirements
+- **7 Applications** - Candidates linked to jobs with stage history
+- **Usage Analytics** - 7 days of simulated skill execution logs
+
+Demo mode is indicated in API responses with `"demo": true` and in the web UI with a visual indicator.
 
 ## Contributing
 

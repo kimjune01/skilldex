@@ -1,6 +1,10 @@
 ---
 name: email-draft
 description: Draft personalized recruitment emails for candidates. Use when the user wants to write outreach, follow-up, or other recruitment emails.
+intent: I want to draft outreach emails for candidates
+capabilities:
+  - Draft outreach emails
+  - Create follow-up emails
 allowed-tools:
   - Read
 ---

@@ -1,6 +1,10 @@
 ---
 name: ats-candidate-search
 description: Search your ATS for candidates matching a job description. Paste a job description to find existing candidates in your pipeline who might be a fit.
+intent: I want to search for candidates in my ATS
+capabilities:
+  - Search candidates by skills
+  - Filter by job requisition
 allowed-tools:
   - Bash
   - Read
