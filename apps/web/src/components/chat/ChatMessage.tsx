@@ -2,7 +2,7 @@ import { User, Bot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { SkillCard, ActionResultCard } from './SkillCard';
-import type { ChatMessage as ChatMessageType } from '@skilldex/shared';
+import type { ChatMessage as ChatMessageType } from '@skillomatic/shared';
 
 interface ChatMessageProps {
   message: ChatMessageType;

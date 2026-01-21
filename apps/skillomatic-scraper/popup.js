@@ -1,4 +1,4 @@
-// Skilldex Scraper - Popup Script
+// Skillomatic Scraper - Popup Script
 
 // Views
 const connectedView = document.getElementById('connectedView');
@@ -179,7 +179,7 @@ async function getConfigFromPage() {
       let apiUrl = window.location.origin;
 
       // Check for explicit API URL in page meta or data attribute
-      const apiUrlMeta = document.querySelector('meta[name="skilldex-api-url"]');
+      const apiUrlMeta = document.querySelector('meta[name="skillomatic-api-url"]');
       const apiUrlData = document.querySelector('[data-api-url]');
 
       if (apiUrlMeta) {
@@ -191,12 +191,12 @@ async function getConfigFromPage() {
         apiUrl = apiUrl.replace(':5173', ':3000');
       }
 
-      // Check if this looks like a Skilldex page
-      const isSkilldex = document.title.includes('Skilldex') ||
-                        pageText.includes('SKILLDEX_API_KEY') ||
-                        document.querySelector('[data-skilldex]');
+      // Check if this looks like a Skillomatic page
+      const isSkillomatic = document.title.includes('Skillomatic') ||
+                        pageText.includes('SKILLOMATIC_API_KEY') ||
+                        document.querySelector('[data-skillomatic]');
 
-      if (!isSkilldex || !apiKeyMatch) {
+      if (!isSkillomatic || !apiKeyMatch) {
         return null;
       }
 
@@ -215,7 +215,7 @@ async function autoConfigureFromPage() {
     const config = await getConfigFromPage();
 
     if (!config) {
-      return; // Silently fail - user might not be on Skilldex page
+      return; // Silently fail - user might not be on Skillomatic page
     }
 
     // Test and save the config
@@ -237,7 +237,7 @@ async function autoConfigureFromPage() {
     // Update UI
     apiUrlInput.value = config.apiUrl;
     apiKeyInput.value = config.apiKey;
-    showMessage('Auto-connected from Skilldex page!', 'success');
+    showMessage('Auto-connected from Skillomatic page!', 'success');
     await loadStatus();
   } catch (err) {
     // Silently fail
@@ -253,7 +253,7 @@ async function readFromPage() {
     const config = await getConfigFromPage();
 
     if (!config) {
-      throw new Error('No Skilldex config found. Go to your Skilldex dashboard first.');
+      throw new Error('No Skillomatic config found. Go to your Skillomatic dashboard first.');
     }
 
     // Fill in the form
@@ -266,7 +266,7 @@ async function readFromPage() {
     showMessage(err.message || 'Failed to read from page', 'error');
   } finally {
     readFromPageBtn.disabled = false;
-    readFromPageBtn.textContent = 'Read from Skilldex Page';
+    readFromPageBtn.textContent = 'Read from Skillomatic Page';
   }
 }
 
@@ -288,7 +288,7 @@ apiUrlInput.addEventListener('keypress', (e) => {
 // Help link
 document.getElementById('helpLink').addEventListener('click', (e) => {
   e.preventDefault();
-  chrome.tabs.create({ url: 'https://skilldex.yourcompany.com/docs/extension' });
+  chrome.tabs.create({ url: 'https://skillomatic.yourcompany.com/docs/extension' });
 });
 
 // ============ Initialization ============

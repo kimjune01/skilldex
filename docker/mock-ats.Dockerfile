@@ -19,4 +19,4 @@ COPY packages/shared ./packages/shared
 
 EXPOSE 3001
 
-CMD ["pnpm", "--filter", "@skilldex/mock-ats", "dev"]
+CMD ["pnpm", "--filter", "@skillomatic/mock-ats", "dev"]

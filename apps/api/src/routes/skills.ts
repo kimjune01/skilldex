@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { db } from '@skilldex/db';
-import { skills } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { skills } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
-import type { SkillPublic } from '@skilldex/shared';
+import type { SkillPublic } from '@skillomatic/shared';
 
 export const skillsRoutes = new Hono();
 
@@ -24,15 +24,15 @@ skillsRoutes.get('/install.sh', async (c) => {
     .join('\n');
 
   const script = `#!/bin/bash
-# Skilldex Skills Installer
-# This script downloads Claude Code skills from your Skilldex instance.
-# Review this script before running: cat install-skilldex.sh
+# Skillomatic Skills Installer
+# This script downloads Claude Code skills from your Skillomatic instance.
+# Review this script before running: cat install-skillomatic.sh
 
 set -e
 
 SKILLS_DIR="\${HOME}/.claude/commands"
 
-echo "Installing Skilldex skills to \${SKILLS_DIR}"
+echo "Installing Skillomatic skills to \${SKILLS_DIR}"
 echo ""
 
 mkdir -p "\${SKILLS_DIR}"
@@ -45,7 +45,7 @@ echo ""
 echo "Done! Skills installed to \${SKILLS_DIR}"
 echo ""
 echo "Next steps:"
-echo "  1. Make sure SKILLDEX_API_KEY is set in your shell profile"
+echo "  1. Make sure SKILLOMATIC_API_KEY is set in your shell profile"
 echo "  2. Run: source ~/.zshrc (or ~/.bashrc)"
 echo "  3. Open Claude Code and try: /ats-search"
 `;
@@ -53,7 +53,7 @@ echo "  3. Open Claude Code and try: /ats-search"
   return new Response(script, {
     headers: {
       'Content-Type': 'text/plain',
-      'Content-Disposition': 'attachment; filename="install-skilldex.sh"',
+      'Content-Disposition': 'attachment; filename="install-skillomatic.sh"',
     },
   });
 });

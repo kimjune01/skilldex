@@ -3,8 +3,8 @@
  * Supports Groq, Anthropic, and OpenAI with runtime configuration
  */
 
-import { db } from '@skilldex/db';
-import { systemSettings } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { systemSettings } from '@skillomatic/db/schema';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

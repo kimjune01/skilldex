@@ -85,6 +85,6 @@ For now, this skill can help you:
 
 ## Future Requirements
 
-- `SKILLDEX_API_KEY` for API access
-- Connected meeting app integration via Skilldex dashboard
+- `SKILLOMATIC_API_KEY` for API access
+- Connected meeting app integration via Skillomatic dashboard
 - `meetings:read` and `candidates:write` scopes

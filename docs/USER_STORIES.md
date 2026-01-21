@@ -1,10 +1,10 @@
-# Skilldex User Stories
+# Skillomatic User Stories
 
 ## Overview
 
-This document captures user stories for the Skilldex platform from two primary personas:
+This document captures user stories for the Skillomatic platform from two primary personas:
 - **Recruiter**: End user who uses Claude Code skills to perform recruiting tasks
-- **Admin/Consultant**: Sets up and manages the Skilldex instance for a company
+- **Admin/Consultant**: Sets up and manages the Skillomatic instance for a company
 
 Each story follows the format: *As a [persona], I want to [action], so that [benefit].*
 
@@ -16,7 +16,7 @@ Each story follows the format: *As a [persona], I want to [action], so that [ben
 **Persona:** Admin/Consultant
 **Phase:** Setup
 
-> As an admin, I want to deploy Skilldex using Docker Compose, so that I can quickly set up the platform for a client company.
+> As an admin, I want to deploy Skillomatic using Docker Compose, so that I can quickly set up the platform for a client company.
 
 **Acceptance Criteria:**
 - [ ] Single `docker-compose up` command starts all services
@@ -139,7 +139,7 @@ Each story follows the format: *As a [persona], I want to [action], so that [ben
 - [ ] Dashboard shows "API Keys" page
 - [ ] Can generate a new API key with a descriptive name
 - [ ] Can view full key anytime (with copy to clipboard button)
-- [ ] Clear instructions on where to store the key (`SKILLDEX_API_KEY` env var)
+- [ ] Clear instructions on where to store the key (`SKILLOMATIC_API_KEY` env var)
 - [ ] Can view list of existing keys with full key visible
 - [ ] Can revoke keys at any time
 
@@ -157,13 +157,13 @@ Each story follows the format: *As a [persona], I want to [action], so that [ben
 
 **Acceptance Criteria:**
 - [ ] Dashboard shows a single "Download Sync Skill" button
-- [ ] Sync skill file includes instructions for placement (`~/.claude/commands/skilldex/`)
-- [ ] When executed, sync skill uses `SKILLDEX_API_KEY` to authenticate
+- [ ] Sync skill file includes instructions for placement (`~/.claude/commands/skillomatic/`)
+- [ ] When executed, sync skill uses `SKILLOMATIC_API_KEY` to authenticate
 - [ ] Sync skill calls API to fetch all skills available to user's role(s)
-- [ ] Sync skill writes/updates skill files to `~/.claude/commands/skilldex/`
+- [ ] Sync skill writes/updates skill files to `~/.claude/commands/skillomatic/`
 - [ ] Sync skill removes skills that user no longer has access to
 
-**Notes:** Only one download required. Running `/skilldex-sync` in Claude Desktop keeps all skills current with the server.
+**Notes:** Only one download required. Running `/skillomatic-sync` in Claude Desktop keeps all skills current with the server.
 
 **Status:** ✅ Approved
 
@@ -180,11 +180,11 @@ Each story follows the format: *As a [persona], I want to [action], so that [ben
 **Acceptance Criteria:**
 - [ ] Can invoke skill via `/ats-candidate-search` in Claude Desktop
 - [ ] Skill accepts natural language queries (e.g., "senior engineers in San Francisco")
-- [ ] Skill calls Skilldex API with search parameters
+- [ ] Skill calls Skillomatic API with search parameters
 - [ ] Results displayed in readable format with key candidate info
 - [ ] Can refine search with follow-up prompts
 
-**Notes:** Skill authenticates via `SKILLDEX_API_KEY`. API proxies to connected ATS.
+**Notes:** Skill authenticates via `SKILLOMATIC_API_KEY`. API proxies to connected ATS.
 
 **Status:** ✅ Approved
 
@@ -373,7 +373,7 @@ Each story follows the format: *As a [persona], I want to [action], so that [ben
 **Acceptance Criteria:**
 - [ ] Can invoke skill via `/propose-new-skill` in Claude Desktop (available to all users)
 - [ ] Can describe the desired skill functionality in natural language
-- [ ] Skill submits proposal to Skilldex API with user context
+- [ ] Skill submits proposal to Skillomatic API with user context
 - [ ] User receives confirmation that proposal was submitted
 - [ ] Can view status of own proposals in dashboard
 

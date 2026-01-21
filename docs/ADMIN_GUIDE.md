@@ -1,6 +1,6 @@
 # Admin Guide
 
-This guide covers administration tasks for Skilldex: managing users, configuring integrations, and monitoring usage.
+This guide covers administration tasks for Skillomatic: managing users, configuring integrations, and monitoring usage.
 
 ## Accessing the Admin Panel
 
@@ -74,7 +74,7 @@ Navigate to **Admin > Settings** to configure LLM providers for the Chat feature
 3. Enter your API key
 4. Click **Save**
 
-**Note:** This key is used client-side. It's embedded in rendered skills and sent to the browser, where it's used to make direct API calls to the LLM provider. The key never passes through Skilldex servers during chat.
+**Note:** This key is used client-side. It's embedded in rendered skills and sent to the browser, where it's used to make direct API calls to the LLM provider. The key never passes through Skillomatic servers during chat.
 
 ### Default Provider
 
@@ -223,7 +223,7 @@ Track which API keys are active:
 
 ### Data Privacy
 
-Skilldex uses an ephemeral architecture:
+Skillomatic uses an ephemeral architecture:
 
 - **Chat content** - Never stored, exists only in browser
 - **ATS data** - Fetched direct to client, never stored

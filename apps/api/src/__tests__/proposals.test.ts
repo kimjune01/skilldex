@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 
 // Mock the database module
-vi.mock('@skilldex/db', () => ({
+vi.mock('@skillomatic/db', () => ({
   db: {
     select: vi.fn(() => ({
       from: vi.fn(() => ({

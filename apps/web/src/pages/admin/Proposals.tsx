@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { proposals } from '../../lib/api';
-import type { SkillProposalPublic } from '@skilldex/shared';
+import type { SkillProposalPublic } from '@skillomatic/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

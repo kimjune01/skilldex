@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { scrape } from '@/lib/api';
-import type { ScrapeTaskPublic } from '@skilldex/shared';
+import type { ScrapeTaskPublic } from '@skillomatic/shared';
 
 export class ScrapeError extends Error {
   suggestion?: string;

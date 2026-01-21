@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
-import { db } from '@skilldex/db';
-import { apiKeys } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { apiKeys } from '@skillomatic/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { jwtAuth } from '../middleware/auth.js';
 import { generateApiKey } from '../lib/api-keys.js';
-import type { ApiKeyPublic, ApiKeyCreateResponse } from '@skilldex/shared';
+import type { ApiKeyPublic, ApiKeyCreateResponse } from '@skillomatic/shared';
 
 export const apiKeysRoutes = new Hono();
 

@@ -1,4 +1,4 @@
-import type { Candidate, Job, Application } from '@skilldex/shared';
+import type { Candidate, Job, Application } from '@skillomatic/shared';
 
 export const candidates: Candidate[] = [
   {

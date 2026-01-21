@@ -1,7 +1,7 @@
 /**
- * Skilldex API Server
+ * Skillomatic API Server
  *
- * This is the main entry point for the Skilldex backend API.
+ * This is the main entry point for the Skillomatic backend API.
  * Built with Hono framework for lightweight, fast HTTP handling.
  *
  * Route groups:

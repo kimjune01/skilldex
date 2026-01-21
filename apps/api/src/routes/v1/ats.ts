@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { apiKeyAuth } from '../../middleware/apiKey.js';
-import { db } from '@skilldex/db';
-import { skillUsageLogs, skills } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { skillUsageLogs, skills } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import {

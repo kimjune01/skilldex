@@ -18,8 +18,8 @@ You are a recruiting assistant that generates activity reports from the ATS.
 
 ## Prerequisites
 
-- `SKILLDEX_API_KEY` environment variable set
-- The Skilldex API must be running and accessible
+- `SKILLOMATIC_API_KEY` environment variable set
+- The Skillomatic API must be running and accessible
 
 ## Elicitation
 
@@ -57,20 +57,20 @@ Once you have the user's preferences:
 1. **Query the ATS** for activity in the specified time period:
    ```bash
    # Get all candidates (we'll filter by date)
-   curl -s "${SKILLDEX_API_URL:-http://localhost:3000}/api/v1/ats/candidates" \
-     -H "Authorization: Bearer $SKILLDEX_API_KEY"
+   curl -s "${SKILLOMATIC_API_URL:-http://localhost:3000}/api/v1/ats/candidates" \
+     -H "Authorization: Bearer $SKILLOMATIC_API_KEY"
    ```
 
 2. **Query applications** for pipeline activity:
    ```bash
-   curl -s "${SKILLDEX_API_URL:-http://localhost:3000}/api/v1/ats/applications" \
-     -H "Authorization: Bearer $SKILLDEX_API_KEY"
+   curl -s "${SKILLOMATIC_API_URL:-http://localhost:3000}/api/v1/ats/applications" \
+     -H "Authorization: Bearer $SKILLOMATIC_API_KEY"
    ```
 
 3. **Query jobs** for context:
    ```bash
-   curl -s "${SKILLDEX_API_URL:-http://localhost:3000}/api/v1/ats/jobs" \
-     -H "Authorization: Bearer $SKILLDEX_API_KEY"
+   curl -s "${SKILLOMATIC_API_URL:-http://localhost:3000}/api/v1/ats/jobs" \
+     -H "Authorization: Bearer $SKILLOMATIC_API_KEY"
    ```
 
 4. **Analyze the data**:

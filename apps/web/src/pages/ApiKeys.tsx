@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiKeys } from '../lib/api';
-import type { ApiKeyPublic, ApiKeyCreateResponse } from '@skilldex/shared';
+import type { ApiKeyPublic, ApiKeyCreateResponse } from '@skillomatic/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -116,7 +116,7 @@ export default function ApiKeys() {
               </Button>
             </div>
             <pre className="mt-3 bg-white border rounded p-2 text-xs overflow-x-auto">
-              export SKILLDEX_API_KEY="{createdKey.key}"
+              export SKILLOMATIC_API_KEY="{createdKey.key}"
             </pre>
             <Button
               variant="ghost"

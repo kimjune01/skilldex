@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { db } from '@skilldex/db';
-import { integrations } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { integrations } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
-import type { IntegrationPublic } from '@skilldex/shared';
+import type { IntegrationPublic } from '@skillomatic/shared';
 
 export const integrationsRoutes = new Hono();
 

@@ -1,10 +1,10 @@
 # Recruiter Guide
 
-Welcome to Skilldex! This guide walks you through setting up and using Skilldex skills in your daily recruiting workflow.
+Welcome to Skillomatic! This guide walks you through setting up and using Skillomatic skills in your daily recruiting workflow.
 
-## What is Skilldex?
+## What is Skillomatic?
 
-Skilldex brings your recruiting tools into Claude Code. Instead of switching between LinkedIn, your ATS, email, and calendar, you can interact with all of them through natural language conversations with Claude.
+Skillomatic brings your recruiting tools into Claude Code. Instead of switching between LinkedIn, your ATS, email, and calendar, you can interact with all of them through natural language conversations with Claude.
 
 **Example interactions:**
 - "Find senior backend engineers in the Bay Area"
@@ -16,7 +16,7 @@ Skilldex brings your recruiting tools into Claude Code. Instead of switching bet
 
 ### Step 1: Create Your Account
 
-1. Navigate to your company's Skilldex instance (e.g., `https://skilldex.yourcompany.com`)
+1. Navigate to your company's Skillomatic instance (e.g., `https://skillomatic.yourcompany.com`)
 2. Log in with your company credentials or create an account
 3. You'll land on the Dashboard showing your recent activity and quick actions
 
@@ -43,14 +43,14 @@ Note: Some integrations require OAuth authorization. You'll be redirected to the
 
 ### Step 2b: Install Browser Extension (for LinkedIn)
 
-The `/linkedin-lookup` skill requires the **Skilldex Scraper** browser extension. This extension opens LinkedIn pages in your actual browser session, using your logged-in credentials.
+The `/linkedin-lookup` skill requires the **Skillomatic Scraper** browser extension. This extension opens LinkedIn pages in your actual browser session, using your logged-in credentials.
 
 1. Open Chrome and go to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right corner)
 3. Click **Load unpacked**
-4. Select the `apps/skilldex-scraper` folder
+4. Select the `apps/skillomatic-scraper` folder
 5. Click the extension icon in your toolbar
-6. Enter your **API URL** (e.g., `https://skilldex.yourcompany.com`)
+6. Enter your **API URL** (e.g., `https://skillomatic.yourcompany.com`)
 7. Enter your **API Key** (you'll create this in the next step)
 8. Click **Save & Connect**
 
@@ -71,7 +71,7 @@ Add the API key to your shell profile:
 
 ```bash
 # Add to ~/.zshrc or ~/.bashrc
-export SKILLDEX_API_KEY="sk_live_your_key_here"
+export SKILLOMATIC_API_KEY="sk_live_your_key_here"
 ```
 
 Then reload your shell:
@@ -110,17 +110,17 @@ Example: "I need to find senior Python developers in Seattle" → The assistant 
 
 ## Available Skills
 
-Skilldex includes these skills out of the box:
+Skillomatic includes these skills out of the box:
 
 | Skill | Description | Required |
 |-------|-------------|----------|
-| `/linkedin-lookup` | Find candidates on LinkedIn | Skilldex Scraper extension |
+| `/linkedin-lookup` | Find candidates on LinkedIn | Skillomatic Scraper extension |
 | `/ats-candidate-search` | Search your ATS for existing candidates | ATS integration |
 | `/ats-candidate-crud` | Create/update/delete ATS records | ATS integration |
 | `/email-draft` | Draft personalized recruiting emails | Email integration |
 | `/interview-scheduler` | Schedule interviews | Calendar integration |
 | `/meeting-notes` | Capture and summarize interview notes | - |
-| `/candidate-pipeline-builder` | Build recruiting pipelines | ATS + Skilldex Scraper extension |
+| `/candidate-pipeline-builder` | Build recruiting pipelines | ATS + Skillomatic Scraper extension |
 | `/daily-report` | Generate daily recruiting reports | - |
 
 ## Using Skills
@@ -271,7 +271,7 @@ For emails and calendar invites, Claude will show you a draft before sending. Al
 
 ## Demo Mode
 
-If you want to explore Skilldex without connecting real integrations:
+If you want to explore Skillomatic without connecting real integrations:
 
 1. Toggle **Demo Mode** in the sidebar (Flask icon)
 2. When enabled, the platform uses mock data for all features
@@ -284,14 +284,14 @@ Demo mode persists across sessions until you toggle it off.
 ### "Missing or invalid API key"
 
 Your API key isn't set correctly:
-1. Check that `SKILLDEX_API_KEY` is in your shell profile
-2. Run `echo $SKILLDEX_API_KEY` to verify it's set
+1. Check that `SKILLOMATIC_API_KEY` is in your shell profile
+2. Run `echo $SKILLOMATIC_API_KEY` to verify it's set
 3. Make sure you copied the full key (starts with `sk_live_`)
 
 ### "Integration not connected"
 
 The skill requires an integration you haven't set up:
-1. Go to **Integrations** in Skilldex
+1. Go to **Integrations** in Skillomatic
 2. Connect the required service
 3. Try the skill again
 
@@ -303,9 +303,9 @@ The skill file isn't in the right location:
 
 ### LinkedIn lookup not working
 
-LinkedIn lookup uses the **Skilldex Scraper** browser extension to access LinkedIn with your logged-in session:
+LinkedIn lookup uses the **Skillomatic Scraper** browser extension to access LinkedIn with your logged-in session:
 
-1. **Install the extension**: Load the extension from `apps/skilldex-scraper` (see Installation Guide)
+1. **Install the extension**: Load the extension from `apps/skillomatic-scraper` (see Installation Guide)
 2. **Configure the extension**: Click the extension icon and enter your API URL and API key
 3. **Check extension status**: The extension popup should show a green "Polling" status
 4. **Log into LinkedIn**: Make sure you're logged into LinkedIn in the same browser
@@ -314,9 +314,9 @@ LinkedIn lookup uses the **Skilldex Scraper** browser extension to access Linked
 
 ## Getting Help
 
-- **Technical issues**: Contact your Skilldex administrator
+- **Technical issues**: Contact your Skillomatic administrator
 - **Feature requests**: Use the `/propose-new-skill` skill to suggest new capabilities
-- **Bug reports**: Report issues to your admin or the Skilldex team
+- **Bug reports**: Report issues to your admin or the Skillomatic team
 
 ## Privacy & Security
 

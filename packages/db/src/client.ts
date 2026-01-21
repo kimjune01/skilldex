@@ -29,7 +29,7 @@ if (isTurso) {
   const { existsSync, mkdirSync } = await import('fs');
   const { dirname } = await import('path');
 
-  const dbPath = process.env.DATABASE_URL?.replace('file:', '') || './data/skilldex.db';
+  const dbPath = process.env.DATABASE_URL?.replace('file:', '') || './data/skillomatic.db';
 
   // Ensure directory exists
   const dir = dirname(dbPath);

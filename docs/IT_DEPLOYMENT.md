@@ -1,12 +1,12 @@
 # IT Deployment Guide
 
-This guide covers enterprise onboarding for Skilldex SaaS. Skilldex is a fully hosted platform - no infrastructure to deploy.
+This guide covers enterprise onboarding for Skillomatic SaaS. Skillomatic is a fully hosted platform - no infrastructure to deploy.
 
 ## Overview
 
-Skilldex deployment consists of:
+Skillomatic deployment consists of:
 
-1. **Organization Setup** - Configure your org in Skilldex
+1. **Organization Setup** - Configure your org in Skillomatic
 2. **User Provisioning** - Add users via admin panel or SSO
 3. **Client Setup** - Install browser extension on recruiter workstations
 
@@ -15,7 +15,7 @@ Skilldex deployment consists of:
 │                        ENTERPRISE DEPLOYMENT                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  SKILLDEX CLOUD (Hosted)                                                    │
+│  SKILLOMATIC CLOUD (Hosted)                                                    │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
 │  │  • API & Web App (fully managed)                                       │ │
 │  │  • Skills library (rendered with your keys)                            │ │
@@ -29,7 +29,7 @@ Skilldex deployment consists of:
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │ │
 │  │  │ Claude Code  │  │ Chrome with  │  │ LLM calls    │                 │ │
-│  │  │ / Desktop    │  │ Skilldex Ext │  │ (direct)     │                 │ │
+│  │  │ / Desktop    │  │ Skillomatic Ext │  │ (direct)     │                 │ │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘                 │ │
 │  │         │                 │                   │                        │ │
 │  │         └─────────────────┴───────────────────┘                        │ │
@@ -43,7 +43,7 @@ Skilldex deployment consists of:
 
 ### 1. Create Organization
 
-Contact Skilldex sales or sign up at skilldex.app to create your organization.
+Contact Skillomatic sales or sign up at skillomatic.app to create your organization.
 
 You'll receive:
 - Organization ID
@@ -58,7 +58,7 @@ In **Admin > Settings**, add your organization's LLM API key:
 - **OpenAI** - GPT-4 alternative
 - **Groq** - Fast, free tier available
 
-This key is used client-side - it never touches Skilldex servers.
+This key is used client-side - it never touches Skillomatic servers.
 
 ### 3. Configure ATS Integration (Optional)
 
@@ -66,7 +66,7 @@ If using ATS features, connect via **Admin > Integrations**:
 
 - OAuth connection to Greenhouse, Lever, etc.
 - Tokens are fetched fresh and passed to client
-- No credentials stored on Skilldex servers
+- No credentials stored on Skillomatic servers
 
 ---
 
@@ -81,7 +81,7 @@ If using ATS features, connect via **Admin > Integrations**:
 
 ### Option B: SSO (Enterprise)
 
-Contact Skilldex support to configure:
+Contact Skillomatic support to configure:
 
 - **Azure AD / Entra ID** - OIDC integration
 - **Okta** - OIDC integration
@@ -102,7 +102,7 @@ SSO users are auto-provisioned on first login.
 
 ### Browser Extension (Required for LinkedIn)
 
-The Skilldex Scraper extension enables LinkedIn lookup using the user's authenticated session.
+The Skillomatic Scraper extension enables LinkedIn lookup using the user's authenticated session.
 
 #### Enterprise Distribution (Chrome)
 
@@ -118,7 +118,7 @@ Software\Policies\Google\Chrome\ExtensionInstallForcelist
 
 **Option B: Self-Hosted CRX**
 
-1. Package the extension from `apps/skilldex-scraper`
+1. Package the extension from `apps/skillomatic-scraper`
 2. Host CRX and update manifest internally
 3. Configure Group Policy to force-install
 
@@ -127,7 +127,7 @@ Software\Policies\Google\Chrome\ExtensionInstallForcelist
 1. Open Chrome > `chrome://extensions/`
 2. Enable **Developer mode**
 3. Click **Load unpacked**
-4. Select `apps/skilldex-scraper` folder
+4. Select `apps/skillomatic-scraper` folder
 
 ### Extension Permissions
 
@@ -144,31 +144,31 @@ For automated workstation setup:
 
 ```bash
 #!/bin/bash
-# skilldex-deploy.sh
-# Deploy Skilldex client configuration via MDM
+# skillomatic-deploy.sh
+# Deploy Skillomatic client configuration via MDM
 
-SKILLDEX_API_URL="${1:-https://app.skilldex.io}"
+SKILLOMATIC_API_URL="${1:-https://app.skillomatic.io}"
 
 # Detect current user
 CURRENT_USER=$(stat -f "%Su" /dev/console 2>/dev/null || echo "$SUDO_USER")
 USER_HOME=$(eval echo "~$CURRENT_USER")
 
-echo "Setting up Skilldex for $CURRENT_USER..."
+echo "Setting up Skillomatic for $CURRENT_USER..."
 
 # Create config directory
-sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.skilldex"
+sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.skillomatic"
 
 # Create config file
-cat > "$USER_HOME/.skilldex/config.json" << EOF
+cat > "$USER_HOME/.skillomatic/config.json" << EOF
 {
-  "apiUrl": "$SKILLDEX_API_URL",
+  "apiUrl": "$SKILLOMATIC_API_URL",
   "installed": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
-chown "$CURRENT_USER" "$USER_HOME/.skilldex/config.json"
+chown "$CURRENT_USER" "$USER_HOME/.skillomatic/config.json"
 
 echo "Done. User should:"
-echo "  1. Log in at $SKILLDEX_API_URL"
+echo "  1. Log in at $SKILLOMATIC_API_URL"
 echo "  2. Generate an API key"
 echo "  3. Configure the browser extension"
 ```
@@ -179,14 +179,14 @@ echo "  3. Configure the browser extension"
 
 ### Data Flow
 
-Skilldex uses an ephemeral architecture:
+Skillomatic uses an ephemeral architecture:
 
 1. **No PII on server** - Chat, ATS data, and scrape results stay client-side
 2. **Skills rendered with keys** - Your API keys are embedded in skill context
 3. **Direct LLM calls** - Browser calls Anthropic/OpenAI directly
 4. **No conversation storage** - Chat history exists only in browser memory
 
-### What Skilldex Stores
+### What Skillomatic Stores
 
 | Data | Stored | Notes |
 |------|--------|-------|
@@ -204,7 +204,7 @@ Allow outbound HTTPS to:
 
 | Domain | Purpose |
 |--------|---------|
-| `app.skilldex.io` | Skilldex API |
+| `app.skillomatic.io` | Skillomatic API |
 | `api.anthropic.com` | Claude API (if using Anthropic) |
 | `api.openai.com` | OpenAI API (if using OpenAI) |
 | Your ATS domain | ATS API calls |
@@ -224,14 +224,14 @@ Allow outbound HTTPS to:
 ### Self-Service Onboarding Email
 
 ```
-Subject: Your Skilldex Access is Ready
+Subject: Your Skillomatic Access is Ready
 
 Hi {NAME},
 
-Your Skilldex account has been set up. Here's how to get started:
+Your Skillomatic account has been set up. Here's how to get started:
 
 1. LOG IN
-   Go to {SKILLDEX_URL} and sign in with your credentials.
+   Go to {SKILLOMATIC_URL} and sign in with your credentials.
 
 2. INSTALL BROWSER EXTENSION
    - Go to chrome://extensions
@@ -239,8 +239,8 @@ Your Skilldex account has been set up. Here's how to get started:
    - Load the extension provided by IT
 
 3. CONFIGURE EXTENSION
-   - Click the Skilldex icon in Chrome
-   - Enter the API URL: {SKILLDEX_URL}
+   - Click the Skillomatic icon in Chrome
+   - Enter the API URL: {SKILLOMATIC_URL}
    - Enter your API key (from Settings > API Keys)
 
 4. START USING
@@ -259,7 +259,7 @@ Need help? Contact IT at {SUPPORT_EMAIL}
 ### Health Check
 
 ```bash
-curl -s https://app.skilldex.io/api/health
+curl -s https://app.skillomatic.io/api/health
 # Returns: {"status":"ok","timestamp":"..."}
 ```
 
@@ -298,7 +298,7 @@ All skill executions are logged (anonymized):
 
 ### "Skills not loading"
 
-1. Verify API connection: `curl -H "Authorization: Bearer $KEY" https://app.skilldex.io/api/skills`
+1. Verify API connection: `curl -H "Authorization: Bearer $KEY" https://app.skillomatic.io/api/skills`
 2. Check user has access to the skill (role-based)
 3. Ensure browser extension is configured
 
@@ -306,17 +306,17 @@ All skill executions are logged (anonymized):
 
 1. **Level 1 (Help Desk)**: API key issues, login problems
 2. **Level 2 (IT)**: Extension deployment, network/firewall
-3. **Level 3 (Skilldex Support)**: Platform issues, feature requests
+3. **Level 3 (Skillomatic Support)**: Platform issues, feature requests
 
 ---
 
 ## FAQ
 
 **Q: Do we need to run any servers?**
-A: No. Skilldex is fully hosted SaaS.
+A: No. Skillomatic is fully hosted SaaS.
 
 **Q: Where is our data stored?**
-A: Chat content and ATS data stay in the browser. Only user accounts and anonymized usage logs are stored on Skilldex servers.
+A: Chat content and ATS data stay in the browser. Only user accounts and anonymized usage logs are stored on Skillomatic servers.
 
 **Q: Can we use our own LLM API keys?**
 A: Yes, required. Your org provides Anthropic/OpenAI keys which are used client-side.
@@ -325,4 +325,4 @@ A: Yes, required. Your org provides Anthropic/OpenAI keys which are used client-
 A: Not currently. The ephemeral architecture means minimal data touches our servers anyway.
 
 **Q: How do we handle compliance (SOC2, HIPAA)?**
-A: Because PII doesn't pass through Skilldex servers, compliance burden is significantly reduced. Contact sales for our security documentation.
+A: Because PII doesn't pass through Skillomatic servers, compliance burden is significantly reduced. Contact sales for our security documentation.

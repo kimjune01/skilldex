@@ -1,4 +1,4 @@
-// Skilldex Scraper - Background Service Worker
+// Skillomatic Scraper - Background Service Worker
 // Connects via WebSocket to receive scrape tasks in real-time
 
 const DEFAULT_API_URL = 'http://localhost:3000';
@@ -527,7 +527,7 @@ async function init() {
   if (apiKey) {
     connect();
   }
-  console.log('[Skilldex] Scraper initialized');
+  console.log('[Skillomatic] Scraper initialized');
 }
 
 init();

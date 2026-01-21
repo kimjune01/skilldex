@@ -1,10 +1,10 @@
-# Getting Started with Skilldex
+# Getting Started with Skillomatic
 
-This guide covers getting started with Skilldex for recruiters. Skilldex works with Claude Desktop, Claude Code, and other AI assistants.
+This guide covers getting started with Skillomatic for recruiters. Skillomatic works with Claude Desktop, Claude Code, and other AI assistants.
 
 ## Quick Start
 
-1. **Log in** to your Skilldex instance (URL provided by your admin)
+1. **Log in** to your Skillomatic instance (URL provided by your admin)
 2. **Generate API key** in Settings > API Keys
 3. **Install browser extension** for LinkedIn lookup
 4. **Start using** skills in Claude
@@ -13,13 +13,13 @@ This guide covers getting started with Skilldex for recruiters. Skilldex works w
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                     SKILLDEX ARCHITECTURE                             │
+│                     SKILLOMATIC ARCHITECTURE                             │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                       │
 │  YOUR BROWSER                                                        │
 │  ┌──────────────────────────────────────────────────────────────────┐│
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           ││
-│  │  │ Skilldex Web │  │ Skilldex Ext │  │ LLM Provider │           ││
+│  │  │ Skillomatic Web │  │ Skillomatic Ext │  │ LLM Provider │           ││
 │  │  │ (Chat UI)    │  │ (LinkedIn)   │  │ (direct)     │           ││
 │  │  └──────────────┘  └──────────────┘  └──────────────┘           ││
 │  │         │                 │                 │                    ││
@@ -30,17 +30,17 @@ This guide covers getting started with Skilldex for recruiters. Skilldex works w
 │                              │ Auth only                              │
 │                              ▼                                        │
 │  ┌──────────────────────────────────────────────────────────────────┐│
-│  │  Skilldex Cloud - Skills library, auth, coordination             ││
+│  │  Skillomatic Cloud - Skills library, auth, coordination             ││
 │  └──────────────────────────────────────────────────────────────────┘│
 │                                                                       │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Privacy by design:** Chat conversations and ATS data never leave your browser. Skilldex servers only handle authentication and skill delivery.
+**Privacy by design:** Chat conversations and ATS data never leave your browser. Skillomatic servers only handle authentication and skill delivery.
 
 ## Step 1: Create Your Account
 
-1. Navigate to your Skilldex instance (provided by your admin)
+1. Navigate to your Skillomatic instance (provided by your admin)
 2. Log in with credentials or SSO
 3. Complete any required onboarding steps
 
@@ -54,7 +54,7 @@ You can view your API key anytime from the dashboard.
 
 ## Step 3: Install Browser Extension
 
-The Skilldex Scraper extension enables LinkedIn lookup using your authenticated LinkedIn session.
+The Skillomatic Scraper extension enables LinkedIn lookup using your authenticated LinkedIn session.
 
 ### Chrome Installation
 
@@ -63,10 +63,10 @@ The Skilldex Scraper extension enables LinkedIn lookup using your authenticated 
    - Enable **Developer mode**
    - Click **Load unpacked** and select the extension folder
 
-2. Click the **Skilldex Scraper** icon in your toolbar
+2. Click the **Skillomatic Scraper** icon in your toolbar
 
 3. Configure:
-   - **API URL**: Your Skilldex instance URL
+   - **API URL**: Your Skillomatic instance URL
    - **API Key**: Your `sk_live_...` key
 
 4. Click **Save & Connect**
@@ -76,7 +76,7 @@ The status should show a green dot when connected.
 ### How LinkedIn Lookup Works
 
 1. You ask Claude to find candidates on LinkedIn
-2. Skilldex creates a "scrape task" for the LinkedIn URL
+2. Skillomatic creates a "scrape task" for the LinkedIn URL
 3. The browser extension (running in your Chrome) picks up the task
 4. It opens LinkedIn **in your browser session** (you're already logged in)
 5. The extension extracts the page content and returns it to the chat
@@ -86,7 +86,7 @@ The status should show a green dot when connected.
 
 ## Step 4: Using the Chat
 
-Navigate to **Chat** in the Skilldex sidebar to start using skills.
+Navigate to **Chat** in the Skillomatic sidebar to start using skills.
 
 ### Example: LinkedIn Lookup
 
@@ -157,7 +157,7 @@ View all available skills in the **Skills** section of the sidebar.
 - Chat conversations exist only in your browser
 - ATS data is fetched directly, not stored
 - LinkedIn content is processed client-side
-- Skilldex servers only see metadata (skill usage logs)
+- Skillomatic servers only see metadata (skill usage logs)
 
 ### API Key Safety
 
@@ -167,6 +167,6 @@ View all available skills in the **Skills** section of the sidebar.
 
 ## Getting Help
 
-- **Account issues**: Contact your Skilldex admin
+- **Account issues**: Contact your Skillomatic admin
 - **Feature requests**: Use the Chat to propose new skills
 - **Technical problems**: Contact IT support

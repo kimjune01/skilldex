@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
-import { db } from '@skilldex/db';
-import { apiKeys, users } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { apiKeys, users } from '@skillomatic/db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 import { extractApiKey } from '../lib/api-keys.js';
 

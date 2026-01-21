@@ -15,7 +15,7 @@ services:
       - ./packages:/app/packages
     depends_on:
       - api
-    command: pnpm --filter @skilldex/web dev --host
+    command: pnpm --filter @skillomatic/web dev --host
 
   # Hono API Backend
   api:
@@ -26,7 +26,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=file:/app/data/skilldex.db
+      - DATABASE_URL=file:/app/data/skillomatic.db
       - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
       - MOCK_ATS_URL=http://mock-ats:3001
       - NANGO_HOST=http://nango:3003
@@ -35,10 +35,10 @@ services:
       - ./apps/api/src:/app/apps/api/src
       - ./packages:/app/packages
       - ./skills:/app/skills
-      - skilldex-data:/app/data
+      - skillomatic-data:/app/data
     depends_on:
       - mock-ats
-    command: pnpm --filter @skilldex/api dev
+    command: pnpm --filter @skillomatic/api dev
 
   # Mock ATS Server
   mock-ats:
@@ -52,7 +52,7 @@ services:
     volumes:
       - ./apps/mock-ats/src:/app/apps/mock-ats/src
       - ./packages:/app/packages
-    command: pnpm --filter @skilldex/mock-ats dev
+    command: pnpm --filter @skillomatic/mock-ats dev
 
   # Nango (Self-hosted) - Optional for OAuth
   nango:
@@ -89,5 +89,5 @@ services:
       - full  # Only start with: docker-compose --profile full up
 
 volumes:
-  skilldex-data:
+  skillomatic-data:
   nango-db-data:

@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Play, BookOpen, Loader2, CheckCircle, XCircle, 
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
-import type { SkillPublic } from '@skilldex/shared';
+import type { SkillPublic } from '@skillomatic/shared';
 
 interface Candidate {
   id: string;

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Migrate Skilldex to a fully ephemeral architecture where no PII passes through or is stored on the server. The server becomes a coordination layer for auth and skill rendering only.
+Migrate Skillomatic to a fully ephemeral architecture where no PII passes through or is stored on the server. The server becomes a coordination layer for auth and skill rendering only.
 
 **Key insight:** Skills are rendered server-side with sensitive keys embedded, then sent to client. Client uses rendered skills directly with LLM/ATS - no separate key distribution.
 
@@ -10,7 +10,7 @@ Migrate Skilldex to a fully ephemeral architecture where no PII passes through o
 
 ### Current (Server-Proxied)
 ```
-User Browser ──► Skilldex API ──► LLM Provider
+User Browser ──► Skillomatic API ──► LLM Provider
                       │
                       ├──► ATS APIs
                       │
@@ -28,7 +28,7 @@ User Browser ──────────────────► LLM Provi
       │
       ├── IndexedDB (scrape cache, local only)
       │
-      └──► Skilldex API (auth, rendered skills only)
+      └──► Skillomatic API (auth, rendered skills only)
 ```
 - No PII on server
 - Client calls LLM/ATS directly
@@ -57,8 +57,8 @@ The capability profile determines what a user has access to:
 ```typescript
 interface CapabilityProfile {
   // Core (always available)
-  skilldexApiKey: string;
-  skilldexApiUrl: string;
+  skillomaticApiKey: string;
+  skillomaticApiUrl: string;
 
   // LLM (required for chat)
   llm?: {
@@ -135,7 +135,7 @@ interface CapabilityProfile {
 ┌─────────────────────────────────────────────────────────────────────┐
 │  4. Render skill                                                     │
 │     - Replace {{ATS_TOKEN}} → "ghp_abc123..."                       │
-│     - Replace {{SKILLDEX_API_KEY}} → "sk_live_user123..."           │
+│     - Replace {{SKILLOMATIC_API_KEY}} → "sk_live_user123..."           │
 │     - etc.                                                           │
 └─────────────────────────────────────────────────────────────────────┘
                               │
@@ -201,7 +201,7 @@ function checkRequirements(required: string[], profile: CapabilityProfile): stri
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Skilldex API                                      │
+│                    Skillomatic API                                      │
 │                                                                      │
 │  GET /api/skills/:slug                                              │
 │  - Checks user has required integrations                            │
@@ -240,8 +240,8 @@ description: Find candidates on LinkedIn
 Fetch your rendered skill:
 
 \`\`\`bash
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
-  "${SKILLDEX_API_URL:-https://app.skilldex.io}/api/skills/linkedin-lookup"
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  "${SKILLOMATIC_API_URL:-https://app.skillomatic.io}/api/skills/linkedin-lookup"
 \`\`\`
 
 Follow the instructions in the response.
@@ -249,22 +249,22 @@ Follow the instructions in the response.
 
 Or a single generic skill that takes a slug:
 
-**~/.claude/commands/skilldex.md:**
+**~/.claude/commands/skillomatic.md:**
 ```markdown
 ---
-name: skilldex
-description: Load any Skilldex skill by name
+name: skillomatic
+description: Load any Skillomatic skill by name
 ---
 
-# Skilldex
+# Skillomatic
 
-Usage: /skilldex <skill-name>
+Usage: /skillomatic <skill-name>
 
 Fetch the requested skill:
 
 \`\`\`bash
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
-  "${SKILLDEX_API_URL:-https://app.skilldex.io}/api/skills/$1"
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  "${SKILLOMATIC_API_URL:-https://app.skillomatic.io}/api/skills/$1"
 \`\`\`
 
 If the skill requires integrations you haven't connected, you'll get an error
@@ -330,8 +330,8 @@ Use the LLM to analyze results with your API key: sk-ant-abc123...
 {{LLM_PROVIDER}}     - 'anthropic' | 'openai'
 {{ATS_TOKEN}}        - OAuth token (fetched fresh from Nango)
 {{ATS_BASE_URL}}     - ATS API base URL
-{{SKILLDEX_API_URL}} - This server's URL (for scrape coordination)
-{{SKILLDEX_API_KEY}} - User's API key (for scrape tasks)
+{{SKILLOMATIC_API_URL}} - This server's URL (for scrape coordination)
+{{SKILLOMATIC_API_KEY}} - User's API key (for scrape tasks)
 ```
 
 **Files to modify:**
@@ -380,7 +380,7 @@ Use the LLM to analyze results with your API key: sk-ant-abc123...
 
 **Files to modify:**
 - Modify: `apps/api/src/routes/ws/scrape.ts` - route results to client, not DB
-- Modify: `apps/skilldex-scraper/background.js` - send to client WebSocket
+- Modify: `apps/skillomatic-scraper/background.js` - send to client WebSocket
 - Add: `apps/web/src/lib/scrape-cache.ts` - IndexedDB wrapper
 - Remove: `result` column usage from `scrapeTasks` table
 
@@ -606,9 +606,9 @@ intent: System configuration (auto-loaded)
 - Base URL: {{ATS_BASE_URL}}
 - Token: {{ATS_TOKEN}}
 
-## Skilldex Configuration
-- API URL: {{SKILLDEX_API_URL}}
-- API Key: {{SKILLDEX_API_KEY}}
+## Skillomatic Configuration
+- API URL: {{SKILLOMATIC_API_URL}}
+- API Key: {{SKILLOMATIC_API_KEY}}
 ```
 
 **Rendered (sent to client):**
@@ -627,8 +627,8 @@ intent: System configuration (auto-loaded)
 - Base URL: https://harvest.greenhouse.io/v1
 - Token: gh_token_xyz...
 
-## Skilldex Configuration
-- API URL: https://skilldex.example.com
+## Skillomatic Configuration
+- API URL: https://skillomatic.example.com
 - API Key: sk_live_user123...
 ```
 
@@ -649,7 +649,7 @@ Google Calendar and Outlook provide iCal feed URLs with **free/busy only** permi
 
 **How it works:**
 1. User publishes calendar with **"free/busy only"** permission
-2. User pastes iCal URL in Skilldex Integrations page
+2. User pastes iCal URL in Skillomatic Integrations page
 3. Server validates the feed contains no PII (see validation below)
 4. Rendered skill includes the validated iCal URL
 5. Client fetches calendar data directly - no OAuth needed
@@ -923,4 +923,4 @@ ALTER TABLE users ADD COLUMN email_provider TEXT;          -- 'gmail' | 'outlook
 | **Send email** | mailto: link | No | No |
 | **Read email** | Gmail/Outlook API | Yes (Nango) | Token fetch only |
 
-This approach keeps email and calendar fully ephemeral - no PII passes through Skilldex servers.
+This approach keeps email and calendar fully ephemeral - no PII passes through Skillomatic servers.

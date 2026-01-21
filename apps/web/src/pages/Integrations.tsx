@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { integrations } from '../lib/api';
-import type { IntegrationPublic, IntegrationProvider } from '@skilldex/shared';
+import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -310,13 +310,13 @@ export default function Integrations() {
               Connect to {availableProviders.find(p => p.id === oauthDialogProvider)?.name}
             </DialogTitle>
             <DialogDescription>
-              Skilldex is requesting access to your {availableProviders.find(p => p.id === oauthDialogProvider)?.name} account
+              Skillomatic is requesting access to your {availableProviders.find(p => p.id === oauthDialogProvider)?.name} account
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <p className="text-sm font-medium">This will allow Skilldex to:</p>
+              <p className="text-sm font-medium">This will allow Skillomatic to:</p>
               <div className="space-y-2">
                 {oauthDialogProvider === 'ats' && (
                   <>
@@ -388,7 +388,7 @@ export default function Integrations() {
             <div className="flex items-start gap-2">
               <input type="checkbox" id="terms" defaultChecked disabled className="mt-0.5 h-4 w-4 rounded border-gray-300" />
               <label htmlFor="terms" className="text-xs text-muted-foreground leading-tight">
-                By authorizing, you agree to Skilldex's Terms of Service and Privacy Policy
+                By authorizing, you agree to Skillomatic's Terms of Service and Privacy Policy
               </label>
             </div>
           </div>
@@ -407,7 +407,7 @@ export default function Integrations() {
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Authorize Skilldex
+                  Authorize Skillomatic
                 </>
               )}
             </Button>

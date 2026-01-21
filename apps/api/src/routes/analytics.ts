@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { jwtAuth } from '../middleware/auth.js';
-import { db } from '@skilldex/db';
-import { skillUsageLogs, skills, users } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { skillUsageLogs, skills, users } from '@skillomatic/db/schema';
 import { eq, desc, and, gte } from 'drizzle-orm';
 import { isDemoMode, generateDemoUsageLogs } from '../lib/demo-data.js';
 

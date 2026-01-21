@@ -6,16 +6,16 @@ export const onboardingRoutes = new Hono();
  * GET /onboarding - Simple getting started guide for new users
  *
  * A streamlined onboarding flow for recruiters joining an org
- * that already has Skilldex set up.
+ * that already has Skillomatic set up.
  */
 onboardingRoutes.get('/', (c) => {
   const host = c.req.header('host') || 'localhost:3000';
   const protocol = host.includes('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${host}`;
 
-  const markdown = `# Welcome to Skilldex
+  const markdown = `# Welcome to Skillomatic
 
-Skilldex lets you search candidates, manage your ATS, and source from LinkedIn - all through natural conversation in Claude.
+Skillomatic lets you search candidates, manage your ATS, and source from LinkedIn - all through natural conversation in Claude.
 
 **Goal:** Get you out of dashboards and into Claude in 5 minutes.
 
@@ -32,8 +32,8 @@ Skilldex lets you search candidates, manage your ATS, and source from LinkedIn -
 ### 2. Save It (Terminal)
 
 \`\`\`bash
-security add-generic-password -a $USER -s SKILLDEX_API_KEY -w 'PASTE_KEY_HERE'
-echo 'export SKILLDEX_API_KEY=$(security find-generic-password -a "$USER" -s "SKILLDEX_API_KEY" -w 2>/dev/null)' >> ~/.zshrc
+security add-generic-password -a $USER -s SKILLOMATIC_API_KEY -w 'PASTE_KEY_HERE'
+echo 'export SKILLOMATIC_API_KEY=$(security find-generic-password -a "$USER" -s "SKILLOMATIC_API_KEY" -w 2>/dev/null)' >> ~/.zshrc
 source ~/.zshrc
 \`\`\`
 
@@ -78,7 +78,7 @@ Chain them together: *"Find Python engineers on LinkedIn, add the top 3 to our A
 
 For \`/linkedin-lookup\`, install the browser extension:
 
-1. Get extension from IT (or load \`apps/skilldex-scraper/\` in Chrome)
+1. Get extension from IT (or load \`apps/skillomatic-scraper/\` in Chrome)
 2. Click extension icon > enter API URL \`${baseUrl}\` + your API key
 3. Stay logged into LinkedIn in Chrome
 
@@ -88,7 +88,7 @@ Guide: ${baseUrl}/api/extension
 
 ## Help
 
-Stuck? Ask Claude: *"Run /skilldex-health-check"*
+Stuck? Ask Claude: *"Run /skillomatic-health-check"*
 
 API key issues? Regenerate at ${baseUrl}
 `;

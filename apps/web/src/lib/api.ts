@@ -15,7 +15,7 @@ import type {
   CreateScrapeTaskResponse,
   OrganizationPublic,
   OrganizationInvitePublic,
-} from '@skilldex/shared';
+} from '@skillomatic/shared';
 
 // In production, VITE_API_URL points to the Lambda function URL
 // In development, we use '/api' which Vite proxies to localhost:3000
@@ -23,7 +23,7 @@ const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api';
 
-const DEMO_STORAGE_KEY = 'skilldex_demo_mode';
+const DEMO_STORAGE_KEY = 'skillomatic_demo_mode';
 
 function isDemoModeEnabled(): boolean {
   return localStorage.getItem(DEMO_STORAGE_KEY) === 'true';

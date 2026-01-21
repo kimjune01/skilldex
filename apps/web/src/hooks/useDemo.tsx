@@ -8,7 +8,7 @@ interface DemoContextValue {
 
 const DemoContext = createContext<DemoContextValue | null>(null);
 
-const DEMO_STORAGE_KEY = 'skilldex_demo_mode';
+const DEMO_STORAGE_KEY = 'skillomatic_demo_mode';
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [isDemoMode, setIsDemoMode] = useState(() => {

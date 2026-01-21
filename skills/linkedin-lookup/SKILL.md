@@ -16,15 +16,15 @@ You are a recruiting assistant that helps find candidates on LinkedIn who match 
 
 ## Prerequisites
 
-1. **Skilldex Scraper Extension** - A Chrome extension that opens LinkedIn pages in the user's browser session. The extension must be installed and configured with the user's API key.
+1. **Skillomatic Scraper Extension** - A Chrome extension that opens LinkedIn pages in the user's browser session. The extension must be installed and configured with the user's API key.
 
 2. **LinkedIn Account** - The user must be logged into LinkedIn in the same browser where the extension is installed.
 
 ## How It Works
 
-This skill uses the Skilldex "scrape task" system:
+This skill uses the Skillomatic "scrape task" system:
 
-1. You create a scrape task via the Skilldex API with a LinkedIn URL
+1. You create a scrape task via the Skillomatic API with a LinkedIn URL
 2. The browser extension (running in the user's browser) polls for pending tasks
 3. The extension opens the URL in a new tab using the user's LinkedIn session
 4. The extension extracts the page content and sends it back
@@ -58,15 +58,15 @@ When the user provides a job description:
 
 3. **Search LinkedIn** - Create scrape tasks for LinkedIn search URLs:
    ```bash
-   # Create a scrape task via the Skilldex API
-   curl -X POST "$SKILLDEX_API_URL/api/v1/scrape/tasks" \
-     -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+   # Create a scrape task via the Skillomatic API
+   curl -X POST "$SKILLOMATIC_API_URL/api/v1/scrape/tasks" \
+     -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
      -H "Content-Type: application/json" \
      -d '{"url": "https://linkedin.com/search/results/people/?keywords=Senior+Backend+Engineer+Python"}'
 
    # Poll for result (or wait for WebSocket notification)
-   curl "$SKILLDEX_API_URL/api/v1/scrape/tasks/{task_id}" \
-     -H "Authorization: Bearer $SKILLDEX_API_KEY"
+   curl "$SKILLOMATIC_API_URL/api/v1/scrape/tasks/{task_id}" \
+     -H "Authorization: Bearer $SKILLOMATIC_API_KEY"
    ```
 
    The browser extension will:
@@ -194,7 +194,7 @@ Present findings as:
 
 ## Limitations
 
-- Requires **Skilldex Scraper** browser extension to be installed and running
+- Requires **Skillomatic Scraper** browser extension to be installed and running
 - User must be logged into LinkedIn in the same browser
 - Extension must be configured with correct API URL and key
 - Search results limited to what LinkedIn shows (not all profiles)

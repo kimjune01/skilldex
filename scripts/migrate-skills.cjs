@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
 
-const dbPath = path.join(__dirname, '..', 'packages', 'db', 'data', 'skilldex.db');
+const dbPath = path.join(__dirname, '..', 'packages', 'db', 'data', 'skillomatic.db');
 const skillsDir = path.join(__dirname, '..', 'skills');
 
 const db = new Database(dbPath);

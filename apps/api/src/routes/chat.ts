@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { db } from '@skilldex/db';
-import { scrapeTasks } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { scrapeTasks } from '@skillomatic/db/schema';
 import { eq, and, gt, desc } from 'drizzle-orm';
 import { randomUUID, createHash } from 'crypto';
 import { jwtAuth } from '../middleware/auth.js';
@@ -132,7 +132,7 @@ The system ONLY executes code blocks marked as \`\`\`action. Any other format wi
    \`\`\`action
    {"action": "scrape_url", "url": "https://example.com/page"}
    \`\`\`
-   Note: Requires the Skilldex browser extension to be running.
+   Note: Requires the Skillomatic browser extension to be running.
 
 ### Skill Actions
 10. **load_skill** - Load a skill's full instructions (progressive disclosure)
@@ -144,7 +144,7 @@ The system ONLY executes code blocks marked as \`\`\`action. Any other format wi
    - After loading, follow the skill's instructions
 
 ## Skills Requiring Browser Extension
-These skills require the Skilldex browser extension:
+These skills require the Skillomatic browser extension:
 ${browserSkills || 'None'}
 
 ## Guidelines
@@ -241,14 +241,14 @@ async function waitForScrapeTask(
       if (task.status === 'failed') {
         return {
           error: task.errorMessage || 'Scrape failed',
-          suggestion: 'Check that the Skilldex Scraper extension is installed and running.',
+          suggestion: 'Check that the Skillomatic Scraper extension is installed and running.',
         };
       }
 
       if (task.status === 'expired') {
         return {
           error: 'Scrape task expired',
-          suggestion: 'The Skilldex Scraper extension may not be installed or running.',
+          suggestion: 'The Skillomatic Scraper extension may not be installed or running.',
         };
       }
 
@@ -277,13 +277,13 @@ async function waitForScrapeTask(
         if (result.status === 'failed') {
           return {
             error: result.errorMessage || 'Scrape failed',
-            suggestion: 'Check that the Skilldex Scraper extension is installed and running.',
+            suggestion: 'Check that the Skillomatic Scraper extension is installed and running.',
           };
         }
         if (result.status === 'expired') {
           return {
             error: 'Scrape task expired',
-            suggestion: 'The Skilldex Scraper extension may not be installed or running.',
+            suggestion: 'The Skillomatic Scraper extension may not be installed or running.',
           };
         }
       }
@@ -292,7 +292,7 @@ async function waitForScrapeTask(
     // Timeout
     return {
       error: 'Scrape timed out waiting for browser extension',
-      suggestion: 'Install the Skilldex Scraper browser extension and ensure it is configured with your API key.',
+      suggestion: 'Install the Skillomatic Scraper browser extension and ensure it is configured with your API key.',
       taskId,
     };
   } finally {

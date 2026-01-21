@@ -6,14 +6,14 @@ export const extensionRoutes = new Hono();
  * GET /extension - Browser extension installation guide
  *
  * Returns markdown instructions for installing and configuring
- * the Skilldex Scraper Chrome extension.
+ * the Skillomatic Scraper Chrome extension.
  */
 extensionRoutes.get('/', (c) => {
   const apiUrl = process.env.API_URL || c.req.header('host') || 'http://localhost:3000';
 
-  const markdown = `# Skilldex Scraper Browser Extension
+  const markdown = `# Skillomatic Scraper Browser Extension
 
-The Skilldex Scraper extension enables LinkedIn profile lookups by opening pages in your authenticated browser session.
+The Skillomatic Scraper extension enables LinkedIn profile lookups by opening pages in your authenticated browser session.
 
 ## Why This Extension?
 
@@ -22,7 +22,7 @@ When you use \`/linkedin-lookup\` in Claude, the skill needs to access LinkedIn 
 ## How It Works
 
 \`\`\`
-Claude Code                    Skilldex API                   Your Browser
+Claude Code                    Skillomatic API                   Your Browser
     │                              │                              │
     │ 1. /linkedin-lookup          │                              │
     │ ──────────────────────────►  │                              │
@@ -50,15 +50,15 @@ Claude Code                    Skilldex API                   Your Browser
 
 ### Step 1: Get the Extension
 
-The extension source is in \`apps/skilldex-scraper/\` in the Skilldex repository.
+The extension source is in \`apps/skillomatic-scraper/\` in the Skillomatic repository.
 
 **Option A: Load Unpacked (Development)**
 
-1. Download or clone the Skilldex repository
+1. Download or clone the Skillomatic repository
 2. Open Chrome and go to \`chrome://extensions/\`
 3. Enable **Developer mode** (toggle in top-right corner)
 4. Click **Load unpacked**
-5. Select the \`apps/skilldex-scraper\` folder
+5. Select the \`apps/skillomatic-scraper\` folder
 6. The extension icon should appear in your toolbar
 
 **Option B: Enterprise Installation**
@@ -67,7 +67,7 @@ If your IT department has deployed the extension, it may already be installed. C
 
 ### Step 2: Configure the Extension
 
-1. Click the **Skilldex Scraper** extension icon in your Chrome toolbar
+1. Click the **Skillomatic Scraper** extension icon in your Chrome toolbar
 2. Enter your configuration:
 
    **API URL:**
@@ -76,7 +76,7 @@ If your IT department has deployed the extension, it may already be installed. C
    \`\`\`
 
    **API Key:**
-   Your personal API key from the Skilldex dashboard (starts with \`sk_live_\`)
+   Your personal API key from the Skillomatic dashboard (starts with \`sk_live_\`)
 
 3. Click **Save & Connect**
 
@@ -131,9 +131,9 @@ The extension may not be responding. Check:
 
 ## Security Notes
 
-- The extension only accesses URLs for scrape tasks from the Skilldex API
+- The extension only accesses URLs for scrape tasks from the Skillomatic API
 - Your LinkedIn session cookies stay in your browser - never sent to the API
-- Only page content (as markdown) is sent back to Skilldex
+- Only page content (as markdown) is sent back to Skillomatic
 - API key is stored in Chrome's sync storage (encrypted)
 
 ## Extension Permissions
@@ -148,7 +148,7 @@ The extension may not be responding. Check:
 ## Getting Help
 
 - **Extension issues:** Check this page or contact IT
-- **API issues:** Check the Skilldex dashboard
+- **API issues:** Check the Skillomatic dashboard
 - **LinkedIn access:** Verify your LinkedIn account status
 
 ---

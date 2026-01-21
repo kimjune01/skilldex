@@ -1,12 +1,12 @@
-# Skilldex
+# Skillomatic
 
 A plug-and-play Claude Code skills platform for recruiters. Access job functions (LinkedIn lookup, ATS operations, email drafting) through Claude Code skills instead of traditional dashboards.
 
 ## Motivation
 
-Recruiters spend significant time switching between tools: ATS systems, LinkedIn, email clients, calendars. Skilldex brings these capabilities directly into Claude Code, enabling natural language interactions with recruiting workflows.
+Recruiters spend significant time switching between tools: ATS systems, LinkedIn, email clients, calendars. Skillomatic brings these capabilities directly into Claude Code, enabling natural language interactions with recruiting workflows.
 
-**Key insight:** Skills are downloadable markdown files that users place in `~/.claude/commands/`. When executed, skills authenticate back to the Skilldex backend for ATS data, integration access, and usage tracking.
+**Key insight:** Skills are downloadable markdown files that users place in `~/.claude/commands/`. When executed, skills authenticate back to the Skillomatic backend for ATS data, integration access, and usage tracking.
 
 ### Why Claude Code Skills?
 
@@ -19,14 +19,14 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                           SKILLDEX PLATFORM                               │
+│                           SKILLOMATIC PLATFORM                               │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                   │
 │  │  Web UI     │    │  API        │    │  Nango      │                   │
 │  │  (React)    │    │  (Hono)     │    │  (OAuth)    │                   │
 │  └─────────────┘    └─────────────┘    └─────────────┘                   │
 └────────┬────────────────────▲────────────────────────────────────────────┘
          │                    │
-    Download skill            │ API calls with SKILLDEX_API_KEY
+    Download skill            │ API calls with SKILLOMATIC_API_KEY
     + API key                 │
          │                    │
          ▼                    │
@@ -36,14 +36,14 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 │  │  Claude Desktop / Claude Code                                      │   │
 │  │  ~/.claude/commands/                                               │   │
 │  │    ├── linkedin-lookup.md     ──> Creates scrape tasks             │   │
-│  │    ├── ats-search.md              via Skilldex API                 │   │
+│  │    ├── ats-search.md              via Skillomatic API                 │   │
 │  │    └── ...                                                         │   │
 │  └───────────────────────────────────────────────────────────────────┘   │
 │                                                                           │
 │  ┌───────────────────────────────────────────────────────────────────┐   │
 │  │  Chrome Browser                                                    │   │
 │  │  ┌─────────────────────────────────────────────────────────────┐  │   │
-│  │  │  Skilldex Scraper Extension                                  │  │   │
+│  │  │  Skillomatic Scraper Extension                                  │  │   │
 │  │  │  • Polls API for pending scrape tasks                       │  │   │
 │  │  │  • Opens LinkedIn URLs in new tabs (user's session)         │  │   │
 │  │  │  • Extracts page content, returns to API                    │  │   │
@@ -52,7 +52,7 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key insight:** The Skilldex Scraper browser extension enables LinkedIn scraping by opening pages in the user's actual browser session. This uses their existing LinkedIn login - no OAuth or credential management needed.
+**Key insight:** The Skillomatic Scraper browser extension enables LinkedIn scraping by opening pages in the user's actual browser session. This uses their existing LinkedIn login - no OAuth or credential management needed.
 
 ## Tech Stack
 
@@ -71,11 +71,11 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 ### For Recruiters (Using Skills)
 
 ```bash
-# 1. Sign up at your Skilldex instance and generate an API key
-#    https://skilldex.yourcompany.com/keys
+# 1. Sign up at your Skillomatic instance and generate an API key
+#    https://skillomatic.yourcompany.com/keys
 
 # 2. Set your API key
-export SKILLDEX_API_KEY="sk_live_your_key_here"
+export SKILLOMATIC_API_KEY="sk_live_your_key_here"
 
 # 3. Download skills from the web UI and place in:
 mkdir -p ~/.claude/commands
@@ -96,7 +96,7 @@ See **[Installation Guide](docs/INSTALLATION.md)** for detailed setup instructio
 ```bash
 # Clone and install
 git clone <repo-url>
-cd skilldex
+cd skillomatic
 pnpm install
 
 # Set up environment
@@ -132,12 +132,12 @@ pnpm db:seed
 ## Project Structure
 
 ```
-skilldex/
+skillomatic/
 ├── apps/
 │   ├── web/              # React frontend
 │   ├── api/              # Hono API backend
 │   ├── mock-ats/         # Mock ATS for development
-│   └── skilldex-scraper/ # Chrome extension for LinkedIn scraping
+│   └── skillomatic-scraper/ # Chrome extension for LinkedIn scraping
 ├── packages/
 │   ├── db/               # Drizzle schema + migrations
 │   └── shared/           # Shared TypeScript types
@@ -147,8 +147,8 @@ skilldex/
 │   └── ...
 ├── deploy/
 │   └── scripts/          # IT deployment scripts
-│       ├── skilldex-deploy.sh    # macOS/Linux
-│       └── Deploy-Skilldex.ps1   # Windows
+│       ├── skillomatic-deploy.sh    # macOS/Linux
+│       └── Deploy-Skillomatic.ps1   # Windows
 ├── docs/                 # Documentation
 │   ├── INSTALLATION.md   # Setup guide for recruiters
 │   ├── IT_DEPLOYMENT.md  # Enterprise deployment guide
@@ -171,11 +171,11 @@ skilldex/
 curl -sSfL https://get.tur.so/install.sh | bash
 
 # Create database
-turso db create skilldex
-turso db show skilldex  # Get the URL
+turso db create skillomatic
+turso db show skillomatic  # Get the URL
 
 # Create auth token
-turso db tokens create skilldex
+turso db tokens create skillomatic
 ```
 
 ### Configure SST Secrets
@@ -183,7 +183,7 @@ turso db tokens create skilldex
 ```bash
 # Set required secrets
 npx sst secret set JwtSecret "your-secure-jwt-secret"
-npx sst secret set TursoDatabaseUrl "libsql://skilldex-xxx.turso.io"
+npx sst secret set TursoDatabaseUrl "libsql://skillomatic-xxx.turso.io"
 npx sst secret set TursoAuthToken "your-turso-auth-token"
 npx sst secret set NangoSecretKey "your-nango-secret"  # Optional if not using Nango
 ```
@@ -192,7 +192,7 @@ npx sst secret set NangoSecretKey "your-nango-secret"  # Optional if not using N
 
 ```bash
 # Connect to Turso shell and run migrations
-turso db shell skilldex < packages/db/migrations.sql
+turso db shell skillomatic < packages/db/migrations.sql
 ```
 
 ### Deploy
@@ -226,12 +226,12 @@ pnpm sst:remove
 
 - **[Installation Guide](docs/INSTALLATION.md)** - Complete setup instructions for all platforms
 - **[IT Deployment Guide](docs/IT_DEPLOYMENT.md)** - Enterprise deployment, MDM, and bulk provisioning
-- **[Recruiter Guide](docs/RECRUITER_GUIDE.md)** - How to use Skilldex skills in your workflow
+- **[Recruiter Guide](docs/RECRUITER_GUIDE.md)** - How to use Skillomatic skills in your workflow
 - **[Admin Guide](docs/ADMIN_GUIDE.md)** - Managing users, skills, and integrations
 
 ## MCP Client Support
 
-Skilldex skills work with any MCP-compatible client:
+Skillomatic skills work with any MCP-compatible client:
 
 | Client | Support | Notes |
 |--------|---------|-------|
@@ -241,11 +241,11 @@ Skilldex skills work with any MCP-compatible client:
 | Continue | Full | Add MCP server to config |
 | Other MCP clients | Partial | Manual configuration required |
 
-Skills that don't require LinkedIn (ATS-only) work with just the API key. LinkedIn skills require the **Skilldex Scraper** browser extension (in `apps/skilldex-scraper/`) which opens LinkedIn pages in the user's authenticated browser session.
+Skills that don't require LinkedIn (ATS-only) work with just the API key. LinkedIn skills require the **Skillomatic Scraper** browser extension (in `apps/skillomatic-scraper/`) which opens LinkedIn pages in the user's authenticated browser session.
 
 ## Skills
 
-Skilldex includes several pre-built skills:
+Skillomatic includes several pre-built skills:
 
 | Skill | Category | Description |
 |-------|----------|-------------|
@@ -260,7 +260,7 @@ Skilldex includes several pre-built skills:
 
 ## Demo Mode
 
-Skilldex includes a demo mode for demonstrations and testing without requiring a real ATS connection.
+Skillomatic includes a demo mode for demonstrations and testing without requiring a real ATS connection.
 
 ### Enabling Demo Mode
 

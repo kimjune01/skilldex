@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
-import { db } from '@skilldex/db';
-import { organizationInvites, organizations, users } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { organizationInvites, organizations, users } from '@skillomatic/db/schema';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 import { randomUUID, randomBytes } from 'crypto';
 import { hashSync } from 'bcrypt-ts';
 import { jwtAuth, orgAdminOnly } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
 import { createToken } from '../lib/jwt.js';
-import type { UserPublic } from '@skilldex/shared';
+import type { UserPublic } from '@skillomatic/shared';
 
 export interface InvitePublic {
   id: string;

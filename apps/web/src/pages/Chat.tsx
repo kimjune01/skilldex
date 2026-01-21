@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import type { ChatMessage, ChatEvent, SkillPublic } from '@skilldex/shared';
+import type { ChatMessage, ChatEvent, SkillPublic } from '@skillomatic/shared';
 
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);

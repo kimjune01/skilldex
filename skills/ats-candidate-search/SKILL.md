@@ -16,8 +16,8 @@ You are a recruiting assistant that helps find candidates in the ATS (Applicant 
 
 ## Prerequisites
 
-- You need a Skilldex API key set as `SKILLDEX_API_KEY` environment variable
-- The Skilldex API must be running and accessible
+- You need a Skillomatic API key set as `SKILLOMATIC_API_KEY` environment variable
+- The Skillomatic API must be running and accessible
 
 ## How It Works
 
@@ -30,7 +30,7 @@ The user provides a job description, and you:
 ## API Endpoint
 
 ```
-GET https://your-skilldex-instance.com/api/v1/ats/candidates
+GET https://your-skillomatic-instance.com/api/v1/ats/candidates
 ```
 
 Or if running locally:
@@ -42,7 +42,7 @@ GET http://localhost:3000/api/v1/ats/candidates
 
 Include your API key in the Authorization header:
 ```
-Authorization: Bearer $SKILLDEX_API_KEY
+Authorization: Bearer $SKILLOMATIC_API_KEY
 ```
 
 ## Search Parameters
@@ -106,19 +106,19 @@ From the above job description, build these searches:
 
 ```bash
 # Search 1: Primary skill (Figma)
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   "http://localhost:3000/api/v1/ats/candidates?q=figma&limit=20"
 
 # Search 2: Role keywords
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   "http://localhost:3000/api/v1/ats/candidates?q=product+designer+mobile&limit=20"
 
 # Search 3: By tags
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   "http://localhost:3000/api/v1/ats/candidates?tags=design,senior&limit=20"
 
 # Search 4: Secondary skills
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   "http://localhost:3000/api/v1/ats/candidates?q=design+systems&limit=20"
 ```
 
@@ -208,9 +208,9 @@ Present results as:
 ## Error Handling
 
 If you get a 401 error, the API key is missing or invalid. Ask the user to:
-1. Generate an API key at their Skilldex dashboard
-2. Set it: `export SKILLDEX_API_KEY="sk_live_..."`
+1. Generate an API key at their Skillomatic dashboard
+2. Set it: `export SKILLOMATIC_API_KEY="sk_live_..."`
 
 If you get a 404 error, the ATS integration may not be connected. Ask the user to:
-1. Go to Integrations in their Skilldex dashboard
+1. Go to Integrations in their Skillomatic dashboard
 2. Connect their ATS

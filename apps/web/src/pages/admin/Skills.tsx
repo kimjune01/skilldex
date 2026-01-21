@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { skills as skillsApi } from '../../lib/api';
-import type { SkillPublic } from '@skilldex/shared';
+import type { SkillPublic } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -161,7 +161,7 @@ export default function AdminSkills() {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            To add a new skill to Skilldex:
+            To add a new skill to Skillomatic:
           </p>
           <ol className="space-y-4">
             <li className="flex gap-3">

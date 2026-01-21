@@ -1,6 +1,6 @@
-# Skilldex Scraper Extension
+# Skillomatic Scraper Extension
 
-A Chrome extension that polls the Skilldex API for pending scrape tasks and returns markdown content.
+A Chrome extension that polls the Skillomatic API for pending scrape tasks and returns markdown content.
 
 ## Installation
 
@@ -26,8 +26,8 @@ You can use any image editor or online tool to create these. Recommended: Simple
 ## Configuration
 
 1. Click the extension icon in Chrome toolbar
-2. Enter your Skilldex API URL (default: `http://localhost:3000`)
-3. Enter your Skilldex API key (starts with `sk_`)
+2. Enter your Skillomatic API URL (default: `http://localhost:3000`)
+3. Enter your Skillomatic API key (starts with `sk_`)
 4. Click "Save & Connect"
 
 ## How It Works
@@ -50,6 +50,6 @@ You can use any image editor or online tool to create these. Recommended: Simple
 
 ## Privacy
 
-- The extension only accesses URLs requested by your Skilldex instance
+- The extension only accesses URLs requested by your Skillomatic instance
 - No data is sent to third parties
-- All communication is with your configured Skilldex API
+- All communication is with your configured Skillomatic API

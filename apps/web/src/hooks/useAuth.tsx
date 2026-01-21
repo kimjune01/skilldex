@@ -5,7 +5,7 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { UserPublic } from '@skilldex/shared';
+import type { UserPublic } from '@skillomatic/shared';
 import { auth } from '../lib/api';
 
 interface AuthContextType {

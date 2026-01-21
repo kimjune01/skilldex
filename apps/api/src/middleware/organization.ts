@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
-import { db } from '@skilldex/db';
-import { organizations } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { organizations } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 
 // Organization info

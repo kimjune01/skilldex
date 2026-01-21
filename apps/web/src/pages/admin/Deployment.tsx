@@ -70,7 +70,7 @@ export default function AdminDeployment() {
       <div>
         <h1 className="text-2xl font-bold">Deployment Options</h1>
         <p className="text-muted-foreground mt-1">
-          Choose how your team uses Skilldex based on your IT requirements
+          Choose how your team uses Skillomatic based on your IT requirements
         </p>
       </div>
 
@@ -163,7 +163,7 @@ export default function AdminDeployment() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Users access Skilldex through the web interface. LLM calls go through your configured providers (Groq, Anthropic, OpenAI).
+              Users access Skillomatic through the web interface. LLM calls go through your configured providers (Groq, Anthropic, OpenAI).
             </p>
 
             <div className="space-y-2">
@@ -200,7 +200,7 @@ export default function AdminDeployment() {
 
                 <h4 className="font-medium mt-4">Data Flow:</h4>
                 <p className="text-muted-foreground">
-                  User → Skilldex API → LLM Provider (Groq/Anthropic/OpenAI) → Response
+                  User → Skillomatic API → LLM Provider (Groq/Anthropic/OpenAI) → Response
                 </p>
               </div>
             )}
@@ -235,7 +235,7 @@ export default function AdminDeployment() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Users connect their own Claude Desktop, ChatGPT, or other AI assistant to Skilldex via MCP (Model Context Protocol).
+              Users connect their own Claude Desktop, ChatGPT, or other AI assistant to Skillomatic via MCP (Model Context Protocol).
             </p>
 
             <div className="space-y-2">
@@ -259,7 +259,7 @@ export default function AdminDeployment() {
               <div className="mt-4 p-4 bg-muted rounded-lg space-y-3 text-sm">
                 <h4 className="font-medium">How It Works:</h4>
                 <p className="text-muted-foreground">
-                  Skilldex exposes an MCP endpoint. Users configure their AI client to connect, giving their AI access to Skilldex tools (search candidates, create records, etc.)
+                  Skillomatic exposes an MCP endpoint. Users configure their AI client to connect, giving their AI access to Skillomatic tools (search candidates, create records, etc.)
                 </p>
 
                 <h4 className="font-medium mt-4">Supported Clients:</h4>
@@ -272,12 +272,12 @@ export default function AdminDeployment() {
 
                 <h4 className="font-medium mt-4">User Setup:</h4>
                 <p className="text-muted-foreground">
-                  Users run the <code className="bg-background px-1 rounded">/skilldex-desktop-setup</code> skill in chat, which generates their personal config.
+                  Users run the <code className="bg-background px-1 rounded">/skillomatic-desktop-setup</code> skill in chat, which generates their personal config.
                 </p>
 
                 <h4 className="font-medium mt-4">Data Flow:</h4>
                 <p className="text-muted-foreground">
-                  User's AI → MCP → Skilldex API (tools only) → ATS data
+                  User's AI → MCP → Skillomatic API (tools only) → ATS data
                   <br />
                   <span className="text-xs">(LLM reasoning stays with user's AI provider)</span>
                 </p>
@@ -337,7 +337,7 @@ export default function AdminDeployment() {
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                  Skilldex only sees tool calls, not reasoning
+                  Skillomatic only sees tool calls, not reasoning
                 </li>
                 <li className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
@@ -395,13 +395,13 @@ export default function AdminDeployment() {
                   <td className="py-2 pr-4">Data Minimization</td>
                   <td className="text-center py-2 px-4"><AlertTriangle className="h-4 w-4 text-amber-500 inline" /></td>
                   <td className="text-center py-2 px-4"><Check className="h-4 w-4 text-green-500 inline" /></td>
-                  <td className="py-2 pl-4">Desktop: Skilldex never sees prompt content</td>
+                  <td className="py-2 pl-4">Desktop: Skillomatic never sees prompt content</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4">Access Control</td>
                   <td className="text-center py-2 px-4"><Check className="h-4 w-4 text-green-500 inline" /></td>
                   <td className="text-center py-2 px-4"><Check className="h-4 w-4 text-green-500 inline" /></td>
-                  <td className="py-2 pl-4">Both use Skilldex API keys for authorization</td>
+                  <td className="py-2 pl-4">Both use Skillomatic API keys for authorization</td>
                 </tr>
               </tbody>
             </table>

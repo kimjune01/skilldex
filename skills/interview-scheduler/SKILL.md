@@ -71,6 +71,6 @@ For now, this skill can help you:
 
 ## Future Requirements
 
-- `SKILLDEX_API_KEY` for API access
-- Connected calendar integration via Skilldex dashboard
+- `SKILLOMATIC_API_KEY` for API access
+- Connected calendar integration via Skillomatic dashboard
 - `calendar:read` and `calendar:write` scopes

@@ -1,5 +1,5 @@
 /**
- * OpenAPI 3.1 Specification for Skilldex API
+ * OpenAPI 3.1 Specification for Skillomatic API
  *
  * This spec is served statically for chatbot/AI consumption at /api/docs/openapi.json
  * Human-readable docs available at /api/docs (Swagger UI) or /api/docs/redoc (ReDoc)
@@ -8,10 +8,10 @@
 export const openApiSpec = {
   openapi: '3.1.0',
   info: {
-    title: 'Skilldex API',
+    title: 'Skillomatic API',
     version: '1.0.0',
     description: `
-Skilldex is a platform for managing AI skills for recruiting workflows.
+Skillomatic is a platform for managing AI skills for recruiting workflows.
 
 ## Authentication
 
@@ -39,7 +39,7 @@ or on error:
 \`\`\`
     `.trim(),
     contact: {
-      name: 'Skilldex Support',
+      name: 'Skillomatic Support',
     },
   },
   servers: [

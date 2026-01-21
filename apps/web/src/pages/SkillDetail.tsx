@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { skills } from '../lib/api';
-import type { SkillPublic } from '@skilldex/shared';
+import type { SkillPublic } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -246,7 +246,7 @@ export default function SkillDetail() {
               <div>
                 <p className="text-sm">Set your API key (if not already set):</p>
                 <pre className="mt-2 bg-muted p-3 rounded text-sm overflow-x-auto font-mono">
-                  export SKILLDEX_API_KEY="your-api-key-here"
+                  export SKILLOMATIC_API_KEY="your-api-key-here"
                 </pre>
               </div>
             </li>

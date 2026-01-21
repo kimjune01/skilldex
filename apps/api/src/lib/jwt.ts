@@ -1,12 +1,12 @@
 import { SignJWT, jwtVerify } from 'jose';
-import type { UserPublic } from '@skilldex/shared';
+import type { UserPublic } from '@skillomatic/shared';
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'your-jwt-secret-here-change-in-production'
 );
 
-const JWT_ISSUER = 'skilldex';
-const JWT_AUDIENCE = 'skilldex-api';
+const JWT_ISSUER = 'skillomatic';
+const JWT_AUDIENCE = 'skillomatic-api';
 const JWT_EXPIRATION = '7d';
 
 export interface JWTPayload {

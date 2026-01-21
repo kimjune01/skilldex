@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Skilldex Scraper",
+  "name": "Skillomatic Scraper",
   "version": "1.0.0",
   "minimum_chrome_version": "116",
-  "description": "Scrapes web pages for Skilldex skills. Connects via WebSocket to receive scrape tasks in real-time.",
+  "description": "Scrapes web pages for Skillomatic skills. Connects via WebSocket to receive scrape tasks in real-time.",
   "permissions": [
     "storage",
     "tabs",

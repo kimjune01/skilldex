@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { apiKeyAuth } from '../../middleware/apiKey.js';
-import { db } from '@skilldex/db';
-import { scrapeTasks } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { scrapeTasks } from '@skillomatic/db/schema';
 import { eq, and, gt, desc } from 'drizzle-orm';
 import { randomUUID, createHash } from 'crypto';
 import type {
@@ -9,7 +9,7 @@ import type {
   CreateScrapeTaskRequest,
   CreateScrapeTaskResponse,
   UpdateScrapeTaskRequest,
-} from '@skilldex/shared';
+} from '@skillomatic/shared';
 import { emitTaskUpdate, assignTaskToExtension } from '../../lib/scrape-events.js';
 
 export const v1ScrapeRoutes = new Hono();
@@ -85,7 +85,7 @@ function formatTask(task: typeof scrapeTasks.$inferSelect): ScrapeTaskPublic {
   // Add suggestions based on task state
   if (task.status === 'pending' && waitTime > STALL_THRESHOLD_MS) {
     suggestion =
-      'No Skilldex Scraper extension detected. Install it and ensure it\'s configured with your API key.';
+      'No Skillomatic Scraper extension detected. Install it and ensure it\'s configured with your API key.';
   } else if (task.status === 'failed' && !task.errorMessage) {
     suggestion = 'Task failed unexpectedly. Check extension status in browser toolbar.';
   } else if (task.status === 'processing' && task.claimedAt) {
@@ -307,7 +307,7 @@ v1ScrapeRoutes.get('/tasks/:id', async (c) => {
 
     const formatted = formatTask(expired);
     formatted.suggestion =
-      'Task expired. The Skilldex Scraper extension may not be installed or running.';
+      'Task expired. The Skillomatic Scraper extension may not be installed or running.';
     return c.json(formatted);
   }
 

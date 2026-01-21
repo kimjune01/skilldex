@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import { db } from '@skilldex/db';
-import { users, organizations } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { users, organizations } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { compareSync } from 'bcrypt-ts';
 import { createToken, verifyToken } from '../lib/jwt.js';
-import type { LoginRequest, LoginResponse, UserPublic } from '@skilldex/shared';
+import type { LoginRequest, LoginResponse, UserPublic } from '@skillomatic/shared';
 
 export const authRoutes = new Hono();
 

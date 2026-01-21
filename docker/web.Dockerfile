@@ -19,4 +19,4 @@ COPY packages/shared ./packages/shared
 
 EXPOSE 5173
 
-CMD ["pnpm", "--filter", "@skilldex/web", "dev", "--host"]
+CMD ["pnpm", "--filter", "@skillomatic/web", "dev", "--host"]

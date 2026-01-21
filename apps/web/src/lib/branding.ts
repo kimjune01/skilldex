@@ -2,7 +2,7 @@
  * White-label branding configuration
  *
  * Configure via environment variables:
- * - VITE_APP_NAME: Application name (default: "Skilldex")
+ * - VITE_APP_NAME: Application name (default: "Skillomatic")
  * - VITE_APP_TAGLINE: Tagline shown on login (default: "Claude Code Skills for Recruiters")
  * - VITE_APP_LOGO_URL: URL to logo image (default: "/default-logo.png")
  * - VITE_APP_PRIMARY_COLOR: Primary brand color in HSL (default: "262.1 83.3% 57.8%")
@@ -20,7 +20,7 @@ export interface BrandingConfig {
 }
 
 const defaultConfig: BrandingConfig = {
-  appName: 'Skilldex',
+  appName: 'Skillomatic',
   tagline: 'Claude Code Skills for Recruiters',
   logoUrl: '/default-logo.png',
   faviconUrl: '/default-logo.png',

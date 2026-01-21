@@ -1,8 +1,8 @@
-# Skilldex Go-to-Market Strategy
+# Skillomatic Go-to-Market Strategy
 
-## What is Skilldex?
+## What is Skillomatic?
 
-Skilldex brings recruiting tools directly into Claude. Instead of switching between LinkedIn, your ATS, email, and calendar, recruiters just talk to Claude: "Find senior engineers in Seattle" → "Add the top 3 to our ATS" → "Draft outreach emails."
+Skillomatic brings recruiting tools directly into Claude. Instead of switching between LinkedIn, your ATS, email, and calendar, recruiters just talk to Claude: "Find senior engineers in Seattle" → "Add the top 3 to our ATS" → "Draft outreach emails."
 
 Self-hosted on customer infrastructure. We never touch their data.
 
@@ -16,12 +16,12 @@ Lead with this in every conversation:
 Recruiter salary: $80,000/year ($40/hour)
 Time saved: 4 hours/week (conservative estimate)
 Annual savings: 4 × 52 × $40 = $8,320 per recruiter
-Skilldex cost: $79 × 12 = $948/year
+Skillomatic cost: $79 × 12 = $948/year
 ROI: 778%
 Payback period: 6 weeks
 ```
 
-**One-liner:** "Skilldex pays for itself if it saves each recruiter one hour per week. We typically see 4+."
+**One-liner:** "Skillomatic pays for itself if it saves each recruiter one hour per week. We typically see 4+."
 
 ---
 
@@ -55,14 +55,14 @@ Self-hosted on customer infrastructure = no security burden on us, full data con
 
 ## Competitive Positioning
 
-| Tool | Skilldex Advantage |
+| Tool | Skillomatic Advantage |
 |------|-------------------|
 | **LinkedIn Recruiter** | We integrate with it, not replace it. Add AI layer on top of their existing subscription |
 | **ChatGPT/generic AI** | We take actions (add to ATS, send emails). They just give advice |
 | **Gem, Fetcher, HireEZ** | We're workflow-first, not database-first. Works with their existing tools |
 | **ATS built-in AI** | We work across tools. ATS AI only works in that one system |
 
-**Positioning statement:** "Skilldex is the AI layer that connects all your recruiting tools through natural language."
+**Positioning statement:** "Skillomatic is the AI layer that connects all your recruiting tools through natural language."
 
 ---
 
@@ -107,7 +107,7 @@ If they can't answer quickly, they've lost track—which proves the pain.
 | Objection | Response |
 |-----------|----------|
 | "We have an ATS" | "We make your ATS easier to use, not replace it" |
-| "Team isn't technical" | "If they can chat with Claude, they can use Skilldex" |
+| "Team isn't technical" | "If they can chat with Claude, they can use Skillomatic" |
 | "Data is sensitive" | "It runs on your servers. We never see your data" |
 | "Need security review" | "Happy to share architecture docs. Your infra, your audit" |
 | "No budget" | "It's $79/recruiter. Pays for itself if it saves 2 hours/month" |

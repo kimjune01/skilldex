@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
-import { db } from '@skilldex/db';
-import { apiKeys, users } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { apiKeys, users } from '@skillomatic/db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 
 const API_KEY_PREFIX = 'sk_live_';

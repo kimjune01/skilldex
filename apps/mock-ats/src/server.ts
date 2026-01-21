@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { candidates, jobs, applications } from './data/fixtures.js';
-import type { Candidate, Application } from '@skilldex/shared';
+import type { Candidate, Application } from '@skillomatic/shared';
 
 const app = new Hono();
 

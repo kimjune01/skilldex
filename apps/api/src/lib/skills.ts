@@ -8,8 +8,8 @@
  * Skills are filtered by user role using the roleSkills table.
  */
 
-import { db } from '@skilldex/db';
-import { skills, roleSkills, userRoles } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { skills, roleSkills, userRoles } from '@skillomatic/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 
 // Skill metadata (Level 1) - always in context

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { invites, organizations } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
-import type { OrganizationInvitePublic, OrganizationPublic } from '@skilldex/shared';
+import type { OrganizationInvitePublic, OrganizationPublic } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

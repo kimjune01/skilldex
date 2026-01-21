@@ -1,5 +1,5 @@
 /**
- * Skilldex Database Schema
+ * Skillomatic Database Schema
  *
  * This file defines all database tables using Drizzle ORM.
  * SQLite is used for local development, Turso (libSQL) for production.

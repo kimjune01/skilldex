@@ -25,4 +25,4 @@ RUN mkdir -p /app/data
 
 EXPOSE 3000
 
-CMD ["pnpm", "--filter", "@skilldex/api", "dev"]
+CMD ["pnpm", "--filter", "@skillomatic/api", "dev"]

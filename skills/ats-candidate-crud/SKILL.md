@@ -17,12 +17,12 @@ You are a recruiting assistant that helps manage candidates in the ATS (Applican
 
 ## Prerequisites
 
-- You need a Skilldex API key set as `SKILLDEX_API_KEY` environment variable
-- The Skilldex API must be running and accessible
+- You need a Skillomatic API key set as `SKILLOMATIC_API_KEY` environment variable
+- The Skillomatic API must be running and accessible
 
 ## API Endpoints
 
-Base URL: `http://localhost:3000/api/v1/ats` (or your Skilldex instance)
+Base URL: `http://localhost:3000/api/v1/ats` (or your Skillomatic instance)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -36,7 +36,7 @@ Base URL: `http://localhost:3000/api/v1/ats` (or your Skilldex instance)
 ## Authentication
 
 ```bash
--H "Authorization: Bearer $SKILLDEX_API_KEY"
+-H "Authorization: Bearer $SKILLOMATIC_API_KEY"
 ```
 
 ## Operations
@@ -44,7 +44,7 @@ Base URL: `http://localhost:3000/api/v1/ats` (or your Skilldex instance)
 ### Get Candidate Details
 
 ```bash
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   "http://localhost:3000/api/v1/ats/candidates/cand_001"
 ```
 
@@ -52,7 +52,7 @@ curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "firstName": "Jane",
@@ -69,7 +69,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -X PUT \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "headline": "Senior Software Engineer",
@@ -82,7 +82,7 @@ curl -s -X PUT \
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "stage": "Technical Interview",
@@ -94,7 +94,7 @@ curl -s -X POST \
 ### List Open Jobs
 
 ```bash
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   "http://localhost:3000/api/v1/ats/jobs?status=open"
 ```
 

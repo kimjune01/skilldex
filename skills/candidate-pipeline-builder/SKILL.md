@@ -19,18 +19,18 @@ You are a recruiting assistant that builds a complete candidate pipeline from a 
 
 ## Prerequisites
 
-- `SKILLDEX_API_KEY` environment variable set
-- **Skilldex Scraper** browser extension installed and configured
+- `SKILLOMATIC_API_KEY` environment variable set
+- **Skillomatic Scraper** browser extension installed and configured
 - ATS integration connected
 - Email integration connected
 - Logged into LinkedIn in the same browser where the extension is running
 
 ## How LinkedIn Scraping Works
 
-This skill uses the Skilldex "scrape task" system to access LinkedIn:
+This skill uses the Skillomatic "scrape task" system to access LinkedIn:
 
-1. You create scrape tasks via the Skilldex API with LinkedIn URLs
-2. The **Skilldex Scraper** browser extension polls for pending tasks
+1. You create scrape tasks via the Skillomatic API with LinkedIn URLs
+2. The **Skillomatic Scraper** browser extension polls for pending tasks
 3. The extension opens URLs in the user's actual browser (using their LinkedIn session)
 4. The extension extracts page content and returns it via the API
 5. You receive the profile data for analysis
@@ -92,8 +92,8 @@ Create a scrape task for the search URL:
 
 ```bash
 # Create scrape task for LinkedIn search
-curl -X POST "$SKILLDEX_API_URL/api/v1/scrape/tasks" \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+curl -X POST "$SKILLOMATIC_API_URL/api/v1/scrape/tasks" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://www.linkedin.com/search/results/people/?keywords=senior%20backend%20engineer%20python%20aws"}'
 
@@ -106,14 +106,14 @@ For each candidate in search results (up to 3 pages by default), create scrape t
 
 ```bash
 # Create scrape task for each candidate profile
-curl -X POST "$SKILLDEX_API_URL/api/v1/scrape/tasks" \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+curl -X POST "$SKILLOMATIC_API_URL/api/v1/scrape/tasks" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://linkedin.com/in/janesmith"}'
 
 # Poll for completed task
-curl "$SKILLDEX_API_URL/api/v1/scrape/tasks/{task_id}" \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY"
+curl "$SKILLOMATIC_API_URL/api/v1/scrape/tasks/{task_id}" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY"
 ```
 
 Extract:
@@ -134,7 +134,7 @@ For each scraped profile, create a candidate record:
 
 ```bash
 curl -X POST "http://localhost:3000/api/v1/ats/candidates" \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Jane Smith",
@@ -181,7 +181,7 @@ Save draft via email integration:
 
 ```bash
 curl -X POST "http://localhost:3000/api/v1/email/drafts" \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "jane.smith@company.com",
@@ -197,7 +197,7 @@ Add a note to each candidate record documenting the sourcing:
 
 ```bash
 curl -X POST "http://localhost:3000/api/v1/ats/candidates/{id}/notes" \
-  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "content": "Sourced via Pipeline Builder\nJob: Senior Backend Engineer\nOutreach email drafted: Yes\nMatch score: Strong (4/5 requirements met)",

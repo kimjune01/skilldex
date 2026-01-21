@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
-import type { ChatMessage as ChatMessageType } from '@skilldex/shared';
+import type { ChatMessage as ChatMessageType } from '@skillomatic/shared';
 
 interface MessageListProps {
   messages: ChatMessageType[];
@@ -20,7 +20,7 @@ export function MessageList({ messages, onRunSkill, onShowInstructions }: Messag
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         <div className="text-center space-y-2">
-          <p className="text-lg font-medium">Welcome to Skilldex Chat</p>
+          <p className="text-lg font-medium">Welcome to Skillomatic Chat</p>
           <p className="text-sm">Ask me about recruiting tasks or available skills</p>
           <div className="text-xs space-y-1 mt-4">
             <p>Try asking:</p>

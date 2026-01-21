@@ -179,7 +179,7 @@ async function seed() {
     emailDraft: 'skill-email-draft',
     interviewScheduler: 'skill-interview-scheduler',
     meetingNotes: 'skill-meeting-notes',
-    skilldexSync: 'skill-skilldex-sync',
+    skillomaticSync: 'skill-skillomatic-sync',
     proposeNewSkill: 'skill-propose-new-skill',
     candidatePipelineBuilder: 'skill-candidate-pipeline-builder',
     dailyReport: 'skill-daily-report',
@@ -189,10 +189,10 @@ async function seed() {
   // Organization-specific skills would have isGlobal: false and organizationId set
   const skillData = [
     {
-      id: skillIds.skilldexSync,
-      slug: 'skilldex-sync',
-      name: 'Skilldex Sync',
-      description: 'Sync all available skills from Skilldex server to your local Claude Desktop',
+      id: skillIds.skillomaticSync,
+      slug: 'skillomatic-sync',
+      name: 'Skillomatic Sync',
+      description: 'Sync all available skills from Skillomatic server to your local Claude Desktop',
       category: 'system',
       requiredIntegrations: JSON.stringify([]),
       requiredScopes: JSON.stringify(['skills:read']),
@@ -203,7 +203,7 @@ async function seed() {
       id: skillIds.proposeNewSkill,
       slug: 'propose-new-skill',
       name: 'Propose New Skill',
-      description: 'Submit a proposal for a new skill to be added to Skilldex',
+      description: 'Submit a proposal for a new skill to be added to Skillomatic',
       category: 'system',
       requiredIntegrations: JSON.stringify([]),
       requiredScopes: JSON.stringify(['proposals:write']),
@@ -327,11 +327,11 @@ async function seed() {
 
   const roleSkillAssignments = [
     // System skills available to everyone
-    { roleId: adminRoleId, skillId: skillIds.skilldexSync },
+    { roleId: adminRoleId, skillId: skillIds.skillomaticSync },
     { roleId: adminRoleId, skillId: skillIds.proposeNewSkill },
-    { roleId: recruiterRoleId, skillId: skillIds.skilldexSync },
+    { roleId: recruiterRoleId, skillId: skillIds.skillomaticSync },
     { roleId: recruiterRoleId, skillId: skillIds.proposeNewSkill },
-    { roleId: viewerRoleId, skillId: skillIds.skilldexSync },
+    { roleId: viewerRoleId, skillId: skillIds.skillomaticSync },
     { roleId: viewerRoleId, skillId: skillIds.proposeNewSkill },
 
     // Admin gets all skills

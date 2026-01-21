@@ -62,6 +62,6 @@ Best regards,
 
 ## Future Requirements
 
-- `SKILLDEX_API_KEY` for API access
-- Connected email integration via Skilldex dashboard
+- `SKILLOMATIC_API_KEY` for API access
+- Connected email integration via Skillomatic dashboard
 - `email:draft` and `email:send` scopes

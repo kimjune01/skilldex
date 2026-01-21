@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import { jwtAuth } from '../middleware/auth.js';
-import { db } from '@skilldex/db';
-import { skillProposals, users } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { skillProposals, users } from '@skillomatic/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import type { SkillProposalCreateRequest, SkillProposalReviewRequest } from '@skilldex/shared';
+import type { SkillProposalCreateRequest, SkillProposalReviewRequest } from '@skillomatic/shared';
 
 export const proposalsRoutes = new Hono();
 

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { skills, integrations, apiKeys } from '../lib/api';
-import type { SkillPublic, IntegrationPublic, ApiKeyPublic } from '@skilldex/shared';
+import type { SkillPublic, IntegrationPublic, ApiKeyPublic } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -216,7 +216,7 @@ export default function Dashboard() {
             <CardTitle>Install Skills</CardTitle>
           </div>
           <CardDescription>
-            Run these commands in your terminal to set up Skilldex
+            Run these commands in your terminal to set up Skillomatic
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -237,14 +237,14 @@ export default function Dashboard() {
                 <div className="relative group">
                   <pre className="bg-muted rounded-lg p-4 pr-24 font-mono text-sm overflow-x-auto">
                     <span className="text-muted-foreground"># Add to ~/.zshrc or ~/.bashrc</span>
-                    {'\n'}export SKILLDEX_API_KEY="{apiKeyList[0]?.key}"
+                    {'\n'}export SKILLOMATIC_API_KEY="{apiKeyList[0]?.key}"
                   </pre>
                   <Button
                     variant={copiedCommand === 'env' ? 'default' : 'secondary'}
                     size="sm"
                     className="absolute top-2 right-2"
                     onClick={() => copyToClipboard(
-                      `export SKILLDEX_API_KEY="${apiKeyList[0]?.key}"`,
+                      `export SKILLOMATIC_API_KEY="${apiKeyList[0]?.key}"`,
                       'env'
                     )}
                   >

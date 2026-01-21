@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { skills, proposals } from '../lib/api';
-import type { SkillPublic, SkillCategory, SkillProposalPublic } from '@skilldex/shared';
+import type { SkillPublic, SkillCategory, SkillProposalPublic } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

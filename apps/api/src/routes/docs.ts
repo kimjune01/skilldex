@@ -18,7 +18,7 @@ docsRoutes.get('/openapi.json', (c) => {
  * Concise API reference optimized for LLM context windows.
  */
 docsRoutes.get('/', (c) => {
-  const markdown = `# Skilldex API Reference
+  const markdown = `# Skillomatic API Reference
 
 Base URL: \`/api\`
 

@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
-import { db } from '@skilldex/db';
-import { users, organizations } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { users, organizations } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { hashSync } from 'bcrypt-ts';
 import { jwtAuth, adminOnly } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
-import type { UserPublic } from '@skilldex/shared';
+import type { UserPublic } from '@skillomatic/shared';
 
 export const usersRoutes = new Hono();
 

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { db } from '@skilldex/db';
-import { systemSettings } from '@skilldex/db/schema';
+import { db } from '@skillomatic/db';
+import { systemSettings } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { jwtAuth, adminOnly } from '../middleware/auth.js';
 
