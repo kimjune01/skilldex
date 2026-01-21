@@ -33,6 +33,7 @@ import { extensionRoutes } from './routes/extension.js';
 import { onboardingRoutes } from './routes/onboarding.js';
 import { organizationsRoutes } from './routes/organizations.js';
 import { invitesRoutes } from './routes/invites.js';
+import { webhooksRoutes } from './routes/webhooks.js';
 
 // Skill API routes (API key auth) - called by Claude Code skills
 import { v1AtsRoutes } from './routes/v1/ats.js';
@@ -77,6 +78,7 @@ app.route('/api/auth', authRoutes);
 app.route('/api/docs', docsRoutes);            // API documentation (OpenAPI spec, markdown)
 app.route('/api/extension', extensionRoutes);  // Browser extension installation guide
 app.route('/api/onboarding', onboardingRoutes); // New user getting started guide
+app.route('/api/webhooks', webhooksRoutes);    // External service webhooks (Nango, etc.)
 
 // ============ PROTECTED ROUTES (JWT Auth) ============
 // Used by the web UI - requires Authorization: Bearer <jwt-token>

@@ -6,7 +6,8 @@
 import { db } from '@skillomatic/db';
 import { systemSettings } from '@skillomatic/db/schema';
 
-export interface ChatMessage {
+/** Simple message format for LLM API calls (distinct from ChatMessage in shared types) */
+export interface LLMChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
@@ -104,7 +105,7 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
  * Stream chat completions from any provider
  */
 export async function* streamChat(
-  messages: ChatMessage[],
+  messages: LLMChatMessage[],
   options: LLMOptions = {}
 ): AsyncGenerator<string, void, unknown> {
   const config = await getProviderConfig(options);
@@ -121,7 +122,7 @@ export async function* streamChat(
  * Non-streaming chat completion
  */
 export async function chat(
-  messages: ChatMessage[],
+  messages: LLMChatMessage[],
   options: LLMOptions = {}
 ): Promise<string> {
   const config = await getProviderConfig(options);
@@ -148,7 +149,7 @@ export async function getLLMInfo(): Promise<{ provider: string; model: string }>
 // ============ OpenAI-Compatible Providers (Groq, OpenAI) ============
 
 async function* streamOpenAICompatible(
-  messages: ChatMessage[],
+  messages: LLMChatMessage[],
   config: ProviderConfig,
   options: LLMOptions
 ): AsyncGenerator<string, void, unknown> {
@@ -209,7 +210,7 @@ async function* streamOpenAICompatible(
 }
 
 async function chatOpenAICompatible(
-  messages: ChatMessage[],
+  messages: LLMChatMessage[],
   config: ProviderConfig,
   options: LLMOptions
 ): Promise<string> {
@@ -242,7 +243,7 @@ async function chatOpenAICompatible(
 // ============ Anthropic Provider ============
 
 async function* streamAnthropic(
-  messages: ChatMessage[],
+  messages: LLMChatMessage[],
   config: ProviderConfig,
   options: LLMOptions
 ): AsyncGenerator<string, void, unknown> {
@@ -309,7 +310,7 @@ async function* streamAnthropic(
 }
 
 async function chatAnthropic(
-  messages: ChatMessage[],
+  messages: LLMChatMessage[],
   config: ProviderConfig,
   options: LLMOptions
 ): Promise<string> {

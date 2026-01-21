@@ -5,16 +5,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { jwtAuth, superAdminOnly } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
-
-export interface OrganizationPublic {
-  id: string;
-  name: string;
-  slug: string;
-  logoUrl?: string;
-  memberCount?: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { OrganizationPublic } from '@skillomatic/shared';
 
 export const organizationsRoutes = new Hono();
 
@@ -36,18 +27,26 @@ async function getMemberCount(orgId: string): Promise<number> {
   return result.length;
 }
 
-// GET /api/organizations - List all organizations (super admin only)
-organizationsRoutes.get('/', jwtAuth, superAdminOnly, async (c) => {
-  const orgs = await db.select().from(organizations);
-
-  // Get all users to compute member counts
+// Helper to get all member counts in a single query
+// This avoids N+1 queries by counting in memory from a single users query
+async function getAllMemberCounts(): Promise<Map<string, number>> {
   const allUsers = await db.select().from(users);
+
   const countMap = new Map<string, number>();
   for (const u of allUsers) {
     if (u.organizationId) {
       countMap.set(u.organizationId, (countMap.get(u.organizationId) ?? 0) + 1);
     }
   }
+  return countMap;
+}
+
+// GET /api/organizations - List all organizations (super admin only)
+organizationsRoutes.get('/', jwtAuth, superAdminOnly, async (c) => {
+  const [orgs, countMap] = await Promise.all([
+    db.select().from(organizations),
+    getAllMemberCounts(),
+  ]);
 
   const publicOrgs: OrganizationPublic[] = orgs.map((org) => ({
     id: org.id,

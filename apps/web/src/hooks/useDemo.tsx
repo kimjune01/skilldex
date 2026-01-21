@@ -8,7 +8,12 @@ interface DemoContextValue {
 
 const DemoContext = createContext<DemoContextValue | null>(null);
 
-const DEMO_STORAGE_KEY = 'skillomatic_demo_mode';
+export const DEMO_STORAGE_KEY = 'skillomatic_demo_mode';
+
+/** Check if demo mode is enabled (works outside React context) */
+export function isDemoModeEnabled(): boolean {
+  return localStorage.getItem(DEMO_STORAGE_KEY) === 'true';
+}
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [isDemoMode, setIsDemoMode] = useState(() => {

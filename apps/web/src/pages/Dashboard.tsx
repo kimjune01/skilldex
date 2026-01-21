@@ -103,6 +103,13 @@ export default function Dashboard() {
     prevCompletedRef.current = setupSteps.completed;
   }, [setupSteps.completed]);
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
   if (isLoading) {
     return <SkeletonDashboard />;
   }
@@ -121,13 +128,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }, []);
 
   return (
     <div className="space-y-6">

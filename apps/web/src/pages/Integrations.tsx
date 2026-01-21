@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import Nango from '@nangohq/frontend';
 import { integrations } from '../lib/api';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,6 +50,7 @@ const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
 
 // ATS sub-providers for specific ATS selection
 const atsProviders = [
+  { id: 'zoho-recruit', name: 'Zoho Recruit' },
   { id: 'greenhouse', name: 'Greenhouse' },
   { id: 'lever', name: 'Lever' },
   { id: 'ashby', name: 'Ashby' },
@@ -123,6 +125,9 @@ export default function Integrations() {
     null
   );
 
+  // Nango Connect UI ref
+  const nangoConnectRef = useRef<ReturnType<Nango['openConnectUI']> | null>(null);
+
   const loadIntegrations = async () => {
     setIsLoading(true);
     try {
@@ -172,17 +177,38 @@ export default function Integrations() {
     }
   };
 
-  const initiateOAuth = async (provider: string, subProvider?: string) => {
+  const initiateOAuth = async (_provider: string, subProvider?: string) => {
     setIsConnecting(true);
     setError('');
 
     try {
-      const response = await integrations.connect(provider, subProvider);
+      // Get allowed integrations based on selected sub-provider
+      const allowedIntegrations = subProvider ? [subProvider] : undefined;
 
-      // Redirect to OAuth URL
-      if (response.url) {
-        window.location.href = response.url;
-      }
+      // Open Nango Connect UI
+      const nango = new Nango();
+      const connect = nango.openConnectUI({
+        onEvent: (event) => {
+          if (event.type === 'close') {
+            // Modal closed
+            setIsConnecting(false);
+            nangoConnectRef.current = null;
+          } else if (event.type === 'connect') {
+            // Auth flow successful
+            setSuccessMessage('Integration connected successfully');
+            loadIntegrations();
+            setIsConnecting(false);
+            nangoConnectRef.current = null;
+            setTimeout(() => setSuccessMessage(''), 5000);
+          }
+        },
+      });
+
+      nangoConnectRef.current = connect;
+
+      // Get session token from backend and set it
+      const session = await integrations.getSession(allowedIntegrations);
+      connect.setSessionToken(session.token);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start connection');
       setIsConnecting(false);

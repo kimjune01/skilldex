@@ -13,7 +13,7 @@
  * @see docs/ADMIN_GUIDE.md for admin operations
  * @see docs/IT_DEPLOYMENT.md for database deployment
  */
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, index } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 
 // ============ USERS & AUTH ============
@@ -218,7 +218,9 @@ export const integrations = sqliteTable('integrations', {
 
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  userProviderIdx: index('integrations_user_provider_idx').on(table.userId, table.provider),
+}));
 
 // ============ SKILL USAGE LOGS ============
 
@@ -235,7 +237,12 @@ export const skillUsageLogs = sqliteTable('skill_usage_logs', {
   errorMessage: text('error_message'),
 
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  userIdIdx: index('skill_usage_logs_user_id_idx').on(table.userId),
+  createdAtIdx: index('skill_usage_logs_created_at_idx').on(table.createdAt),
+  userCreatedIdx: index('skill_usage_logs_user_created_idx').on(table.userId, table.createdAt),
+  statusIdx: index('skill_usage_logs_status_idx').on(table.status),
+}));
 
 // ============ SCRAPE TASKS ============
 
@@ -272,7 +279,11 @@ export const scrapeTasks = sqliteTable('scrape_tasks', {
   claimedAt: integer('claimed_at', { mode: 'timestamp' }),
   completedAt: integer('completed_at', { mode: 'timestamp' }),
   expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
-});
+}, (table) => ({
+  urlHashUserIdx: index('scrape_tasks_url_hash_user_idx').on(table.urlHash, table.userId),
+  statusIdx: index('scrape_tasks_status_idx').on(table.status),
+  expiresAtIdx: index('scrape_tasks_expires_at_idx').on(table.expiresAt),
+}));
 
 // ============ SKILL PROPOSALS ============
 
@@ -428,7 +439,11 @@ export const errorEvents = sqliteTable('error_events', {
   sessionId: text('session_id'), // Client session UUID (not user identity)
 
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  createdAtIdx: index('error_events_created_at_idx').on(table.createdAt),
+  categoryIdx: index('error_events_category_idx').on(table.errorCategory),
+  orgCreatedIdx: index('error_events_org_created_idx').on(table.organizationId, table.createdAt),
+}));
 
 export const errorEventsRelations = relations(errorEvents, ({ one }) => ({
   organization: one(organizations, {

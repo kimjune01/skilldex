@@ -12,7 +12,7 @@ import type { ChatMessage } from '@skillomatic/shared';
 import {
   streamChat,
   type LLMConfig,
-  type ChatMessage as LLMChatMessage,
+  type LLMChatMessage,
   type LLMUserContext,
 } from '@/lib/llm-client';
 import {

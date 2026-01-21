@@ -5,7 +5,7 @@ import { scrapeTasks } from '@skillomatic/db/schema';
 import { eq, and, gt, desc } from 'drizzle-orm';
 import { randomUUID, createHash } from 'crypto';
 import { jwtAuth } from '../middleware/auth.js';
-import { streamChat, chat, type ChatMessage } from '../lib/llm.js';
+import { streamChat, chat, type LLMChatMessage } from '../lib/llm.js';
 import {
   subscribeToTask,
   unsubscribeFromTask,
@@ -539,7 +539,7 @@ chatRoutes.post('/', async (c) => {
 
   // Build messages with skills metadata (progressive disclosure Level 1)
   const systemPrompt = buildSystemPrompt(skillsMetadata);
-  const chatMessages: ChatMessage[] = [
+  const chatMessages: LLMChatMessage[] = [
     { role: 'system', content: systemPrompt },
     ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
   ];
@@ -582,7 +582,7 @@ chatRoutes.post('/', async (c) => {
         const allowMoreActions = action.action === 'load_skill';
 
         // Get a follow-up response from the LLM with the action result
-        const followUpMessages: ChatMessage[] = [
+        const followUpMessages: LLMChatMessage[] = [
           ...currentMessages,
           { role: 'assistant', content: currentResponse },
           {

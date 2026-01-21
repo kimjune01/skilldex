@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { settings as settingsApi, type LLMSettings, type LLMProvider } from '../../lib/api';
+import { settings as settingsApi, type LLMSettings, type LLMProviderConfig } from '../../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -252,7 +252,7 @@ export default function AdminSettings() {
 }
 
 interface ProviderRowProps {
-  provider: LLMProvider;
+  provider: LLMProviderConfig;
   isEditing: boolean;
   apiKeyInput: string;
   showApiKey: boolean;

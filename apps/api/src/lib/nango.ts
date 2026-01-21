@@ -15,6 +15,13 @@ export interface NangoConnection {
   provider: string;
 }
 
+// Connect session response from Nango
+export interface NangoConnectSession {
+  token: string;
+  expiresAt: string;
+  connectLink: string;
+}
+
 // Token response from Nango
 export interface NangoToken {
   access_token: string;
@@ -66,8 +73,51 @@ export class NangoClient {
   }
 
   /**
+   * Create a Connect session for frontend OAuth flow
+   * Returns a short-lived token (30 min) that the frontend uses with Nango Connect UI
+   */
+  async createConnectSession(options: {
+    userId: string;
+    userEmail?: string;
+    userDisplayName?: string;
+    allowedIntegrations?: string[];
+  }): Promise<NangoConnectSession> {
+    const response = await fetch(`${this.baseUrl}/connect/sessions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        end_user: {
+          id: options.userId,
+          email: options.userEmail,
+          display_name: options.userDisplayName,
+        },
+        allowed_integrations: options.allowedIntegrations,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new NangoError(
+        error.message || `Failed to create connect session: ${response.status}`,
+        response.status,
+        error.code
+      );
+    }
+
+    const data = await response.json();
+    return {
+      token: data.data.token,
+      expiresAt: data.data.expires_at,
+      connectLink: data.data.connect_link,
+    };
+  }
+
+  /**
+   * @deprecated Use createConnectSession instead - public keys are deprecated
    * Generate the OAuth connect URL for a provider
-   * User should be redirected to this URL to start OAuth flow
    */
   getConnectUrl(
     providerConfigKey: string,
@@ -231,6 +281,7 @@ export const PROVIDER_CONFIG_KEYS: Record<string, string> = {
   lever: 'lever',
   ashby: 'ashby',
   workable: 'workable',
+  'zoho-recruit': 'zoho-recruit',
 
   // Calendar providers
   'google-calendar': 'google-calendar',
@@ -242,7 +293,7 @@ export const PROVIDER_CONFIG_KEYS: Record<string, string> = {
   outlook: 'outlook',
 
   // Generic mappings (for backwards compatibility)
-  ats: 'greenhouse', // Default ATS
+  ats: 'zoho-recruit', // Default ATS - using Zoho Recruit
   calendar: 'google-calendar', // Default calendar
   email: 'gmail', // Default email
 };

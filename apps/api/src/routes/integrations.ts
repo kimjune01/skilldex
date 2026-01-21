@@ -37,7 +37,40 @@ integrationsRoutes.get('/', async (c) => {
   return c.json({ data: publicIntegrations });
 });
 
-// POST /api/integrations/connect - Initiate OAuth connection
+// POST /api/integrations/session - Create a Nango Connect session token
+// Frontend uses this token to open the Nango Connect UI
+integrationsRoutes.post('/session', async (c) => {
+  const user = c.get('user');
+  const body = await c.req.json<{ allowedIntegrations?: string[] }>().catch(() => ({} as { allowedIntegrations?: string[] }));
+
+  try {
+    const nango = getNangoClient();
+    const session = await nango.createConnectSession({
+      userId: user.sub,
+      userEmail: user.email,
+      allowedIntegrations: body.allowedIntegrations,
+    });
+
+    return c.json({
+      data: {
+        token: session.token,
+        expiresAt: session.expiresAt,
+        connectLink: session.connectLink,
+      },
+    });
+  } catch (error) {
+    if (error instanceof NangoError) {
+      const statusCode = (error.statusCode || 500) as 400 | 401 | 403 | 404 | 500;
+      return c.json(
+        { error: { message: error.message, code: error.code } },
+        statusCode
+      );
+    }
+    throw error;
+  }
+});
+
+// POST /api/integrations/connect - Initiate OAuth connection (deprecated - use /session)
 integrationsRoutes.post('/connect', async (c) => {
   const body = await c.req.json<{ provider: string; subProvider?: string }>();
   const user = c.get('user');

@@ -16,18 +16,14 @@ import type {
   OrganizationPublic,
   OrganizationInvitePublic,
 } from '@skillomatic/shared';
+import type { RenderedSkill, ConfigSkill } from './skills-client';
+import { isDemoModeEnabled } from '../hooks/useDemo';
 
 // In production, VITE_API_URL points to the Lambda function URL
 // In development, we use '/api' which Vite proxies to localhost:3000
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api';
-
-const DEMO_STORAGE_KEY = 'skillomatic_demo_mode';
-
-function isDemoModeEnabled(): boolean {
-  return localStorage.getItem(DEMO_STORAGE_KEY) === 'true';
-}
 
 async function request<T>(
   endpoint: string,
@@ -96,28 +92,6 @@ export const auth = {
   },
 };
 
-// Rendered skill response type (ephemeral architecture)
-export interface RenderedSkill extends SkillPublic {
-  rendered: true;
-  instructions: string;
-}
-
-// Config skill response type (ephemeral architecture)
-export interface ConfigSkill {
-  slug: '_config';
-  name: string;
-  rendered: true;
-  instructions: string;
-  profile: {
-    hasLLM: boolean;
-    hasATS: boolean;
-    hasCalendar: boolean;
-    hasEmail: boolean;
-    llmProvider?: string;
-    atsProvider?: string;
-  };
-}
-
 // Skills
 export const skills = {
   list: () => request<SkillPublic[]>('/skills'),
@@ -182,6 +156,14 @@ export const apiKeys = {
 export const integrations = {
   list: () => request<IntegrationPublic[]>('/integrations'),
 
+  // Get a Connect session token for the Nango Connect UI
+  getSession: (allowedIntegrations?: string[]) =>
+    request<{ token: string; expiresAt: string; connectLink: string }>('/integrations/session', {
+      method: 'POST',
+      body: JSON.stringify({ allowedIntegrations }),
+    }),
+
+  // @deprecated - use getSession + Nango Connect UI instead
   connect: (provider: string, subProvider?: string) =>
     request<{ url: string; connectionId: string; message: string }>('/integrations/connect', {
       method: 'POST',
@@ -410,7 +392,7 @@ export const scrape = {
 };
 
 // LLM Settings (admin only)
-export interface LLMProvider {
+export interface LLMProviderConfig {
   id: string;
   name: string;
   configured: boolean;
@@ -420,7 +402,7 @@ export interface LLMProvider {
 }
 
 export interface LLMSettings {
-  providers: LLMProvider[];
+  providers: LLMProviderConfig[];
   defaultProvider: string;
   defaultModel: string;
 }

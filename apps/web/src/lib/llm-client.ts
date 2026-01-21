@@ -31,7 +31,8 @@ export interface LLMUserContext {
   organizationId?: string;
 }
 
-export interface ChatMessage {
+/** Simple message format for LLM API calls (distinct from ChatMessage in shared types) */
+export interface LLMChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
 }
@@ -48,7 +49,7 @@ const PROVIDER_CONFIGS: Record<
   {
     baseUrl: string;
     headers: (apiKey: string) => Record<string, string>;
-    buildRequest: (messages: ChatMessage[], model: string, userContext?: LLMUserContext) => Record<string, unknown>;
+    buildRequest: (messages: LLMChatMessage[], model: string, userContext?: LLMUserContext) => Record<string, unknown>;
     parseStream: (
       reader: ReadableStreamDefaultReader<Uint8Array>,
       callbacks: StreamCallbacks
@@ -380,7 +381,7 @@ const PROVIDER_CONFIGS: Record<
  */
 export async function streamChat(
   config: LLMConfig,
-  messages: ChatMessage[],
+  messages: LLMChatMessage[],
   callbacks: StreamCallbacks,
   options?: {
     userContext?: LLMUserContext;
