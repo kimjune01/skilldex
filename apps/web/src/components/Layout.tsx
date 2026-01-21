@@ -20,7 +20,7 @@ import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, Mes
 
 // Main navigation - visible to all authenticated users
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Overview', href: '/overview', icon: Home },
   { name: 'Chat', href: '/chat', icon: MessageSquare },
   { name: 'Skills', href: '/skills', icon: Zap },
   { name: 'Desktop Chat', href: '/keys', icon: Key },

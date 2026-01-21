@@ -35,6 +35,8 @@ export const ONBOARDING_STEPS = {
   ATS_CONNECTED: 1,
   /** User has generated their API key for desktop chat */
   API_KEY_GENERATED: 2,
+  /** User has installed the browser extension */
+  EXTENSION_INSTALLED: 2.5,
   /** User has configured deployment mode (web UI or desktop) */
   DEPLOYMENT_CONFIGURED: 3,
   /** Onboarding complete */

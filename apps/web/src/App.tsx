@@ -5,8 +5,9 @@
  * Built with React Router for navigation, Tailwind for styling.
  *
  * Route structure:
- * - / - Landing page (unauthenticated) or Dashboard (authenticated)
+ * - / - Landing page (unauthenticated), redirects to /chat or /overview based on onboarding
  * - /login - Login page
+ * - /overview - Dashboard with setup progress (requires auth)
  * - /chat - AI chat for skill suggestions (requires auth)
  * - /skills - Browse and download skills (requires auth)
  * - /skills/:slug - Skill detail page (requires auth)
@@ -45,6 +46,7 @@ import AdminInvites from './pages/admin/Invites';
 import AcceptInvite from './pages/invite/Accept';
 import Chat from './pages/Chat';
 import Extension from './pages/Extension';
+import ExtensionInstall from './pages/ExtensionInstall';
 import Privacy from './pages/Privacy';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -84,7 +86,7 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function HomePage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isOnboarded, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -95,25 +97,48 @@ function HomePage() {
   }
 
   if (isAuthenticated) {
-    return <Layout />;
+    // Redirect based on onboarding status
+    return <Navigate to={isOnboarded ? '/chat' : '/overview'} replace />;
   }
 
   return <Landing />;
+}
+
+function AuthenticatedRoutes() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Layout />;
 }
 
 export default function App() {
   return (
     <DemoProvider>
       <Routes>
-        {/* Home - shows Landing or Dashboard based on auth */}
-        <Route path="/" element={<HomePage />}>
-          <Route index element={<Dashboard />} />
+        {/* Home - Landing page or redirect based on auth/onboarding */}
+        <Route path="/" element={<HomePage />} />
+
+        {/* Authenticated routes with Layout */}
+        <Route element={<AuthenticatedRoutes />}>
+          <Route path="overview" element={<Dashboard />} />
           <Route path="chat" element={<Chat />} />
           <Route path="skills" element={<Skills />} />
           <Route path="skills/:slug" element={<SkillDetail />} />
           <Route path="skills/:slug/raw" element={<SkillRaw />} />
           <Route path="keys" element={<ApiKeys />} />
           <Route path="integrations" element={<Integrations />} />
+          <Route path="extension/install" element={<ExtensionInstall />} />
           <Route path="usage" element={<Usage />} />
 
           {/* Admin routes */}

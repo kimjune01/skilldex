@@ -6,18 +6,20 @@ import {
   type ReactNode,
 } from 'react';
 import type { UserPublic } from '@skillomatic/shared';
+import { isOnboardingComplete } from '@skillomatic/shared';
 import { auth } from '../lib/api';
 
 interface AuthContextType {
   user: UserPublic | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isOnboarded: boolean;
   isAdmin: boolean; // Org admin or super admin
   isOrgAdmin: boolean; // Org admin only
   isSuperAdmin: boolean; // Super admin only
   organizationId: string | undefined;
   organizationName: string | undefined;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserPublic>;
   logout: () => Promise<void>;
 }
 
@@ -42,10 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<UserPublic> => {
     const response = await auth.login({ email, password });
     localStorage.setItem('token', response.token);
     setUser(response.user);
+    return response.user;
   };
 
   const logout = async () => {
@@ -59,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isOnboarded: user ? isOnboardingComplete(user.onboardingStep) : false,
         isAdmin: !!user?.isAdmin || !!user?.isSuperAdmin,
         isOrgAdmin: !!user?.isAdmin && !user?.isSuperAdmin,
         isSuperAdmin: !!user?.isSuperAdmin,

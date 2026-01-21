@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { isOnboardingComplete } from '@skillomatic/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,8 +23,10 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      navigate('/');
+      const user = await login(email, password);
+      // Redirect based on onboarding status
+      const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/overview';
+      navigate(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

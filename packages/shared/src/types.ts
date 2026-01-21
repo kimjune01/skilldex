@@ -11,6 +11,8 @@ export const ONBOARDING_STEPS = {
   ATS_CONNECTED: 1,
   /** User has generated their API key for desktop chat */
   API_KEY_GENERATED: 2,
+  /** User has installed the browser extension */
+  EXTENSION_INSTALLED: 2.5,
   /** User has configured deployment mode (web UI or desktop) */
   DEPLOYMENT_CONFIGURED: 3,
   /** Onboarding complete */
@@ -40,6 +42,7 @@ export function getNextOnboardingStep(currentStep: number): OnboardingStep | nul
 export function getOnboardingStepName(step: number): string {
   if (step >= ONBOARDING_STEPS.COMPLETE) return 'Complete';
   if (step >= ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) return 'Configure Deployment';
+  if (step >= ONBOARDING_STEPS.EXTENSION_INSTALLED) return 'Install Extension';
   if (step >= ONBOARDING_STEPS.API_KEY_GENERATED) return 'Generate API Key';
   if (step >= ONBOARDING_STEPS.ATS_CONNECTED) return 'Connect ATS';
   return 'Get Started';
