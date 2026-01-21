@@ -3,7 +3,7 @@
  *
  * Landing page targeted at IT professionals addressing common B2B SaaS concerns:
  * - Data security and ephemerality
- * - Compliance (SOC 2, GDPR)
+ * - Compliance (GDPR)
  * - Control and visibility
  * - Easy deployment and offboarding
  */
@@ -63,12 +63,12 @@ const securityFeatures = [
 ];
 
 const complianceItems = [
-  { label: 'SOC 2 Type II', status: 'certified', icon: ShieldCheck },
   { label: 'GDPR Compliant', status: 'certified', icon: FileCheck },
   { label: 'Data Processing Agreement', status: 'available', icon: FileCheck },
-  { label: 'SSO/SAML Support', status: 'available', icon: Key },
+  { label: 'SSO/SAML Support', status: 'roadmap', icon: Key },
   { label: 'Role-Based Access Control', status: 'available', icon: Users },
   { label: 'Custom Data Retention', status: 'available', icon: Clock },
+  { label: 'Source Code Audit', status: 'available', icon: ShieldCheck },
 ];
 
 const dataFlowSteps = [
@@ -122,7 +122,7 @@ const commonConcerns = [
   {
     question: 'How do we know you\'re actually ephemeral?',
     answer:
-      'Request our architecture documentation. Review our SOC 2 report. We\'re happy to walk through our data flow with your security team. Skepticism is welcome—we built this for skeptics.',
+      'Request a source code audit—we\'ll give you full access to review the codebase yourself. We\'re happy to walk through our data flow with your security team. Skepticism is welcome—we built this for skeptics.',
   },
 ];
 
@@ -354,19 +354,21 @@ export default function ForIT() {
                     className={`h-10 w-10 rounded-lg flex items-center justify-center ${
                       item.status === 'certified'
                         ? 'bg-emerald-500'
+                        : item.status === 'available'
+                        ? 'bg-cyan-500'
                         : 'bg-[hsl(220_15%_88%)]'
                     }`}
                   >
                     <Icon
                       className={`h-5 w-5 ${
-                        item.status === 'certified' ? 'text-white' : 'text-[hsl(220_15%_50%)]'
+                        item.status === 'certified' || item.status === 'available' ? 'text-white' : 'text-[hsl(220_15%_50%)]'
                       }`}
                     />
                   </div>
                   <div>
                     <div className="font-bold text-[hsl(220_30%_20%)]">{item.label}</div>
                     <div className="text-xs text-[hsl(220_15%_50%)] uppercase tracking-wider">
-                      {item.status === 'certified' ? 'Certified' : 'Available'}
+                      {item.status === 'certified' ? 'Yes' : item.status === 'available' ? 'Available' : 'Roadmap'}
                     </div>
                   </div>
                 </div>
