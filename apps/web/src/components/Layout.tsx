@@ -13,11 +13,10 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useDemo } from '../hooks/useDemo';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, FlaskConical, MessageSquare, Server, Building2, Mail, Crown, Sparkles } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle } from 'lucide-react';
 
 // Main navigation - visible to all authenticated users
 const navigation = [
@@ -58,44 +57,74 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col">
-        {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b bg-gradient-to-r from-primary/5 to-transparent">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center transition-transform group-hover:scale-105">
-              <Sparkles className="h-4 w-4 text-white" />
+      {/* Left Sidebar - Robot Vending Machine Panel */}
+      <aside className="fixed inset-y-0 left-0 z-50 w-64 robot-panel flex flex-col">
+        {/* Corner screws decoration */}
+        <div className="absolute top-3 left-3 screw" />
+        <div className="absolute top-3 right-3 screw" />
+        <div className="absolute bottom-3 left-3 screw" />
+        <div className="absolute bottom-3 right-3 screw" />
+
+        {/* Logo - Robot display screen style */}
+        <div className="h-20 flex items-center justify-center px-4 border-b-2 border-[hsl(220_15%_75%)]">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="relative">
+              <div className="h-10 w-10 rounded-xl robot-button flex items-center justify-center transition-transform group-hover:scale-105">
+                <Bot className="h-5 w-5 text-white" />
+              </div>
+              {/* Status LED */}
+              <div className="absolute -top-1 -right-1 led-light led-green" />
             </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              Skillomatic
-            </span>
+            <div className="flex flex-col">
+              <span className="text-lg font-black tracking-tight text-[hsl(220_30%_20%)]">
+                SKILL-O-MATIC
+              </span>
+              <span className="text-[10px] font-bold tracking-widest text-[hsl(220_15%_50%)] uppercase">
+                Dispenser 3000
+              </span>
+            </div>
           </Link>
         </div>
 
-        {/* Demo Mode Toggle */}
-        <div className="px-4 py-3 border-b bg-muted/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FlaskConical className={cn("h-4 w-4", isDemoMode ? "text-amber-500" : "text-muted-foreground")} />
-              <span className={cn("text-sm font-medium", isDemoMode ? "text-amber-700" : "text-muted-foreground")}>
-                Demo Mode
-              </span>
+        {/* Demo Mode Toggle - Control Panel Style */}
+        <div className="px-3 py-3 border-b-2 border-[hsl(220_15%_75%)] bg-[hsl(220_15%_92%)]">
+          <div className="robot-display rounded-lg p-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={cn("led-light", isDemoMode ? "led-orange" : "led-cyan")} />
+                <span className={cn(
+                  "text-xs font-bold tracking-wider uppercase",
+                  isDemoMode ? "text-amber-400" : "text-cyan-400"
+                )}>
+                  {isDemoMode ? "Demo Mode" : "Live Mode"}
+                </span>
+              </div>
+              <Switch
+                checked={isDemoMode}
+                onCheckedChange={toggleDemoMode}
+                aria-label="Toggle demo mode"
+                className="data-[state=checked]:bg-amber-500"
+              />
             </div>
-            <Switch
-              checked={isDemoMode}
-              onCheckedChange={toggleDemoMode}
-              aria-label="Toggle demo mode"
-            />
+            {isDemoMode && (
+              <p className="text-[10px] text-amber-400/80 mt-1 font-mono">
+                &gt; SIMULATED DATA ACTIVE
+              </p>
+            )}
           </div>
-          {isDemoMode && (
-            <p className="text-xs text-amber-600 mt-1">
-              Using mock data for demonstration
-            </p>
-          )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {/* Navigation - Button Panel */}
+        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
+          {/* Section label */}
+          <div className="flex items-center gap-2 px-2 mb-3">
+            <div className="h-px flex-1 bg-[hsl(220_15%_80%)]" />
+            <span className="text-[10px] font-bold tracking-widest text-[hsl(220_15%_55%)] uppercase">
+              Select
+            </span>
+            <div className="h-px flex-1 bg-[hsl(220_15%_80%)]" />
+          </div>
+
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
@@ -104,23 +133,23 @@ export default function Layout() {
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical",
                   isActive
-                    ? "bg-primary/10 text-primary shadow-sm"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:translate-x-1"
+                    ? "robot-button text-white shadow-md"
+                    : "bg-[hsl(220_15%_88%)] text-[hsl(220_20%_35%)] border-2 border-[hsl(220_15%_78%)] hover:bg-[hsl(220_15%_85%)] hover:border-[hsl(220_15%_70%)]"
                 )}
               >
                 <div className={cn(
-                  "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
+                  "h-7 w-7 rounded-md flex items-center justify-center transition-all",
                   isActive
-                    ? "bg-primary text-white"
-                    : "bg-muted/50 group-hover:bg-accent-foreground/10"
+                    ? "bg-white/20"
+                    : "bg-[hsl(220_15%_80%)] group-hover:bg-[hsl(220_15%_75%)]"
                 )}>
                   <Icon className="h-4 w-4" />
                 </div>
-                <span>{item.name}</span>
+                <span className="tracking-wide">{item.name}</span>
                 {isActive && (
-                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                  <Circle className="ml-auto h-2 w-2 fill-current" />
                 )}
               </Link>
             );
@@ -128,13 +157,16 @@ export default function Layout() {
 
           {isAdmin && (
             <>
-              <div className="pt-6 pb-2">
-                <div className="flex items-center gap-2 px-3">
-                  <div className="h-1 flex-1 rounded-full bg-gradient-to-r from-orange-200 to-transparent" />
-                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider">
-                    Admin
-                  </p>
-                  <div className="h-1 flex-1 rounded-full bg-gradient-to-l from-orange-200 to-transparent" />
+              <div className="pt-5 pb-2">
+                <div className="flex items-center gap-2 px-2">
+                  <div className="h-px flex-1 bg-amber-300" />
+                  <div className="flex items-center gap-1.5">
+                    <div className="led-light led-orange" style={{ width: 6, height: 6 }} />
+                    <span className="text-[10px] font-bold tracking-widest text-amber-600 uppercase">
+                      Admin
+                    </span>
+                  </div>
+                  <div className="h-px flex-1 bg-amber-300" />
                 </div>
               </div>
               {adminNavigation.map((item) => {
@@ -145,23 +177,23 @@ export default function Layout() {
                     key={item.href}
                     to={item.href}
                     className={cn(
-                      "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                      "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical",
                       isActive
-                        ? "bg-orange-100 text-orange-700 shadow-sm"
-                        : "text-muted-foreground hover:bg-orange-50 hover:text-orange-600 hover:translate-x-1"
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md border-2 border-amber-600"
+                        : "bg-amber-50 text-amber-800 border-2 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
                     )}
                   >
                     <div className={cn(
-                      "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
+                      "h-6 w-6 rounded flex items-center justify-center transition-all",
                       isActive
-                        ? "bg-orange-500 text-white"
-                        : "bg-muted/50 group-hover:bg-orange-100"
+                        ? "bg-white/20"
+                        : "bg-amber-200 group-hover:bg-amber-300"
                     )}>
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-3.5 w-3.5" />
                     </div>
-                    <span>{item.name}</span>
+                    <span className="text-xs tracking-wide">{item.name}</span>
                     {isActive && (
-                      <div className="ml-auto h-1.5 w-1.5 rounded-full bg-orange-500" />
+                      <Circle className="ml-auto h-2 w-2 fill-current" />
                     )}
                   </Link>
                 );
@@ -171,13 +203,16 @@ export default function Layout() {
 
           {isSuperAdmin && (
             <>
-              <div className="pt-6 pb-2">
-                <div className="flex items-center gap-2 px-3">
-                  <div className="h-1 flex-1 rounded-full bg-gradient-to-r from-purple-200 to-transparent" />
-                  <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
-                    Super Admin
-                  </p>
-                  <div className="h-1 flex-1 rounded-full bg-gradient-to-l from-purple-200 to-transparent" />
+              <div className="pt-5 pb-2">
+                <div className="flex items-center gap-2 px-2">
+                  <div className="h-px flex-1 bg-purple-300" />
+                  <div className="flex items-center gap-1.5">
+                    <div className="led-light led-cyan" style={{ width: 6, height: 6 }} />
+                    <span className="text-[10px] font-bold tracking-widest text-purple-600 uppercase">
+                      Super
+                    </span>
+                  </div>
+                  <div className="h-px flex-1 bg-purple-300" />
                 </div>
               </div>
               {superAdminNavigation.map((item) => {
@@ -188,23 +223,23 @@ export default function Layout() {
                     key={item.href}
                     to={item.href}
                     className={cn(
-                      "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                      "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical",
                       isActive
-                        ? "bg-purple-100 text-purple-700 shadow-sm"
-                        : "text-muted-foreground hover:bg-purple-50 hover:text-purple-600 hover:translate-x-1"
+                        ? "bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-md border-2 border-purple-600"
+                        : "bg-purple-50 text-purple-800 border-2 border-purple-200 hover:bg-purple-100 hover:border-purple-300"
                     )}
                   >
                     <div className={cn(
-                      "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
+                      "h-6 w-6 rounded flex items-center justify-center transition-all",
                       isActive
-                        ? "bg-purple-500 text-white"
-                        : "bg-muted/50 group-hover:bg-purple-100"
+                        ? "bg-white/20"
+                        : "bg-purple-200 group-hover:bg-purple-300"
                     )}>
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-3.5 w-3.5" />
                     </div>
-                    <span>{item.name}</span>
+                    <span className="text-xs tracking-wide">{item.name}</span>
                     {isActive && (
-                      <div className="ml-auto h-1.5 w-1.5 rounded-full bg-purple-500" />
+                      <Circle className="ml-auto h-2 w-2 fill-current" />
                     )}
                   </Link>
                 );
@@ -213,42 +248,56 @@ export default function Layout() {
           )}
         </nav>
 
-        {/* User section at bottom */}
-        <div className="border-t p-4 bg-gradient-to-t from-muted/30 to-transparent">
+        {/* User section at bottom - Dispenser slot style */}
+        <div className="border-t-2 border-[hsl(220_15%_75%)] p-3 bg-[hsl(220_15%_90%)]">
+          {/* Coin slot decoration */}
+          <div className="flex justify-center mb-3">
+            <div className="coin-slot" />
+          </div>
+
           {organizationName && (
-            <div className="flex items-center gap-2 mb-3 px-2 py-2 bg-muted/50 rounded-lg border border-border/50">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground truncate">{organizationName}</span>
+            <div className="robot-display rounded-md p-2 mb-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-3 w-3 text-cyan-400" />
+                <span className="text-[10px] font-mono text-cyan-400 truncate uppercase tracking-wider">
+                  {organizationName}
+                </span>
+              </div>
             </div>
           )}
-          <div className="flex items-center gap-3 mb-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-sm">
-              <span className="text-sm font-semibold text-white">
-                {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}
-              </span>
+
+          <div className="flex items-center gap-3 mb-3 p-2 rounded-lg bg-[hsl(220_15%_95%)] border-2 border-[hsl(220_15%_85%)]">
+            <div className="relative">
+              <div className="h-9 w-9 rounded-lg robot-button flex items-center justify-center">
+                <span className="text-sm font-bold text-white">
+                  {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 led-light led-green" style={{ width: 6, height: 6 }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{user?.name || 'User'}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              <p className="text-sm font-bold text-[hsl(220_30%_20%)] truncate">{user?.name || 'User'}</p>
+              <p className="text-[10px] text-[hsl(220_15%_50%)] truncate font-mono">{user?.email}</p>
             </div>
             {isSuperAdmin ? (
-              <Badge className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
-                <Crown className="h-3 w-3 mr-1" />
-                Super
+              <Badge className="text-[10px] bg-gradient-to-r from-purple-500 to-cyan-500 text-white border-0 font-bold">
+                <Crown className="h-2.5 w-2.5 mr-0.5" />
+                SUPER
               </Badge>
             ) : isAdmin ? (
-              <Badge className="text-xs bg-gradient-to-r from-orange-400 to-amber-500 text-white border-0">Admin</Badge>
+              <Badge className="text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 font-bold">
+                ADMIN
+              </Badge>
             ) : null}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+
+          <button
             onClick={handleLogout}
+            className="w-full py-2 px-3 rounded-lg bg-[hsl(220_15%_85%)] border-2 border-[hsl(220_15%_75%)] text-[hsl(220_20%_40%)] text-xs font-bold tracking-wider uppercase hover:bg-red-100 hover:border-red-300 hover:text-red-600 transition-all animate-mechanical flex items-center justify-center gap-2"
           >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign out
-          </Button>
+            <LogOut className="h-3.5 w-3.5" />
+            Eject User
+          </button>
         </div>
       </aside>
 

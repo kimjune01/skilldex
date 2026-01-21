@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Zap, Plug, Key, ArrowRight, AlertCircle, Copy, CheckCircle2, Terminal, CheckCircle, Eye, Sparkles, Rocket, PartyPopper, RefreshCw } from 'lucide-react';
+import { Zap, Plug, Key, ArrowRight, AlertCircle, Copy, CheckCircle2, Terminal, CheckCircle, Eye, Bot, Cog, Gift, RefreshCw, Circle } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 import { Confetti } from '@/components/ui/confetti';
 import { SkeletonDashboard } from '@/components/ui/skeleton';
@@ -130,70 +130,93 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <Confetti trigger={showConfetti} />
 
-      {/* Hero section with gradient mesh background */}
-      <div className="relative rounded-xl p-6 gradient-mesh overflow-hidden animate-fade-in">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-bold">{greeting}, {user?.name?.split(' ')[0]}</h1>
-              <Sparkles className="h-5 w-5 text-amber-500 animate-float" />
+      {/* Hero section - Robot control panel style */}
+      <div className="relative robot-panel rounded-2xl p-6 overflow-hidden animate-fade-in">
+        {/* Corner screws */}
+        <div className="absolute top-3 left-3 screw" />
+        <div className="absolute top-3 right-3 screw" />
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative z-10">
+          {/* Display screen with greeting */}
+          <div className="robot-display rounded-xl p-4 md:flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex gap-1.5">
+                <div className="led-light led-green" />
+                <div className="led-light led-orange" />
+                <div className="led-light led-cyan" />
+              </div>
+              <span className="text-[10px] font-mono text-cyan-400/60 tracking-wider">SYSTEM ONLINE</span>
             </div>
-            <p className="text-muted-foreground">
-              Your AI recruiting assistant is ready to help
-            </p>
+            <div className="flex items-center gap-3">
+              <Bot className="h-8 w-8 text-primary animate-float" />
+              <div>
+                <h1 className="text-xl font-black text-white tracking-tight">
+                  {greeting}, {user?.name?.split(' ')[0]}!
+                </h1>
+                <p className="text-cyan-400/80 text-sm font-mono">
+                  &gt; Ready to dispense skills_
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Setup Progress - enhanced */}
+          {/* Setup Progress - vending machine style */}
           {setupSteps.completed < setupSteps.total ? (
-            <Card className="md:w-96 border-primary/20 shadow-lg card-interactive">
+            <Card className="md:w-96 card-robot rounded-xl overflow-hidden">
               <CardContent className="pt-4 pb-3">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Rocket className="h-4 w-4 text-primary hover-bounce" />
-                    <span className="text-sm font-semibold">Getting Started</span>
+                    <Cog className="h-4 w-4 text-primary animate-spin" style={{ animationDuration: '3s' }} />
+                    <span className="text-sm font-black tracking-wide uppercase">Setup Required</span>
                   </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {setupSteps.completed}/{setupSteps.total} complete
+                  <Badge className="text-[10px] font-bold bg-primary text-white">
+                    {setupSteps.completed}/{setupSteps.total}
                   </Badge>
                 </div>
-                <div className="relative h-2 mb-3 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out"
-                    style={{
-                      width: `${(setupSteps.completed / setupSteps.total) * 100}%`,
-                      background: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)',
-                    }}
-                  />
+                {/* Progress bar - LED style */}
+                <div className="flex gap-1 mb-3">
+                  {setupSteps.steps.map((step, i) => (
+                    <div
+                      key={i}
+                      className={`h-2 flex-1 rounded-full transition-all ${
+                        step.done
+                          ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-[0_0_8px_hsl(145_70%_45%/0.5)]'
+                          : 'bg-[hsl(220_15%_85%)]'
+                      }`}
+                    />
+                  ))}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {setupSteps.steps.map((step, i) => {
                     const Icon = step.icon;
                     return (
                       <div
                         key={i}
-                        className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
-                          step.done ? 'bg-green-50' : 'hover:bg-muted/50'
+                        className={`flex items-center gap-3 p-2 rounded-lg transition-all border-2 ${
+                          step.done
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-[hsl(220_15%_97%)] border-[hsl(220_15%_90%)]'
                         }`}
                       >
-                        <div className={`h-6 w-6 rounded-full flex items-center justify-center ${
+                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${
                           step.done
                             ? 'bg-green-500 text-white'
-                            : 'bg-muted text-muted-foreground'
+                            : 'bg-[hsl(220_15%_88%)] text-[hsl(220_15%_50%)]'
                         }`}>
                           {step.done ? (
                             <CheckCircle className="h-4 w-4" />
                           ) : (
-                            <Icon className="h-3 w-3" />
+                            <Icon className="h-3.5 w-3.5" />
                           )}
                         </div>
-                        <span className={`text-sm ${step.done ? 'text-green-700 font-medium' : ''}`}>
+                        <span className={`text-sm font-bold ${step.done ? 'text-green-700' : 'text-[hsl(220_20%_40%)]'}`}>
                           {step.label}
                         </span>
                         {step.done && (
-                          <CheckCircle className="h-4 w-4 text-green-500 ml-auto" />
+                          <Circle className="h-2 w-2 fill-green-500 text-green-500 ml-auto" />
                         )}
                       </div>
                     );
@@ -202,14 +225,14 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="md:w-80 border-green-200 bg-green-50/50 card-interactive">
-              <CardContent className="pt-4 pb-3 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center">
-                  <PartyPopper className="h-5 w-5 text-white" />
+            <Card className="md:w-80 card-robot rounded-xl border-2 border-green-300 bg-green-50">
+              <CardContent className="pt-4 pb-3 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg glow-success">
+                  <Gift className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <p className="font-semibold text-green-700">All set up!</p>
-                  <p className="text-sm text-green-600">You&apos;re ready to use skills</p>
+                  <p className="font-black text-green-800 uppercase tracking-wide">Fully Loaded!</p>
+                  <p className="text-sm text-green-600 font-mono">&gt; All systems go</p>
                 </div>
               </CardContent>
             </Card>
@@ -217,65 +240,82 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards with staggered animations */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* KPI Cards - Vending machine display slots */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           {
-            title: 'Available Skills',
+            title: 'SKILLS LOADED',
             value: enabledSkills.length,
-            description: enabledSkills.length > 0 ? 'Ready to supercharge Claude' : 'Browse our skill catalog',
+            description: enabledSkills.length > 0 ? 'Ready to dispense' : 'Catalog empty',
             icon: Zap,
-            iconBg: 'bg-blue-100',
-            iconColor: 'text-blue-600',
-            valueBg: enabledSkills.length > 0 ? 'text-blue-600' : '',
+            active: enabledSkills.length > 0,
+            ledColor: 'led-cyan',
             link: '/skills',
-            linkText: 'Explore skills',
+            linkText: 'Browse',
           },
           {
-            title: 'Connected Integrations',
+            title: 'CONNECTIONS',
             value: connectedIntegrations.length,
-            description: connectedIntegrations.length > 0 ? 'Your tools are connected' : 'Connect ATS, email, or calendar',
+            description: connectedIntegrations.length > 0 ? 'Systems linked' : 'No links',
             icon: Plug,
-            iconBg: connectedIntegrations.length > 0 ? 'bg-green-100' : 'bg-muted',
-            iconColor: connectedIntegrations.length > 0 ? 'text-green-600' : 'text-muted-foreground',
-            valueBg: connectedIntegrations.length > 0 ? 'text-green-600' : '',
+            active: connectedIntegrations.length > 0,
+            ledColor: 'led-green',
             link: '/integrations',
-            linkText: connectedIntegrations.length > 0 ? 'Manage' : 'Connect now',
+            linkText: connectedIntegrations.length > 0 ? 'Manage' : 'Link',
           },
           {
-            title: 'Active API Keys',
+            title: 'API TOKENS',
             value: apiKeyList.length,
-            description: apiKeyList.length > 0 ? 'Authentication ready' : 'Create a key to get started',
+            description: apiKeyList.length > 0 ? 'Auth ready' : 'None issued',
             icon: Key,
-            iconBg: apiKeyList.length > 0 ? 'bg-amber-100' : 'bg-muted',
-            iconColor: apiKeyList.length > 0 ? 'text-amber-600' : 'text-muted-foreground',
-            valueBg: apiKeyList.length > 0 ? 'text-amber-600' : '',
+            active: apiKeyList.length > 0,
+            ledColor: 'led-orange',
             link: '/keys',
-            linkText: apiKeyList.length > 0 ? 'Manage' : 'Create key',
+            linkText: apiKeyList.length > 0 ? 'View' : 'Create',
           },
         ].map((card, index) => {
           const Icon = card.icon;
           return (
             <Card
               key={card.title}
-              className="card-interactive stagger-fade-in group"
+              className="card-robot stagger-fade-in group overflow-hidden"
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                <div className={`h-10 w-10 rounded-xl ${card.iconBg} flex items-center justify-center transition-transform group-hover:scale-110`}>
-                  <Icon className={`h-5 w-5 ${card.iconColor}`} />
+              <CardHeader className="pb-2 bg-[hsl(220_15%_92%)] border-b-2 border-[hsl(220_15%_85%)]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`led-light ${card.ledColor}`} />
+                    <CardTitle className="text-[10px] font-black tracking-widest text-[hsl(220_20%_40%)]">
+                      {card.title}
+                    </CardTitle>
+                  </div>
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${
+                    card.active
+                      ? 'robot-button'
+                      : 'bg-[hsl(220_15%_82%)] border-2 border-[hsl(220_15%_75%)]'
+                  }`}>
+                    <Icon className={`h-4 w-4 ${card.active ? 'text-white' : 'text-[hsl(220_15%_55%)]'}`} />
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className={`text-4xl font-bold tracking-tight ${card.valueBg}`}>{card.value}</div>
-                <p className="text-sm text-muted-foreground mt-1">{card.description}</p>
+              <CardContent className="pt-4">
+                {/* Digital display for value */}
+                <div className="robot-display rounded-lg p-3 mb-3">
+                  <div className={`text-4xl font-black tracking-tighter text-center digital-text ${
+                    card.active ? 'text-cyan-400' : 'text-[hsl(220_15%_40%)]'
+                  }`}>
+                    {String(card.value).padStart(2, '0')}
+                  </div>
+                </div>
+                <p className="text-xs font-bold text-[hsl(220_15%_50%)] text-center uppercase tracking-wider mb-3">
+                  {card.description}
+                </p>
                 <Link
                   to={card.link}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 mt-3 group/link"
+                  className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-[hsl(220_15%_88%)] border-2 border-[hsl(220_15%_78%)] text-[hsl(220_20%_35%)] text-xs font-bold tracking-wider uppercase hover:bg-primary hover:border-primary hover:text-white transition-all animate-mechanical"
                 >
                   {card.linkText}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+                  <ArrowRight className="h-3 w-3" />
                 </Link>
               </CardContent>
             </Card>
@@ -283,34 +323,42 @@ export default function Dashboard() {
         })}
       </div>
 
-      <Card className="stagger-fade-in overflow-hidden" style={{ animationDelay: '300ms' }}>
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-purple-500/5 border-b">
+      <Card className="card-robot stagger-fade-in overflow-hidden rounded-xl" style={{ animationDelay: '300ms' }}>
+        <CardHeader className="bg-[hsl(220_15%_92%)] border-b-2 border-[hsl(220_15%_82%)]">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Terminal className="h-5 w-5 text-primary" />
+            <div className="h-10 w-10 rounded-lg robot-button flex items-center justify-center">
+              <Terminal className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle>Install Skills</CardTitle>
-              <CardDescription>
-                Get up and running in under a minute
+              <CardTitle className="font-black tracking-wide uppercase text-[hsl(220_30%_20%)]">
+                Skill Dispenser
+              </CardTitle>
+              <CardDescription className="text-xs font-mono">
+                &gt; Install in 60 seconds
               </CardDescription>
+            </div>
+            <div className="ml-auto flex gap-1.5">
+              <div className="led-light led-green" />
+              <div className="led-light led-orange" />
             </div>
           </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           {apiKeyList.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
-              <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center mb-4 animate-float">
-                <Key className="h-8 w-8 text-amber-600" />
+              <div className="dispense-slot w-24 h-24 flex items-center justify-center mb-4">
+                <Key className="h-10 w-10 text-amber-400 animate-float" />
               </div>
-              <h3 className="font-semibold mb-2">First, create an API key</h3>
-              <p className="text-muted-foreground text-sm mb-4 max-w-sm">
-                You&apos;ll need an API key to authenticate your skills with Skillomatic
+              <h3 className="font-black text-[hsl(220_30%_20%)] uppercase tracking-wide mb-2">
+                Token Required
+              </h3>
+              <p className="text-[hsl(220_15%_50%)] text-sm mb-4 max-w-sm font-mono">
+                Insert API token to unlock skill dispenser
               </p>
-              <Button asChild>
+              <Button asChild className="robot-button border-0">
                 <Link to="/keys">
                   <Key className="h-4 w-4 mr-2" />
-                  Create API Key
+                  Generate Token
                 </Link>
               </Button>
             </div>
@@ -425,60 +473,73 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      <Card className="stagger-fade-in" style={{ animationDelay: '400ms' }}>
-        <CardHeader>
+      <Card className="card-robot stagger-fade-in rounded-xl overflow-hidden" style={{ animationDelay: '400ms' }}>
+        <CardHeader className="bg-[hsl(220_15%_92%)] border-b-2 border-[hsl(220_15%_82%)]">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-amber-500" />
-                Available Skills
-              </CardTitle>
-              <CardDescription>
-                Supercharge Claude Code with these capabilities
-              </CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-cyan-500 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <CardTitle className="font-black tracking-wide uppercase text-[hsl(220_30%_20%)] text-sm">
+                  Skill Inventory
+                </CardTitle>
+                <CardDescription className="text-[10px] font-mono">
+                  {enabledSkills.length} items in stock
+                </CardDescription>
+              </div>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/skills" className="group">
-                View all
-                <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </Button>
+            <Link
+              to="/skills"
+              className="flex items-center gap-1 py-1.5 px-3 rounded-lg bg-[hsl(220_15%_88%)] border-2 border-[hsl(220_15%_78%)] text-[hsl(220_20%_35%)] text-xs font-bold tracking-wider uppercase hover:bg-primary hover:border-primary hover:text-white transition-all animate-mechanical"
+            >
+              View All
+              <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {enabledSkills.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
-              <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mb-4 animate-float">
-                <Zap className="h-8 w-8 text-blue-600" />
+              <div className="dispense-slot w-24 h-24 flex items-center justify-center mb-4">
+                <Zap className="h-10 w-10 text-cyan-400 animate-float" />
               </div>
-              <h3 className="font-semibold mb-2">No skills enabled yet</h3>
-              <p className="text-muted-foreground text-sm mb-4 max-w-sm">
-                Browse our catalog to find skills that match your workflow
+              <h3 className="font-black text-[hsl(220_30%_20%)] uppercase tracking-wide mb-2">
+                Inventory Empty
+              </h3>
+              <p className="text-[hsl(220_15%_50%)] text-sm mb-4 max-w-sm font-mono">
+                No skills loaded in dispenser
               </p>
-              <Button asChild variant="outline">
-                <Link to="/skills">
-                  Explore Skills
-                </Link>
-              </Button>
+              <Link
+                to="/skills"
+                className="py-2 px-4 rounded-lg robot-button text-white text-sm font-bold tracking-wider uppercase border-0"
+              >
+                Load Skills
+              </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {enabledSkills.slice(0, 6).map((skill, index) => (
                 <Link
                   key={skill.id}
                   to={`/skills/${skill.slug}`}
-                  className="group border rounded-xl p-4 card-interactive stagger-fade-in"
+                  className="group border-2 border-[hsl(220_15%_85%)] rounded-xl p-3 bg-[hsl(220_15%_97%)] hover:border-primary hover:bg-primary/5 transition-all stagger-fade-in"
                   style={{ animationDelay: `${500 + index * 50}ms` }}
                 >
-                  <div className="font-medium group-hover:text-primary transition-colors">{skill.name}</div>
-                  <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="font-bold text-sm text-[hsl(220_30%_20%)] group-hover:text-primary transition-colors">
+                      {skill.name}
+                    </div>
+                    <div className="led-light led-cyan flex-shrink-0" style={{ width: 6, height: 6 }} />
+                  </div>
+                  <div className="text-xs text-[hsl(220_15%_50%)] line-clamp-2 mb-2">
                     {skill.description}
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <Badge variant={getCategoryBadgeVariant(skill.category)}>
+                  <div className="flex items-center justify-between">
+                    <Badge variant={getCategoryBadgeVariant(skill.category)} className="text-[10px]">
                       {skill.category}
                     </Badge>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowRight className="h-3 w-3 text-[hsl(220_15%_60%)] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </Link>
               ))}
