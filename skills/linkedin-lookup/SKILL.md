@@ -6,9 +6,8 @@ capabilities:
   - Search for candidate profiles
   - Extract profile information
 allowed-tools:
-  - Skill
-  - Read
   - Bash
+  - Read
 ---
 
 # LinkedIn Candidate Search
@@ -17,21 +16,28 @@ You are a recruiting assistant that helps find candidates on LinkedIn who match 
 
 ## Prerequisites
 
-1. **Linky Scraper Addon** - Browser extension for LinkedIn profile extraction
-   - If not installed, run `/linky-addon-setup` first
-   - Repository: https://github.com/kimjune01/linky-scraper-addon
+1. **Skilldex Scraper Extension** - A Chrome extension that opens LinkedIn pages in the user's browser session. The extension must be installed and configured with the user's API key.
 
-2. **dev-browser skill** - For browser automation. Make sure it's available.
-
-3. **LinkedIn Account** - You must be logged into LinkedIn in your browser.
+2. **LinkedIn Account** - The user must be logged into LinkedIn in the same browser where the extension is installed.
 
 ## How It Works
 
+This skill uses the Skilldex "scrape task" system:
+
+1. You create a scrape task via the Skilldex API with a LinkedIn URL
+2. The browser extension (running in the user's browser) polls for pending tasks
+3. The extension opens the URL in a new tab using the user's LinkedIn session
+4. The extension extracts the page content and sends it back
+5. You receive the profile data and analyze it
+
+**Key advantage:** Because the extension runs in the user's actual browser, it uses their LinkedIn login session. No separate OAuth or cookie management needed.
+
 The user provides a job description, and you:
 1. Extract key requirements (skills, experience, location, title)
-2. Build LinkedIn search queries
-3. Find matching profiles
-4. Present candidates with fit analysis
+2. Build LinkedIn search URLs
+3. Create scrape tasks for each search
+4. Analyze the returned profile data
+5. Present candidates with fit analysis
 
 ## Workflow
 
@@ -50,10 +56,24 @@ When the user provides a job description:
    - Secondary: Adjacent titles + skills
    - Tertiary: Broader search with key technologies
 
-3. **Search LinkedIn** - Use dev-browser to search:
+3. **Search LinkedIn** - Create scrape tasks for LinkedIn search URLs:
+   ```bash
+   # Create a scrape task via the Skilldex API
+   curl -X POST "$SKILLDEX_API_URL/api/v1/scrape/tasks" \
+     -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"url": "https://linkedin.com/search/results/people/?keywords=Senior+Backend+Engineer+Python"}'
+
+   # Poll for result (or wait for WebSocket notification)
+   curl "$SKILLDEX_API_URL/api/v1/scrape/tasks/{task_id}" \
+     -H "Authorization: Bearer $SKILLDEX_API_KEY"
    ```
-   /dev-browser go to linkedin.com/search/results/people/?keywords=[query]&geoUrn=[location-id]
-   ```
+
+   The browser extension will:
+   - Claim the task
+   - Open the URL in a new browser tab
+   - Extract the page content as markdown
+   - Return the result via the API
 
 4. **Review profiles** - For each promising result:
    - Check title and company
@@ -174,14 +194,16 @@ Present findings as:
 
 ## Limitations
 
-- Requires Linky Scraper addon installed (run `/linky-addon-setup` if not)
-- Requires browser access to LinkedIn
+- Requires **Skilldex Scraper** browser extension to be installed and running
+- User must be logged into LinkedIn in the same browser
+- Extension must be configured with correct API URL and key
 - Search results limited to what LinkedIn shows (not all profiles)
 - Cannot message candidates directly (only find and review)
-- Rate limited to prevent abuse
-- Best results when logged into LinkedIn
+- LinkedIn may rate-limit searches
+- Best results when logged into LinkedIn with a recruiter account
+- Scrape tasks timeout after 2 minutes if the extension doesn't respond
 
 ## Related Skills
 
-- `/linky-addon-setup` - Install the Linky Scraper browser extension (required)
-- `/ats-candidate-search` - Search your ATS for existing candidates (run this first)
+- `/ats-candidate-search` - Search your ATS for existing candidates (run this first!)
+- `/candidate-pipeline-builder` - Build a pipeline from search results

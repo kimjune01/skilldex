@@ -218,11 +218,11 @@ Each story follows the format: *As a [persona], I want to [action], so that [ben
 **Acceptance Criteria:**
 - [ ] Can invoke skill via `/linkedin-lookup` in Claude Desktop
 - [ ] Can search by name, company, or LinkedIn URL
-- [ ] Skill leverages linky-scraper-addon Chrome extension for data extraction
+- [ ] Skill uses dev-browser for browser automation and data extraction
 - [ ] Returns profile summary, current role, experience highlights
 - [ ] Works with recruiter's existing LinkedIn session in browser
 
-**Notes:** Uses [linky-scraper-addon](https://github.com/kimjune01/linky-scraper-addon) Chrome extension for LinkedIn scraping. No Skilldex API call needed - runs locally via the extension.
+**Notes:** Uses the dev-browser skill for LinkedIn scraping via browser automation. No separate extension needed.
 
 **Status:** ✅ Approved
 
@@ -416,5 +416,5 @@ Each story follows the format: *As a [persona], I want to [action], so that [ben
 - Skills ↔ Roles: Many-to-many relationship (Story 1.4)
 - API Keys: Full key visible anytime, not hashed-only (Story 2.3)
 - Skill Distribution: Single sync skill downloads all user's skills (Story 2.4)
-- LinkedIn Integration: Uses linky-scraper-addon Chrome extension (Story 3.3)
+- LinkedIn Integration: Uses dev-browser skill for browser automation (Story 3.3)
 - Skill Proposals: Bottom-up from users, approved by admin (Stories 4.5, 4.6)

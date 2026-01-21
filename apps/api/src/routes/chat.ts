@@ -1,14 +1,20 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db } from '@skilldex/db';
-import { skills } from '@skilldex/db/schema';
-import { eq } from 'drizzle-orm';
+import { skills, scrapeTasks } from '@skilldex/db/schema';
+import { eq, and, gt, desc } from 'drizzle-orm';
+import { randomUUID, createHash } from 'crypto';
 import { jwtAuth } from '../middleware/auth.js';
-import { streamChat, chat, type ChatMessage } from '../lib/groq.js';
+import { streamChat, chat, type ChatMessage } from '../lib/llm.js';
 import type { SkillPublic } from '@skilldex/shared';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
+import {
+  subscribeToTask,
+  unsubscribeFromTask,
+  type ScrapeTaskEvent,
+} from '../lib/scrape-events.js';
 import {
   isDemoMode,
   generateDemoCandidates,
@@ -34,7 +40,8 @@ type ATSAction =
   | { action: 'list_jobs' }
   | { action: 'get_job'; id: string }
   | { action: 'list_applications'; candidateId?: string; jobId?: string; stage?: string }
-  | { action: 'update_application_stage'; id: string; stage: string };
+  | { action: 'update_application_stage'; id: string; stage: string }
+  | { action: 'scrape_url'; url: string };
 
 // Parse frontmatter from SKILL.md content
 function parseFrontmatter(content: string): { intent: string; capabilities: string[] } {
@@ -157,6 +164,16 @@ The system ONLY executes code blocks marked as \`\`\`action. Any other format wi
    {"action": "update_application_stage", "id": "application-id", "stage": "Offer"}
    \`\`\`
 
+### Web Scraping Actions
+9. **scrape_url** - Scrape a webpage and get its content as markdown
+   \`\`\`action
+   {"action": "scrape_url", "url": "https://example.com/page"}
+   \`\`\`
+   - url: The full URL to scrape (must include https://)
+   - Returns the page content as markdown text
+   - Use this to extract information from LinkedIn profiles, job postings, company pages, etc.
+   - Note: Requires the Skilldex Scraper browser extension to be installed and running
+
 ## Skills Requiring Claude Desktop
 These skills cannot be executed here and require Claude Desktop:
 ${claudeDesktopSkills || 'None'}
@@ -184,8 +201,140 @@ function parseAction(text: string): ATSAction | null {
   }
 }
 
+// URL normalization for scrape deduplication
+function normalizeUrl(urlString: string): string {
+  const url = new URL(urlString);
+  url.protocol = url.protocol.toLowerCase();
+  url.hostname = url.hostname.toLowerCase();
+  if ((url.protocol === 'http:' && url.port === '80') ||
+      (url.protocol === 'https:' && url.port === '443')) {
+    url.port = '';
+  }
+  if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+    url.pathname = url.pathname.slice(0, -1);
+  }
+  const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid'];
+  trackingParams.forEach(param => url.searchParams.delete(param));
+  url.searchParams.sort();
+  url.hash = '';
+  return url.toString();
+}
+
+function hashUrl(normalizedUrl: string): string {
+  return createHash('sha256').update(normalizedUrl).digest('hex');
+}
+
+// Wait for scrape task to complete using event callbacks + polling fallback
+async function waitForScrapeTask(
+  userId: string,
+  taskId: string,
+  originalUrl: string,
+  timeoutMs: number
+): Promise<unknown> {
+  const POLL_INTERVAL_MS = 3000; // Slower polling as backup (3 seconds)
+  const startTime = Date.now();
+
+  // Create a promise that will be resolved when we get a WebSocket event
+  let eventResolver: ((event: ScrapeTaskEvent) => void) | null = null;
+  const eventPromise = new Promise<ScrapeTaskEvent>((resolve) => {
+    eventResolver = resolve;
+  });
+
+  // Register callback for WebSocket events (set in scrape-events.ts taskCallbacks)
+  const callbackKey = `${userId}:${taskId}`;
+  const { taskCallbacks } = await import('../lib/scrape-events.js');
+  taskCallbacks.set(callbackKey, (event: ScrapeTaskEvent) => {
+    if (eventResolver) eventResolver(event);
+  });
+
+  try {
+    // Race between: WebSocket event, polling check, and timeout
+    while (Date.now() - startTime < timeoutMs) {
+      // Check database (polling fallback in case WebSocket misses something)
+      const [task] = await db
+        .select()
+        .from(scrapeTasks)
+        .where(eq(scrapeTasks.id, taskId))
+        .limit(1);
+
+      if (!task) {
+        return { error: 'Task disappeared unexpectedly' };
+      }
+
+      if (task.status === 'completed' && task.result) {
+        return {
+          success: true,
+          url: originalUrl,
+          content: task.result,
+          cached: false,
+        };
+      }
+
+      if (task.status === 'failed') {
+        return {
+          error: task.errorMessage || 'Scrape failed',
+          suggestion: 'Check that the Skilldex Scraper extension is installed and running.',
+        };
+      }
+
+      if (task.status === 'expired') {
+        return {
+          error: 'Scrape task expired',
+          suggestion: 'The Skilldex Scraper extension may not be installed or running.',
+        };
+      }
+
+      // Wait for either: WebSocket event OR poll interval
+      const remainingTime = timeoutMs - (Date.now() - startTime);
+      const waitTime = Math.min(POLL_INTERVAL_MS, remainingTime);
+
+      if (waitTime <= 0) break;
+
+      // Race between event and timeout
+      const result = await Promise.race([
+        eventPromise,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), waitTime)),
+      ]);
+
+      // If we got a WebSocket event, process it
+      if (result && result.type === 'task_update') {
+        if (result.status === 'completed' && result.result) {
+          return {
+            success: true,
+            url: originalUrl,
+            content: result.result,
+            cached: false,
+          };
+        }
+        if (result.status === 'failed') {
+          return {
+            error: result.errorMessage || 'Scrape failed',
+            suggestion: 'Check that the Skilldex Scraper extension is installed and running.',
+          };
+        }
+        if (result.status === 'expired') {
+          return {
+            error: 'Scrape task expired',
+            suggestion: 'The Skilldex Scraper extension may not be installed or running.',
+          };
+        }
+      }
+    }
+
+    // Timeout
+    return {
+      error: 'Scrape timed out waiting for browser extension',
+      suggestion: 'Install the Skilldex Scraper browser extension and ensure it is configured with your API key.',
+      taskId,
+    };
+  } finally {
+    // Clean up callback
+    taskCallbacks.delete(callbackKey);
+  }
+}
+
 // Execute ATS action
-async function executeAction(action: ATSAction, isDemo: boolean): Promise<unknown> {
+async function executeAction(action: ATSAction, isDemo: boolean, userId?: string): Promise<unknown> {
   switch (action.action) {
     case 'search_candidates': {
       let candidates = generateDemoCandidates();
@@ -273,6 +422,95 @@ async function executeAction(action: ATSAction, isDemo: boolean): Promise<unknow
       return { application: updated, updated: true, demo: isDemo };
     }
 
+    case 'scrape_url': {
+      if (!userId) {
+        return { error: 'Authentication required for scraping' };
+      }
+
+      // Validate URL
+      let normalizedUrl: string;
+      let urlHash: string;
+      try {
+        normalizedUrl = normalizeUrl(action.url);
+        urlHash = hashUrl(normalizedUrl);
+      } catch {
+        return { error: 'Invalid URL format' };
+      }
+
+      const now = new Date();
+      const TASK_TTL_MS = 60 * 60 * 1000; // 1 hour
+      const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+      const MAX_WAIT_MS = 120000; // 2 minutes max wait
+      const cacheThreshold = new Date(now.getTime() - CACHE_TTL_MS);
+
+      // Check for cached result first
+      const [cached] = await db
+        .select()
+        .from(scrapeTasks)
+        .where(
+          and(
+            eq(scrapeTasks.userId, userId),
+            eq(scrapeTasks.urlHash, urlHash),
+            eq(scrapeTasks.status, 'completed'),
+            gt(scrapeTasks.completedAt, cacheThreshold)
+          )
+        )
+        .orderBy(desc(scrapeTasks.completedAt))
+        .limit(1);
+
+      if (cached && cached.result) {
+        return {
+          success: true,
+          url: action.url,
+          content: cached.result,
+          cached: true,
+        };
+      }
+
+      // Check for existing pending/processing task
+      const [existing] = await db
+        .select()
+        .from(scrapeTasks)
+        .where(
+          and(
+            eq(scrapeTasks.userId, userId),
+            eq(scrapeTasks.urlHash, urlHash),
+            gt(scrapeTasks.expiresAt, now)
+          )
+        )
+        .orderBy(desc(scrapeTasks.createdAt))
+        .limit(1);
+
+      let taskId: string;
+
+      if (existing && ['pending', 'processing'].includes(existing.status)) {
+        taskId = existing.id;
+      } else {
+        // Create new scrape task
+        taskId = randomUUID();
+        await db.insert(scrapeTasks).values({
+          id: taskId,
+          userId,
+          url: action.url,
+          urlHash,
+          status: 'pending',
+          createdAt: now,
+          expiresAt: new Date(now.getTime() + TASK_TTL_MS),
+        });
+      }
+
+      // Wait for task completion via WebSocket events (with polling fallback)
+      // Subscribe to task updates
+      subscribeToTask(userId, taskId);
+
+      try {
+        const result = await waitForScrapeTask(userId, taskId, action.url, MAX_WAIT_MS);
+        return result;
+      } finally {
+        unsubscribeFromTask(userId, taskId);
+      }
+    }
+
     default:
       return { error: 'Unknown action' };
   }
@@ -283,6 +521,7 @@ chatRoutes.post('/', async (c) => {
   const body = await c.req.json<ChatRequest>();
   const { messages } = body;
   const isDemo = isDemoMode(c.req.raw);
+  const user = c.get('user');
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return c.json({ error: { message: 'Messages array is required' } }, 400);
@@ -315,7 +554,7 @@ chatRoutes.post('/', async (c) => {
       const action = parseAction(fullResponse);
       if (action) {
         // Execute the action
-        const result = await executeAction(action, isDemo);
+        const result = await executeAction(action, isDemo, user?.id);
 
         // Send action result
         await stream.writeSSE({

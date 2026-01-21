@@ -18,29 +18,41 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     SKILLDEX PLATFORM                            │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │  Web UI     │    │  API        │    │  Nango      │         │
-│  │  (React)    │    │  (Hono)     │    │  (OAuth)    │         │
-│  └─────────────┘    └─────────────┘    └─────────────┘         │
-└────────┬────────────────────▲──────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           SKILLDEX PLATFORM                               │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                   │
+│  │  Web UI     │    │  API        │    │  Nango      │                   │
+│  │  (React)    │    │  (Hono)     │    │  (OAuth)    │                   │
+│  └─────────────┘    └─────────────┘    └─────────────┘                   │
+└────────┬────────────────────▲────────────────────────────────────────────┘
          │                    │
-    Download skill            │ API calls with
-    + API key                 │ SKILLDEX_API_KEY
+    Download skill            │ API calls with SKILLDEX_API_KEY
+    + API key                 │
          │                    │
          ▼                    │
-┌─────────────────────────────┴──────────────────────────────────┐
-│                   USER'S MACHINE                                │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  Claude Desktop / Claude Code                            │   │
-│  │  ~/.claude/commands/                                    │   │
-│  │    ├── linkedin-lookup.md     ──> Executes skill        │   │
-│  │    ├── ats-search.md              calls Skilldex API    │   │
-│  │    └── ...                                              │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────┴────────────────────────────────────────────┐
+│                         USER'S MACHINE                                    │
+│  ┌───────────────────────────────────────────────────────────────────┐   │
+│  │  Claude Desktop / Claude Code                                      │   │
+│  │  ~/.claude/commands/                                               │   │
+│  │    ├── linkedin-lookup.md     ──> Creates scrape tasks             │   │
+│  │    ├── ats-search.md              via Skilldex API                 │   │
+│  │    └── ...                                                         │   │
+│  └───────────────────────────────────────────────────────────────────┘   │
+│                                                                           │
+│  ┌───────────────────────────────────────────────────────────────────┐   │
+│  │  Chrome Browser                                                    │   │
+│  │  ┌─────────────────────────────────────────────────────────────┐  │   │
+│  │  │  Skilldex Scraper Extension                                  │  │   │
+│  │  │  • Polls API for pending scrape tasks                       │  │   │
+│  │  │  • Opens LinkedIn URLs in new tabs (user's session)         │  │   │
+│  │  │  • Extracts page content, returns to API                    │  │   │
+│  │  └─────────────────────────────────────────────────────────────┘  │   │
+│  └───────────────────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Key insight:** The Skilldex Scraper browser extension enables LinkedIn scraping by opening pages in the user's actual browser session. This uses their existing LinkedIn login - no OAuth or credential management needed.
 
 ## Tech Stack
 
@@ -58,23 +70,18 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 
 ### For Recruiters (Using Skills)
 
-The fastest way to get started with Skilldex skills:
-
 ```bash
 # 1. Sign up at your Skilldex instance and generate an API key
 #    https://skilldex.yourcompany.com/keys
 
-# 2. Run the setup CLI
-npx skilldex-setup
+# 2. Set your API key
+export SKILLDEX_API_KEY="sk_live_your_key_here"
+
+# 3. Download skills from the web UI and place in:
+mkdir -p ~/.claude/commands
 ```
 
-This installs everything you need:
-- Stores your API key securely (Keychain/Credential Manager)
-- Installs the Linky MCP server for LinkedIn scraping
-- Configures Claude Desktop/Claude Code
-- Downloads all available skills
-
-See **[Installation Guide](docs/INSTALLATION.md)** for manual setup or troubleshooting.
+See **[Installation Guide](docs/INSTALLATION.md)** for detailed setup instructions.
 
 ### For Developers (Running the Platform)
 
@@ -129,11 +136,11 @@ skilldex/
 ├── apps/
 │   ├── web/              # React frontend
 │   ├── api/              # Hono API backend
-│   └── mock-ats/         # Mock ATS for development
+│   ├── mock-ats/         # Mock ATS for development
+│   └── skilldex-scraper/ # Chrome extension for LinkedIn scraping
 ├── packages/
 │   ├── db/               # Drizzle schema + migrations
-│   ├── shared/           # Shared TypeScript types
-│   └── skilldex-setup/   # CLI installer for recruiters
+│   └── shared/           # Shared TypeScript types
 ├── skills/               # Claude Code skill definitions
 │   ├── linkedin-lookup/
 │   ├── ats-candidate-search/
@@ -234,7 +241,7 @@ Skilldex skills work with any MCP-compatible client:
 | Continue | Full | Add MCP server to config |
 | Other MCP clients | Partial | Manual configuration required |
 
-Skills that don't require LinkedIn (ATS-only) work with just the API key. LinkedIn skills require the full Linky stack (MCP server + browser extension + native host).
+Skills that don't require LinkedIn (ATS-only) work with just the API key. LinkedIn skills require the **Skilldex Scraper** browser extension (in `apps/skilldex-scraper/`) which opens LinkedIn pages in the user's authenticated browser session.
 
 ## Skills
 

@@ -7,7 +7,7 @@ This guide covers enterprise deployment of Skilldex for IT administrators. It in
 Skilldex deployment consists of two parts:
 
 1. **Server Infrastructure** - Skilldex platform (API, Web UI, Database)
-2. **Client Deployment** - Skills, MCP server, and browser extension on recruiter machines
+2. **Client Deployment** - Skills and API key configuration on recruiter machines
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -31,13 +31,13 @@ Skilldex deployment consists of two parts:
 │                                    ▼                                         │
 │  RECRUITER WORKSTATIONS (MDM-Managed)                                       │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │ │
-│  │  │ Claude       │  │ Linky MCP    │  │ Chrome +     │                 │ │
-│  │  │ Desktop      │  │ Server       │  │ Extension    │                 │ │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘                 │ │
-│  │         │                 │                  │                         │ │
-│  │         └─────────────────┴──────────────────┘                         │ │
-│  │                    Deployed via MDM                                    │ │
+│  │  ┌──────────────┐  ┌──────────────┐                                   │ │
+│  │  │ Claude Code  │  │ Skills       │                                   │ │
+│  │  │ or Desktop   │  │ (.md files)  │                                   │ │
+│  │  └──────────────┘  └──────────────┘                                   │ │
+│  │         │                 │                                            │ │
+│  │         └─────────────────┘                                            │ │
+│  │              API Key Auth                                              │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -55,6 +55,17 @@ Skilldex uses SST (Serverless Stack) for AWS deployment.
 - AWS CLI configured (`aws configure`)
 - Node.js 20+, pnpm 9+
 - Turso account (or self-hosted libSQL)
+
+#### Tech Stack Overview
+
+| Component | Technology | Notes |
+|-----------|------------|-------|
+| Frontend | React 18 + Vite | Served via CloudFront |
+| Backend | Hono (Node.js) | Runs on Lambda |
+| Database | SQLite (dev) / Turso (prod) | libSQL compatible |
+| ORM | Drizzle ORM | Type-safe queries |
+| Auth | JWT + API Keys | 7-day token expiry |
+| Deployment | SST 3.x | Infrastructure as code |
 
 #### Step 1: Clone and Configure
 
@@ -109,9 +120,22 @@ npx sst deploy --stage prod
 #### Step 5: Run Migrations
 
 ```bash
-# Apply database schema
+# Apply database schema using Drizzle
+pnpm db:migrate
+
+# Or manually via Turso CLI
 turso db shell skilldex-prod < packages/db/src/migrations/0000_initial.sql
 ```
+
+**Note:** The schema is defined in `packages/db/src/schema.ts` using Drizzle ORM. Key tables:
+- `users` - User accounts with `isAdmin` flag
+- `api_keys` - API keys for skill authentication (full key stored, not hashed)
+- `skills` - Skill metadata (frontmatter parsed from SKILL.md files)
+- `integrations` - OAuth connections via Nango
+- `skill_usage_logs` - Audit trail of skill executions
+- `scrape_tasks` - Web scraping task queue with caching
+- `skill_proposals` - User-submitted skill ideas
+- `system_settings` - Key-value config (LLM keys, etc.)
 
 #### Step 6: Create Admin User
 
@@ -194,7 +218,7 @@ Create this script for MDM deployment (Jamf, Intune, etc.):
 #!/bin/bash
 # skilldex-deploy.sh
 # IT deployment script for Skilldex client components
-# Run as: sudo ./skilldex-deploy.sh --api-url https://skilldex.company.com --extension-id abc123
+# Run as: sudo ./skilldex-deploy.sh --api-url https://skilldex.company.com
 
 set -e
 
@@ -203,8 +227,6 @@ set -e
 # ============================================================================
 
 SKILLDEX_API_URL="${SKILLDEX_API_URL:-}"
-EXTENSION_ID="${EXTENSION_ID:-}"
-INSTALL_LINKY="${INSTALL_LINKY:-true}"
 USER_HOME=""
 CURRENT_USER=""
 
@@ -214,14 +236,6 @@ while [[ $# -gt 0 ]]; do
     --api-url)
       SKILLDEX_API_URL="$2"
       shift 2
-      ;;
-    --extension-id)
-      EXTENSION_ID="$2"
-      shift 2
-      ;;
-    --no-linky)
-      INSTALL_LINKY="false"
-      shift
       ;;
     --user)
       CURRENT_USER="$2"
@@ -246,7 +260,6 @@ echo "=========================================="
 echo "API URL: $SKILLDEX_API_URL"
 echo "User: $CURRENT_USER"
 echo "Home: $USER_HOME"
-echo "Install Linky: $INSTALL_LINKY"
 echo "=========================================="
 
 # ============================================================================
@@ -258,142 +271,20 @@ if [ -z "$SKILLDEX_API_URL" ]; then
   exit 1
 fi
 
-if [ "$INSTALL_LINKY" = "true" ] && [ -z "$EXTENSION_ID" ]; then
-  echo "WARNING: --extension-id not provided. Native host will need manual configuration."
-fi
-
 # ============================================================================
 # Create directories
 # ============================================================================
 
-echo "[1/7] Creating directories..."
+echo "[1/4] Creating directories..."
 
 sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.skilldex"
-sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.linky"
-sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/Desktop/temp"
-sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.claude/commands/skilldex"
-
-# ============================================================================
-# Install Python (if needed for Linky)
-# ============================================================================
-
-if [ "$INSTALL_LINKY" = "true" ]; then
-  echo "[2/7] Checking Python installation..."
-
-  if ! command -v python3 &> /dev/null; then
-    echo "Python3 not found. Installing via Homebrew..."
-    if ! command -v brew &> /dev/null; then
-      echo "ERROR: Homebrew required for Python installation"
-      echo "Install Homebrew first: https://brew.sh"
-      exit 1
-    fi
-    sudo -u "$CURRENT_USER" brew install python3
-  fi
-
-  # Install uv for Python package management
-  if ! command -v uv &> /dev/null; then
-    echo "Installing uv..."
-    curl -LsSf https://astral.sh/uv/install.sh | sudo -u "$CURRENT_USER" sh
-  fi
-fi
-
-# ============================================================================
-# Install Linky MCP Server
-# ============================================================================
-
-if [ "$INSTALL_LINKY" = "true" ]; then
-  echo "[3/7] Installing Linky MCP server..."
-
-  sudo -u "$CURRENT_USER" "$USER_HOME/.cargo/bin/uv" tool install linky 2>/dev/null || \
-  sudo -u "$CURRENT_USER" pip3 install --user linky
-fi
-
-# ============================================================================
-# Configure Claude Desktop MCP
-# ============================================================================
-
-echo "[4/7] Configuring Claude Desktop..."
-
-CLAUDE_CONFIG_DIR="$USER_HOME/Library/Application Support/Claude"
-CLAUDE_CONFIG="$CLAUDE_CONFIG_DIR/claude_desktop_config.json"
-
-sudo -u "$CURRENT_USER" mkdir -p "$CLAUDE_CONFIG_DIR"
-
-# Create or merge config
-if [ -f "$CLAUDE_CONFIG" ]; then
-  # Merge with existing config
-  EXISTING=$(cat "$CLAUDE_CONFIG")
-  if echo "$EXISTING" | grep -q '"linky"'; then
-    echo "Linky already configured in Claude Desktop"
-  else
-    # Add linky to mcpServers
-    echo "$EXISTING" | python3 -c "
-import json, sys
-config = json.load(sys.stdin)
-if 'mcpServers' not in config:
-    config['mcpServers'] = {}
-config['mcpServers']['linky'] = {'command': 'uvx', 'args': ['linky']}
-print(json.dumps(config, indent=2))
-" | sudo -u "$CURRENT_USER" tee "$CLAUDE_CONFIG" > /dev/null
-  fi
-else
-  # Create new config
-  cat > "$CLAUDE_CONFIG" << 'EOF'
-{
-  "mcpServers": {
-    "linky": {
-      "command": "uvx",
-      "args": ["linky"]
-    }
-  }
-}
-EOF
-  chown "$CURRENT_USER" "$CLAUDE_CONFIG"
-fi
-
-# ============================================================================
-# Install Native Messaging Host
-# ============================================================================
-
-if [ "$INSTALL_LINKY" = "true" ]; then
-  echo "[5/7] Installing native messaging host..."
-
-  NATIVE_HOST="$USER_HOME/.linky/native-host.py"
-  MANIFEST_DIR="$USER_HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
-  MANIFEST="$MANIFEST_DIR/com.linky.link.json"
-
-  # Download native host script
-  curl -sSL "https://raw.githubusercontent.com/kimjune01/linky-browser-addon/main/chrome-extension/host/native-host.py" \
-    -o "$NATIVE_HOST"
-  chmod +x "$NATIVE_HOST"
-  chown "$CURRENT_USER" "$NATIVE_HOST"
-
-  # Create manifest directory
-  sudo -u "$CURRENT_USER" mkdir -p "$MANIFEST_DIR"
-
-  # Create manifest
-  if [ -n "$EXTENSION_ID" ]; then
-    cat > "$MANIFEST" << EOF
-{
-  "name": "com.linky.link",
-  "description": "Linky native messaging host",
-  "path": "$NATIVE_HOST",
-  "type": "stdio",
-  "allowed_origins": ["chrome-extension://$EXTENSION_ID/"]
-}
-EOF
-    chown "$CURRENT_USER" "$MANIFEST"
-    echo "Native host registered for extension: $EXTENSION_ID"
-  else
-    echo "WARNING: Extension ID not provided. Run update-extension-id.sh after installing extension."
-  fi
-fi
+sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.claude/commands"
 
 # ============================================================================
 # Create Skilldex configuration
 # ============================================================================
 
-echo "[6/7] Creating Skilldex configuration..."
+echo "[2/4] Creating Skilldex configuration..."
 
 # Create config with API URL (API key added by user later)
 cat > "$USER_HOME/.skilldex/config.json" << EOF
@@ -438,9 +329,9 @@ done
 # Download skills
 # ============================================================================
 
-echo "[7/7] Downloading skills..."
+echo "[3/4] Downloading skills..."
 
-SKILLS_DIR="$USER_HOME/.claude/commands/skilldex"
+SKILLS_DIR="$USER_HOME/.claude/commands"
 
 # Download bundled health check skill
 cat > "$SKILLS_DIR/skilldex-health-check.md" << 'SKILL_EOF'
@@ -450,8 +341,7 @@ description: Verify your Skilldex installation is working correctly
 intent: I want to check if Skilldex is set up correctly
 capabilities:
   - Check API key configuration
-  - Verify MCP server connection
-  - Test ATS connectivity
+  - Test API connectivity
 allowed-tools:
   - Bash
   - Read
@@ -480,15 +370,10 @@ curl -s -w "\nHTTP Status: %{http_code}\n" \
   "${SKILLDEX_API_URL:-http://localhost:3000}/api/v1/me"
 ```
 
-## 3. Linky MCP Check
-
-If Linky is configured, try: `mcp__linky__ping`
-
-## 4. Native Host Check
+## 3. Skills Check
 
 ```bash
-ls -la ~/.linky/native-host.py
-ls -la ~/Desktop/temp/
+ls -la ~/.claude/commands/
 ```
 
 Report any issues to IT support.
@@ -501,27 +386,20 @@ chown -R "$CURRENT_USER" "$SKILLS_DIR"
 # ============================================================================
 
 echo ""
-echo "=========================================="
-echo "Deployment Complete!"
+echo "[4/4] Deployment Complete!"
 echo "=========================================="
 echo ""
 echo "Installed components:"
 echo "  ✓ Skilldex config: ~/.skilldex/"
-echo "  ✓ Skills directory: ~/.claude/commands/skilldex/"
-if [ "$INSTALL_LINKY" = "true" ]; then
-  echo "  ✓ Linky MCP server"
-  echo "  ✓ Native messaging host: ~/.linky/"
-  echo "  ✓ Claude Desktop config updated"
-fi
+echo "  ✓ Skills directory: ~/.claude/commands/"
+echo "  ✓ Shell profile updated"
 echo ""
 echo "Next steps for the user:"
 echo "  1. Log in to $SKILLDEX_API_URL"
 echo "  2. Generate an API key"
 echo "  3. Store it: security add-generic-password -a \$USER -s SKILLDEX_API_KEY -w 'sk_live_xxx'"
-echo "  4. Restart terminal and Claude Desktop"
-if [ "$INSTALL_LINKY" = "true" ]; then
-  echo "  5. Install Linky browser extension"
-fi
+echo "  4. Download skills from the web UI"
+echo "  5. Restart terminal"
 echo ""
 echo "Verify with: /skilldex-health-check in Claude"
 echo ""
@@ -532,13 +410,8 @@ echo ""
 Save the script and run:
 
 ```bash
-# Basic deployment (ATS skills only)
-sudo ./skilldex-deploy.sh --api-url https://skilldex.company.com --no-linky
-
-# Full deployment with Linky
-sudo ./skilldex-deploy.sh \
-  --api-url https://skilldex.company.com \
-  --extension-id jmfenlienpocfphpkeccphjfdoepioee
+# Deploy for current user
+sudo ./skilldex-deploy.sh --api-url https://skilldex.company.com
 
 # Deploy for specific user
 sudo ./skilldex-deploy.sh \
@@ -548,60 +421,115 @@ sudo ./skilldex-deploy.sh \
 
 ---
 
-## Part 4: Browser Extension Deployment
+## Part 4: LinkedIn Lookup Setup (Optional)
 
-### Option A: Chrome Web Store (Preferred)
+LinkedIn lookup uses the **Skilldex Scraper** browser extension to access LinkedIn using the user's authenticated session. The extension runs in the user's Chrome browser and opens LinkedIn pages in their logged-in session.
 
-Once Linky is published to Chrome Web Store:
+### Architecture
 
-1. Get the extension ID from the store listing
-2. Add to Chrome policy for force-install:
-
-**macOS (MDM Profile):**
-```xml
-<key>ExtensionInstallForcelist</key>
-<array>
-  <string>EXTENSION_ID;https://clients2.google.com/service/update2/crx</string>
-</array>
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  LINKEDIN SCRAPING FLOW                                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────┐        1. Create task         ┌──────────────┐        │
+│  │ Claude Code  │ ────────────────────────────► │ Skilldex API │        │
+│  │ /linkedin-   │                               │              │        │
+│  │   lookup     │ ◄──────────────────────────── │  scrape_     │        │
+│  └──────────────┘        5. Return content      │  tasks table │        │
+│                                                 └──────────────┘        │
+│                                                        ▲                │
+│                                                        │                │
+│                                           2. Poll for  │  4. Return     │
+│                                              tasks     │     result     │
+│                                                        │                │
+│  ┌─────────────────────────────────────────────────────┴──────────────┐ │
+│  │  USER'S BROWSER (Chrome)                                           │ │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Skilldex Scraper Extension                                   │  │ │
+│  │  │  • Polls API every 5 seconds for pending tasks               │  │ │
+│  │  │  • Opens LinkedIn URLs in new tabs                           │  │ │
+│  │  │  • Uses user's LinkedIn session (already logged in)          │  │ │
+│  │  │  • Extracts page content, converts to markdown               │  │ │
+│  │  └──────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                     │ │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │ │
+│  │  │  LinkedIn Tab (opened by extension)                          │  │ │
+│  │  │  • Page loads with user's session cookies                    │  │ │
+│  │  │  • Full access to profiles, search results                   │  │ │
+│  │  └──────────────────────────────────────────────────────────────┘  │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Windows (Group Policy):**
+### Requirements
+
+1. **Skilldex Scraper Extension** - Chrome extension from `apps/skilldex-scraper/`
+2. **LinkedIn account** - User must be logged into LinkedIn in Chrome
+
+### User Self-Installation
+
+Users can install the extension themselves in developer mode:
+
+1. Open Chrome and go to `chrome://extensions/`
+2. Enable **Developer mode** (toggle in top-right)
+3. Click **Load unpacked**
+4. Select the `apps/skilldex-scraper` folder
+5. Configure the extension with their API URL and API key
+
+### Enterprise Distribution
+
+For managed Chrome deployments, you can distribute the extension via:
+
+#### Option A: Chrome Web Store (Recommended)
+
+1. Publish the extension to Chrome Web Store (unlisted or private)
+2. Use Group Policy to force-install:
+
 ```
-Computer Configuration > Administrative Templates > Google Chrome > Extensions
-> Configure the list of force-installed apps and extensions
-
-Value: EXTENSION_ID;https://clients2.google.com/service/update2/crx
-```
-
-### Option B: Self-Hosted Extension
-
-For pre-Web Store deployment or private distribution:
-
-1. Build the extension:
-```bash
-git clone https://github.com/kimjune01/linky-browser-addon
-cd linky-browser-addon
-pnpm install
-pnpm build
-```
-
-2. Package as .crx:
-```bash
-# Generate key if needed
-openssl genrsa -out extension.pem 2048
-
-# Package
-google-chrome --pack-extension=dist --pack-extension-key=extension.pem
-```
-
-3. Host on internal server and configure policy:
-```
-EXTENSION_ID;https://internal.company.com/extensions/linky.crx
+Software\Policies\Google\Chrome\ExtensionInstallForcelist
+1 = "extension_id;https://clients2.google.com/service/update2/crx"
 ```
 
-### Option C: Developer Mode (Not Recommended for Production)
+#### Option B: Self-Hosted CRX
 
-For testing only. Requires users to enable Developer Mode.
+1. Package the extension: Chrome > Extensions > Pack Extension
+2. Host the CRX file and update manifest on internal server
+3. Configure Group Policy:
+
+```
+Software\Policies\Google\Chrome\ExtensionInstallForcelist
+1 = "extension_id;https://internal.company.com/chrome/update.xml"
+```
+
+#### Extension Permissions Required
+
+The extension requests these permissions (review before deploying):
+
+| Permission | Purpose |
+|------------|---------|
+| `storage` | Store API URL and key |
+| `tabs` | Open new tabs for scraping |
+| `scripting` | Extract page content |
+| `<all_urls>` | Access LinkedIn pages |
+
+### Extension Configuration
+
+After installation, users configure via the extension popup:
+
+1. **API URL** - Skilldex server URL (e.g., `https://skilldex.company.com`)
+2. **API Key** - User's `sk_live_...` API key
+
+The extension stores these in Chrome's sync storage.
+
+### Limitations
+
+- Extension must be running (Chrome open) for scraping to work
+- LinkedIn may rate-limit automated page loads
+- Some profile data may be restricted based on user's LinkedIn account type
+- Best results with LinkedIn Recruiter accounts
+- Scrape tasks timeout after 2 minutes if extension doesn't respond
 
 ---
 
@@ -763,11 +691,14 @@ curl -s https://skilldex.company.com/api/health | jq .
 
 # Expected response:
 {
-  "status": "healthy",
-  "database": "connected",
-  "version": "1.0.0"
+  "status": "ok",
+  "timestamp": "2025-01-20T12:00:00.000Z"
 }
 ```
+
+**Available endpoints:**
+- `GET /health` - Basic health check
+- `GET /api/health` - API health check (same response)
 
 ### Alerts to Configure
 
@@ -827,24 +758,15 @@ WHERE key_prefix = 'sk_live_xxx';  -- First 10 chars
 EOF
 ```
 
-**"MCP server not connecting"**
-```bash
-# Test MCP server directly
-uvx linky --help
+**"LinkedIn lookup not working"**
 
-# Check Claude Desktop config
-cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
-
-**"LinkedIn scraping not working"**
-```bash
-# Verify native host
-ls -la ~/.linky/native-host.py
-cat ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.linky.link.json
-
-# Check extension is installed
-# Open chrome://extensions and verify Linky is enabled
-```
+LinkedIn lookup requires the Skilldex Scraper browser extension:
+1. Verify the extension is installed and shows a green "Polling" status
+2. Check the extension has the correct API URL and API key configured
+3. Ensure Chrome is open (extension can't work if browser is closed)
+4. Make sure the user is logged into LinkedIn in Chrome
+5. Check for popup blockers that might prevent new tabs
+6. LinkedIn may rate-limit searches - wait a few minutes and try again
 
 ### Support Escalation
 
@@ -854,39 +776,7 @@ cat ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.linky.
 
 ---
 
-## Appendix: MDM Profiles
-
-### Jamf Pro Configuration Profile
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>PayloadContent</key>
-    <array>
-        <dict>
-            <key>PayloadType</key>
-            <string>com.google.Chrome</string>
-            <key>PayloadIdentifier</key>
-            <string>com.company.skilldex.chrome</string>
-            <key>ExtensionInstallForcelist</key>
-            <array>
-                <string>EXTENSION_ID;https://clients2.google.com/service/update2/crx</string>
-            </array>
-        </dict>
-    </array>
-    <key>PayloadDisplayName</key>
-    <string>Skilldex Chrome Extension</string>
-    <key>PayloadIdentifier</key>
-    <string>com.company.skilldex</string>
-    <key>PayloadType</key>
-    <string>Configuration</string>
-    <key>PayloadVersion</key>
-    <integer>1</integer>
-</dict>
-</plist>
-```
+## Appendix: MDM Scripts
 
 ### Microsoft Intune PowerShell Script
 
@@ -895,7 +785,6 @@ cat ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.linky.
 # Run as System via Intune
 
 $ApiUrl = "https://skilldex.company.com"
-$ExtensionId = "jmfenlienpocfphpkeccphjfdoepioee"
 
 # Get current user
 $CurrentUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName.Split('\')[1]
@@ -903,34 +792,17 @@ $UserProfile = "C:\Users\$CurrentUser"
 
 # Create directories
 New-Item -ItemType Directory -Force -Path "$UserProfile\.skilldex"
-New-Item -ItemType Directory -Force -Path "$UserProfile\.linky"
-New-Item -ItemType Directory -Force -Path "$UserProfile\Desktop\temp"
-New-Item -ItemType Directory -Force -Path "$UserProfile\.claude\commands\skilldex"
+New-Item -ItemType Directory -Force -Path "$UserProfile\.claude\commands"
 
-# Download native host
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/kimjune01/linky-browser-addon/main/chrome-extension/host/native-host.py" `
-    -OutFile "$UserProfile\.linky\native-host.py"
-
-# Create manifest
-$Manifest = @{
-    name = "com.linky.link"
-    description = "Linky native messaging host"
-    path = "$UserProfile\.linky\native-host.py"
-    type = "stdio"
-    allowed_origins = @("chrome-extension://$ExtensionId/")
+# Create config
+$Config = @{
+    apiUrl = $ApiUrl
+    installed = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+    version = "1.0.0"
 } | ConvertTo-Json
 
-$Manifest | Out-File -FilePath "$UserProfile\.linky\com.linky.link.json" -Encoding UTF8
-
-# Register native host
-New-Item -Path "HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.linky.link" -Force
-Set-ItemProperty -Path "HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.linky.link" `
-    -Name "(Default)" -Value "$UserProfile\.linky\com.linky.link.json"
-
-# Configure Chrome extension force-install
-$ExtensionPolicy = "HKLM:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist"
-New-Item -Path $ExtensionPolicy -Force
-Set-ItemProperty -Path $ExtensionPolicy -Name "1" -Value "$ExtensionId;https://clients2.google.com/service/update2/crx"
+$Config | Out-File -FilePath "$UserProfile\.skilldex\config.json" -Encoding UTF8
 
 Write-Host "Skilldex deployment complete"
+Write-Host "User must generate API key at $ApiUrl and download skills"
 ```

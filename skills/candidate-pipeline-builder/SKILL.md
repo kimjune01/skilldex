@@ -1,17 +1,16 @@
 ---
 name: candidate-pipeline-builder
-description: End-to-end candidate sourcing - scrape LinkedIn profiles from search results, add to ATS, generate personalized outreach emails, and log activity.
+description: End-to-end candidate sourcing - search LinkedIn, add to ATS, generate personalized outreach emails, and log activity.
 intent: I want to build a candidate pipeline from LinkedIn for this job
 capabilities:
   - Source candidates from LinkedIn based on job description
-  - Scrape LinkedIn profiles using Linky MCP
+  - Search and extract LinkedIn profiles via browser extension
   - Add new candidates to ATS
   - Generate personalized outreach emails
   - Log sourcing activity in ATS notes
 allowed-tools:
   - Bash
   - Read
-  - mcp__linky__*
 ---
 
 # Candidate Pipeline Builder
@@ -21,17 +20,30 @@ You are a recruiting assistant that builds a complete candidate pipeline from a 
 ## Prerequisites
 
 - `SKILLDEX_API_KEY` environment variable set
-- Linky MCP server configured for LinkedIn scraping
+- **Skilldex Scraper** browser extension installed and configured
 - ATS integration connected
 - Email integration connected
+- Logged into LinkedIn in the same browser where the extension is running
+
+## How LinkedIn Scraping Works
+
+This skill uses the Skilldex "scrape task" system to access LinkedIn:
+
+1. You create scrape tasks via the Skilldex API with LinkedIn URLs
+2. The **Skilldex Scraper** browser extension polls for pending tasks
+3. The extension opens URLs in the user's actual browser (using their LinkedIn session)
+4. The extension extracts page content and returns it via the API
+5. You receive the profile data for analysis
+
+This approach means no separate LinkedIn OAuth is needed - the extension uses the user's existing login.
 
 ## Workflow Overview
 
 Given a job description, you will:
 
 1. **Parse the JD** - Extract search criteria
-2. **Search LinkedIn** - Build search query and scrape results (default: 3 pages)
-3. **Scrape Profiles** - Use Linky MCP to get detailed profile data
+2. **Search LinkedIn** - Build search query and navigate using dev-browser (default: 3 pages)
+3. **Extract Profiles** - Get detailed profile data from search results
 4. **Import to ATS** - Create candidate records
 5. **Generate Emails** - Personalized outreach for top candidates (default: 5)
 6. **Log Activity** - Add notes to ATS tracking the sourcing
@@ -76,20 +88,32 @@ Add filters for:
 - Industry
 - Connection degree
 
-Use the Linky MCP to navigate and extract search results:
+Create a scrape task for the search URL:
 
+```bash
+# Create scrape task for LinkedIn search
+curl -X POST "$SKILLDEX_API_URL/api/v1/scrape/tasks" \
+  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.linkedin.com/search/results/people/?keywords=senior%20backend%20engineer%20python%20aws"}'
+
+# The browser extension will open this URL and return the page content
 ```
-mcp__linky__navigate_to: LinkedIn search URL
-mcp__linky__get_page_content: Extract search results
-```
 
-## Step 3: Scrape Individual Profiles
+## Step 3: Extract Individual Profiles
 
-For each candidate in search results (up to 3 pages by default):
+For each candidate in search results (up to 3 pages by default), create scrape tasks:
 
-```
-mcp__linky__navigate_to: candidate profile URL
-mcp__linky__get_page_content: Extract profile data
+```bash
+# Create scrape task for each candidate profile
+curl -X POST "$SKILLDEX_API_URL/api/v1/scrape/tasks" \
+  -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://linkedin.com/in/janesmith"}'
+
+# Poll for completed task
+curl "$SKILLDEX_API_URL/api/v1/scrape/tasks/{task_id}" \
+  -H "Authorization: Bearer $SKILLDEX_API_KEY"
 ```
 
 Extract:
@@ -226,9 +250,9 @@ Nice to have:
 
 | Metric | Count |
 |--------|-------|
-| LinkedIn pages scraped | 3 |
+| LinkedIn pages searched | 3 |
 | Profiles found | 28 |
-| Profiles scraped | 28 |
+| Profiles extracted | 28 |
 | Added to ATS | 25 |
 | Duplicates skipped | 3 |
 | Outreach emails drafted | 5 |
@@ -301,8 +325,15 @@ All 25 candidates have been tagged with:
 ### LinkedIn rate limiting
 If LinkedIn shows a rate limit:
 - Pause for 5 minutes
-- Reduce scraping speed
+- Reduce scraping speed (space out scrape tasks)
 - Consider using LinkedIn Recruiter if available
+
+### Browser extension not responding
+If scrape tasks stay "pending":
+- Verify the extension is installed and showing green "Polling" status
+- Check the extension has the correct API URL and API key
+- Ensure the browser is open (extension can't work if browser is closed)
+- Check for browser popup blockers preventing new tabs
 
 ### Profile not accessible
 If a profile is private/limited:
@@ -329,3 +360,9 @@ If no email visible on LinkedIn:
 3. **Personalize emails** - The generated drafts are starting points; add personal touches
 4. **Track everything** - The ATS notes help you remember why you sourced each person
 5. **Follow up** - Use this skill again in 1-2 weeks for candidates who didn't respond
+
+## Related Skills
+
+- `/linkedin-lookup` - Quick search without full pipeline
+- `/ats-candidate-search` - Search existing candidates first
+- `/email-draft` - Draft emails manually

@@ -1,78 +1,67 @@
 # Installation Guide
 
-This guide covers installing Skilldex skills for recruiters. Skilldex works with any MCP-compatible client, including Claude Desktop, Claude Code, and other AI assistants that support the Model Context Protocol.
+This guide covers installing Skilldex skills for recruiters. Skilldex works with Claude Desktop, Claude Code, and other AI assistants.
 
-## Overview
-
-Skilldex skills require several components to work together:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           SKILLDEX ARCHITECTURE                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌──────────────────┐                      ┌──────────────────────────────┐ │
-│  │  MCP Client      │    MCP Protocol      │  Linky MCP Server            │ │
-│  │  ───────────     │ ◄─────────────────► │  (LinkedIn scraping)         │ │
-│  │  • Claude Desktop│                      │                              │ │
-│  │  • Claude Code   │                      │  Polls ~/Desktop/temp/       │ │
-│  │  • Cursor        │                      │  for scraped profiles        │ │
-│  │  • Other clients │                      └──────────────┬───────────────┘ │
-│  └────────┬─────────┘                                     │                 │
-│           │                                               │ webbrowser.open │
-│           │ Skills (slash commands)                       ▼                 │
-│           │                                  ┌────────────────────────────┐ │
-│           ▼                                  │  Chrome + Linky Extension  │ │
-│  ┌──────────────────┐                        │  ────────────────────────  │ │
-│  │  Skilldex API    │                        │  Content script extracts   │ │
-│  │  ──────────────  │                        │  LinkedIn data on page load│ │
-│  │  • ATS CRUD      │                        │           │                │ │
-│  │  • Usage logging │                        │           ▼ Native Messaging│
-│  │  • Auth          │                        │  ┌────────────────────────┐│ │
-│  └──────────────────┘                        │  │  Native Host (Python)  ││ │
-│                                              │  │  Writes to filesystem  ││ │
-│                                              │  └────────────────────────┘│ │
-│                                              └────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-## Quick Start (Automated)
-
-The fastest way to get started:
+## Quick Start
 
 ```bash
 # 1. Sign up at your Skilldex instance and generate an API key
 #    https://skilldex.yourcompany.com/keys
 
-# 2. Run the setup CLI
-npx skilldex-setup
+# 2. Set your API key
+export SKILLDEX_API_KEY="sk_live_your_key_here"
+
+# 3. Download skills from the web UI and place in:
+mkdir -p ~/.claude/commands
 ```
 
-The setup wizard will:
-- Prompt for your API key and validate it
-- Store the key securely (macOS Keychain, Windows Credential Manager, or Linux secret-tool)
-- Install the Linky MCP server
-- Configure your MCP client (Claude Desktop, etc.)
-- Install the native messaging host for browser integration
-- Download all available skills
+That's it for basic ATS skills. LinkedIn lookup requires the **Skilldex Scraper** browser extension (included).
 
-## Manual Installation
+## Overview
 
-If you prefer manual setup or the automated installer doesn't support your platform:
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                     SKILLDEX ARCHITECTURE                             │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌──────────────────┐                                                │
+│  │  Claude Code /   │                                                │
+│  │  Claude Desktop  │◄────── Skills call API ──────┐                 │
+│  └────────┬─────────┘                              │                 │
+│           │                                         │                 │
+│           │ /linkedin-lookup                        ▼                 │
+│           │ creates scrape task           ┌──────────────────┐       │
+│           └──────────────────────────────►│  Skilldex API    │       │
+│                                           │  ──────────────  │       │
+│  ┌──────────────────────────────────┐     │  • ATS CRUD      │       │
+│  │  Skilldex Scraper Extension      │     │  • Scrape tasks  │       │
+│  │  ────────────────────────────    │     │  • Usage logging │       │
+│  │  Polls API for pending tasks     │◄────│  • Auth          │       │
+│  │  Opens URLs in YOUR browser      │     └──────────────────┘       │
+│  │  (uses your LinkedIn session)    │                                │
+│  │  Returns extracted content       │                                │
+│  └──────────────────────────────────┘                                │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+```
 
-### Step 1: Skilldex Account Setup
+**Why a browser extension?** Unlike generic browser automation tools, the Skilldex Scraper extension opens pages in your actual browser session. This means LinkedIn pages load with your logged-in credentials - no need to handle OAuth or session management.
+
+## Step 1: Create Your Account
 
 1. Navigate to your Skilldex instance (e.g., `https://skilldex.yourcompany.com`)
 2. Create an account or log in
 3. Go to **API Keys** in the sidebar
 4. Click **Generate Key**
-5. Copy the key (starts with `sk_live_`) - you'll only see it once
+5. Copy the key (starts with `sk_live_`)
 
-### Step 2: Store API Key Securely
+**Note:** You can view your API key anytime from the dashboard - it's not hidden after creation.
+
+## Step 2: Store Your API Key
 
 Choose one method based on your OS and security requirements:
 
-#### Option A: macOS Keychain (Recommended for Mac)
+### Option A: macOS Keychain (Recommended)
 
 ```bash
 # Store in Keychain
@@ -83,27 +72,27 @@ echo 'export SKILLDEX_API_KEY=$(security find-generic-password -a "$USER" -s "SK
 source ~/.zshrc
 ```
 
-#### Option B: 1Password CLI
+### Option B: 1Password CLI
 
 ```bash
 # Store in 1Password, then add to ~/.zshrc:
 export SKILLDEX_API_KEY=$(op read "op://Private/Skilldex/api-key")
 ```
 
-#### Option C: Environment File (Simple but less secure)
+### Option C: Environment File
 
 ```bash
 # Create secure credentials file
 mkdir -p ~/.skilldex
-echo 'SKILLDEX_API_KEY=sk_live_your_key_here' > ~/.skilldex/credentials
+echo 'export SKILLDEX_API_KEY=sk_live_your_key_here' > ~/.skilldex/credentials
 chmod 600 ~/.skilldex/credentials
 
 # Add to ~/.zshrc
-echo 'source ~/.skilldex/credentials' >> ~/.zshrc
+echo '[ -f ~/.skilldex/credentials ] && source ~/.skilldex/credentials' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-#### Option D: Direct Export (Development only)
+### Option D: Direct Export (Development only)
 
 ```bash
 # Add directly to ~/.zshrc (key visible in plaintext)
@@ -111,248 +100,133 @@ echo 'export SKILLDEX_API_KEY="sk_live_your_key_here"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### Step 3: Install Linky MCP Server
+## Step 3: Download Skills
 
-The Linky MCP server enables LinkedIn profile scraping through your browser.
+### From the Web UI (Recommended)
 
-```bash
-# Option A: Using uv (recommended)
-uv tool install linky
-
-# Option B: Using pip
-pip install linky
-
-# Option C: Using pipx
-pipx install linky
-```
-
-### Step 4: Configure Your MCP Client
-
-#### Claude Desktop
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%/Claude/claude_desktop_config.json` (Windows):
-
-```json
-{
-  "mcpServers": {
-    "linky": {
-      "command": "uvx",
-      "args": ["linky"]
-    }
-  }
-}
-```
-
-#### Claude Code
-
-Claude Code automatically discovers MCP servers. Add to your project's `.mcp.json` or global config:
-
-```json
-{
-  "mcpServers": {
-    "linky": {
-      "command": "uvx",
-      "args": ["linky"]
-    }
-  }
-}
-```
-
-#### Other MCP Clients (Cursor, Continue, etc.)
-
-Consult your client's documentation for MCP server configuration. The server command is:
+1. Go to **Skills** in the Skilldex sidebar
+2. Click on a skill to view details
+3. Click **Download**
+4. Move to your commands directory:
 
 ```bash
-uvx linky
-# or: python -m linky
+mkdir -p ~/.claude/commands
+mv ~/Downloads/ats-candidate-search.md ~/.claude/commands/
 ```
 
-### Step 5: Install Browser Extension
-
-The Linky browser extension captures LinkedIn page content and sends it to the native host.
-
-#### Option A: Chrome Web Store (When Available)
-
-Install from: `https://chrome.google.com/webstore/detail/linky/[extension-id]`
-
-#### Option B: Load Unpacked (Developer Mode)
-
-```bash
-# Clone and build
-git clone https://github.com/kimjune01/linky-browser-addon.git
-cd linky-browser-addon
-pnpm install
-pnpm build
-
-# Load in Chrome:
-# 1. Go to chrome://extensions/
-# 2. Enable "Developer mode" (toggle in top-right)
-# 3. Click "Load unpacked"
-# 4. Select the dist/ folder
-```
-
-### Step 6: Install Native Messaging Host
-
-The native host bridges the browser extension to the filesystem.
-
-#### macOS
-
-```bash
-# Create directories
-mkdir -p ~/.linky
-mkdir -p ~/Desktop/temp
-mkdir -p ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts
-
-# Download native host script
-curl -o ~/.linky/native-host.py \
-  https://raw.githubusercontent.com/kimjune01/linky-browser-addon/main/chrome-extension/host/native-host.py
-chmod +x ~/.linky/native-host.py
-
-# Create manifest (replace EXTENSION_ID with actual ID from chrome://extensions)
-cat > ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.linky.link.json << 'EOF'
-{
-  "name": "com.linky.link",
-  "description": "Linky native messaging host",
-  "path": "/Users/YOUR_USERNAME/.linky/native-host.py",
-  "type": "stdio",
-  "allowed_origins": ["chrome-extension://EXTENSION_ID/"]
-}
-EOF
-
-# Update path and extension ID in the manifest
-sed -i '' "s|YOUR_USERNAME|$USER|g" ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.linky.link.json
-```
-
-#### Windows
-
-```powershell
-# Create directories
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.linky"
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\Desktop\temp"
-
-# Download native host script
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/kimjune01/linky-browser-addon/main/chrome-extension/host/native-host.py" -OutFile "$env:USERPROFILE\.linky\native-host.py"
-
-# Create manifest
-$manifest = @{
-    name = "com.linky.link"
-    description = "Linky native messaging host"
-    path = "$env:USERPROFILE\.linky\native-host.py"
-    type = "stdio"
-    allowed_origins = @("chrome-extension://EXTENSION_ID/")
-} | ConvertTo-Json
-
-$manifest | Out-File -FilePath "$env:USERPROFILE\.linky\com.linky.link.json" -Encoding UTF8
-
-# Register in Windows Registry
-New-Item -Path "HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.linky.link" -Force
-Set-ItemProperty -Path "HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.linky.link" -Name "(Default)" -Value "$env:USERPROFILE\.linky\com.linky.link.json"
-```
-
-#### Linux
-
-```bash
-# Create directories
-mkdir -p ~/.linky
-mkdir -p ~/Desktop/temp
-mkdir -p ~/.config/google-chrome/NativeMessagingHosts
-
-# Download native host script
-curl -o ~/.linky/native-host.py \
-  https://raw.githubusercontent.com/kimjune01/linky-browser-addon/main/chrome-extension/host/native-host.py
-chmod +x ~/.linky/native-host.py
-
-# Create manifest
-cat > ~/.config/google-chrome/NativeMessagingHosts/com.linky.link.json << EOF
-{
-  "name": "com.linky.link",
-  "description": "Linky native messaging host",
-  "path": "$HOME/.linky/native-host.py",
-  "type": "stdio",
-  "allowed_origins": ["chrome-extension://EXTENSION_ID/"]
-}
-EOF
-```
-
-### Step 7: Download Skills
-
-Download skills from your Skilldex dashboard and place them in your commands directory:
+### Via API
 
 ```bash
 # Create skills directory
-mkdir -p ~/.claude/commands/skilldex
+mkdir -p ~/.claude/commands
 
-# Download from Skilldex web UI, or use API:
+# Download a skill
 curl -H "Authorization: Bearer $SKILLDEX_API_KEY" \
-  https://skilldex.yourcompany.com/api/skills/linkedin-lookup/download \
-  -o ~/.claude/commands/skilldex/linkedin-lookup.md
+  https://skilldex.yourcompany.com/api/skills/ats-candidate-search/download \
+  -o ~/.claude/commands/ats-candidate-search.md
 
-# Repeat for other skills...
+# Download all skills (bulk)
+curl -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  https://skilldex.yourcompany.com/api/skills/install.sh | bash
 ```
 
-### Step 8: Verify Installation
-
-Restart your MCP client (Claude Desktop, etc.) and Chrome, then run the health check:
-
-```
-/skilldex-health-check
-```
-
-Or manually verify:
+## Step 4: Verify Installation
 
 ```bash
-# Check API key
+# Check API key is set
 echo $SKILLDEX_API_KEY | head -c 10  # Should show "sk_live_..."
 
-# Check MCP server
-uvx linky --help  # Should show help text
+# Check skills are installed
+ls ~/.claude/commands/
 
-# Check native host
-python ~/.linky/native-host.py < /dev/null  # Should exit cleanly
-
-# Check temp directory
-ls ~/Desktop/temp  # Should exist
+# Test API connection
+curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  https://skilldex.yourcompany.com/api/v1/me
 ```
 
-## Client-Specific Notes
+Then in Claude Code or Claude Desktop:
+```
+/ats-candidate-search
 
-### Claude Desktop
+Senior Python developer with AWS experience
+```
 
-- MCP config location: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Skills location: `~/.claude/commands/`
-- Requires restart after config changes
+## Step 5: LinkedIn Lookup (Optional)
 
-### Claude Code (CLI)
+The `/linkedin-lookup` skill requires the **Skilldex Scraper** browser extension to access LinkedIn with your authenticated session.
 
-- MCP config: `.mcp.json` in project root or `~/.claude/mcp.json` globally
-- Skills location: `~/.claude/commands/` or project's `.claude/commands/`
-- Skills also work as slash commands in the REPL
+### Install the Browser Extension
 
-### Cursor
+#### Option A: Load Unpacked (Development)
 
-- MCP support via settings
-- Consult Cursor documentation for MCP server configuration
+1. Open Chrome and go to `chrome://extensions/`
+2. Enable **Developer mode** (toggle in top-right)
+3. Click **Load unpacked**
+4. Select the `apps/skilldex-scraper` folder from your Skilldex installation
+5. The extension icon should appear in your toolbar
 
-### Other MCP Clients
+#### Option B: Install from CRX (Enterprise)
 
-Any client implementing the Model Context Protocol can use Skilldex:
+If your IT department provides a packaged extension:
 
-1. Configure the Linky MCP server (`uvx linky`)
-2. Ensure `SKILLDEX_API_KEY` is in the environment
-3. Skills can be invoked as prompts or converted to client-specific format
+```bash
+# IT will provide a .crx file or Chrome Web Store link
+# See IT_DEPLOYMENT.md for enterprise distribution
+```
+
+### Configure the Extension
+
+1. Click the **Skilldex Scraper** extension icon in your toolbar
+2. Enter your **API URL** (e.g., `https://skilldex.yourcompany.com`)
+3. Enter your **API Key** (same `sk_live_...` key from Step 2)
+4. Click **Save & Connect**
+
+The status should show a green dot indicating "Polling" when connected.
+
+### How It Works
+
+1. You run `/linkedin-lookup` in Claude with a job description
+2. The skill creates a "scrape task" via the Skilldex API
+3. The browser extension polls for pending tasks (every 5 seconds)
+4. When it claims a task, it opens the LinkedIn URL **in your browser**
+5. Because you're logged into LinkedIn, the page loads with full access
+6. The extension extracts the page content and sends it back to the API
+7. Claude receives the profile data and presents matching candidates
+
+**Key benefit:** Your LinkedIn session is used, so no separate authentication is needed.
 
 ## Skill Tiers
 
-Not all skills require the full Linky setup:
+Not all skills require the same setup:
 
 | Tier | Skills | Requirements |
 |------|--------|--------------|
 | **Tier 1: ATS Only** | ats-candidate-search, ats-candidate-crud, daily-report | API key only |
-| **Tier 2: + Email** | email-draft | + Email integration |
-| **Tier 3: + LinkedIn** | linkedin-lookup, candidate-pipeline-builder | + Linky MCP + Extension + Native Host |
-| **Tier 4: Full Suite** | All skills | + Calendar, Granola integrations |
+| **Tier 2: + Email** | email-draft | + Email integration (via Integrations page) |
+| **Tier 3: + LinkedIn** | linkedin-lookup, candidate-pipeline-builder | + Skilldex Scraper extension |
+| **Tier 4: Full Suite** | All skills | + Calendar integration |
 
-If you only need ATS skills, you can skip Steps 3-6 (Linky installation).
+## Skill Format
+
+Skills are markdown files with YAML frontmatter:
+
+```markdown
+---
+name: skill-name
+description: What the skill does
+intent: User's goal (e.g., "I want to find candidates")
+capabilities:
+  - List of capabilities
+allowed-tools:
+  - Skill
+  - Read
+  - Bash
+---
+
+# Skill Title
+
+Instructions for Claude...
+```
 
 ## Troubleshooting
 
@@ -363,55 +237,35 @@ If you only need ATS skills, you can skip Steps 3-6 (Linky installation).
 echo $SKILLDEX_API_KEY
 
 # If empty, check your shell profile
-cat ~/.zshrc | grep SKILLDEX
+grep SKILLDEX ~/.zshrc ~/.bashrc
 
 # Re-source your profile
 source ~/.zshrc
 ```
 
-### "MCP server not responding"
+### "401 Unauthorized" from API
 
-```bash
-# Test the server directly
-uvx linky
+1. Check your API key is correct (not revoked)
+2. Go to **API Keys** in Skilldex dashboard to verify
+3. Generate a new key if needed
 
-# Check if it's in Claude Desktop config
-cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-# Restart Claude Desktop after config changes
-```
-
-### "LinkedIn scraping not working"
-
-1. Verify you're logged into LinkedIn in Chrome
-2. Check the Linky extension is enabled in chrome://extensions/
-3. Verify native host is registered:
-   ```bash
-   cat ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.linky.link.json
-   ```
-4. Check the extension ID in the manifest matches the installed extension
-5. Verify ~/Desktop/temp/ exists and is writable
-
-### "Native host not receiving messages"
-
-```bash
-# Test native host directly
-echo '{"type": "ping"}' | python ~/.linky/native-host.py
-
-# Check Python is available
-which python3
-python3 --version
-```
-
-### "Skills not appearing"
+### "Skills not appearing" in Claude
 
 ```bash
 # Verify skills are in the correct location
-ls ~/.claude/commands/
+ls -la ~/.claude/commands/
 
-# Check file permissions
-ls -la ~/.claude/commands/*.md
+# Check file has .md extension
+file ~/.claude/commands/ats-candidate-search.md
 ```
+
+### LinkedIn lookup not working
+
+1. **Check extension is running**: Click the Skilldex Scraper icon - status should show green "Polling"
+2. **Verify API key in extension**: The extension needs its own API key configured
+3. **Log into LinkedIn**: Open LinkedIn in your browser and make sure you're signed in
+4. **Check for rate limiting**: LinkedIn may block rapid requests - wait a few minutes
+5. **Check browser tab**: The extension opens a new tab - make sure it's not blocked by a popup blocker
 
 ## Security Considerations
 
@@ -422,54 +276,29 @@ ls -la ~/.claude/commands/*.md
 - Rotate keys periodically via Skilldex dashboard
 - Revoke keys immediately if compromised
 
-### Browser Extension
+### Skills
 
-- The extension only activates on linkedin.com
-- Data is processed locally, not sent to external servers
-- Extension source code is auditable on GitHub
-- Consider IT approval before installing in enterprise environments
-
-### Native Host
-
-- Sandboxed to ~/Desktop/temp/ directory
-- No network access - only filesystem writes
-- Python script is auditable
-
-### MCP Server
-
-- Runs locally, no external connections
-- Only accessible by configured MCP clients
-- Does not store credentials
+- Skills run locally in your Claude environment
+- They call the Skilldex API with your credentials
+- Review skill content before installing (click "View Raw" in the UI)
 
 ## Uninstallation
 
 ```bash
 # Remove skills
-rm -rf ~/.claude/commands/skilldex/
-
-# Remove native host
-rm ~/.linky/native-host.py
-rm ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.linky.link.json
-
-# Remove MCP server
-uv tool uninstall linky
-# or: pip uninstall linky
+rm ~/.claude/commands/ats-*.md
+rm ~/.claude/commands/linkedin-*.md
+rm ~/.claude/commands/email-*.md
 
 # Remove API key from shell profile
 # Edit ~/.zshrc and remove SKILLDEX_API_KEY lines
 
 # Remove from Keychain (if used)
 security delete-generic-password -s "SKILLDEX_API_KEY"
-
-# Remove browser extension
-# Go to chrome://extensions/ and remove Linky
-
-# Remove Claude Desktop MCP config
-# Edit claude_desktop_config.json and remove "linky" entry
 ```
 
 ## Getting Help
 
 - **Technical issues**: Contact your Skilldex administrator
-- **Bug reports**: https://github.com/your-org/skilldex/issues
-- **Feature requests**: Use `/propose-new-skill` in your MCP client
+- **Feature requests**: Use the Chat feature to suggest new skills
+- **Bug reports**: Report to your admin

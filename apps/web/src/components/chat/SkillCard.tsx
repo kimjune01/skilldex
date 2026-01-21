@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Play, BookOpen, Loader2, CheckCircle, XCircle, User, MapPin, Briefcase } from 'lucide-react';
+import { ChevronDown, ChevronUp, Play, BookOpen, Loader2, CheckCircle, XCircle, User, MapPin, Briefcase, Globe, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
@@ -413,8 +413,51 @@ export function ActionResultCard({ action, result }: ActionResultCardProps) {
     );
   }
 
+  // Handle scrape_url result
+  if (res?.content && res?.url) {
+    const content = res.content as string;
+    const url = res.url as string;
+    const cached = res.cached as boolean;
+    const truncatedContent = content.length > 1000 ? content.slice(0, 1000) + '...' : content;
+
+    return (
+      <Card className="my-2">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950 -mx-3 -mt-3 px-3 py-2 rounded-t">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                Page scraped successfully
+              </span>
+            </div>
+            {cached && <Badge variant="secondary" className="text-xs">Cached</Badge>}
+          </div>
+          <div className="mt-3">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline truncate block mb-2"
+            >
+              {url}
+            </a>
+            <div className="bg-muted p-2 rounded text-xs max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">
+              {truncatedContent}
+            </div>
+            {content.length > 1000 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Showing first 1000 characters of {content.length.toLocaleString()} total
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Handle error
   if (res?.error) {
+    const suggestion = res.suggestion as string | undefined;
     return (
       <Card className="my-2 border-red-200">
         <CardContent className="p-3">
@@ -422,6 +465,12 @@ export function ActionResultCard({ action, result }: ActionResultCardProps) {
             <XCircle className="h-4 w-4" />
             <span className="text-sm">{res.error as string}</span>
           </div>
+          {suggestion && (
+            <div className="flex items-start gap-2 mt-2 p-2 bg-yellow-50 dark:bg-yellow-950 rounded text-yellow-700 dark:text-yellow-300">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="text-xs">{suggestion}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
     );

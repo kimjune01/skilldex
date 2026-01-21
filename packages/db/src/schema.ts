@@ -1,8 +1,28 @@
+/**
+ * Skilldex Database Schema
+ *
+ * This file defines all database tables using Drizzle ORM.
+ * SQLite is used for local development, Turso (libSQL) for production.
+ *
+ * Key design decisions:
+ * - UUIDs (text) for all primary keys
+ * - Timestamps stored as integers (Unix epoch milliseconds)
+ * - API keys stored in full (not hashed) so users can retrieve them
+ * - RBAC tables (roles, permissions) are ready but not fully enforced yet
+ *
+ * @see docs/ADMIN_GUIDE.md for admin operations
+ * @see docs/IT_DEPLOYMENT.md for database deployment
+ */
 import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 
 // ============ USERS & AUTH ============
 
+/**
+ * Users table - stores user accounts
+ * - isAdmin flag controls access to admin features
+ * - Password is bcrypt hashed
+ */
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // UUID
   email: text('email').notNull().unique(),
@@ -23,6 +43,15 @@ export const sessions = sqliteTable('sessions', {
 
 // ============ API KEYS ============
 
+/**
+ * API Keys table - authentication tokens for skills
+ *
+ * Design: Full API key is stored (not hashed) so users can retrieve it.
+ * This is intentional - users need to copy their key to use in Claude.
+ * Keys are soft-deleted via revokedAt instead of hard deleted.
+ *
+ * Format: sk_live_xxxxxxxx (32 char random string)
+ */
 export const apiKeys = sqliteTable('api_keys', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -35,6 +64,17 @@ export const apiKeys = sqliteTable('api_keys', {
 
 // ============ RBAC (Phase 2 Ready) ============
 
+/**
+ * Role-Based Access Control tables
+ *
+ * Currently, only isAdmin flag is enforced. These tables are ready for
+ * Phase 2 implementation of fine-grained permissions:
+ * - roles: Define roles like 'recruiter', 'sourcer', 'admin'
+ * - permissions: Define actions like 'skills:read', 'candidates:write'
+ * - rolePermissions: Map permissions to roles
+ * - userRoles: Assign roles to users
+ * - roleSkills: Control which skills each role can access
+ */
 export const roles = sqliteTable('roles', {
   id: text('id').primaryKey(),
   name: text('name').notNull().unique(), // 'admin', 'recruiter', 'viewer'
@@ -77,6 +117,16 @@ export const roleSkills = sqliteTable('role_skills', {
 
 // ============ SKILLS ============
 
+/**
+ * Skills table - metadata for downloadable Claude Code skills
+ *
+ * Skills are markdown files in /skills/<slug>/SKILL.md with YAML frontmatter.
+ * The frontmatter contains: name, description, intent, capabilities, allowed-tools.
+ * This table stores the database record; actual skill content is in the filesystem.
+ *
+ * @see skills/ directory for skill definitions
+ * @see docs/ADMIN_GUIDE.md for adding new skills
+ */
 export const skills = sqliteTable('skills', {
   id: text('id').primaryKey(),
   slug: text('slug').notNull().unique(), // 'linkedin-lookup'
@@ -132,6 +182,23 @@ export const skillUsageLogs = sqliteTable('skill_usage_logs', {
 
 // ============ SCRAPE TASKS ============
 
+/**
+ * Scrape Tasks table - queue for web scraping jobs
+ *
+ * Used by /linkedin-lookup to request profile scraping via browser automation.
+ * Tasks are cached by URL hash to avoid redundant scrapes.
+ *
+ * Lifecycle:
+ * 1. pending - Task created, waiting for scraper
+ * 2. processing - Scraper claimed the task (claimedAt set)
+ * 3. completed/failed - Scraper finished (completedAt set)
+ * 4. expired - Task TTL exceeded (expiresAt passed)
+ *
+ * Cache behavior:
+ * - Results cached for 24 hours (expiresAt)
+ * - Tasks stale after 30 seconds of processing
+ * - URLs normalized and hashed for deduplication
+ */
 export const scrapeTasks = sqliteTable('scrape_tasks', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -235,8 +302,30 @@ export const integrationsRelations = relations(integrations, ({ one }) => ({
   }),
 }));
 
+// ============ SYSTEM SETTINGS ============
+
+/**
+ * System Settings table - key-value store for configuration
+ *
+ * Used for storing LLM API keys and other system-wide settings.
+ * Sensitive values (isSecret=true) should be encrypted in transit.
+ *
+ * Example keys:
+ * - 'llm.groq_api_key' - Groq API key for chat feature
+ * - 'llm.default_provider' - Which LLM provider to use
+ */
+export const systemSettings = sqliteTable('system_settings', {
+  key: text('key').primaryKey(), // 'llm.anthropic_api_key', 'llm.openai_api_key', etc.
+  value: text('value').notNull(), // Encrypted for sensitive values
+  isSecret: integer('is_secret', { mode: 'boolean' }).notNull().default(false),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedBy: text('updated_by').references(() => users.id),
+});
+
 // ============ TYPE EXPORTS ============
 
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type NewSystemSetting = typeof systemSettings.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;

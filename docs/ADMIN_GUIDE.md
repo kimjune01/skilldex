@@ -4,10 +4,14 @@ This guide covers administration tasks for Skilldex: managing users, configuring
 
 ## Accessing the Admin Panel
 
-Admin features are available to users with the `isAdmin` flag. Log in and you'll see additional navigation items:
+Admin features are available to users with the `isAdmin` flag. Log in and you'll see additional navigation items in the sidebar under "Admin":
 
 - **Users** - Manage user accounts
-- **Manage Skills** - Enable/disable skills, review proposals
+- **Manage Skills** - Enable/disable skills, view skill metadata
+- **Analytics** - View usage statistics and trends
+- **Proposals** - Review skill proposals from users
+- **Settings** - Configure LLM providers and system settings
+- **Deployment** - View deployment status and configuration
 
 ## User Management
 
@@ -64,60 +68,58 @@ To toggle a skill's status, use the database directly or seed script (UI toggle 
 
 ### Adding New Skills
 
-Skills are defined as markdown files with JSON metadata:
+Skills are defined as markdown files with YAML frontmatter. No separate JSON file is needed:
 
 1. Create a new folder in `skills/`:
    ```
    skills/my-new-skill/
-   ├── SKILL.md      # Claude Code skill definition
-   └── skill.json    # Metadata for Skilldex
+   └── SKILL.md      # Claude Code skill definition with frontmatter
    ```
 
-2. Create `SKILL.md` (the actual skill):
+2. Create `SKILL.md` with YAML frontmatter at the top:
    ```markdown
+   ---
+   name: my-new-skill
+   description: Brief description for the skill list
+   intent: I want to do X with this skill
+   capabilities:
+     - Capability one
+     - Capability two
+     - Capability three
+   allowed-tools:
+     - Skill
+     - Read
+     - Bash
+   ---
+
    # My New Skill
 
-   This skill does X, Y, and Z.
+   You are an assistant that helps with X, Y, and Z.
 
-   ## Authentication
+   ## Prerequisites
 
-   This skill requires a Skilldex API key. Set `SKILLDEX_API_KEY` in your environment.
+   - List any required integrations or setup
+   - SKILLDEX_API_KEY environment variable (if calling Skilldex API)
+
+   ## How It Works
+
+   Explain the workflow...
 
    ## Usage
 
-   Describe how to use the skill...
+   Describe how to use the skill with examples...
 
-   ## Instructions for Claude
+   ## Limitations
 
-   When this skill is invoked:
-   1. First, do X
-   2. Then, do Y
-   3. Finally, do Z
+   - Note any limitations
    ```
 
-3. Create `skill.json` (metadata):
-   ```json
-   {
-     "name": "My New Skill",
-     "slug": "my-new-skill",
-     "description": "Brief description for the skill list",
-     "category": "productivity",
-     "version": "1.0.0",
-     "requiredIntegrations": ["ats"],
-     "requiredScopes": ["candidates:read"],
-     "intentions": [
-       "Search for candidates",
-       "Filter by criteria",
-       "Export results"
-     ],
-     "isEnabled": true
-   }
-   ```
-
-4. Run the seed script to register:
+3. Run the seed script to register the skill in the database:
    ```bash
    pnpm db:seed
    ```
+
+**Note:** The frontmatter fields (`name`, `description`, `intent`, `capabilities`, `allowed-tools`) are parsed when the skill is loaded. The `intent` field helps Claude understand when to suggest this skill to users.
 
 ### Skill Categories
 
@@ -131,13 +133,20 @@ Available categories:
 
 ### Reviewing Skill Proposals
 
-Users can propose new skills via `/propose-new-skill`. To review:
+Users can propose new skills via `/propose-new-skill`. To review proposals:
 
-1. Check the `skill_proposals` table for pending proposals
-2. Review the title, description, and use cases
-3. Approve by creating the skill and updating the proposal status
-4. Or deny with feedback
+1. Navigate to **Admin > Proposals** in the sidebar
+2. View pending proposals with title, description, and use cases
+3. Approve by clicking "Approve" and then creating the skill
+4. Or deny with feedback explaining why
 
+**Web UI workflow (recommended):**
+1. Go to Admin > Proposals
+2. Click on a pending proposal to view details
+3. Click "Approve" or "Deny"
+4. If denying, provide feedback for the user
+
+**Database queries (advanced):**
 ```sql
 -- View pending proposals
 SELECT * FROM skill_proposals WHERE status = 'pending';
@@ -159,6 +168,31 @@ SET status = 'denied',
 WHERE id = 'proposal-id';
 ```
 
+## System Settings
+
+### LLM Provider Configuration
+
+Navigate to **Admin > Settings** to configure LLM providers for the Chat feature:
+
+1. **Groq** (default) - Free tier LLM for chat/analysis
+   - Get API key from: https://console.groq.com
+   - Enter key in Settings > LLM Provider > Groq API Key
+
+2. **Other providers** - Support for additional providers can be configured
+
+**Note:** LLM keys are stored encrypted in the `system_settings` table with `is_secret = true`.
+
+### Demo Mode
+
+Skilldex includes a Demo Mode for trials and demonstrations:
+
+- Toggle in the sidebar (Flask icon)
+- When enabled, uses mock data instead of real API calls
+- Stored in `localStorage` as `skilldex_demo_mode`
+- Also can be triggered via `X-Demo-Mode: true` header
+
+This is useful for showing Skilldex to prospects without connecting real integrations.
+
 ## Integration Configuration
 
 ### Supported Integrations
@@ -166,7 +200,7 @@ WHERE id = 'proposal-id';
 | Provider | Type | Notes |
 |----------|------|-------|
 | ATS | OAuth | Generic ATS patterns (Greenhouse/Lever-like) |
-| LinkedIn | Browser | Uses linky-scraper-addon, no OAuth needed |
+| LinkedIn | Browser | Uses dev-browser skill for automation, no OAuth needed |
 | Email | OAuth | Gmail/Outlook |
 | Calendar | OAuth | Google Calendar/Outlook |
 | Granola | API Key | Meeting notes sync |
@@ -247,6 +281,45 @@ WHERE resource = 'candidates' AND action = 'read';
 ```
 
 ## Monitoring & Logging
+
+### Analytics Dashboard
+
+Navigate to **Admin > Analytics** for visual usage statistics:
+
+- Total skill executions over time
+- Success/failure rates by skill
+- Most active users
+- Popular skills
+
+### Scrape Tasks
+
+Web scraping tasks (used by LinkedIn lookup) are tracked with caching:
+
+```sql
+-- View recent scrape tasks
+SELECT
+  st.url,
+  st.status,
+  u.email,
+  datetime(st.created_at, 'unixepoch') as created,
+  datetime(st.completed_at, 'unixepoch') as completed
+FROM scrape_tasks st
+JOIN users u ON st.user_id = u.id
+ORDER BY st.created_at DESC
+LIMIT 20;
+
+-- Check cache hit rate (completed tasks reused)
+SELECT
+  COUNT(*) as total,
+  SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END) as with_cached_result
+FROM scrape_tasks
+WHERE created_at > unixepoch() - 86400;
+```
+
+**Scrape task lifecycle:**
+- Tasks are cached for 24 hours (`expires_at`)
+- Stale tasks (processing > 30 seconds) are auto-expired
+- Results are deduplicated by URL hash
 
 ### Skill Usage Logs
 

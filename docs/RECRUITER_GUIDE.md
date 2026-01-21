@@ -18,7 +18,15 @@ Skilldex brings your recruiting tools into Claude Code. Instead of switching bet
 
 1. Navigate to your company's Skilldex instance (e.g., `https://skilldex.yourcompany.com`)
 2. Log in with your company credentials or create an account
-3. You'll land on the Dashboard showing available skills and integrations
+3. You'll land on the Dashboard showing your recent activity and quick actions
+
+The sidebar navigation includes:
+- **Dashboard** - Overview and quick actions
+- **Chat** - AI-powered assistant for skill suggestions
+- **Skills** - Browse and download available skills
+- **API Keys** - Manage your authentication keys
+- **Integrations** - Connect external services
+- **Usage** - View your skill usage history
 
 ### Step 2: Connect Your Integrations
 
@@ -27,12 +35,26 @@ Before using skills, connect the services you need:
 1. Go to **Integrations** in the sidebar
 2. Click **Connect** for each service you want to use:
    - **ATS** - Your Applicant Tracking System
-   - **LinkedIn** - For profile lookups (uses browser automation)
    - **Email** - For drafting and sending emails
    - **Calendar** - For scheduling interviews
    - **Granola** - For meeting notes sync
 
 Note: Some integrations require OAuth authorization. You'll be redirected to the service to grant access.
+
+### Step 2b: Install Browser Extension (for LinkedIn)
+
+The `/linkedin-lookup` skill requires the **Skilldex Scraper** browser extension. This extension opens LinkedIn pages in your actual browser session, using your logged-in credentials.
+
+1. Open Chrome and go to `chrome://extensions/`
+2. Enable **Developer mode** (toggle in top-right corner)
+3. Click **Load unpacked**
+4. Select the `apps/skilldex-scraper` folder
+5. Click the extension icon in your toolbar
+6. Enter your **API URL** (e.g., `https://skilldex.yourcompany.com`)
+7. Enter your **API Key** (you'll create this in the next step)
+8. Click **Save & Connect**
+
+The extension will poll for scrape tasks and open LinkedIn pages when you use `/linkedin-lookup`.
 
 ### Step 3: Generate an API Key
 
@@ -60,8 +82,11 @@ source ~/.zshrc
 ### Step 5: Download Skills
 
 1. Go to **Skills** in the sidebar
-2. Browse available skills by category
-3. Click on a skill to see details and requirements
+2. Browse available skills by category (sourcing, ats, communication, etc.)
+3. Click on a skill to see:
+   - Description and capabilities
+   - Required integrations
+   - Intent (what the skill helps you accomplish)
 4. Click **Download Skill**
 5. Move the downloaded file to your Claude commands directory:
 
@@ -69,7 +94,34 @@ source ~/.zshrc
 mv ~/Downloads/linkedin-lookup.md ~/.claude/commands/
 ```
 
+**Tip:** You can also view the raw skill content by clicking "View Raw" on the skill detail page.
+
 Repeat for each skill you want to use.
+
+### Step 6: Try the Chat Assistant
+
+The **Chat** feature helps you discover which skills to use:
+
+1. Go to **Chat** in the sidebar
+2. Describe what you want to accomplish in natural language
+3. The AI assistant will suggest relevant skills and guide you
+
+Example: "I need to find senior Python developers in Seattle" → The assistant will recommend `/linkedin-lookup` and `/ats-candidate-search`.
+
+## Available Skills
+
+Skilldex includes these skills out of the box:
+
+| Skill | Description | Required |
+|-------|-------------|----------|
+| `/linkedin-lookup` | Find candidates on LinkedIn | Skilldex Scraper extension |
+| `/ats-candidate-search` | Search your ATS for existing candidates | ATS integration |
+| `/ats-candidate-crud` | Create/update/delete ATS records | ATS integration |
+| `/email-draft` | Draft personalized recruiting emails | Email integration |
+| `/interview-scheduler` | Schedule interviews | Calendar integration |
+| `/meeting-notes` | Capture and summarize interview notes | - |
+| `/candidate-pipeline-builder` | Build recruiting pipelines | ATS + Skilldex Scraper extension |
+| `/daily-report` | Generate daily recruiting reports | - |
 
 ## Using Skills
 
@@ -217,6 +269,16 @@ When adding candidates or updating records, include relevant notes:
 ### Review Before Sending
 For emails and calendar invites, Claude will show you a draft before sending. Always review for accuracy and tone.
 
+## Demo Mode
+
+If you want to explore Skilldex without connecting real integrations:
+
+1. Toggle **Demo Mode** in the sidebar (Flask icon)
+2. When enabled, the platform uses mock data for all features
+3. Great for learning the interface before going live
+
+Demo mode persists across sessions until you toggle it off.
+
 ## Troubleshooting
 
 ### "Missing or invalid API key"
@@ -241,11 +303,14 @@ The skill file isn't in the right location:
 
 ### LinkedIn lookup not working
 
-LinkedIn lookup uses browser automation and requires the Linky Scraper extension:
-1. Run `/linky-addon-setup` to install and configure the Linky Scraper browser extension
-2. Alternatively, manually install from [linky-scraper-addon](https://github.com/kimjune01/linky-scraper-addon)
-3. Make sure you're logged into LinkedIn in your browser
-4. Some profiles may be restricted based on your LinkedIn account
+LinkedIn lookup uses the **Skilldex Scraper** browser extension to access LinkedIn with your logged-in session:
+
+1. **Install the extension**: Load the extension from `apps/skilldex-scraper` (see Installation Guide)
+2. **Configure the extension**: Click the extension icon and enter your API URL and API key
+3. **Check extension status**: The extension popup should show a green "Polling" status
+4. **Log into LinkedIn**: Make sure you're logged into LinkedIn in the same browser
+5. **Rate limiting**: LinkedIn may throttle requests - wait a few minutes between searches
+6. **Profile restrictions**: Some profiles may be restricted based on your LinkedIn account type
 
 ## Getting Help
 

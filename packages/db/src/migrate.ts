@@ -135,6 +135,15 @@ CREATE TABLE IF NOT EXISTS skill_proposals (
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
+
+-- System Settings (LLM API keys, etc.)
+CREATE TABLE IF NOT EXISTS system_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  is_secret INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated_by TEXT REFERENCES users(id)
+);
 `;
 
 export function migrate() {

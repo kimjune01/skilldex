@@ -1,3 +1,16 @@
+/**
+ * Layout Component
+ *
+ * Main application layout with sidebar navigation.
+ * Renders protected content via React Router's Outlet.
+ *
+ * Features:
+ * - Fixed left sidebar with navigation links
+ * - Demo mode toggle for using mock data
+ * - Admin section visible only to admin users
+ * - User info and logout at bottom
+ * - Customizable branding (logo, app name) via BrandingProvider
+ */
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useBranding } from '../hooks/useBranding';
@@ -6,8 +19,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, FlaskConical, MessageSquare } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, FlaskConical, MessageSquare, Server } from 'lucide-react';
 
+// Main navigation - visible to all authenticated users
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Chat', href: '/chat', icon: MessageSquare },
@@ -17,11 +31,14 @@ const navigation = [
   { name: 'Usage', href: '/usage', icon: BarChart3 },
 ];
 
+// Admin navigation - visible only to users with isAdmin=true
 const adminNavigation = [
   { name: 'Users', href: '/admin/users', icon: Users },
-  { name: 'Manage Skills', href: '/admin/skills', icon: Settings },
+  { name: 'Manage Skills', href: '/admin/skills', icon: Zap },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Proposals', href: '/admin/proposals', icon: FileText },
+  { name: 'Deployment', href: '/admin/deployment', icon: Server },
+  { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 export default function Layout() {

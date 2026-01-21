@@ -1,3 +1,27 @@
+/**
+ * Skilldex Web Application
+ *
+ * React SPA for managing skills, API keys, and integrations.
+ * Built with React Router for navigation, Tailwind for styling.
+ *
+ * Route structure:
+ * - /login - Public login page
+ * - / - Protected routes (requires auth)
+ *   - /chat - AI chat for skill suggestions
+ *   - /skills - Browse and download skills
+ *   - /skills/:slug - Skill detail page
+ *   - /keys - Manage API keys
+ *   - /integrations - OAuth connections
+ *   - /usage - Usage history
+ *   - /admin/* - Admin-only routes (Users, Skills, Analytics, Proposals, Settings, Deployment)
+ *
+ * Context providers:
+ * - BrandingProvider: White-label customization (logo, app name)
+ * - DemoProvider: Demo mode toggle for mock data
+ *
+ * @see docs/RECRUITER_GUIDE.md for user documentation
+ * @see docs/ADMIN_GUIDE.md for admin documentation
+ */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { BrandingProvider } from './hooks/useBranding';
@@ -15,6 +39,8 @@ import AdminUsers from './pages/admin/Users';
 import AdminSkills from './pages/admin/Skills';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminProposals from './pages/admin/Proposals';
+import AdminSettings from './pages/admin/Settings';
+import AdminDeployment from './pages/admin/Deployment';
 import Chat from './pages/Chat';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -107,6 +133,22 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminProposals />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/settings"
+          element={
+            <AdminRoute>
+              <AdminSettings />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/deployment"
+          element={
+            <AdminRoute>
+              <AdminDeployment />
             </AdminRoute>
           }
         />

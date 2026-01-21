@@ -10,6 +10,7 @@ import type {
   CreateScrapeTaskResponse,
   UpdateScrapeTaskRequest,
 } from '@skilldex/shared';
+import { emitTaskUpdate } from '../../lib/scrape-events.js';
 
 export const v1ScrapeRoutes = new Hono();
 
@@ -375,6 +376,15 @@ v1ScrapeRoutes.put('/tasks/:id', async (c) => {
     })
     .where(eq(scrapeTasks.id, taskId))
     .returning();
+
+  // Broadcast task update via WebSocket
+  emitTaskUpdate(taskId, {
+    type: 'task_update',
+    taskId,
+    status: body.status as 'completed' | 'failed',
+    result: body.result,
+    errorMessage: body.errorMessage,
+  });
 
   return c.json(formatTask(updated));
 });

@@ -2,14 +2,14 @@
   "id": "candidate-pipeline-builder",
   "slug": "candidate-pipeline-builder",
   "name": "Candidate Pipeline Builder",
-  "description": "End-to-end candidate sourcing: scrape LinkedIn profiles from search results, add to ATS, generate personalized outreach emails, and log activity.",
+  "description": "End-to-end candidate sourcing: search LinkedIn profiles, add to ATS, generate personalized outreach emails, and log activity.",
   "category": "sourcing",
   "version": "1.0.0",
-  "requiredIntegrations": ["linky-scraper", "ats", "email"],
+  "requiredIntegrations": ["ats", "email"],
   "requiredScopes": ["candidates:read", "candidates:write", "email:draft"],
   "intentions": [
     "Source candidates from LinkedIn based on job description",
-    "Scrape LinkedIn profiles using Linky MCP",
+    "Search and extract LinkedIn profiles using dev-browser",
     "Add new candidates to ATS",
     "Generate personalized outreach emails",
     "Log sourcing activity in ATS notes"
@@ -18,7 +18,7 @@
     "build pipeline for this job",
     "source candidates for",
     "find and add candidates for",
-    "scrape LinkedIn for this role",
+    "search LinkedIn for this role",
     "build candidate list for JD"
   ],
   "defaults": {
