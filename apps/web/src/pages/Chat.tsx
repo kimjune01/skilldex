@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { MessageList, ChatInput } from '@/components/chat';
 import { chat, skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Zap, Server, Loader2 } from 'lucide-react';
+import { AlertCircle, Zap, Server, Loader2, Download } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -264,6 +264,27 @@ function ServerChat({
     }
   }, []);
 
+  const handleDownloadChat = useCallback(() => {
+    if (messages.length === 0) return;
+
+    const lines = messages.map((m) => {
+      const timestamp = new Date(m.timestamp).toLocaleString();
+      const role = m.role === 'user' ? 'You' : 'Assistant';
+      return `[${timestamp}] ${role}:\n${m.content}\n`;
+    });
+
+    const content = lines.join('\n---\n\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [messages]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)]">
       {/* Header */}
@@ -274,12 +295,23 @@ function ServerChat({
             Ask about recruiting tasks and discover skills
           </p>
         </div>
-        <ChatModeToggle
-          mode="server"
-          ephemeralAvailable={ephemeralAvailable}
-          checkingEphemeral={checkingEphemeral}
-          onToggle={onSwitchMode}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDownloadChat}
+            disabled={messages.length === 0}
+            title="Download chat"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+          <ChatModeToggle
+            mode="server"
+            ephemeralAvailable={ephemeralAvailable}
+            checkingEphemeral={checkingEphemeral}
+            onToggle={onSwitchMode}
+          />
+        </div>
       </div>
 
       {/* Error alert */}
@@ -297,6 +329,7 @@ function ServerChat({
         messages={messages}
         onRunSkill={handleRunSkill}
         onShowInstructions={handleShowInstructions}
+        onSuggestionClick={handleSend}
       />
 
       {/* Input */}
@@ -381,6 +414,27 @@ function EphemeralChat({
 
   const handleShowInstructions = handleRunSkill;
 
+  const handleDownloadChat = useCallback(() => {
+    if (messages.length === 0) return;
+
+    const lines = messages.map((m) => {
+      const timestamp = new Date(m.timestamp).toLocaleString();
+      const role = m.role === 'user' ? 'You' : 'Assistant';
+      return `[${timestamp}] ${role}:\n${m.content}\n`;
+    });
+
+    const content = lines.join('\n---\n\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [messages]);
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center">
@@ -411,12 +465,23 @@ function EphemeralChat({
             )}
           </p>
         </div>
-        <ChatModeToggle
-          mode="ephemeral"
-          ephemeralAvailable={true}
-          checkingEphemeral={checkingEphemeral}
-          onToggle={onSwitchMode}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDownloadChat}
+            disabled={messages.length === 0}
+            title="Download chat"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+          <ChatModeToggle
+            mode="ephemeral"
+            ephemeralAvailable={true}
+            checkingEphemeral={checkingEphemeral}
+            onToggle={onSwitchMode}
+          />
+        </div>
       </div>
 
       {/* Error alert */}
@@ -439,6 +504,7 @@ function EphemeralChat({
         messages={messages}
         onRunSkill={handleRunSkill}
         onShowInstructions={handleShowInstructions}
+        onSuggestionClick={send}
       />
 
       {/* Input */}
