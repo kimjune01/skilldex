@@ -15,7 +15,6 @@ import {
   Lock,
   Server,
   FileCheck,
-  Clock,
   ArrowRight,
   CheckCircle,
   XCircle,
