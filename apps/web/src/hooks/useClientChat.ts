@@ -13,6 +13,7 @@ import {
   streamChat,
   type LLMConfig,
   type ChatMessage as LLMChatMessage,
+  type LLMUserContext,
 } from '@/lib/llm-client';
 import {
   getLLMConfig,
@@ -21,6 +22,11 @@ import {
 
 export interface UseClientChatOptions {
   onActionRequest?: (action: string, params: Record<string, unknown>) => Promise<string>;
+  /**
+   * User context passed to LLM providers as metadata for attribution/abuse prevention.
+   * Anthropic uses metadata.user_id, OpenAI/Groq use the user parameter.
+   */
+  userContext?: LLMUserContext;
 }
 
 export interface UseClientChatReturn {
@@ -211,7 +217,10 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
             setIsStreaming(false);
           },
         },
-        abortControllerRef.current.signal
+        {
+          userContext: options.userContext,
+          abortSignal: abortControllerRef.current.signal,
+        }
       );
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {

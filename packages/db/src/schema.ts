@@ -399,6 +399,48 @@ export const integrationsRelations = relations(integrations, ({ one }) => ({
   }),
 }));
 
+// ============ ERROR EVENTS ============
+
+/**
+ * Error Events table - persistent error attribution for telemetry
+ *
+ * Stores standardized error codes (no PII) for debugging and trend analysis.
+ * Part of the ephemeral architecture - no raw error messages stored.
+ *
+ * @see docs/EPHEMERAL_ARCHITECTURE.md
+ */
+export const errorEvents = sqliteTable('error_events', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+
+  // Classification (no PII - standardized codes only)
+  errorCode: text('error_code').notNull(), // e.g., 'LLM_RATE_LIMITED', 'ATS_AUTH_FAILED'
+  errorCategory: text('error_category').notNull(), // 'llm', 'ats', 'skill', 'scrape', 'integration', 'system'
+
+  // Attribution context (no PII)
+  skillSlug: text('skill_slug'),
+  provider: text('provider'), // 'anthropic', 'openai', 'greenhouse', etc.
+  action: text('action'), // 'search_candidates', 'load_skill', etc.
+  httpStatus: integer('http_status'),
+
+  // Correlation
+  sessionId: text('session_id'), // Client session UUID (not user identity)
+
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const errorEventsRelations = relations(errorEvents, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [errorEvents.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [errorEvents.userId],
+    references: [users.id],
+  }),
+}));
+
 // ============ SYSTEM SETTINGS ============
 
 /**
@@ -443,3 +485,5 @@ export type NewSkillProposal = typeof skillProposals.$inferInsert;
 export type RoleSkill = typeof roleSkills.$inferSelect;
 export type ScrapeTask = typeof scrapeTasks.$inferSelect;
 export type NewScrapeTask = typeof scrapeTasks.$inferInsert;
+export type ErrorEvent = typeof errorEvents.$inferSelect;
+export type NewErrorEvent = typeof errorEvents.$inferInsert;

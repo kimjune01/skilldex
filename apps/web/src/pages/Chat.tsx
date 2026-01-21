@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { MessageList, ChatInput } from '@/components/chat';
 import { chat, skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import type { ChatMessage, ChatEvent, SkillPublic } from '@skillomatic/shared';
 import { useClientChat } from '@/hooks/useClientChat';
 import { executeAction, formatActionResult, type ActionType } from '@/lib/action-executor';
+import { useAuth } from '@/hooks/useAuth';
 
 type ChatMode = 'server' | 'ephemeral';
 
@@ -334,6 +335,8 @@ function EphemeralChat({
   onSwitchMode: () => void;
   checkingEphemeral: boolean;
 }) {
+  const { user, organizationId } = useAuth();
+
   const [instructionsDialog, setInstructionsDialog] = useState<{
     open: boolean;
     skill: SkillPublic | null;
@@ -349,8 +352,18 @@ function EphemeralChat({
     []
   );
 
+  // Build user context for LLM API calls (used for attribution/abuse prevention)
+  const userContext = useMemo(() => {
+    if (!user?.id) return undefined;
+    return {
+      userId: user.id,
+      organizationId,
+    };
+  }, [user?.id, organizationId]);
+
   const { messages, isStreaming, isLoading, error, llmConfig, send, clearError } = useClientChat({
     onActionRequest: handleActionRequest,
+    userContext,
   });
 
   const handleRunSkill = useCallback(async (skillSlug: string) => {

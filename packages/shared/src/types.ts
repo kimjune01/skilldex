@@ -364,3 +364,78 @@ export interface UpdateScrapeTaskRequest {
   result?: string;
   errorMessage?: string;
 }
+
+// ============ Error Attribution Types ============
+
+/**
+ * Standardized error codes for telemetry.
+ * These codes are safe to store (no PII) and enable easy error attribution.
+ *
+ * @see docs/EPHEMERAL_ARCHITECTURE.md
+ */
+export type ErrorCode =
+  // LLM errors
+  | 'LLM_AUTH_FAILED'
+  | 'LLM_RATE_LIMITED'
+  | 'LLM_TIMEOUT'
+  | 'LLM_INVALID_RESPONSE'
+  | 'LLM_CONTEXT_TOO_LONG'
+  | 'LLM_CONTENT_FILTERED'
+  // ATS errors
+  | 'ATS_AUTH_FAILED'
+  | 'ATS_NOT_FOUND'
+  | 'ATS_RATE_LIMITED'
+  | 'ATS_TIMEOUT'
+  | 'ATS_INVALID_REQUEST'
+  // Skill errors
+  | 'SKILL_NOT_FOUND'
+  | 'SKILL_DISABLED'
+  | 'SKILL_MISSING_CAPABILITY'
+  | 'SKILL_RENDER_FAILED'
+  // Scrape errors
+  | 'SCRAPE_TIMEOUT'
+  | 'SCRAPE_BLOCKED'
+  | 'SCRAPE_NOT_LOGGED_IN'
+  | 'SCRAPE_INVALID_URL'
+  // Integration errors
+  | 'INTEGRATION_NOT_CONNECTED'
+  | 'INTEGRATION_TOKEN_EXPIRED'
+  | 'INTEGRATION_OAUTH_FAILED'
+  // System errors
+  | 'NETWORK_ERROR'
+  | 'VALIDATION_ERROR'
+  | 'UNKNOWN_ERROR';
+
+export type ErrorCategory = 'llm' | 'ats' | 'skill' | 'scrape' | 'integration' | 'system';
+
+/**
+ * Error event for telemetry reporting.
+ * All fields are PII-safe.
+ */
+export interface ErrorEventReport {
+  errorCode: ErrorCode;
+  errorCategory: ErrorCategory;
+
+  // Attribution context (no PII)
+  skillSlug?: string;
+  provider?: string;
+  action?: string;
+  httpStatus?: number;
+
+  // Correlation
+  sessionId: string;
+
+  timestamp: number;
+}
+
+/**
+ * Helper to extract error category from error code.
+ */
+export function getErrorCategory(code: ErrorCode): ErrorCategory {
+  if (code.startsWith('LLM_')) return 'llm';
+  if (code.startsWith('ATS_')) return 'ats';
+  if (code.startsWith('SKILL_')) return 'skill';
+  if (code.startsWith('SCRAPE_')) return 'scrape';
+  if (code.startsWith('INTEGRATION_')) return 'integration';
+  return 'system';
+}

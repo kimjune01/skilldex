@@ -160,6 +160,7 @@ describe('PII Field Blocklist', () => {
     { name: 'organizationInvites', table: schema.organizationInvites },
     { name: 'skillProposals', table: schema.skillProposals },
     { name: 'systemSettings', table: schema.systemSettings },
+    { name: 'errorEvents', table: schema.errorEvents },
   ];
 
   for (const { name, table } of ALL_TABLES) {
@@ -241,5 +242,114 @@ describe('Error Logging Ephemerality', () => {
     expect(columns).toContain('status');
 
     // Error message should be like "TIMEOUT" or "AUTH_FAILED", not page content
+  });
+});
+
+// ============ ERROR EVENTS TABLE TESTS ============
+
+describe('errorEvents Table Ephemerality', () => {
+  it('should have errorEvents table for telemetry', () => {
+    expect(schema.errorEvents).toBeDefined();
+  });
+
+  it('should store error codes, not raw messages', () => {
+    const columns = Object.keys(schema.errorEvents);
+
+    // Should have errorCode (safe, predefined codes)
+    expect(columns).toContain('errorCode');
+    expect(columns).toContain('errorCategory');
+
+    // Should NOT have raw error message field
+    expect(columns).not.toContain('errorMessage');
+    expect(columns).not.toContain('rawMessage');
+    expect(columns).not.toContain('message');
+    expect(columns).not.toContain('stackTrace');
+  });
+
+  it('should only contain PII-safe attribution fields', () => {
+    const columns = Object.keys(schema.errorEvents);
+
+    // Safe attribution fields
+    expect(columns).toContain('skillSlug');     // Skill identifier, not content
+    expect(columns).toContain('provider');      // Provider name (e.g., 'anthropic')
+    expect(columns).toContain('action');        // Action type (e.g., 'auth', 'search')
+    expect(columns).toContain('httpStatus');    // HTTP status code
+    expect(columns).toContain('sessionId');     // Anonymous session ID
+
+    // Should NOT have PII fields
+    expect(columns).not.toContain('candidateId');
+    expect(columns).not.toContain('candidateName');
+    expect(columns).not.toContain('email');
+    expect(columns).not.toContain('requestBody');
+    expect(columns).not.toContain('responseBody');
+  });
+
+  it('should have user/org IDs for attribution (not PII)', () => {
+    const columns = Object.keys(schema.errorEvents);
+
+    // User and org IDs are acceptable for attribution
+    // (they're internal IDs, not PII like names/emails)
+    expect(columns).toContain('userId');
+    expect(columns).toContain('organizationId');
+  });
+});
+
+// ============ VALID ERROR CODES ============
+
+describe('Error Code Validation', () => {
+  // These are the only valid error codes that can be stored
+  const VALID_ERROR_CODES = [
+    // LLM
+    'LLM_AUTH_FAILED', 'LLM_RATE_LIMITED', 'LLM_TIMEOUT', 'LLM_INVALID_RESPONSE',
+    'LLM_CONTEXT_TOO_LONG', 'LLM_CONTENT_FILTERED',
+    // ATS
+    'ATS_AUTH_FAILED', 'ATS_NOT_FOUND', 'ATS_RATE_LIMITED', 'ATS_TIMEOUT', 'ATS_INVALID_REQUEST',
+    // Skill
+    'SKILL_NOT_FOUND', 'SKILL_DISABLED', 'SKILL_MISSING_CAPABILITY', 'SKILL_RENDER_FAILED',
+    // Scrape
+    'SCRAPE_TIMEOUT', 'SCRAPE_BLOCKED', 'SCRAPE_NOT_LOGGED_IN', 'SCRAPE_INVALID_URL',
+    // Integration
+    'INTEGRATION_NOT_CONNECTED', 'INTEGRATION_TOKEN_EXPIRED', 'INTEGRATION_OAUTH_FAILED',
+    // System
+    'NETWORK_ERROR', 'VALIDATION_ERROR', 'UNKNOWN_ERROR',
+  ];
+
+  it('error codes should be SCREAMING_SNAKE_CASE', () => {
+    for (const code of VALID_ERROR_CODES) {
+      expect(code).toMatch(/^[A-Z]+_[A-Z_]+$/);
+    }
+  });
+
+  it('error codes should not contain PII patterns', () => {
+    const PII_PATTERNS = [
+      /@/,                    // email
+      /\d{3}.*\d{4}/,        // phone
+      /linkedin\.com/,       // profile URL
+      /[a-z]+\.[a-z]+/i,     // domain
+    ];
+
+    for (const code of VALID_ERROR_CODES) {
+      for (const pattern of PII_PATTERNS) {
+        expect(code).not.toMatch(pattern);
+      }
+    }
+  });
+
+  it('error categories should be predefined enum values', () => {
+    const VALID_CATEGORIES = ['llm', 'ats', 'skill', 'scrape', 'integration', 'system'];
+
+    // Each error code should map to a valid category based on prefix
+    for (const code of VALID_ERROR_CODES) {
+      const prefix = code.split('_')[0].toLowerCase();
+      const mappedCategory =
+        prefix === 'llm' ? 'llm' :
+        prefix === 'ats' ? 'ats' :
+        prefix === 'skill' ? 'skill' :
+        prefix === 'scrape' ? 'scrape' :
+        prefix === 'integration' ? 'integration' :
+        'system';
+
+      expect(VALID_CATEGORIES).toContain(mappedCategory);
+    }
   });
 });

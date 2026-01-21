@@ -21,6 +21,15 @@ export interface LLMConfig {
   model: string;
 }
 
+/**
+ * User context for attribution in LLM API calls.
+ * This is passed as metadata to providers for tracking/abuse prevention.
+ */
+export interface LLMUserContext {
+  userId: string;
+  organizationId?: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -38,7 +47,7 @@ const PROVIDER_CONFIGS: Record<
   {
     baseUrl: string;
     headers: (apiKey: string) => Record<string, string>;
-    buildRequest: (messages: ChatMessage[], model: string) => Record<string, unknown>;
+    buildRequest: (messages: ChatMessage[], model: string, userContext?: LLMUserContext) => Record<string, unknown>;
     parseStream: (
       reader: ReadableStreamDefaultReader<Uint8Array>,
       callbacks: StreamCallbacks
@@ -53,7 +62,7 @@ const PROVIDER_CONFIGS: Record<
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     }),
-    buildRequest: (messages, model) => {
+    buildRequest: (messages, model, userContext) => {
       // Extract system message if present
       const systemMessage = messages.find((m) => m.role === 'system');
       const chatMessages = messages.filter((m) => m.role !== 'system');
@@ -67,6 +76,13 @@ const PROVIDER_CONFIGS: Record<
           role: m.role,
           content: m.content,
         })),
+        // Pass user context as metadata for attribution/abuse prevention
+        // See: https://docs.anthropic.com/en/api/messages
+        ...(userContext && {
+          metadata: {
+            user_id: userContext.userId,
+          },
+        }),
       };
     },
     parseStream: async (reader, callbacks) => {
@@ -139,13 +155,18 @@ const PROVIDER_CONFIGS: Record<
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     }),
-    buildRequest: (messages, model) => ({
+    buildRequest: (messages, model, userContext) => ({
       model,
       stream: true,
       messages: messages.map((m) => ({
         role: m.role,
         content: m.content,
       })),
+      // Pass user context for attribution/abuse prevention
+      // See: https://platform.openai.com/docs/api-reference/chat/create#chat-create-user
+      ...(userContext && {
+        user: userContext.userId,
+      }),
     }),
     parseStream: async (reader, callbacks) => {
       const decoder = new TextDecoder();
@@ -197,13 +218,18 @@ const PROVIDER_CONFIGS: Record<
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     }),
-    buildRequest: (messages, model) => ({
+    buildRequest: (messages, model, userContext) => ({
       model,
       stream: true,
       messages: messages.map((m) => ({
         role: m.role,
         content: m.content,
       })),
+      // Pass user context for attribution/abuse prevention
+      // Groq uses OpenAI-compatible format
+      ...(userContext && {
+        user: userContext.userId,
+      }),
     }),
     // Groq uses OpenAI-compatible streaming format
     parseStream: async (reader, callbacks) => {
@@ -253,12 +279,20 @@ const PROVIDER_CONFIGS: Record<
 
 /**
  * Stream a chat completion directly from the browser
+ *
+ * @param config - LLM provider configuration
+ * @param messages - Chat messages to send
+ * @param callbacks - Streaming callbacks
+ * @param options - Optional settings including user context and abort signal
  */
 export async function streamChat(
   config: LLMConfig,
   messages: ChatMessage[],
   callbacks: StreamCallbacks,
-  abortSignal?: AbortSignal
+  options?: {
+    userContext?: LLMUserContext;
+    abortSignal?: AbortSignal;
+  }
 ): Promise<void> {
   const providerConfig = PROVIDER_CONFIGS[config.provider];
 
@@ -271,8 +305,8 @@ export async function streamChat(
     const response = await fetch(providerConfig.baseUrl, {
       method: 'POST',
       headers: providerConfig.headers(config.apiKey),
-      body: JSON.stringify(providerConfig.buildRequest(messages, config.model)),
-      signal: abortSignal,
+      body: JSON.stringify(providerConfig.buildRequest(messages, config.model, options?.userContext)),
+      signal: options?.abortSignal,
     });
 
     if (!response.ok) {

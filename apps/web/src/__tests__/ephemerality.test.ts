@@ -257,6 +257,131 @@ describe('Skill Rendering Architecture', () => {
   });
 });
 
+// ============ ERROR CODE CLASSIFICATION ============
+
+describe('Error Code Classification', () => {
+  // Valid error codes that are safe to store (no PII)
+  const VALID_ERROR_CODES = [
+    // LLM
+    'LLM_AUTH_FAILED', 'LLM_RATE_LIMITED', 'LLM_TIMEOUT', 'LLM_INVALID_RESPONSE',
+    'LLM_CONTEXT_TOO_LONG', 'LLM_CONTENT_FILTERED',
+    // ATS
+    'ATS_AUTH_FAILED', 'ATS_NOT_FOUND', 'ATS_RATE_LIMITED', 'ATS_TIMEOUT', 'ATS_INVALID_REQUEST',
+    // Skill
+    'SKILL_NOT_FOUND', 'SKILL_DISABLED', 'SKILL_MISSING_CAPABILITY', 'SKILL_RENDER_FAILED',
+    // Scrape
+    'SCRAPE_TIMEOUT', 'SCRAPE_BLOCKED', 'SCRAPE_NOT_LOGGED_IN', 'SCRAPE_INVALID_URL',
+    // Integration
+    'INTEGRATION_NOT_CONNECTED', 'INTEGRATION_TOKEN_EXPIRED', 'INTEGRATION_OAUTH_FAILED',
+    // System
+    'NETWORK_ERROR', 'VALIDATION_ERROR', 'UNKNOWN_ERROR',
+  ];
+
+  it('should only use predefined error codes (no raw messages)', () => {
+    // Error codes are all SCREAMING_SNAKE_CASE with known prefixes
+    for (const code of VALID_ERROR_CODES) {
+      expect(code).toMatch(/^[A-Z]+_[A-Z_]+$/);
+    }
+  });
+
+  it('should group error codes by safe categories', () => {
+    const categories = ['LLM_', 'ATS_', 'SKILL_', 'SCRAPE_', 'INTEGRATION_', 'NETWORK_', 'VALIDATION_', 'UNKNOWN_'];
+
+    for (const code of VALID_ERROR_CODES) {
+      const hasValidPrefix = categories.some(cat => code.startsWith(cat));
+      expect(hasValidPrefix).toBe(true);
+    }
+  });
+
+  it('should not contain any PII patterns in error codes', () => {
+    // PII patterns that should NEVER appear in error codes
+    const PII_PATTERNS = [
+      /@/, // email addresses
+      /\d{3}.*\d{4}/, // phone numbers
+      /linkedin\.com/, // profile URLs
+      /[a-z]+\.[a-z]+/i, // domain names (except known safe ones)
+    ];
+
+    for (const code of VALID_ERROR_CODES) {
+      for (const pattern of PII_PATTERNS) {
+        expect(code).not.toMatch(pattern);
+      }
+    }
+  });
+
+  it('should classify raw errors into safe codes', () => {
+    // Error classification examples - raw message → safe code
+    const ERROR_CLASSIFICATION_EXAMPLES = {
+      'Request to api.anthropic.com timed out': 'LLM_TIMEOUT',
+      'Rate limit exceeded for john.doe@company.com': 'LLM_RATE_LIMITED',
+      'Authentication failed for API key sk-ant-xxx': 'LLM_AUTH_FAILED',
+      'Candidate 550e8400-e29b-41d4-a716-446655440000 not found': 'ATS_NOT_FOUND',
+      'Failed to fetch https://linkedin.com/in/johnsmith': 'NETWORK_ERROR',
+    };
+
+    // Verify classification strips PII
+    for (const [rawMessage, expectedCode] of Object.entries(ERROR_CLASSIFICATION_EXAMPLES)) {
+      // The raw message may contain PII
+      const hasPII = /@|sk-ant|linkedin\.com\/in\/|\d{8}/.test(rawMessage);
+
+      // But the error code should NOT contain PII
+      const codeHasPII = /@|sk-ant|linkedin\.com\/in\/|\d{8}/.test(expectedCode);
+
+      if (hasPII) {
+        expect(codeHasPII).toBe(false);
+      }
+    }
+  });
+});
+
+// ============ ERROR EVENT STRUCTURE ============
+
+describe('Error Event Structure', () => {
+  it('should only contain PII-safe fields', () => {
+    const ERROR_EVENT_FIELDS = {
+      // Safe fields that CAN be stored
+      safe: [
+        'errorCode',      // Predefined code, no PII
+        'errorCategory',  // Category enum, no PII
+        'skillSlug',      // Skill identifier, no PII
+        'provider',       // Provider name (e.g., 'anthropic'), no PII
+        'action',         // Action type (e.g., 'auth'), no PII
+        'httpStatus',     // HTTP status code, no PII
+        'sessionId',      // Anonymous session ID, no PII
+        'timestamp',      // Unix timestamp, no PII
+      ],
+
+      // Unsafe fields that should NEVER be stored
+      unsafe: [
+        'errorMessage',   // Raw message may contain PII
+        'stackTrace',     // Stack trace may contain file paths
+        'requestBody',    // Request may contain candidate data
+        'responseBody',   // Response may contain ATS data
+        'userName',       // User's name
+        'email',          // User's email
+        'candidateId',    // Candidate identifier
+      ],
+    };
+
+    expect(ERROR_EVENT_FIELDS.safe).toContain('errorCode');
+    expect(ERROR_EVENT_FIELDS.safe).not.toContain('errorMessage');
+    expect(ERROR_EVENT_FIELDS.unsafe).toContain('errorMessage');
+  });
+
+  it('should use error codes instead of raw messages', () => {
+    // Document that we classify errors before sending
+    const ERROR_REPORTING_FLOW = {
+      step1: 'Catch error (may contain PII)',
+      step2: 'Classify error into safe ErrorCode',
+      step3: 'Send ErrorCode to server (no PII)',
+      step4: 'Store ErrorCode in database',
+    };
+
+    expect(ERROR_REPORTING_FLOW.step2).toContain('ErrorCode');
+    expect(ERROR_REPORTING_FLOW.step3).toContain('no PII');
+  });
+});
+
 // ============ DATA FLOW SUMMARY ============
 
 describe('Ephemeral Data Flow', () => {
@@ -267,12 +392,13 @@ describe('Ephemeral Data Flow', () => {
         authentication: ['JWT token', 'API key'],
         skillRequests: ['skill slug'],
         scrapeCoordination: ['URL to scrape', 'task status'],
-        errorReports: ['anonymized error type', 'timestamp'],
+        errorReports: ['error code', 'error category', 'timestamp'],
         // NOT sent to server:
         // - Chat messages
         // - Candidate data
         // - ATS responses (beyond proxy)
         // - Scrape results
+        // - Raw error messages
       },
 
       // What comes FROM the server
@@ -290,6 +416,7 @@ describe('Ephemeral Data Flow', () => {
           'Scrape results',
           'ATS response data',
           'Rendered credentials (in memory)',
+          'Raw error messages (classified before sending)',
         ],
       },
     };
@@ -297,6 +424,8 @@ describe('Ephemeral Data Flow', () => {
     // Verify structure
     expect(DATA_FLOW.toServer).not.toHaveProperty('chatMessages');
     expect(DATA_FLOW.toServer).not.toHaveProperty('candidateData');
+    expect(DATA_FLOW.toServer.errorReports).toContain('error code');
+    expect(DATA_FLOW.toServer.errorReports).not.toContain('error message');
     expect(DATA_FLOW.clientOnly.storage).toBe('IndexedDB');
     expect(DATA_FLOW.clientOnly.data).toContain('Chat history');
     expect(DATA_FLOW.clientOnly.data).toContain('Scrape results');

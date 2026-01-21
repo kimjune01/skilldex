@@ -10,6 +10,7 @@ import {
   generateDemoJobs,
   generateDemoApplications,
 } from '../../lib/demo-data.js';
+import type { ErrorCode } from '@skillomatic/shared';
 
 export const v1AtsRoutes = new Hono();
 
@@ -18,14 +19,59 @@ v1AtsRoutes.use('*', apiKeyAuth);
 
 const MOCK_ATS_URL = process.env.MOCK_ATS_URL || 'http://localhost:3001';
 
-// Helper to log skill usage
+/**
+ * Classify a raw error into a standardized ATS error code.
+ * This strips PII from error messages before logging.
+ */
+function classifyAtsError(error: unknown): ErrorCode {
+  const message = error instanceof Error ? error.message : String(error);
+  const lowerMessage = message.toLowerCase();
+
+  // Connection/network errors
+  if (lowerMessage.includes('fetch') || lowerMessage.includes('network') ||
+      lowerMessage.includes('econnrefused') || lowerMessage.includes('connection')) {
+    return 'NETWORK_ERROR';
+  }
+
+  // Timeout errors
+  if (lowerMessage.includes('timeout') || lowerMessage.includes('timed out')) {
+    return 'ATS_TIMEOUT';
+  }
+
+  // Auth errors
+  if (lowerMessage.includes('unauthorized') || lowerMessage.includes('401') ||
+      lowerMessage.includes('authentication') || lowerMessage.includes('forbidden')) {
+    return 'ATS_AUTH_FAILED';
+  }
+
+  // Rate limiting
+  if (lowerMessage.includes('rate limit') || lowerMessage.includes('429') ||
+      lowerMessage.includes('too many requests')) {
+    return 'ATS_RATE_LIMITED';
+  }
+
+  // Not found
+  if (lowerMessage.includes('not found') || lowerMessage.includes('404')) {
+    return 'ATS_NOT_FOUND';
+  }
+
+  // Invalid request
+  if (lowerMessage.includes('invalid') || lowerMessage.includes('400') ||
+      lowerMessage.includes('bad request')) {
+    return 'ATS_INVALID_REQUEST';
+  }
+
+  return 'UNKNOWN_ERROR';
+}
+
+// Helper to log skill usage (uses error codes instead of raw messages for ephemerality)
 async function logUsage(
   userId: string,
   apiKeyId: string,
   skillSlug: string,
   status: 'success' | 'error' | 'partial',
   durationMs?: number,
-  errorMessage?: string
+  errorCode?: ErrorCode
 ) {
   try {
     const skill = await db.select().from(skills).where(eq(skills.slug, skillSlug)).limit(1);
@@ -37,7 +83,7 @@ async function logUsage(
         apiKeyId,
         status,
         durationMs,
-        errorMessage,
+        errorMessage: errorCode, // Store error code (no PII)
       });
     }
   } catch (err) {
@@ -91,7 +137,7 @@ v1AtsRoutes.get('/candidates', async (c) => {
     logUsage(user.id, user.apiKeyId, 'ats-candidate-search', 'success', Date.now() - startTime);
     return c.json(data);
   } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-search', 'error', Date.now() - startTime, String(error));
+    logUsage(user.id, user.apiKeyId, 'ats-candidate-search', 'error', Date.now() - startTime, classifyAtsError(error));
     return c.json({ error: { message: 'Failed to fetch candidates from ATS' } }, 502);
   }
 });
@@ -118,7 +164,7 @@ v1AtsRoutes.get('/candidates/:id', async (c) => {
     logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
     return c.json(data);
   } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, String(error));
+    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
     return c.json({ error: { message: 'Failed to fetch candidate from ATS' } }, 502);
   }
 });
@@ -152,7 +198,7 @@ v1AtsRoutes.post('/candidates', async (c) => {
     logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
     return c.json(data, 201);
   } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, String(error));
+    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
     return c.json({ error: { message: 'Failed to create candidate in ATS' } }, 502);
   }
 });
@@ -185,7 +231,7 @@ v1AtsRoutes.put('/candidates/:id', async (c) => {
     logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
     return c.json(data);
   } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, String(error));
+    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
     return c.json({ error: { message: 'Failed to update candidate in ATS' } }, 502);
   }
 });

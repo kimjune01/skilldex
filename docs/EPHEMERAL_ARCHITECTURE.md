@@ -20,6 +20,7 @@ Migrate Skillomatic to a fully ephemeral architecture where no PII passes throug
 | **Phase 3** | ✅ Done | Client-side scrape cache (IndexedDB) |
 | **Phase 4** | ✅ Done | Error reporting infrastructure |
 | **Phase 5** | ✅ Done | Cleanup & hardening |
+| **Phase 6** | ✅ Done | Error attribution telemetry |
 
 ### Files Created
 
@@ -32,7 +33,7 @@ Migrate Skillomatic to a fully ephemeral architecture where no PII passes throug
 | `apps/web/src/lib/skills-client.ts` | Skill fetching and system prompt building |
 | `apps/web/src/lib/action-executor.ts` | Client-side action routing and execution |
 | `apps/web/src/lib/scrape-cache.ts` | IndexedDB cache with BroadcastChannel sync |
-| `apps/web/src/lib/error-reporter.ts` | Anonymized error reporting with PII stripping |
+| `apps/web/src/lib/error-reporter.ts` | Error classification and reporting (maps raw errors to safe codes) |
 | `apps/web/src/hooks/useClientChat.ts` | React hook for ephemeral chat mode |
 | `apps/web/src/hooks/useScrapeCache.ts` | React hook for scrape cache integration |
 
@@ -40,13 +41,15 @@ Migrate Skillomatic to a fully ephemeral architecture where no PII passes throug
 
 | File | Changes |
 |------|---------|
-| `packages/db/src/schema.ts` | Added `llmProvider`, `llmApiKey`, `llmModel`, `atsProvider`, `atsBaseUrl` to organizations |
+| `packages/db/src/schema.ts` | Added `llmProvider`, `llmApiKey`, `llmModel`, `atsProvider`, `atsBaseUrl` to organizations; Added `errorEvents` table |
+| `packages/shared/src/types.ts` | Added `ErrorCode`, `ErrorCategory`, `ErrorEventReport` types |
 | `apps/api/src/routes/integrations.ts` | Real OAuth flow with Nango |
 | `apps/api/src/routes/skills.ts` | Added `/config` and `/:slug/rendered` endpoints |
 | `apps/api/src/app.ts` | Registered error reporting routes |
 | `apps/web/src/pages/Integrations.tsx` | Real OAuth UI with sub-provider selection |
 | `apps/web/src/pages/Chat.tsx` | Server/Ephemeral mode toggle |
 | `apps/web/src/lib/api.ts` | Added skill rendering and integration methods |
+| `apps/api/src/routes/v1/ats.ts` | Uses error codes instead of raw messages in usage logs |
 
 ### What's Working
 
@@ -56,7 +59,8 @@ Migrate Skillomatic to a fully ephemeral architecture where no PII passes throug
 - **Client-side LLM**: Direct streaming to Anthropic, OpenAI, or Groq from browser
 - **Action Execution**: Client-side routing for `load_skill`, ATS actions, scrape actions
 - **Scrape Cache**: IndexedDB storage with 24-hour TTL and multi-tab sync via BroadcastChannel
-- **Error Reporting**: Anonymized errors sent to server for monitoring
+- **Error Reporting**: Errors classified into safe codes (no PII) before sending to server
+- **Error Attribution**: Standardized error codes (`ErrorCode` type) stored in `errorEvents` table with attribution metadata
 
 ### Not Yet Implemented
 
@@ -583,17 +587,26 @@ Nango is configured but only has placeholder implementation. Complete this befor
 
 ### Phase 4: Error Reporting & Admin Skills
 
-1. Create error reporting infrastructure
-   - Add `errorEvents` table: `id, orgId, userId, errorType, timestamp, metadata (JSON, no PII)`
-   - Add `POST /api/errors` endpoint for client to report errors (anonymized)
-   - Rate limit error reporting to prevent spam
+1. ✅ Create error reporting infrastructure
+   - `errorEvents` table stores standardized error codes (no PII)
+   - `POST /api/v1/errors` endpoint receives classified errors
+   - Server validates error codes against allowlist before storing
 
-2. Client-side error UX
+2. ✅ Error classification (client-side)
+   - `classifyError()` function maps raw errors to safe `ErrorCode` values
+   - Error codes are SCREAMING_SNAKE_CASE (e.g., `LLM_RATE_LIMITED`, `ATS_AUTH_FAILED`)
+   - Categories: `llm`, `ats`, `skill`, `scrape`, `integration`, `system`
+
+3. ✅ Attribution without PII
+   - `errorEvents` stores: `errorCode`, `errorCategory`, `skillSlug`, `provider`, `action`, `httpStatus`, `sessionId`
+   - Does NOT store: raw error message, stack trace, request/response bodies, candidate data
+
+4. Client-side error UX
    - Toast notifications for transient errors (network, rate limit)
    - Modal for auth errors with "Contact your admin" CTA
-   - "Report issue" button in chat sends anonymized error event
+   - "Report issue" button in chat sends classified error code
 
-3. Admin query skills (org admins query their data via chat)
+5. Admin query skills (org admins query their data via chat)
 
    **`org-analytics`** - Query org usage and errors
    ```
@@ -631,7 +644,7 @@ Nango is configured but only has placeholder implementation. Complete this befor
    - "Who uses the linkedin-lookup skill?"
    ```
 
-4. Superadmin query skills (superadmins query cross-org data)
+6. Superadmin query skills (superadmins query cross-org data)
 
    **`platform-analytics`** - Cross-org metrics
    ```
@@ -800,7 +813,13 @@ WS /ws/scrape                # Coordination (modified to forward results to clie
      2. Org admin sees aggregated errors in dashboard (e.g., "5 users hit LLM_AUTH_FAILED today")
      3. Org admin can escalate to superadmin via support ticket
      4. Superadmin sees cross-org error trends for systemic issues
-   - Error types: `LLM_AUTH_FAILED`, `LLM_RATE_LIMITED`, `ATS_AUTH_FAILED`, `ATS_TIMEOUT`, `SKILL_RENDER_FAILED`, `NETWORK_ERROR`
+   - Error types (all `ErrorCode` values):
+     - LLM: `LLM_AUTH_FAILED`, `LLM_RATE_LIMITED`, `LLM_TIMEOUT`, `LLM_INVALID_RESPONSE`, `LLM_CONTEXT_TOO_LONG`, `LLM_CONTENT_FILTERED`
+     - ATS: `ATS_AUTH_FAILED`, `ATS_NOT_FOUND`, `ATS_RATE_LIMITED`, `ATS_TIMEOUT`, `ATS_INVALID_REQUEST`
+     - Skill: `SKILL_NOT_FOUND`, `SKILL_DISABLED`, `SKILL_MISSING_CAPABILITY`, `SKILL_RENDER_FAILED`
+     - Scrape: `SCRAPE_TIMEOUT`, `SCRAPE_BLOCKED`, `SCRAPE_NOT_LOGGED_IN`, `SCRAPE_INVALID_URL`
+     - Integration: `INTEGRATION_NOT_CONNECTED`, `INTEGRATION_TOKEN_EXPIRED`, `INTEGRATION_OAUTH_FAILED`
+     - System: `NETWORK_ERROR`, `VALIDATION_ERROR`, `UNKNOWN_ERROR`
 
 5. **Skill template syntax**: `{{VAR}}`
    - Familiar (Handlebars-like)
