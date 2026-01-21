@@ -35,9 +35,241 @@ User Browser ──────────────────► LLM Provi
 - Scrape results stored client-side
 - Minimal compliance burden
 
-## Core Concept: Rendered Skills
+## Core Concept: Skill Rendering with Capability Gating
 
-Skills are markdown templates with placeholders for sensitive values. Server renders them with org-specific secrets before sending to client.
+Skills are individual objects in the database, each with a specific purpose. When a user requests a skill, the server:
+
+1. **Checks capability requirements** - Does user have required integrations?
+2. **Renders the skill** - Replaces `{{VAR}}` placeholders with actual credentials
+3. **Returns the rendered skill** - Ready to use with embedded secrets
+
+### Why This Model?
+
+1. **Skills as objects** - Each skill is a row in DB, can be enabled/disabled, assigned to roles, versioned
+2. **Progressive disclosure** - Metadata in system prompt, full instructions loaded on demand
+3. **Capability gating** - Fail fast if user lacks required integrations
+4. **Fresh credentials** - OAuth tokens fetched at render time, not stale
+
+### Capability Profile (for Gating)
+
+The capability profile determines what a user has access to:
+
+```typescript
+interface CapabilityProfile {
+  // Core (always available)
+  skilldexApiKey: string;
+  skilldexApiUrl: string;
+
+  // LLM (required for chat)
+  llm?: {
+    provider: 'anthropic' | 'openai' | 'groq';
+    apiKey: string;
+    model: string;
+  };
+
+  // ATS (optional)
+  ats?: {
+    provider: 'greenhouse' | 'lever' | 'ashby';
+    token: string;
+    baseUrl: string;
+  };
+
+  // LinkedIn (optional - extension-based)
+  linkedin?: {
+    enabled: true;  // Just needs extension, no token
+  };
+
+  // Calendar (optional)
+  calendar?: {
+    ical?: {
+      url: string;           // Validated free/busy feed
+      provider: 'google' | 'outlook';
+    };
+    calendly?: {
+      token: string;         // OAuth token
+      userUri: string;       // Calendly user URI
+      schedulingUrl: string; // Base booking URL
+    };
+  };
+
+  // Email (mailto always available, read access optional)
+  email?: {
+    mailto: true;  // Always available
+    read?: {       // Optional OAuth for reading
+      provider: 'gmail' | 'outlook';
+      token: string;
+    };
+  };
+}
+```
+
+### Skill Rendering Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  User/LLM requests: GET /api/skills/linkedin-lookup                 │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  1. Load skill from DB                                               │
+│     - Get metadata, instructions, requiredIntegrations              │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  2. Check capability requirements                                    │
+│     - skill.requiredIntegrations = ['ats', 'linkedin']              │
+│     - Does user have these? If not → 400 error with clear message   │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  3. Build capability profile                                         │
+│     - Fetch fresh OAuth tokens from Nango                           │
+│     - Get org's LLM key, ATS config                                 │
+│     - Get user's iCal URL, Calendly settings                        │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  4. Render skill                                                     │
+│     - Replace {{ATS_TOKEN}} → "ghp_abc123..."                       │
+│     - Replace {{SKILLDEX_API_KEY}} → "sk_live_user123..."           │
+│     - etc.                                                           │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  5. Return rendered skill                                            │
+│     - Full instructions with embedded credentials                   │
+│     - Ready to execute                                               │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Capability Gating Example
+
+```typescript
+async function loadAndRenderSkill(slug: string, userId: string): Promise<string> {
+  // 1. Load skill
+  const skill = await getSkillBySlug(slug);
+  if (!skill) throw new NotFoundError(`Skill '${slug}' not found`);
+
+  // 2. Build capability profile
+  const profile = await buildCapabilityProfile(userId);
+
+  // 3. Check requirements
+  const missing = checkRequirements(skill.requiredIntegrations, profile);
+  if (missing.length > 0) {
+    throw new BadRequestError(
+      `This skill requires: ${missing.join(', ')}. ` +
+      `Please connect these integrations in Settings.`
+    );
+  }
+
+  // 4. Render and return
+  return renderSkill(skill.instructions, profile);
+}
+
+function checkRequirements(required: string[], profile: CapabilityProfile): string[] {
+  const missing: string[] = [];
+
+  for (const req of required) {
+    switch (req) {
+      case 'ats':
+        if (!profile.ats) missing.push('ATS (Greenhouse, Lever, etc.)');
+        break;
+      case 'calendly':
+        if (!profile.calendar?.calendly) missing.push('Calendly');
+        break;
+      case 'calendar':
+        if (!profile.calendar?.ical && !profile.calendar?.calendly)
+          missing.push('Calendar (iCal or Calendly)');
+        break;
+      case 'email-read':
+        if (!profile.email?.read) missing.push('Email (Gmail or Outlook)');
+        break;
+      // linkedin always available (extension-based)
+    }
+  }
+
+  return missing;
+}
+```
+
+### How It Works Across Interfaces
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Skilldex API                                      │
+│                                                                      │
+│  GET /api/skills/:slug                                              │
+│  - Checks user has required integrations                            │
+│  - Fetches fresh OAuth tokens from Nango                            │
+│  - Renders skill with embedded credentials                          │
+│  - Returns ready-to-use skill                                        │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              │ Same endpoint, same behavior
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+      ┌──────────────┐                ┌──────────────┐
+      │     Web      │                │   Desktop    │
+      │  Interface   │                │ Claude Code  │
+      │              │                │              │
+      │ LLM calls    │                │ SKILL.md     │
+      │ load_skill   │                │ calls API    │
+      │ action       │                │ via curl     │
+      └──────────────┘                └──────────────┘
+```
+
+### Desktop: Individual Skills
+
+Each skill can be a thin wrapper that fetches from API:
+
+**~/.claude/commands/linkedin-lookup.md:**
+```markdown
+---
+name: linkedin-lookup
+description: Find candidates on LinkedIn
+---
+
+# LinkedIn Lookup
+
+Fetch your rendered skill:
+
+\`\`\`bash
+curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  "${SKILLDEX_API_URL:-https://app.skilldex.io}/api/skills/linkedin-lookup"
+\`\`\`
+
+Follow the instructions in the response.
+```
+
+Or a single generic skill that takes a slug:
+
+**~/.claude/commands/skilldex.md:**
+```markdown
+---
+name: skilldex
+description: Load any Skilldex skill by name
+---
+
+# Skilldex
+
+Usage: /skilldex <skill-name>
+
+Fetch the requested skill:
+
+\`\`\`bash
+curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
+  "${SKILLDEX_API_URL:-https://app.skilldex.io}/api/skills/$1"
+\`\`\`
+
+If the skill requires integrations you haven't connected, you'll get an error
+explaining what to set up.
+```
 
 ### Skill Template (stored in DB)
 ```markdown
