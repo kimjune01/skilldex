@@ -8,12 +8,13 @@
  * Supports:
  * - Anthropic (Claude)
  * - OpenAI (GPT-4)
+ * - Google (Gemini)
  * - Groq (Llama)
  *
  * @see docs/EPHEMERAL_ARCHITECTURE.md
  */
 
-export type LLMProvider = 'anthropic' | 'openai' | 'groq';
+export type LLMProvider = 'anthropic' | 'openai' | 'google' | 'groq';
 
 export interface LLMConfig {
   provider: LLMProvider;
@@ -212,6 +213,98 @@ const PROVIDER_CONFIGS: Record<
     },
   },
 
+  google: {
+    // Note: baseUrl is a template - model is inserted dynamically in streamChat
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
+    headers: (apiKey) => ({
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    }),
+    buildRequest: (messages, _model, _userContext) => {
+      // Extract system message if present
+      const systemMessage = messages.find((m) => m.role === 'system');
+      const chatMessages = messages.filter((m) => m.role !== 'system');
+
+      // Convert to Gemini format: 'assistant' -> 'model'
+      const contents = chatMessages.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      return {
+        contents,
+        // System instruction is separate in Gemini
+        ...(systemMessage && {
+          systemInstruction: {
+            parts: [{ text: systemMessage.content }],
+          },
+        }),
+        generationConfig: {
+          maxOutputTokens: 4096,
+        },
+        // Note: Gemini doesn't have a user attribution field like Anthropic/OpenAI
+      };
+    },
+    parseStream: async (reader, callbacks) => {
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullResponse = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+            const data = trimmed.slice(6);
+            if (data === '[DONE]') {
+              callbacks.onComplete(fullResponse);
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              // Gemini returns: { candidates: [{ content: { parts: [{ text: "..." }] } }] }
+              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                fullResponse += text;
+                callbacks.onToken(text);
+              }
+
+              // Check for finish reason
+              if (parsed.candidates?.[0]?.finishReason) {
+                callbacks.onComplete(fullResponse);
+                return;
+              }
+
+              // Handle errors
+              if (parsed.error) {
+                throw new Error(parsed.error.message || 'Unknown Gemini error');
+              }
+            } catch (parseError) {
+              // Skip malformed JSON unless it's an actual error
+              if (parseError instanceof SyntaxError) {
+                continue;
+              }
+              throw parseError;
+            }
+          }
+        }
+
+        callbacks.onComplete(fullResponse);
+      } catch (error) {
+        callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+      }
+    },
+  },
+
   groq: {
     baseUrl: 'https://api.groq.com/openai/v1/chat/completions',
     headers: (apiKey) => ({
@@ -302,7 +395,12 @@ export async function streamChat(
   }
 
   try {
-    const response = await fetch(providerConfig.baseUrl, {
+    // Google Gemini uses model in URL path, others use it in request body
+    const url = config.provider === 'google'
+      ? `${providerConfig.baseUrl}/${config.model}:streamGenerateContent?alt=sse`
+      : providerConfig.baseUrl;
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: providerConfig.headers(config.apiKey),
       body: JSON.stringify(providerConfig.buildRequest(messages, config.model, options?.userContext)),
@@ -375,6 +473,8 @@ function getDefaultModel(provider: LLMProvider): string {
       return 'claude-sonnet-4-20250514';
     case 'openai':
       return 'gpt-4o';
+    case 'google':
+      return 'gemini-1.5-flash';
     case 'groq':
       return 'llama-3.1-8b-instant';
     default:
@@ -388,6 +488,6 @@ function getDefaultModel(provider: LLMProvider): string {
 export function isLLMConfigValid(config: LLMConfig | null): config is LLMConfig {
   if (!config) return false;
   if (!config.apiKey || config.apiKey.includes('NOT_CONFIGURED')) return false;
-  if (!['anthropic', 'openai', 'groq'].includes(config.provider)) return false;
+  if (!['anthropic', 'openai', 'google', 'groq'].includes(config.provider)) return false;
   return true;
 }
