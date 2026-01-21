@@ -148,13 +148,12 @@ export default function Layout() {
                   <Icon className="h-4 w-4" />
                 </div>
                 <span className="tracking-wide">{item.name}</span>
-                {showSetupBadge ? (
-                  <Badge className="ml-auto text-[9px] px-1.5 py-0 bg-amber-500 text-white border-0 font-bold">
-                    Setup
-                  </Badge>
-                ) : isActive ? (
+                {showSetupBadge && (
+                  <span className="ml-auto h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+                )}
+                {isActive && !showSetupBadge && (
                   <Circle className="ml-auto h-2 w-2 fill-current" />
-                ) : null}
+                )}
               </Link>
             );
           })}
