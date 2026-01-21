@@ -25,6 +25,8 @@ export default $config({
     const tursoToken = new sst.Secret("TursoAuthToken");
     const nangoSecretKey = new sst.Secret("NangoSecretKey");
     const nangoPublicKey = new sst.Secret("NangoPublicKey");
+    const googleClientId = new sst.Secret("GoogleClientId");
+    const googleClientSecret = new sst.Secret("GoogleClientSecret");
 
     // API - Hono on Lambda
     const api = new sst.aws.Function("Api", {
@@ -37,13 +39,16 @@ export default $config({
         // Install native deps for Lambda (Linux x64)
         install: ["@libsql/linux-x64-gnu", "@libsql/client", "better-sqlite3"],
       },
-      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey],
+      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey, googleClientId, googleClientSecret],
       environment: {
         NODE_ENV: "production",
         NANGO_HOST: "https://api.nango.dev",
         // Set DB env vars directly so they're available at module load time
         TURSO_DATABASE_URL: tursoUrl.value,
         TURSO_AUTH_TOKEN: tursoToken.value,
+        // Google OAuth
+        GOOGLE_CLIENT_ID: googleClientId.value,
+        GOOGLE_CLIENT_SECRET: googleClientSecret.value,
       },
     });
 

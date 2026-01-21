@@ -20,6 +20,7 @@ interface AuthContextType {
   organizationId: string | undefined;
   organizationName: string | undefined;
   login: (email: string, password: string) => Promise<UserPublic>;
+  loginWithToken: (token: string) => Promise<UserPublic>;
   logout: () => Promise<void>;
 }
 
@@ -51,6 +52,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return response.user;
   };
 
+  const loginWithToken = async (token: string): Promise<UserPublic> => {
+    // Store the token first
+    localStorage.setItem('token', token);
+    // Then fetch user data
+    const user = await auth.me();
+    setUser(user);
+    return user;
+  };
+
   const logout = async () => {
     await auth.logout();
     setUser(null);
@@ -69,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organizationId: user?.organizationId,
         organizationName: user?.organizationName,
         login,
+        loginWithToken,
         logout,
       }}
     >
