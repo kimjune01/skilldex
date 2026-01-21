@@ -35,28 +35,28 @@ const securityFeatures = [
     title: 'Ephemeral by Design',
     description:
       'We process data, we don\'t hoard it. Chat messages aren\'t stored. Candidate data passes through—never persists. When you disconnect, the data\'s gone.',
-    highlight: 'Zero data retention',
+    highlight: 'Minimal data retention',
   },
   {
     icon: Lock,
     title: 'Your Credentials, Your Control',
     description:
-      'OAuth tokens are encrypted at rest with AES-256. We never see plaintext credentials. Revoke access anytime from your identity provider.',
-    highlight: 'AES-256 encryption',
+      'OAuth tokens are managed via Nango and encrypted at rest. We never see plaintext credentials. Revoke access anytime from your ATS admin panel.',
+    highlight: 'Encrypted tokens',
   },
   {
     icon: Eye,
-    title: 'Full Audit Trail',
+    title: 'Usage Logging',
     description:
-      'Every API call, every skill execution, every integration access—logged and exportable. Know exactly what happened and when.',
-    highlight: 'Complete visibility',
+      'API calls and skill executions are logged. Know what tools were used and when.',
+    highlight: 'Activity tracking',
   },
   {
     icon: Unplug,
     title: 'Clean Offboarding',
     description:
-      'Delete a user, and their data goes with them. OAuth tokens revoked, API keys invalidated, audit logs retained per your policy. No zombie accounts.',
-    highlight: 'One-click removal',
+      'Delete a user, and their data goes with them. OAuth tokens revoked, API keys invalidated. No zombie accounts.',
+    highlight: 'Simple removal',
   },
 ];
 
@@ -100,27 +100,27 @@ const commonConcerns = [
   {
     question: 'Where does our ATS data go?',
     answer:
-      'Nowhere permanent. We query your ATS via OAuth, pass results to the AI model for processing, and return the response. We don\'t store candidate data, search results, or chat history.',
+      'Nowhere permanent. We query your ATS via OAuth, pass results to the AI model for processing, and return the response. We don\'t store candidate data or search results.',
   },
   {
     question: 'What happens when we offboard someone?',
     answer:
-      'Admin deletes user → OAuth tokens are revoked → API keys are invalidated → User data is purged. The whole process is immediate and irreversible. No waiting, no support tickets.',
+      'Admin deletes user → OAuth tokens are revoked → API keys are invalidated → User data is deleted from our database.',
   },
   {
     question: 'Can you access our data without us knowing?',
     answer:
-      'No. Every API call is logged in your audit trail. We don\'t have a "backdoor" to your ATS. OAuth scopes are minimal and visible. You can revoke access from your ATS admin panel anytime.',
+      'API calls are logged. OAuth scopes are minimal and visible. You can revoke access from your ATS admin panel anytime.',
   },
   {
     question: 'What if Skillomatic shuts down?',
     answer:
-      'Your data isn\'t here to begin with. Disconnect your OAuth integrations, delete your API keys, and you\'re done. There\'s no data migration because we don\'t hold your data hostage.',
+      'Your candidate data isn\'t stored here. Disconnect your OAuth integrations, delete your API keys, and you\'re done.',
   },
   {
-    question: 'How do we know you\'re actually ephemeral?',
+    question: 'How do we know this is true?',
     answer:
-      'Request a source code audit—we\'ll give you full access to review the codebase yourself. We\'re happy to walk through our data flow with your security team. Skepticism is welcome—we built this for skeptics.',
+      'Request a source code audit—I\'ll give you full access to review the codebase yourself.',
   },
 ];
 
@@ -149,7 +149,7 @@ export default function ForIT() {
               to="/for-recruiters"
               className="px-4 py-2 text-sm font-bold text-[hsl(220_20%_40%)] hover:text-primary transition-colors"
             >
-              Use Cases
+              For Recruiters
             </Link>
             <Link
               to="/login"
@@ -336,10 +336,10 @@ export default function ForIT() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
-              Compliance & Enterprise Features
+              Features
             </h2>
             <p className="text-lg text-[hsl(220_15%_45%)]">
-              Everything you need to pass security review
+              What's available today and what's coming
             </p>
           </div>
 
@@ -381,10 +381,10 @@ export default function ForIT() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
-              Questions Your Security Team Will Ask
+              Common Questions
             </h2>
             <p className="text-lg text-[hsl(220_15%_45%)]">
-              We've been through enough security reviews to anticipate these
+              What you might want to know before adopting Skillomatic
             </p>
           </div>
 
@@ -415,20 +415,20 @@ export default function ForIT() {
             <div className="card-robot rounded-xl p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Database className="h-6 w-6 text-primary" />
-                <h3 className="font-black text-[hsl(220_30%_20%)]">Data Storage</h3>
+                <h3 className="font-black text-[hsl(220_30%_20%)]">What We Store</h3>
               </div>
               <ul className="space-y-2 text-[hsl(220_15%_45%)] text-sm">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  User accounts & preferences only
+                  User accounts & preferences
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  Encrypted OAuth tokens (AES-256-GCM)
+                  OAuth tokens (via Nango, encrypted)
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  Audit logs (configurable retention)
+                  Usage logs
                 </li>
                 <li className="flex items-start gap-2">
                   <XCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
@@ -453,27 +453,23 @@ export default function ForIT() {
               <ul className="space-y-2 text-[hsl(220_15%_45%)] text-sm">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  AWS US regions (configurable)
+                  AWS us-west-2 (Oregon)
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  TLS 1.3 for all connections
+                  HTTPS/TLS for all connections
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  WAF and DDoS protection
+                  Serverless (AWS Lambda)
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  Serverless (no persistent instances)
+                  PostgreSQL database (Neon)
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  Automated security patching
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  99.9% uptime SLA
+                  Static frontend (CloudFront)
                 </li>
               </ul>
             </div>
