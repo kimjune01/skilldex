@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
 import { skills } from '@skillomatic/db/schema';
-import { eq } from 'drizzle-orm';
-import { jwtAuth } from '../middleware/auth.js';
+import { eq, or } from 'drizzle-orm';
+import { combinedAuth } from '../middleware/combinedAuth.js';
 import type { SkillPublic } from '@skillomatic/shared';
 import {
   buildCapabilityProfile,
@@ -102,8 +102,8 @@ skillsRoutes.get('/:slug/download', async (c) => {
   });
 });
 
-// Protected routes (require JWT auth)
-skillsRoutes.use('*', jwtAuth);
+// Protected routes (require JWT or API key auth)
+skillsRoutes.use('*', combinedAuth);
 
 // Helper to convert DB skill to public format (now uses DB fields instead of filesystem)
 function toSkillPublic(skill: typeof skills.$inferSelect): SkillPublic {
@@ -122,10 +122,41 @@ function toSkillPublic(skill: typeof skills.$inferSelect): SkillPublic {
   };
 }
 
-// GET /api/skills - List all skills
+// GET /api/skills - List skills available to the authenticated user
+// Returns: global skills + skills for user's organization (if any)
 skillsRoutes.get('/', async (c) => {
-  const allSkills = await db.select().from(skills);
-  const publicSkills = allSkills.map(toSkillPublic);
+  const user = c.get('user');
+  const organizationId = user.organizationId;
+
+  // Build filter: global skills OR skills for user's organization
+  // Also filter out disabled skills for non-admins
+  let allSkills;
+
+  if (organizationId) {
+    // User belongs to an organization: show global + org-specific skills
+    allSkills = await db
+      .select()
+      .from(skills)
+      .where(
+        or(
+          eq(skills.isGlobal, true),
+          eq(skills.organizationId, organizationId)
+        )
+      );
+  } else {
+    // No organization: show only global skills
+    allSkills = await db
+      .select()
+      .from(skills)
+      .where(eq(skills.isGlobal, true));
+  }
+
+  // Non-admins only see enabled skills
+  const filteredSkills = user.isAdmin
+    ? allSkills
+    : allSkills.filter(s => s.isEnabled);
+
+  const publicSkills = filteredSkills.map(toSkillPublic);
 
   return c.json({ data: publicSkills });
 });
@@ -156,21 +187,46 @@ skillsRoutes.get('/config', async (c) => {
   });
 });
 
+// Helper: Check if user can access a skill
+function canAccessSkill(
+  skill: typeof skills.$inferSelect,
+  user: { organizationId?: string | null; isAdmin?: boolean }
+): boolean {
+  // Global skills are accessible to everyone
+  if (skill.isGlobal) return true;
+
+  // Org-specific skills require matching organization
+  if (skill.organizationId && user.organizationId === skill.organizationId) return true;
+
+  return false;
+}
+
 // GET /api/skills/:slug - Get skill by slug
 skillsRoutes.get('/:slug', async (c) => {
   const slug = c.req.param('slug');
+  const user = c.get('user');
 
-  const skill = await db
+  const [skill] = await db
     .select()
     .from(skills)
     .where(eq(skills.slug, slug))
     .limit(1);
 
-  if (skill.length === 0) {
+  if (!skill) {
     return c.json({ error: { message: 'Skill not found' } }, 404);
   }
 
-  return c.json({ data: toSkillPublic(skill[0]) });
+  // Check access
+  if (!canAccessSkill(skill, user)) {
+    return c.json({ error: { message: 'Skill not found' } }, 404);
+  }
+
+  // Non-admins can't see disabled skills
+  if (!skill.isEnabled && !user.isAdmin) {
+    return c.json({ error: { message: 'Skill not found' } }, 404);
+  }
+
+  return c.json({ data: toSkillPublic(skill) });
 });
 
 // GET /api/skills/:slug/rendered - Get skill with rendered credentials (ephemeral architecture)
@@ -206,7 +262,12 @@ skillsRoutes.get('/:slug/rendered', async (c) => {
     return c.json({ error: { message: 'Skill not found' } }, 404);
   }
 
-  if (!skill.isEnabled) {
+  // Check access
+  if (!canAccessSkill(skill, user)) {
+    return c.json({ error: { message: 'Skill not found' } }, 404);
+  }
+
+  if (!skill.isEnabled && !user.isAdmin) {
     return c.json({ error: { message: 'Skill is disabled' } }, 403);
   }
 

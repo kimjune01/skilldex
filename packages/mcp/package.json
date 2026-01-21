@@ -1,0 +1,31 @@
+{
+  "name": "@skillomatic/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Skillomatic - exposes recruiting skills to Claude Desktop and other MCP clients",
+  "type": "module",
+  "bin": {
+    "skillomatic-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.32",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^4.0.17"
+  },
+  "peerDependencies": {
+    "zod": "^3.23.0"
+  }
+}
