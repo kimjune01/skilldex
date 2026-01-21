@@ -26,10 +26,18 @@ export default function AdminChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingSkills, setExistingSkills] = useState<SkillPublic[]>([]);
+  const [isLoadingSkills, setIsLoadingSkills] = useState(true);
 
   // Fetch existing skills on mount
   useEffect(() => {
-    skillsApi.list().then(setExistingSkills).catch(console.error);
+    skillsApi
+      .list()
+      .then(setExistingSkills)
+      .catch((err) => {
+        console.error('Failed to load skills:', err);
+        setError('Failed to load existing skills');
+      })
+      .finally(() => setIsLoadingSkills(false));
   }, []);
 
   const handleSend = useCallback(
@@ -65,10 +73,11 @@ export default function AdminChat() {
         // - systemContext for skill creation guidance
         const simulatedResponse = generateMetaResponse(content, existingSkills);
 
-        // Simulate streaming
-        for (let i = 0; i < simulatedResponse.length; i += 3) {
-          await new Promise((resolve) => setTimeout(resolve, 10));
-          const chunk = simulatedResponse.slice(i, i + 3);
+        // Simulate streaming with larger chunks for efficiency
+        const chunkSize = 20;
+        for (let i = 0; i < simulatedResponse.length; i += chunkSize) {
+          await new Promise((resolve) => setTimeout(resolve, 15));
+          const chunk = simulatedResponse.slice(i, i + chunkSize);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId ? { ...m, content: m.content + chunk } : m
@@ -82,7 +91,7 @@ export default function AdminChat() {
         setIsStreaming(false);
       }
     },
-    [messages, existingSkills]
+    [existingSkills]
   );
 
   const handleDownloadChat = useCallback(() => {
@@ -187,8 +196,8 @@ export default function AdminChat() {
       {/* Input */}
       <ChatInput
         onSend={handleSend}
-        disabled={isStreaming}
-        placeholder="Describe the skill you want to create..."
+        disabled={isStreaming || isLoadingSkills}
+        placeholder={isLoadingSkills ? 'Loading skills...' : 'Describe the skill you want to create...'}
       />
     </div>
   );

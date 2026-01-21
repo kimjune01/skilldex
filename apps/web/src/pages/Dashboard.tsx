@@ -131,7 +131,7 @@ export default function Dashboard() {
 
     const completed = steps.filter(s => s.done).length;
     return { steps, completed, total: steps.length, isFullyOnboarded: isComplete, allPreviousStepsDone };
-  }, [apiKeyList, connectedIntegrations, enabledSkills, deploymentSettings, onboardingStatus]);
+  }, [apiKeyList, connectedIntegrations, deploymentSettings, onboardingStatus]);
 
   // Celebrate only when onboarding is fully complete
   useEffect(() => {
