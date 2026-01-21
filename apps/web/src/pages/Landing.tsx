@@ -5,44 +5,44 @@
  * Shows features, pricing, and call-to-action for login/signup.
  */
 import { Link } from 'react-router-dom';
-import { Bot, Zap, Plug, MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Terminal } from 'lucide-react';
+import { Bot, Zap, Plug, MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Monitor } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const features = [
   {
     icon: Zap,
     title: 'Instant Skills',
-    description: 'Drop pre-built recruiting skills into Claude Code. Search candidates, sync with your ATS, send emails.',
+    description: 'Pre-built recruiting automations ready to use. Search candidates, sync with your ATS, send personalized outreach.',
     color: 'text-cyan-500',
     bgColor: 'bg-cyan-500',
   },
   {
     icon: Plug,
     title: 'One-Click Integrations',
-    description: 'Connect Greenhouse, Lever, Gmail, Outlook, and more. OAuth setup takes 30 seconds.',
+    description: 'Connect Greenhouse, Lever, Gmail, Outlook, and more. Simple OAuth setup in seconds.',
     color: 'text-green-500',
     bgColor: 'bg-green-500',
   },
   {
-    icon: MessageSquare,
-    title: 'AI Chat Assistant',
-    description: 'Not sure which skill to use? Chat with our AI to get personalized recommendations.',
+    icon: Monitor,
+    title: 'Use Your Favorite AI',
+    description: 'Works with Claude Desktop, ChatGPT, and other AI chat apps. Or use our built-in web chatbot.',
     color: 'text-purple-500',
     bgColor: 'bg-purple-500',
   },
   {
     icon: Shield,
     title: 'Enterprise Security',
-    description: 'SOC 2 compliant. Your data never touches our servers. Skills run locally in Claude Code.',
+    description: 'SOC 2 compliant. Your credentials stay secure. Full control over your data and integrations.',
     color: 'text-amber-500',
     bgColor: 'bg-amber-500',
   },
 ];
 
 const steps = [
-  { number: '01', title: 'Generate API Key', description: 'Create a secure token in seconds' },
-  { number: '02', title: 'Install Skills', description: 'One command copies skills to Claude' },
-  { number: '03', title: 'Start Recruiting', description: 'Use slash commands to automate tasks' },
+  { number: '01', title: 'Connect Your Tools', description: 'Link your ATS, email, and calendar' },
+  { number: '02', title: 'Choose Your AI', description: 'Use our web chat or your favorite desktop app' },
+  { number: '03', title: 'Start Recruiting', description: 'Chat naturally to automate your workflow' },
 ];
 
 export default function Landing() {
@@ -86,7 +86,7 @@ export default function Landing() {
             <div className="flex-1 text-center lg:text-left">
               <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
                 <Sparkles className="h-3 w-3 mr-1" />
-                Now with Claude Code Integration
+                Works with Any AI Chat App
               </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
                 Recruiting Skills,{' '}
@@ -95,8 +95,8 @@ export default function Landing() {
                 </span>
               </h1>
               <p className="text-lg text-[hsl(220_15%_45%)] mb-8 max-w-xl mx-auto lg:mx-0">
-                Drop powerful recruiting automations into Claude Code. Search candidates, sync with your ATS,
-                send personalized outreach — all with simple slash commands.
+                Powerful recruiting automations that work with your favorite AI. Use our web chatbot,
+                Claude Desktop, ChatGPT, or any BYOAI app to search candidates, sync with your ATS, and send personalized outreach.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link
@@ -161,7 +161,7 @@ export default function Landing() {
 
                   {/* Dispenser slot */}
                   <div className="dispense-slot h-16 flex items-center justify-center">
-                    <Terminal className="h-6 w-6 text-cyan-400/50" />
+                    <MessageSquare className="h-6 w-6 text-cyan-400/50" />
                   </div>
 
                   {/* Coin slot */}
@@ -256,26 +256,36 @@ export default function Landing() {
             ))}
           </div>
 
-          {/* Code example */}
+          {/* Chat example */}
           <div className="mt-16 max-w-2xl mx-auto">
             <div className="robot-panel rounded-2xl overflow-hidden">
               <div className="bg-[hsl(220_15%_88%)] px-4 py-2 flex items-center gap-2 border-b-2 border-[hsl(220_15%_80%)]">
                 <div className="led-light led-green" />
-                <span className="text-xs font-mono text-[hsl(220_15%_50%)]">terminal</span>
+                <span className="text-xs font-medium text-[hsl(220_15%_50%)]">AI Chat</span>
               </div>
-              <div className="robot-display rounded-none p-4 font-mono text-sm">
-                <div className="text-cyan-400">$ claude</div>
-                <div className="text-[hsl(220_15%_60%)] mt-2">&gt; /ats-search senior engineer san francisco</div>
-                <div className="text-green-400 mt-2">
-                  <CheckCircle className="h-4 w-4 inline mr-2" />
-                  Found 24 candidates matching your criteria
+              <div className="bg-white p-4 space-y-4">
+                <div className="flex justify-end">
+                  <div className="bg-primary/10 text-[hsl(220_20%_30%)] px-4 py-2 rounded-2xl rounded-br-sm max-w-[80%] text-sm">
+                    Find senior engineers in San Francisco
+                  </div>
                 </div>
-                <div className="text-[hsl(220_15%_60%)] mt-2">&gt; /email-outreach --template=intro</div>
-                <div className="text-green-400 mt-2">
-                  <CheckCircle className="h-4 w-4 inline mr-2" />
-                  Drafted personalized emails for 24 candidates
+                <div className="flex justify-start">
+                  <div className="bg-[hsl(220_15%_95%)] text-[hsl(220_20%_30%)] px-4 py-2 rounded-2xl rounded-bl-sm max-w-[80%] text-sm">
+                    <CheckCircle className="h-4 w-4 inline mr-2 text-green-500" />
+                    Found 24 candidates in Greenhouse matching your criteria.
+                  </div>
                 </div>
-                <div className="text-cyan-400 animate-pulse mt-2">_</div>
+                <div className="flex justify-end">
+                  <div className="bg-primary/10 text-[hsl(220_20%_30%)] px-4 py-2 rounded-2xl rounded-br-sm max-w-[80%] text-sm">
+                    Send them a personalized intro email
+                  </div>
+                </div>
+                <div className="flex justify-start">
+                  <div className="bg-[hsl(220_15%_95%)] text-[hsl(220_20%_30%)] px-4 py-2 rounded-2xl rounded-bl-sm max-w-[80%] text-sm">
+                    <CheckCircle className="h-4 w-4 inline mr-2 text-green-500" />
+                    Drafted personalized emails for 24 candidates. Ready to review!
+                  </div>
+                </div>
               </div>
             </div>
           </div>
