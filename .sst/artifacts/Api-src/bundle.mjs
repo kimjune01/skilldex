@@ -6748,6 +6748,8 @@ Content-Length: 0\r
 // packages/db/src/schema.ts
 var schema_exports = {};
 __export(schema_exports, {
+  MAX_ONBOARDING_STEP: () => MAX_ONBOARDING_STEP,
+  ONBOARDING_STEPS: () => ONBOARDING_STEPS,
   apiKeys: () => apiKeys,
   apiKeysRelations: () => apiKeysRelations,
   errorEvents: () => errorEvents,
@@ -12489,6 +12491,21 @@ var NoopLogger = class {
 };
 
 // packages/db/src/schema.ts
+var ONBOARDING_STEPS = {
+  /** User just created account, hasn't started onboarding */
+  NOT_STARTED: 0,
+  /** User has connected their ATS integration */
+  ATS_CONNECTED: 1,
+  /** User has generated their API key for desktop chat */
+  API_KEY_GENERATED: 2,
+  /** User has installed the browser extension */
+  EXTENSION_INSTALLED: 2.5,
+  /** User has configured deployment mode (web UI or desktop) */
+  DEPLOYMENT_CONFIGURED: 3,
+  /** Onboarding complete */
+  COMPLETE: 4
+};
+var MAX_ONBOARDING_STEP = Math.max(...Object.values(ONBOARDING_STEPS));
 var users = sqliteTable("users", {
   id: text("id").primaryKey(),
   // UUID
@@ -12502,6 +12519,8 @@ var users = sqliteTable("users", {
   // System-wide admin
   organizationId: text("organization_id"),
   // FK added via migration (circular ref)
+  /** Onboarding progress tracked as float for flexibility (see ONBOARDING_STEPS) */
+  onboardingStep: real("onboarding_step").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => /* @__PURE__ */ new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => /* @__PURE__ */ new Date())
 });
@@ -14974,7 +14993,8 @@ authRoutes.post("/login", async (c) => {
     isAdmin: user[0].isAdmin,
     isSuperAdmin: user[0].isSuperAdmin ?? false,
     organizationId: user[0].organizationId ?? void 0,
-    organizationName
+    organizationName,
+    onboardingStep: user[0].onboardingStep ?? 0
   };
   const token = await createToken(userPublic);
   const response = {
@@ -15010,7 +15030,8 @@ authRoutes.get("/me", async (c) => {
     isAdmin: user[0].isAdmin,
     isSuperAdmin: user[0].isSuperAdmin ?? false,
     organizationId: user[0].organizationId ?? void 0,
-    organizationName
+    organizationName,
+    onboardingStep: user[0].onboardingStep ?? 0
   };
   return c.json({ data: userPublic });
 });
@@ -15820,7 +15841,9 @@ async function validateApiKey(key) {
     email: user.email,
     name: user.name,
     isAdmin: user.isAdmin,
-    apiKeyId: apiKey.id
+    apiKeyId: apiKey.id,
+    organizationId: user.organizationId,
+    onboardingStep: user.onboardingStep ?? 0
   };
 }
 __name(validateApiKey, "validateApiKey");
@@ -15860,6 +15883,18 @@ apiKeysRoutes.post("/", async (c) => {
     key,
     name
   });
+  if (user.organizationId) {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, user.organizationId)).limit(1);
+    if (org?.desktopEnabled) {
+      const [dbUser] = await db.select().from(users).where(eq(users.id, user.sub)).limit(1);
+      if (dbUser && dbUser.onboardingStep < ONBOARDING_STEPS.API_KEY_GENERATED) {
+        await db.update(users).set({
+          onboardingStep: ONBOARDING_STEPS.API_KEY_GENERATED,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq(users.id, user.sub));
+      }
+    }
+  }
   const response = {
     id,
     name,
@@ -16003,6 +16038,14 @@ integrationsRoutes.get("/callback", async (c) => {
       lastSyncAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
     }).where(eq(integrations.id, integration[0].id));
+    const userId = integration[0].userId;
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (user && user.onboardingStep < ONBOARDING_STEPS.ATS_CONNECTED) {
+      await db.update(users).set({
+        onboardingStep: ONBOARDING_STEPS.ATS_CONNECTED,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(users.id, userId));
+    }
   }
   const successUrl = new URL(`${webUrl}/integrations`);
   successUrl.searchParams.set("success", "Integration connected successfully");
@@ -16177,7 +16220,8 @@ usersRoutes.get("/", async (c) => {
     isAdmin: row.users.isAdmin,
     isSuperAdmin: row.users.isSuperAdmin ?? false,
     organizationId: row.users.organizationId ?? void 0,
-    organizationName: row.organizations?.name ?? void 0
+    organizationName: row.organizations?.name ?? void 0,
+    onboardingStep: row.users.onboardingStep ?? 0
   }));
   return c.json({ data: publicUsers });
 });
@@ -16203,7 +16247,8 @@ usersRoutes.get("/:id", async (c) => {
     isAdmin: user.isAdmin,
     isSuperAdmin: user.isSuperAdmin ?? false,
     organizationId: user.organizationId ?? void 0,
-    organizationName: orgData?.name ?? void 0
+    organizationName: orgData?.name ?? void 0,
+    onboardingStep: user.onboardingStep ?? 0
   };
   return c.json({ data: publicUser });
 });
@@ -16251,7 +16296,8 @@ usersRoutes.post("/", async (c) => {
     isAdmin: body.isAdmin ?? false,
     isSuperAdmin: false,
     organizationId: targetOrgId,
-    organizationName: targetOrg.name
+    organizationName: targetOrg.name,
+    onboardingStep: 0
   };
   return c.json({ data: publicUser }, 201);
 });
@@ -19418,8 +19464,163 @@ extensionRoutes.get("/status", (c) => {
   });
 });
 
+// packages/shared/src/types.ts
+var ONBOARDING_STEPS2 = {
+  /** User just created account, hasn't started onboarding */
+  NOT_STARTED: 0,
+  /** User has connected their ATS integration */
+  ATS_CONNECTED: 1,
+  /** User has generated their API key for desktop chat */
+  API_KEY_GENERATED: 2,
+  /** User has installed the browser extension */
+  EXTENSION_INSTALLED: 2.5,
+  /** User has configured deployment mode (web UI or desktop) */
+  DEPLOYMENT_CONFIGURED: 3,
+  /** Onboarding complete */
+  COMPLETE: 4
+};
+var MAX_ONBOARDING_STEP2 = Math.max(...Object.values(ONBOARDING_STEPS2));
+function getNextOnboardingStep(currentStep) {
+  const steps = Object.values(ONBOARDING_STEPS2).sort((a, b2) => a - b2);
+  for (const step of steps) {
+    if (step > currentStep) return step;
+  }
+  return null;
+}
+__name(getNextOnboardingStep, "getNextOnboardingStep");
+function getOnboardingStepName(step) {
+  if (step >= ONBOARDING_STEPS2.COMPLETE) return "Complete";
+  if (step >= ONBOARDING_STEPS2.DEPLOYMENT_CONFIGURED) return "Configure Deployment";
+  if (step >= ONBOARDING_STEPS2.EXTENSION_INSTALLED) return "Install Extension";
+  if (step >= ONBOARDING_STEPS2.API_KEY_GENERATED) return "Generate API Key";
+  if (step >= ONBOARDING_STEPS2.ATS_CONNECTED) return "Connect ATS";
+  return "Get Started";
+}
+__name(getOnboardingStepName, "getOnboardingStepName");
+function getErrorCategory(code) {
+  if (code.startsWith("LLM_")) return "llm";
+  if (code.startsWith("ATS_")) return "ats";
+  if (code.startsWith("SKILL_")) return "skill";
+  if (code.startsWith("SCRAPE_")) return "scrape";
+  if (code.startsWith("INTEGRATION_")) return "integration";
+  return "system";
+}
+__name(getErrorCategory, "getErrorCategory");
+
 // apps/api/src/routes/onboarding.ts
 var onboardingRoutes = new Hono2();
+onboardingRoutes.get("/status", jwtAuth, async (c) => {
+  const user = c.get("user");
+  const [dbUser] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+  if (!dbUser) {
+    return c.json({ error: { message: "User not found" } }, 404);
+  }
+  const currentStep = dbUser.onboardingStep ?? 0;
+  const isComplete = currentStep >= MAX_ONBOARDING_STEP;
+  const nextStep = getNextOnboardingStep(currentStep);
+  const status = {
+    currentStep,
+    isComplete,
+    nextStep,
+    nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null
+  };
+  return c.json({ data: status });
+});
+onboardingRoutes.post("/advance", jwtAuth, async (c) => {
+  const user = c.get("user");
+  const body = await c.req.json();
+  if (typeof body.step !== "number") {
+    return c.json({ error: { message: "Step must be a number" } }, 400);
+  }
+  const [dbUser] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+  if (!dbUser) {
+    return c.json({ error: { message: "User not found" } }, 404);
+  }
+  const currentStep = dbUser.onboardingStep ?? 0;
+  if (body.step < currentStep) {
+    return c.json(
+      { error: { message: "Cannot go back in onboarding. Current step: " + currentStep } },
+      400
+    );
+  }
+  await db.update(users).set({
+    onboardingStep: body.step,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq(users.id, user.id));
+  const isComplete = body.step >= MAX_ONBOARDING_STEP;
+  const nextStep = getNextOnboardingStep(body.step);
+  const status = {
+    currentStep: body.step,
+    isComplete,
+    nextStep,
+    nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null
+  };
+  return c.json({ data: status });
+});
+onboardingRoutes.post("/complete-step", jwtAuth, async (c) => {
+  const user = c.get("user");
+  const body = await c.req.json();
+  if (!body.stepName || !(body.stepName in ONBOARDING_STEPS)) {
+    return c.json(
+      {
+        error: {
+          message: "Invalid step name. Valid steps: " + Object.keys(ONBOARDING_STEPS).join(", ")
+        }
+      },
+      400
+    );
+  }
+  const stepValue = ONBOARDING_STEPS[body.stepName];
+  const [dbUser] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+  if (!dbUser) {
+    return c.json({ error: { message: "User not found" } }, 404);
+  }
+  const currentStep = dbUser.onboardingStep ?? 0;
+  if (stepValue <= currentStep) {
+    const isComplete2 = currentStep >= MAX_ONBOARDING_STEP;
+    const nextStep2 = getNextOnboardingStep(currentStep);
+    return c.json({
+      data: {
+        currentStep,
+        isComplete: isComplete2,
+        nextStep: nextStep2,
+        nextStepName: nextStep2 !== null ? getOnboardingStepName(nextStep2) : null,
+        message: "Already completed this step"
+      }
+    });
+  }
+  await db.update(users).set({
+    onboardingStep: stepValue,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq(users.id, user.id));
+  const isComplete = stepValue >= MAX_ONBOARDING_STEP;
+  const nextStep = getNextOnboardingStep(stepValue);
+  const status = {
+    currentStep: stepValue,
+    isComplete,
+    nextStep,
+    nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null
+  };
+  return c.json({ data: status });
+});
+onboardingRoutes.post("/reset", jwtAuth, async (c) => {
+  const user = c.get("user");
+  if (!user.isSuperAdmin) {
+    return c.json({ error: { message: "Only super admins can reset onboarding" } }, 403);
+  }
+  await db.update(users).set({
+    onboardingStep: ONBOARDING_STEPS.NOT_STARTED,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq(users.id, user.id));
+  const nextStep = getNextOnboardingStep(ONBOARDING_STEPS.NOT_STARTED);
+  const status = {
+    currentStep: ONBOARDING_STEPS.NOT_STARTED,
+    isComplete: false,
+    nextStep,
+    nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null
+  };
+  return c.json({ data: status });
+});
 onboardingRoutes.get("/", (c) => {
   const host = c.req.header("host") || "localhost:3000";
   const protocol = host.includes("localhost") ? "http" : "https";
@@ -19565,6 +19766,62 @@ organizationsRoutes.get("/current", jwtAuth, withOrganization, async (c) => {
   };
   return c.json({ data: publicOrg });
 });
+organizationsRoutes.get("/current/deployment", jwtAuth, withOrganization, async (c) => {
+  const org = c.get("organization");
+  const user = c.get("user");
+  if (!org) {
+    return c.json({ error: { message: "No organization assigned" } }, 404);
+  }
+  if (!user.isAdmin && !user.isSuperAdmin) {
+    return c.json({ error: { message: "Forbidden" } }, 403);
+  }
+  const [fullOrg] = await db.select().from(organizations).where(eq(organizations.id, org.id)).limit(1);
+  const hasLlmConfigured = Boolean(fullOrg.llmApiKey);
+  return c.json({
+    data: {
+      webUiEnabled: fullOrg.webUiEnabled ?? false,
+      desktopEnabled: fullOrg.desktopEnabled ?? true,
+      hasLlmConfigured
+    }
+  });
+});
+organizationsRoutes.put("/current/deployment", jwtAuth, withOrganization, async (c) => {
+  const org = c.get("organization");
+  const user = c.get("user");
+  if (!org) {
+    return c.json({ error: { message: "No organization assigned" } }, 404);
+  }
+  if (!user.isAdmin && !user.isSuperAdmin) {
+    return c.json({ error: { message: "Forbidden" } }, 403);
+  }
+  const body = await c.req.json();
+  const [fullOrg] = await db.select().from(organizations).where(eq(organizations.id, org.id)).limit(1);
+  if (body.webUiEnabled === true && !fullOrg.llmApiKey) {
+    return c.json(
+      {
+        error: {
+          message: "Cannot enable Web UI without LLM configuration",
+          code: "LLM_NOT_CONFIGURED"
+        }
+      },
+      400
+    );
+  }
+  const now = /* @__PURE__ */ new Date();
+  await db.update(organizations).set({
+    webUiEnabled: body.webUiEnabled ?? fullOrg.webUiEnabled,
+    desktopEnabled: body.desktopEnabled ?? fullOrg.desktopEnabled,
+    updatedAt: now
+  }).where(eq(organizations.id, org.id));
+  const [updated] = await db.select().from(organizations).where(eq(organizations.id, org.id)).limit(1);
+  return c.json({
+    data: {
+      webUiEnabled: updated.webUiEnabled ?? false,
+      desktopEnabled: updated.desktopEnabled ?? true,
+      hasLlmConfigured: Boolean(updated.llmApiKey)
+    }
+  });
+});
 organizationsRoutes.post("/", jwtAuth, superAdminOnly, async (c) => {
   const body = await c.req.json();
   if (!body.name) {
@@ -19655,62 +19912,6 @@ organizationsRoutes.put("/:id", jwtAuth, async (c) => {
     updatedAt: updated.updatedAt.toISOString()
   };
   return c.json({ data: publicOrg });
-});
-organizationsRoutes.get("/current/deployment", jwtAuth, withOrganization, async (c) => {
-  const org = c.get("organization");
-  const user = c.get("user");
-  if (!org) {
-    return c.json({ error: { message: "No organization assigned" } }, 404);
-  }
-  if (!user.isAdmin && !user.isSuperAdmin) {
-    return c.json({ error: { message: "Forbidden" } }, 403);
-  }
-  const [fullOrg] = await db.select().from(organizations).where(eq(organizations.id, org.id)).limit(1);
-  const hasLlmConfigured = Boolean(fullOrg.llmApiKey);
-  return c.json({
-    data: {
-      webUiEnabled: fullOrg.webUiEnabled ?? false,
-      desktopEnabled: fullOrg.desktopEnabled ?? true,
-      hasLlmConfigured
-    }
-  });
-});
-organizationsRoutes.put("/current/deployment", jwtAuth, withOrganization, async (c) => {
-  const org = c.get("organization");
-  const user = c.get("user");
-  if (!org) {
-    return c.json({ error: { message: "No organization assigned" } }, 404);
-  }
-  if (!user.isAdmin && !user.isSuperAdmin) {
-    return c.json({ error: { message: "Forbidden" } }, 403);
-  }
-  const body = await c.req.json();
-  const [fullOrg] = await db.select().from(organizations).where(eq(organizations.id, org.id)).limit(1);
-  if (body.webUiEnabled === true && !fullOrg.llmApiKey) {
-    return c.json(
-      {
-        error: {
-          message: "Cannot enable Web UI without LLM configuration",
-          code: "LLM_NOT_CONFIGURED"
-        }
-      },
-      400
-    );
-  }
-  const now = /* @__PURE__ */ new Date();
-  await db.update(organizations).set({
-    webUiEnabled: body.webUiEnabled ?? fullOrg.webUiEnabled,
-    desktopEnabled: body.desktopEnabled ?? fullOrg.desktopEnabled,
-    updatedAt: now
-  }).where(eq(organizations.id, org.id));
-  const [updated] = await db.select().from(organizations).where(eq(organizations.id, org.id)).limit(1);
-  return c.json({
-    data: {
-      webUiEnabled: updated.webUiEnabled ?? false,
-      desktopEnabled: updated.desktopEnabled ?? true,
-      hasLlmConfigured: Boolean(updated.llmApiKey)
-    }
-  });
 });
 organizationsRoutes.delete("/:id", jwtAuth, superAdminOnly, async (c) => {
   const id = c.req.param("id");
@@ -19897,7 +20098,8 @@ invitesRoutes.post("/accept", async (c) => {
     isAdmin: invite.role === "admin",
     isSuperAdmin: false,
     organizationId: invite.organizationId,
-    organizationName: org.name
+    organizationName: org.name,
+    onboardingStep: 0
   };
   const jwtToken = await createToken(userPublic);
   return c.json({
@@ -19945,6 +20147,14 @@ webhooksRoutes.post("/nango", async (c) => {
             updatedAt: /* @__PURE__ */ new Date()
           }).where(eq(integrations.userId, userId));
           console.log(`[Nango Webhook] Updated integration:`, result);
+          const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+          if (user && user.onboardingStep < ONBOARDING_STEPS.ATS_CONNECTED) {
+            await db.update(users).set({
+              onboardingStep: ONBOARDING_STEPS.ATS_CONNECTED,
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where(eq(users.id, userId));
+            console.log(`[Nango Webhook] Advanced onboarding for user ${userId} to ATS_CONNECTED`);
+          }
         } else if (!authPayload.success) {
           console.error("[Nango Webhook] Connection creation failed:", authPayload.error);
         }
@@ -19994,7 +20204,8 @@ var apiKeyAuth = createMiddleware(async (c, next) => {
     isAdmin: user.isAdmin,
     isSuperAdmin: user.isSuperAdmin ?? false,
     organizationId: user.organizationId ?? null,
-    apiKeyId: apiKey.id
+    apiKeyId: apiKey.id,
+    onboardingStep: user.onboardingStep ?? 0
   });
   await next();
 });
@@ -20734,6 +20945,15 @@ var v1MeRoutes = new Hono2();
 v1MeRoutes.use("*", apiKeyAuth);
 v1MeRoutes.get("/", async (c) => {
   const user = c.get("apiKeyUser");
+  if (user.organizationId) {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, user.organizationId)).limit(1);
+    if (org?.desktopEnabled && user.onboardingStep < ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) {
+      await db.update(users).set({
+        onboardingStep: ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(users.id, user.id));
+    }
+  }
   return c.json({
     data: {
       id: user.id,
@@ -21014,19 +21234,6 @@ v1ScrapeRoutes.delete("/tasks/:id", async (c) => {
 
 // apps/api/src/routes/v1/errors.ts
 import { randomUUID as randomUUID10 } from "crypto";
-
-// packages/shared/src/types.ts
-function getErrorCategory(code) {
-  if (code.startsWith("LLM_")) return "llm";
-  if (code.startsWith("ATS_")) return "ats";
-  if (code.startsWith("SKILL_")) return "skill";
-  if (code.startsWith("SCRAPE_")) return "scrape";
-  if (code.startsWith("INTEGRATION_")) return "integration";
-  return "system";
-}
-__name(getErrorCategory, "getErrorCategory");
-
-// apps/api/src/routes/v1/errors.ts
 var v1ErrorsRoutes = new Hono2();
 var VALID_ERROR_CODES = /* @__PURE__ */ new Set([
   // LLM
@@ -21191,6 +21398,8 @@ function createWsScrapeHandler() {
     const apiKey = c.req.query("apiKey");
     const mode = c.req.query("mode");
     let userId = null;
+    let userOrgId = null;
+    let userOnboardingStep = 0;
     let isExtension = mode === "extension";
     if (token) {
       const payload = await verifyToken(token);
@@ -21201,6 +21410,8 @@ function createWsScrapeHandler() {
       const user = await validateApiKey(apiKey);
       if (user) {
         userId = user.id;
+        userOrgId = user.organizationId;
+        userOnboardingStep = user.onboardingStep ?? 0;
         isExtension = true;
       }
     }
@@ -21212,12 +21423,24 @@ function createWsScrapeHandler() {
       };
     }
     const authenticatedUserId = userId;
+    const authenticatedUserOrgId = userOrgId;
+    const authenticatedUserOnboardingStep = userOnboardingStep;
     const isExtensionConnection = isExtension;
     return {
       onOpen(_event, ws) {
         if (isExtensionConnection) {
           addExtensionConnection(authenticatedUserId, ws);
           ws.send(JSON.stringify({ type: "connected", userId: authenticatedUserId, mode: "extension" }));
+          if (authenticatedUserOrgId && authenticatedUserOnboardingStep < ONBOARDING_STEPS.EXTENSION_INSTALLED) {
+            db.select().from(organizations).where(eq(organizations.id, authenticatedUserOrgId)).limit(1).then(([org]) => {
+              if (org?.desktopEnabled) {
+                db.update(users).set({
+                  onboardingStep: ONBOARDING_STEPS.EXTENSION_INSTALLED,
+                  updatedAt: /* @__PURE__ */ new Date()
+                }).where(eq(users.id, authenticatedUserId)).execute().catch(console.error);
+              }
+            }).catch(console.error);
+          }
         } else {
           addConnection(authenticatedUserId, ws);
           ws.send(JSON.stringify({ type: "connected", userId: authenticatedUserId }));
