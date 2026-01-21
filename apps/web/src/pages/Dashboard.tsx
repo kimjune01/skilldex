@@ -7,7 +7,7 @@ import type { DeploymentSettings } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Zap, Plug, Key, ArrowRight, AlertCircle, CheckCircle, Bot, Cog, Circle, Terminal, Chrome } from 'lucide-react';
+import { Zap, Plug, Key, ArrowRight, AlertCircle, CheckCircle, Bot, Cog, Circle, Terminal, Chrome, PartyPopper } from 'lucide-react';
 import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import { Confetti } from '@/components/ui/confetti';
 import { SkeletonDashboard } from '@/components/ui/skeleton';
@@ -22,7 +22,8 @@ export default function Dashboard() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [deploymentSettings, setDeploymentSettings] = useState<DeploymentSettings | null>(null);
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
-  const prevCompletedRef = useRef<number | null>(null);
+  const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
+  const prevOnboardingCompleteRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -112,20 +113,47 @@ export default function Dashboard() {
       });
     }
 
+    // Final step: Complete onboarding (step 4)
+    // Only show if all other steps are done but onboarding not yet marked complete
+    const allPreviousStepsDone = steps.every(s => s.done);
+    const isComplete = currentStep >= ONBOARDING_STEPS.COMPLETE;
+
+    if (allPreviousStepsDone && !isComplete) {
+      steps.push({
+        id: 'complete',
+        label: 'Complete setup',
+        done: false,
+        icon: PartyPopper,
+        route: '', // No route - handled by button
+        actionLabel: 'Finish',
+      });
+    }
+
     const completed = steps.filter(s => s.done).length;
-    // Use server-side onboarding status if available, otherwise fall back to local check
-    const isFullyOnboarded = onboardingStatus?.isComplete ?? completed === steps.length;
-    return { steps, completed, total: steps.length, isFullyOnboarded };
+    return { steps, completed, total: steps.length, isFullyOnboarded: isComplete, allPreviousStepsDone };
   }, [apiKeyList, connectedIntegrations, enabledSkills, deploymentSettings, onboardingStatus]);
 
-  // Celebrate when a step is completed
+  // Celebrate only when onboarding is fully complete
   useEffect(() => {
-    if (prevCompletedRef.current !== null && setupSteps.completed > prevCompletedRef.current) {
+    if (prevOnboardingCompleteRef.current === false && setupSteps.isFullyOnboarded) {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 100);
     }
-    prevCompletedRef.current = setupSteps.completed;
-  }, [setupSteps.completed]);
+    prevOnboardingCompleteRef.current = setupSteps.isFullyOnboarded;
+  }, [setupSteps.isFullyOnboarded]);
+
+  // Handler for completing onboarding
+  const handleCompleteOnboarding = async () => {
+    setIsCompletingOnboarding(true);
+    try {
+      const status = await onboarding.completeStep('COMPLETE');
+      setOnboardingStatus(status);
+    } catch (err) {
+      console.error('Failed to complete onboarding:', err);
+    } finally {
+      setIsCompletingOnboarding(false);
+    }
+  };
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -251,6 +279,16 @@ export default function Dashboard() {
                     </span>
                     {step.done ? (
                       <Circle className="h-3 w-3 fill-green-500 text-green-500" />
+                    ) : step.id === 'complete' ? (
+                      <Button
+                        size="sm"
+                        className="robot-button border-0 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                        onClick={handleCompleteOnboarding}
+                        disabled={isCompletingOnboarding}
+                      >
+                        {isCompletingOnboarding ? 'Completing...' : step.actionLabel}
+                        <PartyPopper className="h-4 w-4 ml-2" />
+                      </Button>
                     ) : (
                       <Link to={step.route}>
                         <Button size="sm" className="robot-button border-0">
