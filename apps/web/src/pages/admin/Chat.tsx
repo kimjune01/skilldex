@@ -4,26 +4,33 @@
  * Chat interface for admins with meta-skills for creating and managing skills.
  * Reuses the core chat components but with admin-specific capabilities.
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { MessageList, ChatInput } from '@/components/chat';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Wand2, Download, Sparkles } from 'lucide-react';
-import type { ChatMessage } from '@skillomatic/shared';
+import type { ChatMessage, SkillPublic } from '@skillomatic/shared';
+import { skills as skillsApi } from '@/lib/api';
 
 // Meta-skill suggestions for admins
 const META_SKILL_SUGGESTIONS = [
+  'What skills are currently available?',
   'Create a new skill for sourcing candidates on LinkedIn',
   'Help me write a skill that syncs data between ATS systems',
-  'Generate a skill template for email outreach automation',
-  'Create a skill that extracts job requirements from descriptions',
+  'Show me skills that use the ATS integration',
 ];
 
 export default function AdminChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingSkills, setExistingSkills] = useState<SkillPublic[]>([]);
+
+  // Fetch existing skills on mount
+  useEffect(() => {
+    skillsApi.list().then(setExistingSkills).catch(console.error);
+  }, []);
 
   const handleSend = useCallback(
     async (content: string) => {
@@ -56,7 +63,7 @@ export default function AdminChat() {
         // TODO: Implement actual admin chat API endpoint with:
         // - messageHistory for context
         // - systemContext for skill creation guidance
-        const simulatedResponse = generateMetaResponse(content);
+        const simulatedResponse = generateMetaResponse(content, existingSkills);
 
         // Simulate streaming
         for (let i = 0; i < simulatedResponse.length; i += 3) {
@@ -75,7 +82,7 @@ export default function AdminChat() {
         setIsStreaming(false);
       }
     },
-    [messages]
+    [messages, existingSkills]
   );
 
   const handleDownloadChat = useCallback(() => {
@@ -191,9 +198,100 @@ export default function AdminChat() {
  * Generate a simulated meta-skill response
  * TODO: Replace with actual admin chat API endpoint
  */
-function generateMetaResponse(input: string): string {
+function generateMetaResponse(input: string, existingSkills: SkillPublic[]): string {
   const lowerInput = input.toLowerCase();
 
+  // Query: List all skills
+  if (
+    (lowerInput.includes('what') && lowerInput.includes('skill')) ||
+    (lowerInput.includes('list') && lowerInput.includes('skill')) ||
+    (lowerInput.includes('show') && lowerInput.includes('available'))
+  ) {
+    if (existingSkills.length === 0) {
+      return `No skills are currently configured. Would you like me to help you create one?`;
+    }
+
+    const skillsByCategory = existingSkills.reduce((acc, skill) => {
+      if (!acc[skill.category]) acc[skill.category] = [];
+      acc[skill.category].push(skill);
+      return acc;
+    }, {} as Record<string, SkillPublic[]>);
+
+    let response = `Here are the **${existingSkills.length} skills** currently available:\n\n`;
+
+    for (const [category, skills] of Object.entries(skillsByCategory)) {
+      response += `### ${category.charAt(0).toUpperCase() + category.slice(1)}\n`;
+      for (const skill of skills) {
+        const status = skill.isEnabled ? '✅' : '⏸️';
+        response += `- ${status} **${skill.name}** (\`${skill.slug}\`)\n`;
+        response += `  ${skill.description}\n`;
+      }
+      response += '\n';
+    }
+
+    response += `\nWould you like to:\n1. See details about a specific skill?\n2. Create a new skill?\n3. Modify an existing skill?`;
+    return response;
+  }
+
+  // Query: Skills by integration
+  if (lowerInput.includes('use') && (lowerInput.includes('integration') || lowerInput.includes('ats') || lowerInput.includes('email') || lowerInput.includes('linkedin'))) {
+    const integrationKeywords = ['ats', 'email', 'linkedin', 'calendar', 'granola'];
+    const matchedIntegration = integrationKeywords.find(k => lowerInput.includes(k));
+
+    if (matchedIntegration) {
+      const matchingSkills = existingSkills.filter(s =>
+        s.requiredIntegrations.some(i => i.toLowerCase().includes(matchedIntegration))
+      );
+
+      if (matchingSkills.length === 0) {
+        return `No skills currently use the **${matchedIntegration}** integration. Would you like me to create one?`;
+      }
+
+      let response = `Found **${matchingSkills.length} skills** using the **${matchedIntegration}** integration:\n\n`;
+      for (const skill of matchingSkills) {
+        response += `### ${skill.name}\n`;
+        response += `- **Slug:** \`${skill.slug}\`\n`;
+        response += `- **Category:** ${skill.category}\n`;
+        response += `- **Description:** ${skill.description}\n`;
+        response += `- **Capabilities:** ${skill.capabilities.join(', ')}\n`;
+        response += `- **Status:** ${skill.isEnabled ? 'Enabled' : 'Disabled'}\n\n`;
+      }
+      return response;
+    }
+  }
+
+  // Query: Specific skill details
+  const skillMatch = existingSkills.find(s =>
+    lowerInput.includes(s.slug) || lowerInput.includes(s.name.toLowerCase())
+  );
+
+  if (skillMatch && (lowerInput.includes('detail') || lowerInput.includes('about') || lowerInput.includes('show me'))) {
+    return `## ${skillMatch.name}
+
+**Slug:** \`${skillMatch.slug}\`
+**Category:** ${skillMatch.category}
+**Version:** ${skillMatch.version}
+**Status:** ${skillMatch.isEnabled ? '✅ Enabled' : '⏸️ Disabled'}
+
+### Description
+${skillMatch.description}
+
+### Intent
+${skillMatch.intent}
+
+### Required Integrations
+${skillMatch.requiredIntegrations.map(i => `- ${i}`).join('\n')}
+
+### Required Scopes
+${skillMatch.requiredScopes.map(s => `- \`${s}\``).join('\n')}
+
+### Capabilities
+${skillMatch.capabilities.map(c => `- ${c}`).join('\n')}
+
+Would you like me to help you modify this skill or create a similar one?`;
+  }
+
+  // Creation: LinkedIn sourcing
   if (lowerInput.includes('linkedin') && lowerInput.includes('sourcing')) {
     return `I'll help you create a LinkedIn sourcing skill. Here's a complete configuration:
 
@@ -223,6 +321,7 @@ This skill requires the browser extension to be installed since it uses your Lin
 3. Create a related skill for outreach?`;
   }
 
+  // Creation: ATS sync
   if (lowerInput.includes('ats') && lowerInput.includes('sync')) {
     return `Here's a skill configuration for ATS data synchronization:
 
@@ -249,6 +348,7 @@ capabilities:
 Should I expand on any of these capabilities or add error handling logic?`;
   }
 
+  // Creation: Email outreach
   if (lowerInput.includes('email') && lowerInput.includes('outreach')) {
     return `Here's a skill template for email outreach automation:
 
@@ -274,17 +374,20 @@ capabilities:
 This skill works with Gmail and Outlook integrations. Want me to add template examples or sequence logic?`;
   }
 
-  return `I can help you create that skill! To generate a complete configuration, please tell me:
+  return `I can help you with skills! Here's what I can do:
 
-1. **Purpose**: What problem does this skill solve?
-2. **Integrations**: Which services does it need to connect to?
-3. **Actions**: What specific actions should it perform?
-4. **Inputs**: What information does the user provide?
-5. **Outputs**: What results should it return?
+**Query existing skills:**
+- "What skills are available?"
+- "Show me skills that use the ATS integration"
+- "Tell me about [skill name]"
 
-Once you provide these details, I'll generate a complete skill configuration with:
-- YAML metadata
-- Required scopes and permissions
-- Capability definitions
-- Implementation guidance`;
+**Create new skills:**
+- "Create a skill for [purpose]"
+- "Generate a skill template for [use case]"
+
+**Modify skills:**
+- "Add capabilities to [skill name]"
+- "Update the description for [skill name]"
+
+What would you like to do?`;
 }
