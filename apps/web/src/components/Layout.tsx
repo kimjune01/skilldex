@@ -16,7 +16,7 @@ import { useDemo } from '../hooks/useDemo';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2 } from 'lucide-react';
 
 // Main navigation - visible to all authenticated users
 const navigation = [
@@ -30,6 +30,7 @@ const navigation = [
 
 // Admin navigation - visible only to users with isAdmin=true
 const adminNavigation = [
+  { name: 'Skill Studio', href: '/admin/chat', icon: Wand2 },
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Invites', href: '/admin/invites', icon: Mail },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },

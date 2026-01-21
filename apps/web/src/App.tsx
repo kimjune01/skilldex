@@ -43,6 +43,7 @@ import AdminSettings from './pages/admin/Settings';
 import AdminDeployment from './pages/admin/Deployment';
 import AdminOrganizations from './pages/admin/Organizations';
 import AdminInvites from './pages/admin/Invites';
+import AdminChat from './pages/admin/Chat';
 import AcceptInvite from './pages/invite/Accept';
 import Chat from './pages/Chat';
 import Extension from './pages/Extension';
@@ -195,6 +196,14 @@ export default function App() {
             element={
               <AdminRoute>
                 <AdminInvites />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/chat"
+            element={
+              <AdminRoute>
+                <AdminChat />
               </AdminRoute>
             }
           />
