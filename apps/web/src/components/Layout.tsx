@@ -44,7 +44,7 @@ const superAdminNavigation = [
 ];
 
 export default function Layout() {
-  const { user, logout, isAdmin, isSuperAdmin, organizationName } = useAuth();
+  const { user, logout, isAdmin, isSuperAdmin, isOnboarded, organizationName } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { isDemoMode, toggleDemoMode } = useDemo();
@@ -127,6 +127,7 @@ export default function Layout() {
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
+            const showSetupBadge = item.href === '/overview' && !isOnboarded;
             return (
               <Link
                 key={item.href}
@@ -147,9 +148,13 @@ export default function Layout() {
                   <Icon className="h-4 w-4" />
                 </div>
                 <span className="tracking-wide">{item.name}</span>
-                {isActive && (
+                {showSetupBadge ? (
+                  <Badge className="ml-auto text-[9px] px-1.5 py-0 bg-amber-500 text-white border-0 font-bold">
+                    Setup
+                  </Badge>
+                ) : isActive ? (
                   <Circle className="ml-auto h-2 w-2 fill-current" />
-                )}
+                ) : null}
               </Link>
             );
           })}
