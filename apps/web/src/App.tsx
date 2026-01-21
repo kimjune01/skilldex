@@ -1,5 +1,5 @@
 /**
- * Skillomatic Web Application
+ * Skill-O-Matic Web Application
  *
  * React SPA for managing skills, API keys, and integrations.
  * Built with React Router for navigation, Tailwind for styling.
@@ -16,7 +16,6 @@
  *   - /admin/* - Admin-only routes (Users, Skills, Analytics, Proposals, Settings, Deployment)
  *
  * Context providers:
- * - BrandingProvider: White-label customization (logo, app name)
  * - DemoProvider: Demo mode toggle for mock data
  *
  * @see docs/RECRUITER_GUIDE.md for user documentation
@@ -24,7 +23,6 @@
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import { BrandingProvider } from './hooks/useBranding';
 import { DemoProvider } from './hooks/useDemo';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -102,8 +100,7 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <BrandingProvider>
-      <DemoProvider>
+    <DemoProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
@@ -192,7 +189,6 @@ export default function App() {
         />
       </Route>
       </Routes>
-      </DemoProvider>
-    </BrandingProvider>
+    </DemoProvider>
   );
 }

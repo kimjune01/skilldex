@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useBranding } from '../hooks/useBranding';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +15,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const branding = useBranding();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,16 +35,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <img
-              src={branding.logoUrl}
-              alt={branding.appName}
-              className="h-16 w-16 object-contain"
-            />
-          </div>
-          <CardTitle className="text-3xl font-bold text-primary">{branding.appName}</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary">
+            Skill-O-Matic<sup className="text-xs">™</sup>
+          </CardTitle>
           <CardDescription className="text-lg">
-            {branding.tagline}
+            Claude Code Skills for Recruiters
           </CardDescription>
         </CardHeader>
 

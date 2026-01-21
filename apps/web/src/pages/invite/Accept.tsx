@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { invites } from '../../lib/api';
-import { useBranding } from '../../hooks/useBranding';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +19,6 @@ interface InviteInfo {
 export default function AcceptInvite() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const branding = useBranding();
 
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
   const [isValidating, setIsValidating] = useState(true);
@@ -104,13 +102,6 @@ export default function AcceptInvite() {
       <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-4">
-              <img
-                src={branding.logoUrl}
-                alt={branding.appName}
-                className="h-16 w-16 object-contain"
-              />
-            </div>
             <CardTitle className="text-2xl font-bold text-destructive">Invalid Invite</CardTitle>
             <CardDescription>
               {validationError || 'This invite link is no longer valid'}
@@ -158,11 +149,9 @@ export default function AcceptInvite() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <img
-              src={branding.logoUrl}
-              alt={branding.appName}
-              className="h-16 w-16 object-contain"
-            />
+            <span className="text-2xl font-bold text-primary">
+              Skill-O-Matic<sup className="text-xs">™</sup>
+            </span>
           </div>
           <CardTitle className="text-2xl font-bold">Join {inviteInfo.organizationName}</CardTitle>
           <CardDescription>

@@ -9,11 +9,9 @@
  * - Demo mode toggle for using mock data
  * - Admin section visible only to admin users
  * - User info and logout at bottom
- * - Customizable branding (logo, app name) via BrandingProvider
  */
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useBranding } from '../hooks/useBranding';
 import { useDemo } from '../hooks/useDemo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,7 +49,6 @@ export default function Layout() {
   const { user, logout, isAdmin, isSuperAdmin, organizationName } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const branding = useBranding();
   const { isDemoMode, toggleDemoMode } = useDemo();
 
   const handleLogout = async () => {
@@ -66,12 +63,9 @@ export default function Layout() {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b">
           <Link to="/" className="flex items-center gap-2">
-            <img
-              src={branding.logoUrl}
-              alt={branding.appName}
-              className="h-8 w-8 object-contain"
-            />
-            <span className="text-xl font-bold text-primary">{branding.appName}</span>
+            <span className="text-xl font-bold text-primary">
+              Skill-O-Matic<sup className="text-xs">™</sup>
+            </span>
           </Link>
         </div>
 
