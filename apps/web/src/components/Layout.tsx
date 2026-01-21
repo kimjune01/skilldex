@@ -32,7 +32,6 @@ const navigation = [
 const adminNavigation = [
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Invites', href: '/admin/invites', icon: Mail },
-  { name: 'Manage Skills', href: '/admin/skills', icon: Zap },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Proposals', href: '/admin/proposals', icon: FileText },
   { name: 'Deployment', href: '/admin/deployment', icon: Server },

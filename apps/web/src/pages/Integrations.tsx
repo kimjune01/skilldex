@@ -55,6 +55,16 @@ const atsProviders = [
   { id: 'lever', name: 'Lever' },
   { id: 'ashby', name: 'Ashby' },
   { id: 'workable', name: 'Workable' },
+  { id: 'icims', name: 'iCIMS (Beta)' },
+  { id: 'workday', name: 'Workday (Beta)' },
+  { id: 'taleo', name: 'Oracle Taleo (Beta)' },
+  { id: 'successfactors', name: 'SAP SuccessFactors (Beta)' },
+  { id: 'smartrecruiters', name: 'SmartRecruiters (Beta)' },
+  { id: 'jobvite', name: 'Jobvite (Beta)' },
+  { id: 'bamboohr', name: 'BambooHR (Beta)' },
+  { id: 'jazzhr', name: 'JazzHR (Beta)' },
+  { id: 'bullhorn', name: 'Bullhorn (Beta)' },
+  { id: 'recruitee', name: 'Recruitee (Beta)' },
 ];
 
 // Calendar sub-providers
@@ -70,23 +80,15 @@ const emailProviders = [
   { id: 'outlook', name: 'Outlook' },
 ];
 
-const availableProviders: {
+type ProviderConfig = {
   id: IntegrationProvider;
   name: string;
   description: string;
   subProviders?: { id: string; name: string }[];
-}[] = [
-  {
-    id: 'ats',
-    name: 'ATS',
-    description: 'Connect your Applicant Tracking System',
-    subProviders: atsProviders,
-  },
-  {
-    id: 'linkedin',
-    name: 'LinkedIn',
-    description: 'LinkedIn profile lookup (via browser extension)',
-  },
+};
+
+// Essential integrations - core recruiting workflow
+const essentialProviders: ProviderConfig[] = [
   {
     id: 'email',
     name: 'Email',
@@ -100,11 +102,28 @@ const availableProviders: {
     subProviders: calendarProviders,
   },
   {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    description: 'LinkedIn profile lookup (via browser extension)',
+  },
+];
+
+// Other integrations - specialized tools
+const otherProviders: ProviderConfig[] = [
+  {
+    id: 'ats',
+    name: 'ATS',
+    description: 'Connect your Applicant Tracking System',
+    subProviders: atsProviders,
+  },
+  {
     id: 'granola',
     name: 'Granola',
     description: 'Meeting notes sync',
   },
 ];
+
+const availableProviders = [...essentialProviders, ...otherProviders];
 
 export default function Integrations() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -302,77 +321,147 @@ export default function Integrations() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {availableProviders.map((provider) => {
-          const integration = getIntegrationStatus(provider.id);
-          const isConnected = integration?.status === 'connected';
-          const Icon = providerIcons[provider.id];
+      {/* Essentials Section */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Essentials</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {essentialProviders.map((provider) => {
+            const integration = getIntegrationStatus(provider.id);
+            const isConnected = integration?.status === 'connected';
+            const Icon = providerIcons[provider.id];
 
-          return (
-            <Card key={provider.id} className={isConnected ? 'border-green-200 bg-green-50/30' : ''}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : 'bg-muted'}`}>
-                      <Icon
-                        className={`h-5 w-5 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`}
-                      />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{provider.name}</CardTitle>
-                      <CardDescription>{provider.description}</CardDescription>
+            return (
+              <Card key={provider.id} className={isConnected ? 'border-green-200 bg-green-50/30' : ''}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : 'bg-muted'}`}>
+                        <Icon
+                          className={`h-5 w-5 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`}
+                        />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{provider.name}</CardTitle>
+                        <CardDescription className="text-xs">{provider.description}</CardDescription>
+                      </div>
                     </div>
                   </div>
-                  {getStatusBadge(integration?.status || 'disconnected')}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {integration && integration.status !== 'disconnected' ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      {integration.lastSyncAt && (
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {integration && integration.status !== 'disconnected' ? (
+                    <div className="flex items-center justify-between">
+                      {getStatusBadge(integration.status)}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
+                      >
+                        <Unplug className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      onClick={() => handleConnect(provider)}
+                      disabled={isConnecting}
+                    >
+                      {isConnecting ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
                         <>
-                          <RefreshCw className="h-3 w-3 inline mr-1" />
-                          Last sync:{' '}
-                          {integration.lastSyncAt instanceof Date
-                            ? integration.lastSyncAt.toLocaleDateString()
-                            : new Date(integration.lastSyncAt).toLocaleDateString()}
+                          <Plug className="h-4 w-4 mr-2" />
+                          Connect
                         </>
                       )}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
-                    >
-                      <Unplug className="h-4 w-4 mr-1" />
-                      Disconnect
                     </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Other Integrations Section */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Other Integrations</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {otherProviders.map((provider) => {
+            const integration = getIntegrationStatus(provider.id);
+            const isConnected = integration?.status === 'connected';
+            const Icon = providerIcons[provider.id];
+
+            return (
+              <Card key={provider.id} className={isConnected ? 'border-green-200 bg-green-50/30' : ''}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : 'bg-muted'}`}>
+                        <Icon
+                          className={`h-5 w-5 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`}
+                        />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">{provider.name}</CardTitle>
+                        <CardDescription>{provider.description}</CardDescription>
+                      </div>
+                    </div>
+                    {getStatusBadge(integration?.status || 'disconnected')}
                   </div>
-                ) : (
-                  <Button
-                    className="w-full"
-                    onClick={() => handleConnect(provider)}
-                    disabled={isConnecting}
-                  >
-                    {isConnecting ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      <>
-                        <Plug className="h-4 w-4 mr-2" />
-                        Connect
-                      </>
-                    )}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardHeader>
+                <CardContent>
+                  {integration && integration.status !== 'disconnected' ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        {integration.lastSyncAt && (
+                          <>
+                            <RefreshCw className="h-3 w-3 inline mr-1" />
+                            Last sync:{' '}
+                            {integration.lastSyncAt instanceof Date
+                              ? integration.lastSyncAt.toLocaleDateString()
+                              : new Date(integration.lastSyncAt).toLocaleDateString()}
+                          </>
+                        )}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
+                      >
+                        <Unplug className="h-4 w-4 mr-1" />
+                        Disconnect
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      onClick={() => handleConnect(provider)}
+                      disabled={isConnecting}
+                    >
+                      {isConnecting ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Plug className="h-4 w-4 mr-2" />
+                          Connect
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
       {/* Connect Dialog for providers with sub-providers */}

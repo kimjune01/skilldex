@@ -249,3 +249,47 @@ skillsRoutes.get('/:slug/rendered', async (c) => {
   });
 });
 
+// PUT /api/skills/:slug - Update skill (admin only)
+skillsRoutes.put('/:slug', async (c) => {
+  const user = c.get('user');
+
+  // Check if user is admin
+  if (!user.isAdmin) {
+    return c.json({ error: { message: 'Admin access required' } }, 403);
+  }
+
+  const slug = c.req.param('slug');
+  const body = await c.req.json();
+
+  // Find existing skill
+  const [existingSkill] = await db
+    .select()
+    .from(skills)
+    .where(eq(skills.slug, slug))
+    .limit(1);
+
+  if (!existingSkill) {
+    return c.json({ error: { message: 'Skill not found' } }, 404);
+  }
+
+  // Build update object with only provided fields
+  const updates: Partial<typeof skills.$inferInsert> = {};
+
+  if (body.name !== undefined) updates.name = body.name;
+  if (body.description !== undefined) updates.description = body.description;
+  if (body.category !== undefined) updates.category = body.category;
+  if (body.intent !== undefined) updates.intent = body.intent;
+  if (body.capabilities !== undefined) updates.capabilities = JSON.stringify(body.capabilities);
+  if (body.requiredIntegrations !== undefined) updates.requiredIntegrations = JSON.stringify(body.requiredIntegrations);
+  if (body.isEnabled !== undefined) updates.isEnabled = body.isEnabled;
+
+  // Update the skill
+  const [updatedSkill] = await db
+    .update(skills)
+    .set(updates)
+    .where(eq(skills.id, existingSkill.id))
+    .returning();
+
+  return c.json({ data: toSkillPublic(updatedSkill) });
+});
+

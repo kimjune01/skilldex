@@ -134,6 +134,20 @@ export const skills = {
 
     return response.text();
   },
+
+  update: (slug: string, data: Partial<{
+    name: string;
+    description: string;
+    category: string;
+    intent: string;
+    capabilities: string[];
+    requiredIntegrations: string[];
+    isEnabled: boolean;
+  }>) =>
+    request<SkillPublic>(`/skills/${slug}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 
 // API Keys

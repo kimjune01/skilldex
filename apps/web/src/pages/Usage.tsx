@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { analytics, type UsageStats } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 

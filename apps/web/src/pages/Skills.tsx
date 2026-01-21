@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { skills, proposals } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 import type { SkillPublic, SkillCategory, SkillProposalPublic } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -27,17 +29,25 @@ import {
   XCircle,
   Trash2,
   Edit,
+  Zap,
+  Plug,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'skills' | 'proposals';
 
 export default function Skills() {
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin || false;
+  const navigate = useNavigate();
+
   const [viewMode, setViewMode] = useState<ViewMode>('skills');
   const [skillList, setSkillList] = useState<SkillPublic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<SkillCategory | 'all'>('all');
+  const [showDisabled, setShowDisabled] = useState(false);
 
   // Proposals state
   const [proposalList, setProposalList] = useState<SkillProposalPublic[]>([]);
@@ -83,12 +93,30 @@ export default function Skills() {
     [skillList]
   );
 
-  const filteredSkills = useMemo(
-    () => filter === 'all'
-      ? skillList.filter((s) => s.isEnabled)
-      : skillList.filter((s) => s.isEnabled && s.category === filter),
-    [skillList, filter]
-  );
+  const filteredSkills = useMemo(() => {
+    let filtered = skillList;
+
+    // Non-admins only see enabled skills; admins can toggle
+    if (!isAdmin || !showDisabled) {
+      filtered = filtered.filter((s) => s.isEnabled);
+    }
+
+    // Apply category filter
+    if (filter !== 'all') {
+      filtered = filtered.filter((s) => s.category === filter);
+    }
+
+    return filtered;
+  }, [skillList, filter, isAdmin, showDisabled]);
+
+  const handleToggleEnabled = async (skill: SkillPublic) => {
+    try {
+      const updated = await skills.update(skill.slug, { isEnabled: !skill.isEnabled });
+      setSkillList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update skill');
+    }
+  };
 
   const resetForm = () => {
     setTitle('');
@@ -225,58 +253,116 @@ export default function Skills() {
 
       {viewMode === 'skills' ? (
         <>
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={filter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('all')}
-            >
-              All
-            </Button>
-            {categories.map((cat) => (
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2 flex-wrap">
               <Button
-                key={cat}
-                variant={filter === cat ? 'default' : 'outline'}
+                variant={filter === 'all' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilter(cat as SkillCategory)}
+                onClick={() => setFilter('all')}
               >
-                {cat}
+                All
               </Button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSkills.map((skill) => (
-              <Link key={skill.id} to={`/skills/${skill.slug}`}>
-                <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{skill.name}</CardTitle>
-                      <Badge variant={getCategoryBadgeVariant(skill.category)}>
-                        {skill.category}
-                      </Badge>
-                    </div>
-                    <CardDescription>{skill.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {skill.requiredIntegrations.map((int) => (
-                        <Badge key={int} variant="outline" className="text-xs">
-                          {int}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-
-          {filteredSkills.length === 0 && (
-            <div className="text-center text-muted-foreground py-8">
-              No skills found for this category
+              {categories.map((cat) => (
+                <Button
+                  key={cat}
+                  variant={filter === cat ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter(cat as SkillCategory)}
+                >
+                  {cat}
+                </Button>
+              ))}
             </div>
-          )}
+
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="show-disabled"
+                  checked={showDisabled}
+                  onCheckedChange={setShowDisabled}
+                />
+                <Label htmlFor="show-disabled" className="text-sm text-muted-foreground">
+                  Show disabled
+                </Label>
+              </div>
+            )}
+          </div>
+
+          <Card>
+            <CardContent className="p-0">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                      Skill
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                      Integrations
+                    </th>
+                    {isAdmin && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                        Status
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredSkills.map((skill) => (
+                    <tr
+                      key={skill.id}
+                      className={`cursor-pointer ${!skill.isEnabled ? 'bg-muted/30' : 'hover:bg-muted/50'}`}
+                      onClick={() => navigate(`/skills/${skill.slug}`)}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Zap className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{skill.name}</div>
+                            <div className="text-sm text-muted-foreground">{skill.description}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant={getCategoryBadgeVariant(skill.category)}>
+                          {skill.category}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {skill.requiredIntegrations.length > 0 ? (
+                            skill.requiredIntegrations.map((int) => (
+                              <Badge key={int} variant="secondary" className="gap-1">
+                                <Plug className="h-3 w-3" />
+                                {int}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-sm text-muted-foreground">None</span>
+                          )}
+                        </div>
+                      </td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <Switch
+                            checked={skill.isEnabled}
+                            onCheckedChange={() => handleToggleEnabled(skill)}
+                          />
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredSkills.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  No skills found for this category
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       ) : (
         <>

@@ -153,9 +153,49 @@ async function saveConfig() {
   }
 }
 
-async function disconnect() {
-  await chrome.runtime.sendMessage({ type: 'DISCONNECT' });
-  await loadStatus();
+async function reconnect() {
+  disconnectBtn.disabled = true;
+  disconnectBtn.textContent = 'Reconnecting...';
+
+  try {
+    // Get saved config
+    const stored = await chrome.storage.local.get(['apiKey', 'apiUrl']);
+
+    if (!stored.apiKey || !stored.apiUrl) {
+      throw new Error('No saved configuration');
+    }
+
+    // Disconnect first
+    await chrome.runtime.sendMessage({ type: 'DISCONNECT' });
+
+    // Test the API connection
+    const testResponse = await fetch(`${stored.apiUrl}/api/v1/me`, {
+      headers: {
+        'Authorization': `Bearer ${stored.apiKey}`,
+      },
+    });
+
+    if (!testResponse.ok) {
+      throw new Error('Failed to connect to API');
+    }
+
+    // Reconnect with saved config
+    await chrome.runtime.sendMessage({
+      type: 'SET_CONFIG',
+      apiKey: stored.apiKey,
+      apiUrl: stored.apiUrl,
+    });
+
+    showMessage('Reconnected successfully!', 'success');
+    await loadStatus();
+  } catch (err) {
+    console.error('Failed to reconnect:', err);
+    showMessage(err.message || 'Failed to reconnect', 'error');
+    await loadStatus();
+  } finally {
+    disconnectBtn.disabled = false;
+    disconnectBtn.textContent = 'Reconnect';
+  }
 }
 
 async function getConfigFromPage() {
@@ -274,7 +314,7 @@ async function readFromPage() {
 
 saveBtn.addEventListener('click', saveConfig);
 readFromPageBtn.addEventListener('click', readFromPage);
-disconnectBtn.addEventListener('click', disconnect);
+disconnectBtn.addEventListener('click', reconnect);
 
 // Handle enter key in inputs
 apiKeyInput.addEventListener('keypress', (e) => {
