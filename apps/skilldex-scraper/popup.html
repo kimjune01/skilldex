@@ -223,37 +223,57 @@
   </div>
 
   <div class="content">
-    <div class="status-card">
-      <div class="status-row">
-        <span class="status-label">Status</span>
-        <span class="status-value">
-          <span id="statusDot" class="status-dot inactive"></span>
-          <span id="statusText">Not connected</span>
-        </span>
+    <!-- Connected state: simple view -->
+    <div id="connectedView" style="display: none;">
+      <div class="status-card">
+        <div class="status-row">
+          <span class="status-label">Status</span>
+          <span class="status-value">
+            <span id="connectedDot" class="status-dot active"></span>
+            <span id="connectedText">Connected</span>
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Server</span>
+          <span class="status-value" id="serverUrl">localhost:3000</span>
+        </div>
       </div>
-      <div class="status-row">
-        <span class="status-label">API Key</span>
-        <span class="status-value" id="apiKeyStatus">Not configured</span>
+      <div id="processingInfo" class="processing-info" style="display: none;">
+        <strong>Currently processing:</strong>
+        <span class="processing-url" id="processingUrl"></span>
       </div>
+      <button class="btn btn-secondary" id="disconnectBtn">Disconnect</button>
     </div>
 
-    <div id="processingInfo" class="processing-info" style="display: none;">
-      <strong>Currently processing:</strong>
-      <span class="processing-url" id="processingUrl"></span>
-    </div>
+    <!-- Disconnected state: config form -->
+    <div id="configView">
+      <div class="status-card">
+        <div class="status-row">
+          <span class="status-label">Status</span>
+          <span class="status-value">
+            <span id="statusDot" class="status-dot inactive"></span>
+            <span id="statusText">Not connected</span>
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">API Key</span>
+          <span class="status-value" id="apiKeyStatus">Not configured</span>
+        </div>
+      </div>
 
-    <div class="form-group">
-      <label for="apiUrl">API URL</label>
-      <input type="text" id="apiUrl" placeholder="http://localhost:3000">
-    </div>
+      <div class="form-group">
+        <label for="apiUrl">API URL</label>
+        <input type="text" id="apiUrl" placeholder="http://localhost:3000">
+      </div>
 
-    <div class="form-group">
-      <label for="apiKey">API Key</label>
-      <input type="password" id="apiKey" placeholder="sk_live_...">
-    </div>
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <input type="password" id="apiKey" placeholder="sk_live_...">
+      </div>
 
-    <button class="btn btn-primary" id="saveBtn">Save & Connect</button>
-    <button class="btn btn-secondary" id="toggleBtn">Stop Polling</button>
+      <button class="btn btn-primary" id="saveBtn">Save & Connect</button>
+      <button class="btn btn-secondary" id="readFromPageBtn">Read from Skilldex Page</button>
+    </div>
 
     <div id="message" class="message" style="display: none;"></div>
   </div>

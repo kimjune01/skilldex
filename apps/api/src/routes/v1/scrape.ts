@@ -10,7 +10,7 @@ import type {
   CreateScrapeTaskResponse,
   UpdateScrapeTaskRequest,
 } from '@skilldex/shared';
-import { emitTaskUpdate } from '../../lib/scrape-events.js';
+import { emitTaskUpdate, assignTaskToExtension } from '../../lib/scrape-events.js';
 
 export const v1ScrapeRoutes = new Hono();
 
@@ -191,6 +191,9 @@ v1ScrapeRoutes.post('/tasks', async (c) => {
       expiresAt: new Date(now.getTime() + TASK_TTL_MS),
     })
     .returning();
+
+  // Push task to connected extension via WebSocket (if available)
+  assignTaskToExtension(user.id, { id: task.id, url: body.url });
 
   const response: CreateScrapeTaskResponse = {
     id: task.id,

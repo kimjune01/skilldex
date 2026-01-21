@@ -8,8 +8,19 @@ export interface ScrapeTaskEvent {
   errorMessage?: string;
 }
 
-// Map of userId -> Set of WebSocket connections
+export interface TaskAssignment {
+  type: 'task_assigned';
+  task: {
+    id: string;
+    url: string;
+  };
+}
+
+// Map of userId -> Set of WebSocket connections (web UI)
 const userConnections = new Map<string, Set<WSContext>>();
+
+// Map of userId -> Set of WebSocket connections (extensions ready to receive tasks)
+const extensionConnections = new Map<string, Set<WSContext>>();
 
 // Map of taskId -> Set of userIds waiting for this task
 const taskWaiters = new Map<string, Set<string>>();
@@ -36,6 +47,70 @@ export function removeConnection(userId: string, ws: WSContext): void {
       userConnections.delete(userId);
     }
     console.log(`[WS] User ${userId} disconnected. Remaining: ${connections?.size || 0}`);
+  }
+}
+
+/**
+ * Register an extension WebSocket connection for a user
+ */
+export function addExtensionConnection(userId: string, ws: WSContext): void {
+  if (!extensionConnections.has(userId)) {
+    extensionConnections.set(userId, new Set());
+  }
+  extensionConnections.get(userId)!.add(ws);
+  console.log(`[WS] Extension for user ${userId} connected. Total: ${extensionConnections.get(userId)!.size}`);
+}
+
+/**
+ * Remove an extension WebSocket connection
+ */
+export function removeExtensionConnection(userId: string, ws: WSContext): void {
+  const connections = extensionConnections.get(userId);
+  if (connections) {
+    connections.delete(ws);
+    if (connections.size === 0) {
+      extensionConnections.delete(userId);
+    }
+    console.log(`[WS] Extension for user ${userId} disconnected. Remaining: ${connections?.size || 0}`);
+  }
+}
+
+/**
+ * Check if user has a connected extension
+ */
+export function hasExtensionConnected(userId: string): boolean {
+  const connections = extensionConnections.get(userId);
+  return connections !== undefined && connections.size > 0;
+}
+
+/**
+ * Push a task assignment to one of the user's connected extensions
+ * Returns true if task was assigned to an extension
+ */
+export function assignTaskToExtension(userId: string, task: { id: string; url: string }): boolean {
+  const connections = extensionConnections.get(userId);
+  if (!connections || connections.size === 0) {
+    return false;
+  }
+
+  // Send to the first available extension (round-robin could be added later)
+  const ws = connections.values().next().value;
+  if (!ws) {
+    return false;
+  }
+
+  const message: TaskAssignment = {
+    type: 'task_assigned',
+    task,
+  };
+
+  try {
+    ws.send(JSON.stringify(message));
+    console.log(`[WS] Task ${task.id} assigned to extension for user ${userId}`);
+    return true;
+  } catch (err) {
+    console.error(`[WS] Failed to assign task to extension:`, err);
+    return false;
   }
 }
 
@@ -172,14 +247,19 @@ export function emitTaskUpdate(taskId: string, event: ScrapeTaskEvent): void {
 /**
  * Get connection stats
  */
-export function getStats(): { users: number; connections: number; pendingTasks: number } {
+export function getStats(): { users: number; connections: number; extensions: number; pendingTasks: number } {
   let totalConnections = 0;
   for (const connections of userConnections.values()) {
     totalConnections += connections.size;
   }
+  let totalExtensions = 0;
+  for (const connections of extensionConnections.values()) {
+    totalExtensions += connections.size;
+  }
   return {
     users: userConnections.size,
     connections: totalConnections,
+    extensions: totalExtensions,
     pendingTasks: taskWaiters.size,
   };
 }

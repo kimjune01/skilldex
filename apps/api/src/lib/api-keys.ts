@@ -1,7 +1,18 @@
 import { randomBytes } from 'crypto';
+import { db } from '@skilldex/db';
+import { apiKeys, users } from '@skilldex/db/schema';
+import { eq, isNull, and } from 'drizzle-orm';
 
 const API_KEY_PREFIX = 'sk_live_';
 const API_KEY_LENGTH = 32; // bytes, results in 64 hex chars
+
+export interface ApiKeyUser {
+  id: string;
+  email: string;
+  name: string;
+  isAdmin: boolean;
+  apiKeyId: string;
+}
 
 /**
  * Generate a new API key
@@ -28,4 +39,49 @@ export function extractApiKey(authHeader: string | undefined): string | null {
   }
 
   return null;
+}
+
+/**
+ * Validate API key and return user info
+ * Returns null if key is invalid or revoked
+ */
+export async function validateApiKey(key: string): Promise<ApiKeyUser | null> {
+  if (!key || !key.startsWith(API_KEY_PREFIX)) {
+    return null;
+  }
+
+  const result = await db
+    .select()
+    .from(apiKeys)
+    .innerJoin(users, eq(apiKeys.userId, users.id))
+    .where(
+      and(
+        eq(apiKeys.key, key),
+        isNull(apiKeys.revokedAt)
+      )
+    )
+    .limit(1);
+
+  if (result.length === 0) {
+    return null;
+  }
+
+  const row = result[0];
+  const apiKey = row.api_keys;
+  const user = row.users;
+
+  // Update last used timestamp (fire and forget)
+  db.update(apiKeys)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(apiKeys.id, apiKey.id))
+    .execute()
+    .catch(console.error);
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    isAdmin: user.isAdmin,
+    apiKeyId: apiKey.id,
+  };
 }

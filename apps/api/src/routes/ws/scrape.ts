@@ -1,68 +1,84 @@
-import { Hono } from 'hono';
-import { createNodeWebSocket } from '@hono/node-ws';
+import type { Context } from 'hono';
+import type { WSEvents } from 'hono/ws';
 import { verifyToken } from '../../lib/jwt.js';
+import { validateApiKey } from '../../lib/api-keys.js';
 import {
   addConnection,
   removeConnection,
+  addExtensionConnection,
+  removeExtensionConnection,
   subscribeToTask,
   unsubscribeFromTask,
   getStats,
 } from '../../lib/scrape-events.js';
 
-export const wsScrapeRoutes = new Hono();
-
-// Create WebSocket helper for Node.js
-const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app: wsScrapeRoutes });
-
-// WebSocket endpoint for scrape task notifications
-// Client connects to: /ws/scrape?token=JWT_TOKEN
-wsScrapeRoutes.get(
-  '/',
-  upgradeWebSocket(async (c) => {
-    // Get token from query param (WebSocket doesn't support headers easily)
+/**
+ * Create WebSocket handler for scrape task notifications
+ * Web UI connects to: /ws/scrape?token=JWT_TOKEN
+ * Extension connects to: /ws/scrape?apiKey=sk_live_...&mode=extension
+ */
+export function createWsScrapeHandler() {
+  return async (c: Context): Promise<WSEvents> => {
     const token = c.req.query('token');
+    const apiKey = c.req.query('apiKey');
+    const mode = c.req.query('mode'); // 'extension' for browser extension
 
-    if (!token) {
-      // Return handlers that immediately close
+    // Try JWT auth first, then API key
+    let userId: string | null = null;
+    let isExtension = mode === 'extension';
+
+    if (token) {
+      const payload = await verifyToken(token);
+      if (payload) {
+        userId = payload.id;
+      }
+    } else if (apiKey) {
+      const user = await validateApiKey(apiKey);
+      if (user) {
+        userId = user.id;
+        isExtension = true; // API key auth implies extension
+      }
+    }
+
+    if (!userId) {
       return {
         onOpen(_event, ws) {
-          ws.close(4001, 'Missing authentication token');
+          ws.close(4001, 'Missing or invalid authentication');
         },
       };
     }
 
-    const payload = await verifyToken(token);
-    if (!payload) {
-      return {
-        onOpen(_event, ws) {
-          ws.close(4002, 'Invalid or expired token');
-        },
-      };
-    }
-
-    const userId = payload.id;
+    // Capture for closure
+    const authenticatedUserId = userId;
+    const isExtensionConnection = isExtension;
 
     return {
       onOpen(_event, ws) {
-        addConnection(userId, ws);
-        ws.send(JSON.stringify({ type: 'connected', userId }));
+        if (isExtensionConnection) {
+          addExtensionConnection(authenticatedUserId, ws);
+          ws.send(JSON.stringify({ type: 'connected', userId: authenticatedUserId, mode: 'extension' }));
+        } else {
+          addConnection(authenticatedUserId, ws);
+          ws.send(JSON.stringify({ type: 'connected', userId: authenticatedUserId }));
+        }
       },
 
       onMessage(event, ws) {
         try {
           const data = JSON.parse(event.data.toString());
 
-          // Handle subscription messages
+          // Handle subscription messages (web UI only)
           if (data.type === 'subscribe' && data.taskId) {
-            subscribeToTask(userId, data.taskId);
+            subscribeToTask(authenticatedUserId, data.taskId);
             ws.send(JSON.stringify({ type: 'subscribed', taskId: data.taskId }));
           }
 
           if (data.type === 'unsubscribe' && data.taskId) {
-            unsubscribeFromTask(userId, data.taskId);
+            unsubscribeFromTask(authenticatedUserId, data.taskId);
             ws.send(JSON.stringify({ type: 'unsubscribed', taskId: data.taskId }));
           }
 
+          // Heartbeat to keep connection alive
           if (data.type === 'ping') {
             ws.send(JSON.stringify({ type: 'pong' }));
           }
@@ -76,16 +92,21 @@ wsScrapeRoutes.get(
       },
 
       onClose(_event, ws) {
-        removeConnection(userId, ws);
+        if (isExtensionConnection) {
+          removeExtensionConnection(authenticatedUserId, ws);
+        } else {
+          removeConnection(authenticatedUserId, ws);
+        }
       },
 
       onError(event, ws) {
         console.error('[WS] Error:', event);
-        removeConnection(userId, ws);
+        if (isExtensionConnection) {
+          removeExtensionConnection(authenticatedUserId, ws);
+        } else {
+          removeConnection(authenticatedUserId, ws);
+        }
       },
     };
-  })
-);
-
-// Export the WebSocket injector for use in index.ts
-export { injectWebSocket };
+  };
+}

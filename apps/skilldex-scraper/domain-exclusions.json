@@ -1,0 +1,86 @@
+{
+  "www.linkedin.com": {
+    "inclusionSelectors": ["main"],
+    "exclusionSelectors": [
+      "div[class*='nav']",
+      "div[class*='global']",
+      ".visually-hidden",
+      "footer",
+      "div[class*='load']",
+      "section.scaffold-layout-toolbar",
+      "code",
+      "aside",
+      "style",
+      "noscript",
+      "iframe",
+      "header",
+      "header nav",
+      ".advertisement",
+      ".cookie-banner",
+      ".ad-banner-container",
+      ".pv-right-rail__empty-iframe",
+      ".artdeco-toast-item",
+      ".msg-overlay-list-bubble",
+      ".msg-overlay-conversation-bubble",
+      ".global-nav"
+    ]
+  },
+  "www.google.com": {
+    "exclusionSelectors": [
+      "#hdtb",
+      "#gb",
+      "#fbar",
+      "#foot",
+      "#bfoot",
+      ".appbar",
+      ".sfbg",
+      "header",
+      "footer",
+      "nav",
+      ".commercial-unit-desktop-top"
+    ]
+  },
+  "github.com": {
+    "inclusionSelectors": ["main", "article", ".markdown-body"],
+    "exclusionSelectors": [
+      "header",
+      "nav",
+      "footer",
+      ".Layout-sidebar",
+      ".js-header-wrapper",
+      ".AppHeader",
+      ".flash",
+      ".pagehead-actions"
+    ]
+  },
+  "stackoverflow.com": {
+    "inclusionSelectors": ["#mainbar", "#question", ".answer"],
+    "exclusionSelectors": [
+      "header",
+      "nav",
+      "footer",
+      ".left-sidebar",
+      ".js-consent-banner",
+      ".js-dismissable-hero",
+      ".s-sidebarwidget",
+      "#sidebar"
+    ]
+  },
+  "_default": {
+    "exclusionSelectors": [
+      "script",
+      "style",
+      "noscript",
+      "iframe",
+      "link",
+      "header nav",
+      "footer",
+      ".advertisement",
+      ".cookie-banner",
+      ".ad",
+      ".ads",
+      "[role='banner']",
+      "[role='navigation']"
+    ]
+  }
+}

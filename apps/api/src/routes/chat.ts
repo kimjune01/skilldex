@@ -13,6 +13,7 @@ import { parse as parseYaml } from 'yaml';
 import {
   subscribeToTask,
   unsubscribeFromTask,
+  assignTaskToExtension,
   type ScrapeTaskEvent,
 } from '../lib/scrape-events.js';
 import {
@@ -41,7 +42,8 @@ type ATSAction =
   | { action: 'get_job'; id: string }
   | { action: 'list_applications'; candidateId?: string; jobId?: string; stage?: string }
   | { action: 'update_application_stage'; id: string; stage: string }
-  | { action: 'scrape_url'; url: string };
+  | { action: 'scrape_url'; url: string }
+  | { action: 'lookup_skill'; slug: string };
 
 // Parse frontmatter from SKILL.md content
 function parseFrontmatter(content: string): { intent: string; capabilities: string[] } {
@@ -104,7 +106,18 @@ function buildSystemPrompt(skillsList: SkillPublic[]): string {
     .map(s => `- **${s.name}**: ${s.description}`)
     .join('\n');
 
-  return `You are a recruiting assistant with direct access to the ATS (Applicant Tracking System). You can execute actions to help users manage candidates, jobs, and applications.
+  // Build skills list with intents for matching
+  const availableSkills = skillsList
+    .filter(s => s.isEnabled)
+    .map(s => `- **${s.slug}**: ${s.description}${s.intent ? ` (Use when: ${s.intent})` : ''}`)
+    .join('\n');
+
+  return `You are a recruiting assistant with direct access to the ATS (Applicant Tracking System) and various recruiting skills. You can execute actions to help users manage candidates, jobs, and applications.
+
+## Available Skills
+When the user's request matches a skill's intent, use lookup_skill to get the full implementation details, then follow those instructions.
+
+${availableSkills}
 
 ## CRITICAL: How to Execute Actions
 
@@ -169,10 +182,14 @@ The system ONLY executes code blocks marked as \`\`\`action. Any other format wi
    \`\`\`action
    {"action": "scrape_url", "url": "https://example.com/page"}
    \`\`\`
-   - url: The full URL to scrape (must include https://)
-   - Returns the page content as markdown text
-   - Use this to extract information from LinkedIn profiles, job postings, company pages, etc.
-   - Note: Requires the Skilldex Scraper browser extension to be installed and running
+
+### Skill Lookup
+10. **lookup_skill** - Look up a skill's implementation details by slug
+   \`\`\`action
+   {"action": "lookup_skill", "slug": "linkedin-lookup"}
+   \`\`\`
+   - Returns the skill's full instructions and implementation details
+   - Use this when you need to execute a specific skill
 
 ## Skills Requiring Claude Desktop
 These skills cannot be executed here and require Claude Desktop:
@@ -182,10 +199,11 @@ For these skills, explain what they do and tell the user to use them in Claude D
 
 ## Guidelines
 - IMPORTANT: Use \`\`\`action blocks, NOT \`\`\`json blocks. The system only executes \`\`\`action blocks.
-- For READ operations (search_candidates, get_candidate, list_jobs, get_job, list_applications): Execute immediately without asking for confirmation.
-- For WRITE operations (create_candidate, update_candidate, update_application_stage): Ask for confirmation first.
-- When users ask to find/search candidates, immediately execute search_candidates with the relevant query.
-- When users want to see jobs, immediately execute list_jobs.
+- **SKILL MATCHING**: When a user's request matches a skill's intent, use lookup_skill FIRST to get the implementation details, then follow those instructions.
+- **CANDIDATE SOURCING**: When users ask to "find candidates", "search for engineers", "look for developers", etc. - this means sourcing NEW candidates from LinkedIn, NOT searching existing ATS records. Use lookup_skill with "linkedin-lookup" to get instructions for LinkedIn searching.
+- **ATS SEARCH**: Only use search_candidates when the user explicitly asks about "existing candidates", "candidates in our system", "our database", or "the ATS".
+- For READ operations: Execute immediately without asking for confirmation.
+- For WRITE operations: Ask for confirmation first.
 - Keep your initial response brief. The action results will be shown to the user automatically.
 - Be conversational and helpful.`;
 }
@@ -422,6 +440,37 @@ async function executeAction(action: ATSAction, isDemo: boolean, userId?: string
       return { application: updated, updated: true, demo: isDemo };
     }
 
+    case 'lookup_skill': {
+      const [skill] = await db
+        .select()
+        .from(skills)
+        .where(eq(skills.slug, action.slug))
+        .limit(1);
+
+      if (!skill) {
+        return { error: `Skill "${action.slug}" not found` };
+      }
+
+      const skillPath = join(process.cwd(), '..', '..', skill.skillMdPath);
+      if (!existsSync(skillPath)) {
+        return { error: `Skill instructions not found for "${action.slug}"` };
+      }
+
+      const content = readFileSync(skillPath, 'utf-8');
+      // Remove frontmatter, return just the instructions
+      const instructions = content.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+
+      return {
+        skill: {
+          slug: skill.slug,
+          name: skill.name,
+          description: skill.description,
+        },
+        instructions,
+        executionNote: 'You can execute this skill using the available actions (e.g., scrape_url for LinkedIn URLs). Use the scrape_url action to fetch LinkedIn pages - the browser extension will handle the scraping.',
+      };
+    }
+
     case 'scrape_url': {
       if (!userId) {
         return { error: 'Authentication required for scraping' };
@@ -499,6 +548,9 @@ async function executeAction(action: ATSAction, isDemo: boolean, userId?: string
         });
       }
 
+      // Assign task to browser extension via WebSocket
+      assignTaskToExtension(userId, { id: taskId, url: action.url });
+
       // Wait for task completion via WebSocket events (with polling fallback)
       // Subscribe to task updates
       subscribeToTask(userId, taskId);
@@ -550,9 +602,16 @@ chatRoutes.post('/', async (c) => {
         });
       }
 
-      // Check for action in the response
-      const action = parseAction(fullResponse);
-      if (action) {
+      // Check for action in the response - support chained actions
+      let action = parseAction(fullResponse);
+      let actionCount = 0;
+      const maxActions = 5; // Prevent infinite loops
+      let currentMessages = [...chatMessages];
+      let currentResponse = fullResponse;
+
+      while (action && actionCount < maxActions) {
+        actionCount++;
+
         // Execute the action
         const result = await executeAction(action, isDemo, user?.id);
 
@@ -565,22 +624,38 @@ chatRoutes.post('/', async (c) => {
           }),
         });
 
+        // For lookup_skill, allow follow-up actions; for others, just summarize
+        const allowMoreActions = action.action === 'lookup_skill';
+
         // Get a follow-up response from the LLM with the action result
         const followUpMessages: ChatMessage[] = [
-          ...chatMessages,
-          { role: 'assistant', content: fullResponse },
+          ...currentMessages,
+          { role: 'assistant', content: currentResponse },
           {
             role: 'user',
-            content: `[SYSTEM: Action "${action.action}" completed. Result: ${JSON.stringify(result)}]\n\nPlease summarize the results for the user in a helpful way. Do not include another action block.`,
+            content: allowMoreActions
+              ? `[SYSTEM: Action "${action.action}" completed. Result: ${JSON.stringify(result)}]\n\nNow execute the skill by using the appropriate action (e.g., scrape_url for LinkedIn searches). Include an action block.`
+              : `[SYSTEM: Action "${action.action}" completed. Result: ${JSON.stringify(result)}]\n\nPlease summarize the results for the user in a helpful way. Do not include another action block.`,
           },
         ];
 
-        // Get follow-up (non-streaming for simplicity)
-        const followUp = await chat(followUpMessages, { maxTokens: 500 });
+        // Get follow-up
+        const followUp = await chat(followUpMessages, { maxTokens: 1000 });
         if (followUp) {
           await stream.writeSSE({
             data: JSON.stringify({ type: 'text', content: '\n\n' + followUp }),
           });
+
+          // Check if follow-up contains another action
+          if (allowMoreActions) {
+            action = parseAction(followUp);
+            currentMessages = followUpMessages;
+            currentResponse = followUp;
+          } else {
+            action = null;
+          }
+        } else {
+          action = null;
         }
       }
 

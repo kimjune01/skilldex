@@ -1,14 +1,17 @@
 // Skilldex Scraper - Background Service Worker
-// Polls for pending scrape tasks and processes them
+// Connects via WebSocket to receive scrape tasks in real-time
 
-const POLL_INTERVAL_MS = 5000; // 5 seconds
 const DEFAULT_API_URL = 'http://localhost:3000';
+const RECONNECT_DELAY_MS = 3000;
+const PING_INTERVAL_MS = 20000; // Keep alive every 20s (Chrome official recommendation)
 
-let isPolling = false;
-let pollTimeoutId = null;
 let apiKey = null;
 let apiUrl = DEFAULT_API_URL;
+let ws = null;
 let processingTask = null;
+let pingIntervalId = null;
+let reconnectTimeoutId = null;
+let isConnecting = false;
 
 // ============ Storage ============
 
@@ -25,31 +28,139 @@ async function saveConfig(key, url) {
   await chrome.storage.local.set({ apiKey: key, apiUrl: apiUrl });
 }
 
-// ============ API Calls ============
+// ============ WebSocket Connection ============
 
-async function claimPendingTask() {
-  if (!apiKey) return null;
+function getWsUrl() {
+  const httpUrl = new URL(apiUrl);
+  const wsProtocol = httpUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${wsProtocol}//${httpUrl.host}/ws/scrape?apiKey=${encodeURIComponent(apiKey)}&mode=extension`;
+}
+
+function connect() {
+  if (!apiKey || isConnecting || (ws && ws.readyState === WebSocket.OPEN)) {
+    return;
+  }
+
+  isConnecting = true;
+  console.log('[WS] Connecting to', getWsUrl().replace(apiKey, '***'));
 
   try {
-    const response = await fetch(`${apiUrl}/api/v1/scrape/tasks?status=pending&claim=true`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    ws = new WebSocket(getWsUrl());
 
-    if (!response.ok) {
-      console.error('Failed to claim task:', response.status);
-      return null;
-    }
+    ws.onopen = () => {
+      isConnecting = false;
+      console.log('[WS] Connected');
+      startPingInterval();
+    };
 
-    const data = await response.json();
-    return data.task || null;
+    ws.onmessage = async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('[WS] Received:', data.type);
+
+        if (data.type === 'task_assigned' && data.task) {
+          await handleTaskAssignment(data.task);
+        }
+
+        if (data.type === 'pong') {
+          // Connection is alive
+        }
+      } catch (err) {
+        console.error('[WS] Message parse error:', err);
+      }
+    };
+
+    ws.onclose = (event) => {
+      isConnecting = false;
+      console.log('[WS] Closed:', event.code, event.reason);
+      cleanup();
+      scheduleReconnect();
+    };
+
+    ws.onerror = (event) => {
+      isConnecting = false;
+      console.error('[WS] Error:', event);
+      cleanup();
+    };
   } catch (err) {
-    console.error('Error claiming task:', err);
-    return null;
+    isConnecting = false;
+    console.error('[WS] Connection error:', err);
+    scheduleReconnect();
   }
 }
+
+function disconnect() {
+  cleanup();
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+}
+
+function cleanup() {
+  if (pingIntervalId) {
+    clearInterval(pingIntervalId);
+    pingIntervalId = null;
+  }
+  if (reconnectTimeoutId) {
+    clearTimeout(reconnectTimeoutId);
+    reconnectTimeoutId = null;
+  }
+}
+
+function scheduleReconnect() {
+  if (reconnectTimeoutId || !apiKey) return;
+
+  console.log(`[WS] Reconnecting in ${RECONNECT_DELAY_MS}ms...`);
+  reconnectTimeoutId = setTimeout(() => {
+    reconnectTimeoutId = null;
+    connect();
+  }, RECONNECT_DELAY_MS);
+}
+
+function startPingInterval() {
+  if (pingIntervalId) {
+    clearInterval(pingIntervalId);
+  }
+  pingIntervalId = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    }
+  }, PING_INTERVAL_MS);
+}
+
+// ============ Task Handling ============
+
+async function handleTaskAssignment(task) {
+  if (processingTask) {
+    console.log('[Task] Already processing a task, ignoring new assignment');
+    return;
+  }
+
+  console.log(`[Task] Received task ${task.id}: ${task.url}`);
+  await processTask(task);
+}
+
+async function processTask(task) {
+  processingTask = task;
+
+  try {
+    // Mark task as processing
+    await updateTask(task.id, 'processing');
+
+    // Scrape the URL
+    const markdown = await scrapeUrl(task.url);
+    await updateTask(task.id, 'completed', markdown);
+    console.log(`[Task] ${task.id} completed successfully`);
+  } catch (err) {
+    console.error(`[Task] ${task.id} failed:`, err);
+    await updateTask(task.id, 'failed', null, err.message);
+  } finally {
+    processingTask = null;
+  }
+}
+
+// ============ API Calls ============
 
 async function updateTask(taskId, status, result, errorMessage) {
   if (!apiKey) return;
@@ -69,10 +180,10 @@ async function updateTask(taskId, status, result, errorMessage) {
     });
 
     if (!response.ok) {
-      console.error('Failed to update task:', response.status);
+      console.error('[API] Failed to update task:', response.status);
     }
   } catch (err) {
-    console.error('Error updating task:', err);
+    console.error('[API] Error updating task:', err);
   }
 }
 
@@ -80,7 +191,6 @@ async function updateTask(taskId, status, result, errorMessage) {
 
 async function scrapeUrl(url) {
   return new Promise((resolve, reject) => {
-    // Create a tab to load the page
     chrome.tabs.create({ url, active: false }, async (tab) => {
       const tabId = tab.id;
       let timeoutId;
@@ -154,16 +264,69 @@ async function scrapeUrl(url) {
   });
 }
 
+// Domain-specific exclusion/inclusion config (injected at runtime)
+const DOMAIN_EXCLUSIONS = {
+  "www.linkedin.com": {
+    "inclusionSelectors": ["main"],
+    "exclusionSelectors": [
+      "div[class*='nav']",
+      "div[class*='global']",
+      ".visually-hidden",
+      "footer",
+      "div[class*='load']",
+      "section.scaffold-layout-toolbar",
+      "code",
+      "aside",
+      "style",
+      "noscript",
+      "iframe",
+      "header",
+      "header nav",
+      ".advertisement",
+      ".cookie-banner",
+      ".ad-banner-container",
+      ".pv-right-rail__empty-iframe",
+      ".artdeco-toast-item",
+      ".msg-overlay-list-bubble",
+      ".msg-overlay-conversation-bubble",
+      ".global-nav"
+    ]
+  },
+  "github.com": {
+    "inclusionSelectors": ["main", "article", ".markdown-body"],
+    "exclusionSelectors": [
+      "header", "nav", "footer", ".Layout-sidebar",
+      ".js-header-wrapper", ".AppHeader", ".flash", ".pagehead-actions"
+    ]
+  },
+  "stackoverflow.com": {
+    "inclusionSelectors": ["#mainbar", "#question", ".answer"],
+    "exclusionSelectors": [
+      "header", "nav", "footer", ".left-sidebar",
+      ".js-consent-banner", ".js-dismissable-hero", ".s-sidebarwidget", "#sidebar"
+    ]
+  },
+  "_default": {
+    "exclusionSelectors": [
+      "script", "style", "noscript", "iframe", "link",
+      "header nav", "footer", ".advertisement", ".cookie-banner",
+      ".ad", ".ads", "[role='banner']", "[role='navigation']"
+    ]
+  }
+};
+
 // This function runs in the context of the page
 function extractPageContent() {
-  // Simple HTML to Markdown conversion
-  // We use a basic approach here; Turndown can be injected for better conversion
+  // Get domain config
+  const hostname = window.location.hostname;
+  const config = DOMAIN_EXCLUSIONS[hostname] || DOMAIN_EXCLUSIONS['_default'];
+  const exclusionSelectors = config.exclusionSelectors || [];
+  const inclusionSelectors = config.inclusionSelectors || null;
 
   function htmlToMarkdown(element) {
     let markdown = '';
     const tagName = element.tagName?.toLowerCase();
 
-    // Skip script, style, and hidden elements
     if (['script', 'style', 'noscript', 'svg', 'iframe'].includes(tagName)) {
       return '';
     }
@@ -172,14 +335,12 @@ function extractPageContent() {
       return '';
     }
 
-    // Handle text nodes
     if (element.nodeType === Node.TEXT_NODE) {
       const text = element.textContent?.trim();
       if (text) return text + ' ';
       return '';
     }
 
-    // Handle elements
     if (element.nodeType === Node.ELEMENT_NODE) {
       const children = Array.from(element.childNodes)
         .map(child => htmlToMarkdown(child))
@@ -225,11 +386,7 @@ function extractPageContent() {
           return text;
         case 'img':
           const alt = element.getAttribute('alt') || '';
-          const src = element.getAttribute('src') || '';
-          if (src) {
-            return `![${alt}](${src})`;
-          }
-          return '';
+          return alt ? `[Image: ${alt}]` : '';
         case 'ul':
           return `\n${Array.from(element.children)
             .map(li => `- ${htmlToMarkdown(li).trim()}`)
@@ -270,7 +427,6 @@ function extractPageContent() {
       const rowContent = cells.map(cell => cell.textContent?.trim() || '').join(' | ');
       markdown += `| ${rowContent} |\n`;
 
-      // Add separator after header row
       if (index === 0) {
         markdown += '| ' + cells.map(() => '---').join(' | ') + ' |\n';
       }
@@ -280,93 +436,50 @@ function extractPageContent() {
     return markdown;
   }
 
-  // Get page title and main content
-  const title = document.title || '';
-  const body = document.body;
+  // Clone body to avoid modifying the actual page
+  const tempDiv = document.createElement('div');
 
+  // Use inclusion selectors if specified, otherwise use whole body
+  if (inclusionSelectors && inclusionSelectors.length > 0) {
+    inclusionSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        tempDiv.appendChild(el.cloneNode(true));
+      });
+    });
+  } else {
+    tempDiv.innerHTML = document.body.innerHTML;
+  }
+
+  // Remove excluded elements
+  if (exclusionSelectors.length > 0) {
+    const combinedSelector = exclusionSelectors.join(',');
+    tempDiv.querySelectorAll(combinedSelector).forEach(el => el.remove());
+  }
+
+  // Build content
+  const title = document.title || '';
   let content = '';
   if (title) {
     content += `# ${title}\n\n`;
   }
   content += `URL: ${window.location.href}\n\n`;
   content += '---\n\n';
+  content += htmlToMarkdown(tempDiv);
 
-  // Try to find main content area
-  const mainContent = document.querySelector('main, article, [role="main"], .content, #content');
-  if (mainContent) {
-    content += htmlToMarkdown(mainContent);
-  } else {
-    content += htmlToMarkdown(body);
-  }
-
-  // Clean up excessive whitespace
+  // Clean up
   content = content
     .replace(/\n{4,}/g, '\n\n\n')
     .replace(/[ \t]+/g, ' ')
+    .replace(/\n +/g, '\n')
     .trim();
 
+  // Truncate if too long (30KB limit)
+  const MAX_LENGTH = 30 * 1024;
+  if (content.length > MAX_LENGTH) {
+    content = content.slice(0, MAX_LENGTH) + '\n\n[Content truncated...]';
+  }
+
   return content;
-}
-
-// ============ Task Processing ============
-
-async function processTask(task) {
-  processingTask = task;
-  console.log(`Processing task ${task.id}: ${task.url}`);
-
-  try {
-    const markdown = await scrapeUrl(task.url);
-    await updateTask(task.id, 'completed', markdown);
-    console.log(`Task ${task.id} completed successfully`);
-  } catch (err) {
-    console.error(`Task ${task.id} failed:`, err);
-    await updateTask(task.id, 'failed', null, err.message);
-  } finally {
-    processingTask = null;
-  }
-}
-
-// ============ Polling ============
-
-async function poll() {
-  if (!apiKey || processingTask) {
-    schedulePoll();
-    return;
-  }
-
-  try {
-    const task = await claimPendingTask();
-    if (task) {
-      await processTask(task);
-    }
-  } catch (err) {
-    console.error('Poll error:', err);
-  }
-
-  schedulePoll();
-}
-
-function schedulePoll() {
-  if (pollTimeoutId) {
-    clearTimeout(pollTimeoutId);
-  }
-  pollTimeoutId = setTimeout(poll, POLL_INTERVAL_MS);
-}
-
-function startPolling() {
-  if (isPolling) return;
-  isPolling = true;
-  console.log('Starting poll loop');
-  poll();
-}
-
-function stopPolling() {
-  isPolling = false;
-  if (pollTimeoutId) {
-    clearTimeout(pollTimeoutId);
-    pollTimeoutId = null;
-  }
-  console.log('Stopped polling');
 }
 
 // ============ Message Handling ============
@@ -374,7 +487,7 @@ function stopPolling() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GET_STATUS') {
     sendResponse({
-      isPolling,
+      connected: ws && ws.readyState === WebSocket.OPEN,
       apiKey: apiKey ? `${apiKey.slice(0, 10)}...` : null,
       apiUrl,
       processingTask: processingTask ? { id: processingTask.id, url: processingTask.url } : null,
@@ -384,24 +497,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'SET_CONFIG') {
     saveConfig(message.apiKey, message.apiUrl).then(() => {
+      // Disconnect existing connection and reconnect with new config
+      disconnect();
       if (message.apiKey) {
-        startPolling();
-      } else {
-        stopPolling();
+        connect();
       }
       sendResponse({ success: true });
     });
     return true;
   }
 
-  if (message.type === 'START_POLLING') {
-    startPolling();
+  if (message.type === 'CONNECT') {
+    connect();
     sendResponse({ success: true });
     return true;
   }
 
-  if (message.type === 'STOP_POLLING') {
-    stopPolling();
+  if (message.type === 'DISCONNECT') {
+    disconnect();
     sendResponse({ success: true });
     return true;
   }
@@ -412,9 +525,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function init() {
   await loadConfig();
   if (apiKey) {
-    startPolling();
+    connect();
   }
-  console.log('Skilldex Scraper initialized');
+  console.log('[Skilldex] Scraper initialized');
 }
 
 init();

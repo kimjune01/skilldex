@@ -1,4 +1,5 @@
 import { User, Bot } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { SkillCard, ActionResultCard } from './SkillCard';
 import type { ChatMessage as ChatMessageType } from '@skilldex/shared';
@@ -45,12 +46,50 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions }: ChatMes
               : 'bg-muted'
           )}
         >
-          {/* Render content with line breaks */}
-          {cleanContent.split('\n').map((line, i) => (
-            <p key={i} className={i > 0 ? 'mt-2' : ''}>
-              {line}
-            </p>
-          ))}
+          {isUser ? (
+            // User messages: plain text with line breaks
+            cleanContent.split('\n').map((line, i) => (
+              <p key={i} className={i > 0 ? 'mt-2' : ''}>
+                {line}
+              </p>
+            ))
+          ) : (
+            // Assistant messages: render markdown
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                li: ({ children }) => <li className="mb-1">{children}</li>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                code: ({ children, className }) => {
+                  const isBlock = className?.includes('language-');
+                  return isBlock ? (
+                    <pre className="bg-background/50 rounded p-2 my-2 overflow-x-auto">
+                      <code className="text-xs">{children}</code>
+                    </pre>
+                  ) : (
+                    <code className="bg-background/50 rounded px-1 py-0.5 text-xs">{children}</code>
+                  );
+                },
+                pre: ({ children }) => <>{children}</>,
+                a: ({ href, children }) => (
+                  <a href={href} className="text-primary underline hover:no-underline" target="_blank" rel="noopener noreferrer">
+                    {children}
+                  </a>
+                ),
+                h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-2 border-primary/50 pl-2 italic my-2">{children}</blockquote>
+                ),
+              }}
+            >
+              {cleanContent}
+            </ReactMarkdown>
+          )}
         </div>
 
         {/* Skill suggestion card */}

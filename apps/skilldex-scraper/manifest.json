@@ -2,11 +2,13 @@
   "manifest_version": 3,
   "name": "Skilldex Scraper",
   "version": "1.0.0",
-  "description": "Scrapes web pages for Skilldex skills. Polls the Skilldex API for pending scrape tasks and returns markdown content.",
+  "minimum_chrome_version": "116",
+  "description": "Scrapes web pages for Skilldex skills. Connects via WebSocket to receive scrape tasks in real-time.",
   "permissions": [
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "activeTab"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -16,6 +16,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { createNodeWebSocket } from '@hono/node-ws';
 
 // Web UI routes (JWT auth)
 import { authRoutes } from './routes/auth.js';
@@ -36,10 +37,13 @@ import { v1AtsRoutes } from './routes/v1/ats.js';
 import { v1MeRoutes } from './routes/v1/me.js';
 import { v1ScrapeRoutes } from './routes/v1/scrape.js';
 
-// WebSocket routes for real-time scrape task updates
-import { wsScrapeRoutes, injectWebSocket } from './routes/ws/scrape.js';
+// WebSocket route handlers
+import { createWsScrapeHandler } from './routes/ws/scrape.js';
 
 const app = new Hono();
+
+// Create WebSocket helper - MUST use main app instance
+const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 // Middleware
 app.use('*', logger());
@@ -90,7 +94,7 @@ app.route('/api/v1/scrape', v1ScrapeRoutes);  // Web scraping task management
 
 // ============ WEBSOCKET ROUTES ============
 // Real-time updates for long-running operations
-app.route('/ws/scrape', wsScrapeRoutes);      // Scrape task status updates
+app.get('/ws/scrape', upgradeWebSocket(createWsScrapeHandler()));  // Scrape task status updates
 
 // 404 handler
 app.notFound((c) => c.json({ error: { message: 'Not Found' } }, 404));
