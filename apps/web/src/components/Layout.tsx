@@ -149,7 +149,7 @@ export default function Layout() {
                 </div>
                 <span className="tracking-wide">{item.name}</span>
                 {showSetupBadge && (
-                  <span className="ml-auto h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="ml-auto h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
                 )}
                 {isActive && !showSetupBadge && (
                   <Circle className="ml-auto h-2 w-2 fill-current" />
