@@ -4,7 +4,7 @@
 
 Skillomatic brings recruiting tools directly into Claude. Instead of switching between LinkedIn, your ATS, email, and calendar, recruiters just talk to Claude: "Find senior engineers in Seattle" → "Add the top 3 to our ATS" → "Draft outreach emails."
 
-Self-hosted on customer infrastructure. We never touch their data.
+**Ephemeral architecture:** Chat and candidate data never touch our servers. LLM calls happen directly from the browser. We're a SaaS you can trust with sensitive recruiting data because we architecturally can't see it.
 
 ---
 
@@ -27,7 +27,7 @@ Payback period: 6 weeks
 
 ## Pricing Model
 
-Self-hosted on customer infrastructure = no security burden on us, full data control for them.
+Ephemeral SaaS = we handle the platform, they keep their data. No infrastructure for them to manage, no PII for us to protect.
 
 ### Per-Seat License
 
@@ -41,10 +41,10 @@ Self-hosted on customer infrastructure = no security burden on us, full data con
 - $395/month floor closes without VP approval
 - Per-seat is familiar to HR buyers
 - No usage metering = simple billing
-- Healthy margins (no infra costs)
+- Healthy margins (minimal infra, no PII storage costs)
 
-**We handle:** Skills, updates, support, deployment docs
-**They handle:** Hosting, data, security compliance
+**We handle:** Platform, skills, updates, support
+**They handle:** Their own LLM API keys, their own data (stays in browser)
 
 ### Future Options
 
@@ -108,8 +108,8 @@ If they can't answer quickly, they've lost track—which proves the pain.
 |-----------|----------|
 | "We have an ATS" | "We make your ATS easier to use, not replace it" |
 | "Team isn't technical" | "If they can chat with Claude, they can use Skillomatic" |
-| "Data is sensitive" | "It runs on your servers. We never see your data" |
-| "Need security review" | "Happy to share architecture docs. Your infra, your audit" |
+| "Data is sensitive" | "Ephemeral architecture - chat and candidate data never touch our servers. LLM calls go direct from browser to Anthropic" |
+| "Need security review" | "Happy to share architecture docs. Your data literally can't reach us - it's not a policy, it's the design" |
 | "No budget" | "It's $79/recruiter. Pays for itself if it saves 2 hours/month" |
 
 ### Demo Flow (15 min)
@@ -126,7 +126,7 @@ If they can't answer quickly, they've lost track—which proves the pain.
 1. **Founder access** - "My cell number. Feedback shapes the product"
 2. **Free pilot** - "3 months free, then 40% off first year"
 3. **Custom skills** - "We'll build 3 skills for your specific workflow"
-4. **White-glove setup** - "I'll deploy it and train your team personally"
+4. **White-glove onboarding** - "I'll set up your team and train them personally"
 
 ---
 
@@ -149,7 +149,7 @@ If they can't answer quickly, they've lost track—which proves the pain.
 |---|------------|---------------|
 | 4 | Claude familiarity is high enough | Need to educate market, higher CAC |
 | 5 | Teams adopt virally (1 user → team) | Need enterprise sales motion |
-| 6 | Self-hosted is a selling point, not friction | May need managed option |
+| 6 | Ephemeral architecture resonates with security teams | May need to educate on the model |
 
 ### Can Defer (P2)
 
@@ -192,4 +192,4 @@ If they can't answer quickly, they've lost track—which proves the pain.
 
 ---
 
-*Last updated: January 2025*
+*Last updated: January 2026*
