@@ -13,6 +13,10 @@ declare module "sst" {
       type: "sst.sst.Secret";
       value: string;
     };
+    NangoPublicKey: {
+      type: "sst.sst.Secret";
+      value: string;
+    };
     TursoAuthToken: {
       type: "sst.sst.Secret";
       value: string;

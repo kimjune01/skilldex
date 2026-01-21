@@ -20,6 +20,7 @@ export default $config({
     const tursoUrl = new sst.Secret("TursoDatabaseUrl");
     const tursoToken = new sst.Secret("TursoAuthToken");
     const nangoSecretKey = new sst.Secret("NangoSecretKey");
+    const nangoPublicKey = new sst.Secret("NangoPublicKey");
 
     // API - Hono on Lambda
     const api = new sst.aws.Function("Api", {
@@ -28,9 +29,10 @@ export default $config({
       timeout: "30 seconds",
       memory: "512 MB",
       url: true,
-      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey],
+      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey],
       environment: {
         NODE_ENV: "production",
+        NANGO_HOST: "https://api.nango.dev",
       },
     });
 
