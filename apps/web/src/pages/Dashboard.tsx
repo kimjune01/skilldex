@@ -68,47 +68,47 @@ export default function Dashboard() {
       actionLabel: string;
     }> = [];
 
-    // Desktop BYOAI mode: need API key for desktop chat app connection
-    if (desktopEnabled) {
-      steps.push({
-        id: 'api-key',
-        label: 'Connect desktop chat app',
-        done: apiKeyList.length > 0,
-        icon: Key,
-        route: '/keys',
-        actionLabel: 'Connect',
-      });
-    }
+    const currentStep = onboardingStatus?.currentStep ?? 0;
 
-    // Always need at least one integration connected
+    // Always need at least one integration connected (step 1)
     steps.push({
       id: 'integration',
       label: 'Connect integration',
-      done: connectedIntegrations.length > 0,
+      done: currentStep >= ONBOARDING_STEPS.ATS_CONNECTED || connectedIntegrations.length > 0,
       icon: Plug,
       route: '/integrations',
       actionLabel: 'Connect',
     });
 
-    // Browser extension for LinkedIn scraping
-    steps.push({
-      id: 'extension',
-      label: 'Install browser extension',
-      done: (onboardingStatus?.currentStep ?? 0) >= ONBOARDING_STEPS.EXTENSION_INSTALLED,
-      icon: Chrome,
-      route: '/extension/install',
-      actionLabel: 'Install',
-    });
-
-    // Desktop mode: need to install skills to Claude Code
+    // Desktop BYOAI mode: need API key for desktop chat app connection (step 2)
     if (desktopEnabled) {
       steps.push({
+        id: 'api-key',
+        label: 'Connect desktop chat app',
+        done: currentStep >= ONBOARDING_STEPS.API_KEY_GENERATED || apiKeyList.length > 0,
+        icon: Key,
+        route: '/keys',
+        actionLabel: 'Connect',
+      });
+
+      // Browser extension for LinkedIn scraping (step 2.5)
+      steps.push({
+        id: 'extension',
+        label: 'Install browser extension',
+        done: currentStep >= ONBOARDING_STEPS.EXTENSION_INSTALLED,
+        icon: Chrome,
+        route: '/extension',
+        actionLabel: 'Install',
+      });
+
+      // Inspect skills - skills are available by default (step 3)
+      steps.push({
         id: 'skills',
-        label: 'Install skills',
-        done: enabledSkills.length > 0 && apiKeyList.length > 0, // Consider done if they have API key + skills enabled
+        label: 'Inspect skills',
+        done: currentStep >= ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED,
         icon: Terminal,
         route: '/skills',
-        actionLabel: 'View Skills',
+        actionLabel: 'Browse',
       });
     }
 

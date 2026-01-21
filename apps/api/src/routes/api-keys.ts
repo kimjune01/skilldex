@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
-import { apiKeys } from '@skillomatic/db/schema';
+import { apiKeys, users, organizations, ONBOARDING_STEPS } from '@skillomatic/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { jwtAuth } from '../middleware/auth.js';
@@ -53,6 +53,36 @@ apiKeysRoutes.post('/', async (c) => {
     key,
     name,
   });
+
+  /*
+   * API KEY ONBOARDING: Advance onboarding when user generates their first API key.
+   * Only track if org has desktopEnabled=true (API keys are for desktop BYOAI mode).
+   */
+  if (user.organizationId) {
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, user.organizationId))
+      .limit(1);
+
+    if (org?.desktopEnabled) {
+      const [dbUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, user.sub))
+        .limit(1);
+
+      if (dbUser && dbUser.onboardingStep < ONBOARDING_STEPS.API_KEY_GENERATED) {
+        await db
+          .update(users)
+          .set({
+            onboardingStep: ONBOARDING_STEPS.API_KEY_GENERATED,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, user.sub));
+      }
+    }
+  }
 
   const response: ApiKeyCreateResponse = {
     id,
