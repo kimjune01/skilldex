@@ -189,10 +189,10 @@ export default function ForIT() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
-                href="mailto:email@skillomatic.technology?subject=Security%20Review%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20security%20documentation%20for%20Skillomatic."
+                href="mailto:email@skillomatic.technology?subject=Security%20Audit%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20access%20to%20review%20the%20Skillomatic%20source%20code%20for%20a%20security%20audit."
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl robot-button text-white font-bold tracking-wide text-lg border-0"
               >
-                Request Security Package
+                Request Audit
                 <ArrowRight className="h-5 w-5" />
               </a>
               <a
@@ -486,27 +486,19 @@ export default function ForIT() {
         <div className="max-w-4xl mx-auto text-center">
           <Shield className="h-12 w-12 text-white mx-auto mb-6" />
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-            Ready for a Security Review?
+            Want to See the Code?
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            We'll provide SOC 2 reports, architecture documentation, and answer your team's
-            questions. Most reviews complete in under a week.
+            Request an audit and I'll give you access to the source code.
+            Review the architecture yourself—no NDA required.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href="mailto:email@skillomatic.technology?subject=Security%20Review%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20security%20documentation%20for%20Skillomatic."
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-emerald-600 font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
-            >
-              Request Security Package
-              <ArrowRight className="h-5 w-5" />
-            </a>
-            <a
-              href="mailto:email@skillomatic.technology?subject=Security%20Question"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/10 text-white font-bold tracking-wide text-lg hover:bg-white/20 transition-colors border border-white/20"
-            >
-              Contact Security Team
-            </a>
-          </div>
+          <a
+            href="mailto:email@skillomatic.technology?subject=Security%20Audit%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20access%20to%20review%20the%20Skillomatic%20source%20code%20for%20a%20security%20audit."
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-emerald-600 font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
+          >
+            Request Audit
+            <ArrowRight className="h-5 w-5" />
+          </a>
         </div>
       </section>
 
