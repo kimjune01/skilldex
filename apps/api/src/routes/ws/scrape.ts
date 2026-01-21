@@ -1,5 +1,8 @@
 import type { Context } from 'hono';
 import type { WSEvents } from 'hono/ws';
+import { db } from '@skillomatic/db';
+import { users, organizations, ONBOARDING_STEPS } from '@skillomatic/db/schema';
+import { eq } from 'drizzle-orm';
 import { verifyToken } from '../../lib/jwt.js';
 import { validateApiKey } from '../../lib/api-keys.js';
 import {
@@ -25,6 +28,8 @@ export function createWsScrapeHandler() {
 
     // Try JWT auth first, then API key
     let userId: string | null = null;
+    let userOrgId: string | null = null;
+    let userOnboardingStep: number = 0;
     let isExtension = mode === 'extension';
 
     if (token) {
@@ -36,6 +41,8 @@ export function createWsScrapeHandler() {
       const user = await validateApiKey(apiKey);
       if (user) {
         userId = user.id;
+        userOrgId = user.organizationId;
+        userOnboardingStep = user.onboardingStep ?? 0;
         isExtension = true; // API key auth implies extension
       }
     }
@@ -50,6 +57,8 @@ export function createWsScrapeHandler() {
 
     // Capture for closure
     const authenticatedUserId = userId;
+    const authenticatedUserOrgId = userOrgId;
+    const authenticatedUserOnboardingStep = userOnboardingStep;
     const isExtensionConnection = isExtension;
 
     return {
@@ -57,6 +66,38 @@ export function createWsScrapeHandler() {
         if (isExtensionConnection) {
           addExtensionConnection(authenticatedUserId, ws);
           ws.send(JSON.stringify({ type: 'connected', userId: authenticatedUserId, mode: 'extension' }));
+
+          /*
+           * =======================================================================
+           * EXTENSION ONBOARDING: This is where we detect the browser extension
+           * connecting for the first time. When the extension connects via
+           * WebSocket with mode=extension, we advance onboarding.
+           *
+           * Only advance if:
+           * - Organization has desktopEnabled=true (extension only for BYOAI)
+           * - User hasn't already passed EXTENSION_INSTALLED step
+           * =======================================================================
+           */
+          if (authenticatedUserOrgId && authenticatedUserOnboardingStep < ONBOARDING_STEPS.EXTENSION_INSTALLED) {
+            // Check if org has desktop enabled before advancing onboarding
+            db.select()
+              .from(organizations)
+              .where(eq(organizations.id, authenticatedUserOrgId))
+              .limit(1)
+              .then(([org]) => {
+                if (org?.desktopEnabled) {
+                  db.update(users)
+                    .set({
+                      onboardingStep: ONBOARDING_STEPS.EXTENSION_INSTALLED,
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(users.id, authenticatedUserId))
+                    .execute()
+                    .catch(console.error);
+                }
+              })
+              .catch(console.error);
+          }
         } else {
           addConnection(authenticatedUserId, ws);
           ws.send(JSON.stringify({ type: 'connected', userId: authenticatedUserId }));

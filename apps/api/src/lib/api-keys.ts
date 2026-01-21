@@ -12,6 +12,8 @@ export interface ApiKeyUser {
   name: string;
   isAdmin: boolean;
   apiKeyId: string;
+  organizationId: string | null;
+  onboardingStep: number;
 }
 
 /**
@@ -83,5 +85,7 @@ export async function validateApiKey(key: string): Promise<ApiKeyUser | null> {
     name: user.name,
     isAdmin: user.isAdmin,
     apiKeyId: apiKey.id,
+    organizationId: user.organizationId,
+    onboardingStep: user.onboardingStep ?? 0,
   };
 }
