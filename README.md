@@ -13,6 +13,7 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 - **Natural language interface** - Ask Claude to "find senior engineers in Seattle" instead of clicking through filters
 - **Contextual actions** - Claude understands the conversation and can chain actions (search → review → email)
 - **No new UI to learn** - Works in your existing Claude Desktop or Claude Code environment
+- **Client-side LLM** - Chat runs directly in browser; server is stateless (no PII stored)
 - **Self-hostable** - Run your own instance with your own integrations
 
 ## Architecture
@@ -63,7 +64,8 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 | Database | SQLite (local) / Turso (production) |
 | ORM | Drizzle |
 | Auth | JWT + API Keys |
-| Integrations | Nango (self-hosted OAuth) |
+| LLM | Anthropic, OpenAI, Google Gemini, Groq (client-side) |
+| Integrations | Nango Cloud (OAuth) |
 | Deployment | Docker (local) / SST + AWS (production) |
 
 ## Quick Start
@@ -228,6 +230,8 @@ pnpm sst:remove
 - **[IT Deployment Guide](docs/IT_DEPLOYMENT.md)** - Enterprise deployment, MDM, and bulk provisioning
 - **[Recruiter Guide](docs/RECRUITER_GUIDE.md)** - How to use Skillomatic skills in your workflow
 - **[Admin Guide](docs/ADMIN_GUIDE.md)** - Managing users, skills, and integrations
+- **[Ephemeral Architecture](docs/EPHEMERAL_ARCHITECTURE.md)** - Technical details on client-side LLM and privacy model
+- **[Vision Beyond Recruiting](docs/VISION_BEYOND_RECRUITING.md)** - Platform expansion to other verticals
 
 ## MCP Client Support
 
