@@ -1,5 +1,5 @@
 /**
- * Skill-O-Matic Web Application
+ * Skillomatic Web Application
  *
  * React SPA for managing skills, API keys, and integrations.
  * Built with React Router for navigation, Tailwind for styling.

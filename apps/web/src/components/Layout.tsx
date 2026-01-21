@@ -77,7 +77,7 @@ export default function Layout() {
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-black tracking-tight text-[hsl(220_30%_20%)]">
-                SKILL-O-MATIC
+                SKILLOMATIC
               </span>
               <span className="text-[10px] font-bold tracking-widest text-[hsl(220_15%_50%)] uppercase">
                 Dispenser 3000

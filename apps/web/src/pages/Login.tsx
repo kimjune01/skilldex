@@ -59,7 +59,7 @@ export default function Login() {
           </div>
           <div>
             <CardTitle className="text-2xl font-black tracking-tight text-[hsl(220_30%_20%)]">
-              SKILL-O-MATIC
+              SKILLOMATIC
             </CardTitle>
             <CardDescription className="text-sm font-mono text-[hsl(220_15%_50%)]">
               Insert credentials to continue

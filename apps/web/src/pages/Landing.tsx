@@ -1,7 +1,7 @@
 /**
  * Landing Page
  *
- * Public landing page for Skill-O-Matic with robot vending machine theme.
+ * Public landing page for Skillomatic with robot vending machine theme.
  * Shows features, pricing, and call-to-action for login/signup.
  */
 import { Link } from 'react-router-dom';
@@ -57,7 +57,7 @@ export default function Landing() {
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-black tracking-tight text-[hsl(220_30%_20%)]">
-                SKILL-O-MATIC
+                SKILLOMATIC
               </span>
             </div>
           </Link>
@@ -292,7 +292,7 @@ export default function Landing() {
             Ready to Supercharge Your Recruiting?
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            Join hundreds of recruiters using Skill-O-Matic to automate their workflow.
+            Join hundreds of recruiters using Skillomatic to automate their workflow.
             Free 14-day trial, no credit card required.
           </p>
           <Link
@@ -313,7 +313,7 @@ export default function Landing() {
               <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
                 <Bot className="h-5 w-5 text-white" />
               </div>
-              <span className="text-lg font-black text-white">SKILL-O-MATIC</span>
+              <span className="text-lg font-black text-white">SKILLOMATIC</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-[hsl(220_15%_60%)]">
               <a href="#" className="hover:text-white transition-colors">Privacy</a>
@@ -322,7 +322,7 @@ export default function Landing() {
               <a href="#" className="hover:text-white transition-colors">Support</a>
             </div>
             <div className="text-sm text-[hsl(220_15%_50%)]">
-              © 2025 Skill-O-Matic. All rights reserved.
+              © 2025 Skillomatic. All rights reserved.
             </div>
           </div>
         </div>
