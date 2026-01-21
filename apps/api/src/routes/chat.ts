@@ -1,15 +1,11 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db } from '@skilldex/db';
-import { skills, scrapeTasks } from '@skilldex/db/schema';
+import { scrapeTasks } from '@skilldex/db/schema';
 import { eq, and, gt, desc } from 'drizzle-orm';
 import { randomUUID, createHash } from 'crypto';
 import { jwtAuth } from '../middleware/auth.js';
 import { streamChat, chat, type ChatMessage } from '../lib/llm.js';
-import type { SkillPublic } from '@skilldex/shared';
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
-import { parse as parseYaml } from 'yaml';
 import {
   subscribeToTask,
   unsubscribeFromTask,
@@ -22,6 +18,14 @@ import {
   generateDemoJobs,
   generateDemoApplications,
 } from '../lib/demo-data.js';
+import {
+  getSkillMetadataForUser,
+  getAllSkillMetadata,
+  loadSkillBySlug,
+  userCanAccessSkill,
+  buildSkillsPromptSection,
+  type SkillMetadata,
+} from '../lib/skills.js';
 
 export const chatRoutes = new Hono();
 
@@ -43,81 +47,27 @@ type ATSAction =
   | { action: 'list_applications'; candidateId?: string; jobId?: string; stage?: string }
   | { action: 'update_application_stage'; id: string; stage: string }
   | { action: 'scrape_url'; url: string }
-  | { action: 'lookup_skill'; slug: string };
+  | { action: 'load_skill'; slug: string };
 
-// Parse frontmatter from SKILL.md content
-function parseFrontmatter(content: string): { intent: string; capabilities: string[] } {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) {
-    return { intent: '', capabilities: [] };
-  }
-  try {
-    const yaml = parseYaml(match[1]);
-    return {
-      intent: yaml.intent || '',
-      capabilities: Array.isArray(yaml.capabilities) ? yaml.capabilities : [],
-    };
-  } catch {
-    return { intent: '', capabilities: [] };
-  }
-}
-
-// Convert DB skill to public format with intent/capabilities
-function toSkillPublic(skill: typeof skills.$inferSelect): SkillPublic {
-  const skillPath = join(process.cwd(), '..', '..', skill.skillMdPath);
-  let intent = '';
-  let capabilities: string[] = [];
-
-  if (existsSync(skillPath)) {
-    const content = readFileSync(skillPath, 'utf-8');
-    const parsed = parseFrontmatter(content);
-    intent = parsed.intent;
-    capabilities = parsed.capabilities;
-  }
-
-  return {
-    id: skill.id,
-    slug: skill.slug,
-    name: skill.name,
-    description: skill.description,
-    category: skill.category as SkillPublic['category'],
-    version: skill.version,
-    requiredIntegrations: skill.requiredIntegrations ? JSON.parse(skill.requiredIntegrations) : [],
-    requiredScopes: skill.requiredScopes ? JSON.parse(skill.requiredScopes) : [],
-    intent,
-    capabilities,
-    isEnabled: skill.isEnabled,
-  };
-}
-
-// Determine if a skill can be executed via API or needs Claude Desktop
-function getSkillExecutionType(skill: SkillPublic): 'api' | 'claude-desktop' {
+// Determine if a skill requires browser extension
+function skillRequiresBrowser(skill: SkillMetadata): boolean {
   const integrations = skill.requiredIntegrations || [];
-  if (integrations.includes('linkedin') || integrations.includes('browser')) {
-    return 'claude-desktop';
-  }
-  return 'api';
+  return integrations.includes('linkedin') || integrations.includes('browser');
 }
 
-// Build system prompt with ATS actions
-function buildSystemPrompt(skillsList: SkillPublic[]): string {
-  const claudeDesktopSkills = skillsList
-    .filter(s => s.isEnabled && getSkillExecutionType(s) === 'claude-desktop')
-    .map(s => `- **${s.name}**: ${s.description}`)
-    .join('\n');
+// Build system prompt with skills metadata (progressive disclosure Level 1)
+function buildSystemPrompt(skillsMetadata: SkillMetadata[]): string {
+  const skillsSection = buildSkillsPromptSection(skillsMetadata);
 
-  // Build skills list with intents for matching
-  const availableSkills = skillsList
-    .filter(s => s.isEnabled)
-    .map(s => `- **${s.slug}**: ${s.description}${s.intent ? ` (Use when: ${s.intent})` : ''}`)
+  // Identify skills requiring browser extension
+  const browserSkills = skillsMetadata
+    .filter(skillRequiresBrowser)
+    .map(s => `- **${s.name}**: ${s.description}`)
     .join('\n');
 
   return `You are a recruiting assistant with direct access to the ATS (Applicant Tracking System) and various recruiting skills. You can execute actions to help users manage candidates, jobs, and applications.
 
-## Available Skills
-When the user's request matches a skill's intent, use lookup_skill to get the full implementation details, then follow those instructions.
-
-${availableSkills}
+${skillsSection}
 
 ## CRITICAL: How to Execute Actions
 
@@ -132,7 +82,7 @@ The system ONLY executes code blocks marked as \`\`\`action. Any other format wi
 ## Available Actions
 
 ### Candidate Actions
-1. **search_candidates** - Search for candidates
+1. **search_candidates** - Search for candidates IN THE ATS DATABASE
    \`\`\`action
    {"action": "search_candidates", "query": "python engineer", "status": "active", "stage": "Interview"}
    \`\`\`
@@ -182,25 +132,25 @@ The system ONLY executes code blocks marked as \`\`\`action. Any other format wi
    \`\`\`action
    {"action": "scrape_url", "url": "https://example.com/page"}
    \`\`\`
+   Note: Requires the Skilldex browser extension to be running.
 
-### Skill Lookup
-10. **lookup_skill** - Look up a skill's implementation details by slug
+### Skill Actions
+10. **load_skill** - Load a skill's full instructions (progressive disclosure)
    \`\`\`action
-   {"action": "lookup_skill", "slug": "linkedin-lookup"}
+   {"action": "load_skill", "slug": "linkedin-lookup"}
    \`\`\`
-   - Returns the skill's full instructions and implementation details
-   - Use this when you need to execute a specific skill
+   - Returns the skill's complete instructions
+   - Use this when you need to execute a skill
+   - After loading, follow the skill's instructions
 
-## Skills Requiring Claude Desktop
-These skills cannot be executed here and require Claude Desktop:
-${claudeDesktopSkills || 'None'}
-
-For these skills, explain what they do and tell the user to use them in Claude Desktop.
+## Skills Requiring Browser Extension
+These skills require the Skilldex browser extension:
+${browserSkills || 'None'}
 
 ## Guidelines
 - IMPORTANT: Use \`\`\`action blocks, NOT \`\`\`json blocks. The system only executes \`\`\`action blocks.
-- **SKILL MATCHING**: When a user's request matches a skill's intent, use lookup_skill FIRST to get the implementation details, then follow those instructions.
-- **CANDIDATE SOURCING**: When users ask to "find candidates", "search for engineers", "look for developers", etc. - this means sourcing NEW candidates from LinkedIn, NOT searching existing ATS records. Use lookup_skill with "linkedin-lookup" to get instructions for LinkedIn searching.
+- **SKILL MATCHING**: When a user's request matches a skill's intent, use load_skill FIRST to get the full instructions, then follow them.
+- **CANDIDATE SOURCING**: When users ask to "find candidates", "search for engineers", "look for developers", etc. - this means sourcing NEW candidates. Use load_skill to get the appropriate skill's instructions.
 - **ATS SEARCH**: Only use search_candidates when the user explicitly asks about "existing candidates", "candidates in our system", "our database", or "the ATS".
 - For READ operations: Execute immediately without asking for confirmation.
 - For WRITE operations: Ask for confirmation first.
@@ -440,34 +390,37 @@ async function executeAction(action: ATSAction, isDemo: boolean, userId?: string
       return { application: updated, updated: true, demo: isDemo };
     }
 
-    case 'lookup_skill': {
-      const [skill] = await db
-        .select()
-        .from(skills)
-        .where(eq(skills.slug, action.slug))
-        .limit(1);
+    case 'load_skill': {
+      // Progressive disclosure Level 2: Load full skill instructions
+      const skill = await loadSkillBySlug(action.slug);
 
       if (!skill) {
-        return { error: `Skill "${action.slug}" not found` };
+        return { error: `Skill "${action.slug}" not found or not enabled` };
       }
 
-      const skillPath = join(process.cwd(), '..', '..', skill.skillMdPath);
-      if (!existsSync(skillPath)) {
-        return { error: `Skill instructions not found for "${action.slug}"` };
+      // Check user access if userId provided
+      if (userId) {
+        const hasAccess = await userCanAccessSkill(userId, action.slug);
+        if (!hasAccess) {
+          return { error: `You don't have access to the "${action.slug}" skill` };
+        }
       }
 
-      const content = readFileSync(skillPath, 'utf-8');
-      // Remove frontmatter, return just the instructions
-      const instructions = content.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+      if (!skill.instructions) {
+        return { error: `No instructions available for "${action.slug}"` };
+      }
 
       return {
         skill: {
           slug: skill.slug,
           name: skill.name,
           description: skill.description,
+          capabilities: skill.capabilities,
         },
-        instructions,
-        executionNote: 'You can execute this skill using the available actions (e.g., scrape_url for LinkedIn URLs). Use the scrape_url action to fetch LinkedIn pages - the browser extension will handle the scraping.',
+        instructions: skill.instructions,
+        executionNote: skillRequiresBrowser(skill)
+          ? 'This skill requires the browser extension. Use scrape_url action for URLs - the extension handles scraping.'
+          : 'Follow the instructions above to complete the task.',
       };
     }
 
@@ -579,12 +532,13 @@ chatRoutes.post('/', async (c) => {
     return c.json({ error: { message: 'Messages array is required' } }, 400);
   }
 
-  // Fetch available skills for context
-  const allSkills = await db.select().from(skills).where(eq(skills.isEnabled, true));
-  const publicSkills = allSkills.map(toSkillPublic);
+  // Fetch available skills for context (role-filtered, metadata only)
+  const skillsMetadata = user?.id
+    ? await getSkillMetadataForUser(user.id)
+    : await getAllSkillMetadata();
 
-  // Build messages for Groq
-  const systemPrompt = buildSystemPrompt(publicSkills);
+  // Build messages with skills metadata (progressive disclosure Level 1)
+  const systemPrompt = buildSystemPrompt(skillsMetadata);
   const chatMessages: ChatMessage[] = [
     { role: 'system', content: systemPrompt },
     ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
@@ -624,8 +578,8 @@ chatRoutes.post('/', async (c) => {
           }),
         });
 
-        // For lookup_skill, allow follow-up actions; for others, just summarize
-        const allowMoreActions = action.action === 'lookup_skill';
+        // For load_skill, allow follow-up actions; for others, just summarize
+        const allowMoreActions = action.action === 'load_skill';
 
         // Get a follow-up response from the LLM with the action result
         const followUpMessages: ChatMessage[] = [
@@ -672,41 +626,41 @@ chatRoutes.post('/', async (c) => {
   });
 });
 
-// POST /api/chat/execute-skill - Execute a skill via API (legacy, kept for compatibility)
+// POST /api/chat/execute-skill - Execute a skill via API (uses progressive disclosure)
 chatRoutes.post('/execute-skill', async (c) => {
   const body = await c.req.json<{ skillSlug: string; params?: Record<string, unknown> }>();
   const { skillSlug, params } = body;
   const isDemo = isDemoMode(c.req.raw);
+  const user = c.get('user');
 
-  // Find the skill
-  const skill = await db
-    .select()
-    .from(skills)
-    .where(eq(skills.slug, skillSlug))
-    .limit(1);
+  // Load skill using progressive disclosure
+  const skill = await loadSkillBySlug(skillSlug);
 
-  if (skill.length === 0) {
+  if (!skill) {
     return c.json({ error: { message: 'Skill not found' } }, 404);
   }
 
-  const publicSkill = toSkillPublic(skill[0]);
-  const execType = getSkillExecutionType(publicSkill);
-
-  if (execType === 'claude-desktop') {
-    const skillPath = join(process.cwd(), '..', '..', skill[0].skillMdPath);
-    let instructions = '';
-
-    if (existsSync(skillPath)) {
-      const content = readFileSync(skillPath, 'utf-8');
-      instructions = content.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+  // Check user access
+  if (user?.id) {
+    const hasAccess = await userCanAccessSkill(user.id, skillSlug);
+    if (!hasAccess) {
+      return c.json({ error: { message: 'Access denied to this skill' } }, 403);
     }
+  }
 
+  // If skill requires browser, return instructions
+  if (skillRequiresBrowser(skill)) {
     return c.json({
       data: {
         type: 'instructions',
-        skill: publicSkill,
-        instructions,
-        message: `This skill requires Claude Desktop. Here's how to use it:`,
+        skill: {
+          slug: skill.slug,
+          name: skill.name,
+          description: skill.description,
+          capabilities: skill.capabilities,
+        },
+        instructions: skill.instructions,
+        message: 'This skill requires the browser extension. Use the chat interface to execute it.',
       },
     });
   }
@@ -720,7 +674,7 @@ chatRoutes.post('/execute-skill', async (c) => {
     return c.json({
       data: {
         type: 'execution_result',
-        skill: publicSkill,
+        skill: { slug: skill.slug, name: skill.name },
         success: true,
         result,
       },
@@ -735,7 +689,7 @@ chatRoutes.post('/execute-skill', async (c) => {
     return c.json({
       data: {
         type: 'execution_result',
-        skill: publicSkill,
+        skill: { slug: skill.slug, name: skill.name },
         success: true,
         result,
       },
@@ -745,8 +699,8 @@ chatRoutes.post('/execute-skill', async (c) => {
   return c.json({
     data: {
       type: 'api_ready',
-      skill: publicSkill,
-      message: `Skill "${publicSkill.name}" is available but requires additional configuration.`,
+      skill: { slug: skill.slug, name: skill.name },
+      message: `Skill "${skill.name}" is available but requires additional configuration.`,
       params: params || {},
     },
   });

@@ -5,7 +5,6 @@
 
 import { db } from '@skilldex/db';
 import { systemSettings } from '@skilldex/db/schema';
-import { eq } from 'drizzle-orm';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

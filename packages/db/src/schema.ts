@@ -135,13 +135,16 @@ export const skills = sqliteTable('skills', {
   category: text('category').notNull(), // 'sourcing', 'communication', 'ats'
   version: text('version').notNull().default('1.0.0'),
 
+  // Frontmatter fields (progressive disclosure - Level 1 metadata)
+  intent: text('intent'), // When to use this skill (e.g., "user asks to find candidates on LinkedIn")
+  capabilities: text('capabilities'), // JSON array of what the skill can do
+
+  // Full instructions (progressive disclosure - Level 2, loaded on demand)
+  instructions: text('instructions'), // Full skill instructions in markdown
+
   // Metadata stored as JSON strings
   requiredIntegrations: text('required_integrations'), // JSON array
   requiredScopes: text('required_scopes'), // JSON array
-  // Note: intent and capabilities are parsed from SKILL.md frontmatter, not stored in DB
-
-  // File references
-  skillMdPath: text('skill_md_path').notNull(), // Relative path to SKILL.md
 
   isEnabled: integer('is_enabled', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
