@@ -401,3 +401,226 @@ intent: System configuration (auto-loaded)
 ```
 
 Client parses this on mount, extracts credentials, uses for all subsequent calls.
+
+## Email & Calendar Integration
+
+Email and calendar integrations follow the ephemeral model using native protocols that require no server involvement.
+
+### Calendar: Free/Busy iCal Feed (Read-Only)
+
+Google Calendar and Outlook provide iCal feed URLs with **free/busy only** permission - shows availability without event details.
+
+**Why free/busy only:**
+- Full calendar feeds contain PII (attendee names, meeting titles, locations)
+- Free/busy feeds only show "Busy" time blocks - no sensitive data
+- Sufficient for scheduling: "Are you free Tuesday at 2pm?"
+
+**How it works:**
+1. User publishes calendar with **"free/busy only"** permission
+2. User pastes iCal URL in Skilldex Integrations page
+3. Server validates the feed contains no PII (see validation below)
+4. Rendered skill includes the validated iCal URL
+5. Client fetches calendar data directly - no OAuth needed
+
+**User setup (Google Calendar):**
+1. Go to calendar.google.com → Settings
+2. Click on your calendar under "Settings for my calendars"
+3. Under "Access permissions", click "Share with specific people" or "Make available to public"
+4. Select **"See only free/busy (hide details)"**
+5. Scroll to "Integrate calendar"
+6. Copy "Secret address in iCal format"
+
+**User setup (Outlook):**
+1. Go to Outlook → Settings → Calendar → Shared calendars
+2. Under "Publish a calendar", select your calendar
+3. Set permission to **"Can view when I'm busy"** (availability only)
+4. Click Publish and copy the ICS link
+
+**Example free/busy iCal content:**
+```ical
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:20260120T140000Z
+DTEND:20260120T150000Z
+SUMMARY:Busy
+END:VEVENT
+END:VCALENDAR
+```
+
+Note: Only "Busy" appears - no meeting title, attendees, or location.
+
+**Validation on save:**
+
+When user saves their iCal URL, server fetches and validates:
+
+```typescript
+async function validateFreeBusyOnly(icalUrl: string): Promise<{ valid: boolean; error?: string }> {
+  const response = await fetch(icalUrl);
+  const icalData = await response.text();
+
+  // Red flags - indicates full details, not free/busy
+  const piiPatterns = [
+    { pattern: /ATTENDEE:/i, field: 'attendees' },
+    { pattern: /LOCATION:.{3,}/i, field: 'locations' },  // Location with actual content
+    { pattern: /DESCRIPTION:.{3,}/i, field: 'descriptions' },
+    { pattern: /ORGANIZER:.*mailto:/i, field: 'organizer emails' },
+    // Summary that's not just Busy/Free/Available/Unavailable
+    { pattern: /SUMMARY:(?!Busy|Free|Available|Unavailable|No title).{3,}/i, field: 'event titles' },
+  ];
+
+  for (const { pattern, field } of piiPatterns) {
+    if (pattern.test(icalData)) {
+      return {
+        valid: false,
+        error: `Calendar contains ${field}. Please re-publish with "free/busy only" permission.`
+      };
+    }
+  }
+
+  return { valid: true };
+}
+```
+
+**UI flow:**
+```
+User pastes iCal URL → Click "Save"
+         ↓
+Server fetches and validates
+         ↓
+┌─────────────────────────────────────────────────────┐
+│ If PII detected:                                    │
+│ "⚠️ This calendar contains event details (titles,  │
+│ attendees). Please re-publish with 'free/busy      │
+│ only' permission and try again."                   │
+│                                                     │
+│ [Instructions for Google] [Instructions for Outlook]│
+└─────────────────────────────────────────────────────┘
+         ↓
+If valid: Save URL to integrations table
+```
+
+**Rendered in skill:**
+```markdown
+## Your Availability
+To check your free/busy times:
+
+GET {{CALENDAR_ICAL_URL}}
+
+Parse the iCal response. Time blocks marked "Busy" are unavailable.
+```
+
+**Benefits:**
+- No OAuth flow required
+- No token refresh needed
+- Direct browser fetch (CORS-friendly)
+- No PII in feed (validated on save)
+- Read-only by design
+
+**Variables to add:**
+```
+{{CALENDAR_ICAL_URL}}    - User's validated free/busy iCal feed URL
+{{CALENDAR_PROVIDER}}    - 'google' | 'outlook' | 'other'
+```
+
+### Email: mailto: Links (Send-Only)
+
+For sending emails, use `mailto:` links that open the user's default email client with pre-filled content.
+
+**How it works:**
+1. Claude drafts an email based on user request
+2. Output includes a `mailto:` link with pre-filled fields
+3. User clicks link → opens in their email client (Gmail, Outlook, Apple Mail)
+4. User reviews, edits if needed, and sends
+
+**Example skill output:**
+```markdown
+## Draft Email Ready
+
+I've prepared an outreach email for Sarah Chen:
+
+**To:** sarah.chen@example.com
+**Subject:** Senior Engineer Role at Acme Corp
+
+---
+
+Hi Sarah,
+
+I came across your profile and was impressed by your experience with distributed systems at Google. We have a Senior Engineer opening that might interest you...
+
+Best regards,
+[Your name]
+
+---
+
+📧 [Click to open in your email client](mailto:sarah.chen@example.com?subject=Senior%20Engineer%20Role%20at%20Acme%20Corp&body=Hi%20Sarah%2C%0A%0AI%20came%20across%20your%20profile...)
+```
+
+**mailto: format:**
+```
+mailto:recipient@example.com?subject=URL%20Encoded%20Subject&body=URL%20Encoded%20Body&cc=copy@example.com&bcc=blind@example.com
+```
+
+**Benefits:**
+- No OAuth or API keys needed
+- No server involvement
+- User's own email client sends (audit trail in their Sent folder)
+- User always reviews before sending (no accidental sends)
+- Works with any email provider
+
+**Limitations:**
+- Plain text only (no HTML formatting)
+- No attachments
+- ~2000 character limit (varies by client)
+- User must click to send (not automated)
+
+### Email: Gmail/Outlook API (Read-Only, Optional)
+
+For reading emails (e.g., checking for candidate replies), OAuth is required:
+
+**How it works:**
+1. User connects Gmail/Outlook via Nango OAuth
+2. Rendered skill includes fresh access token
+3. Client calls Gmail/Outlook API directly
+4. Read-only scope: `gmail.readonly` or `Mail.Read`
+
+**Variables to add:**
+```
+{{EMAIL_ACCESS_TOKEN}}   - Fresh OAuth token (from Nango)
+{{EMAIL_PROVIDER}}       - 'gmail' | 'outlook'
+```
+
+**Example rendered skill:**
+```markdown
+## Check Email Replies
+
+Search for candidate replies:
+
+```javascript
+fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?q=from:candidate@example.com', {
+  headers: { 'Authorization': 'Bearer {{EMAIL_ACCESS_TOKEN}}' }
+})
+```
+```
+
+**Note:** This is optional and more complex than the mailto: approach. Recommended only if reading emails is a core requirement.
+
+### Database Changes for Email/Calendar
+
+```sql
+-- Add to users table (or separate user_settings table)
+ALTER TABLE users ADD COLUMN calendar_ical_url TEXT;      -- Private iCal feed URL
+ALTER TABLE users ADD COLUMN calendar_provider TEXT;       -- 'google' | 'outlook'
+ALTER TABLE users ADD COLUMN email_provider TEXT;          -- 'gmail' | 'outlook' (for read-only)
+-- Email OAuth handled by Nango integrations table
+```
+
+### Summary: Email & Calendar Approach
+
+| Feature | Method | OAuth Required | Server Involvement |
+|---------|--------|----------------|-------------------|
+| **Read calendar** | iCal feed URL | No | No |
+| **Send email** | mailto: link | No | No |
+| **Read email** | Gmail/Outlook API | Yes (Nango) | Token fetch only |
+
+This approach keeps email and calendar fully ephemeral - no PII passes through Skilldex servers.

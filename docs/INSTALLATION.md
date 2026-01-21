@@ -1,21 +1,13 @@
-# Installation Guide
+# Getting Started with Skilldex
 
-This guide covers installing Skilldex skills for recruiters. Skilldex works with Claude Desktop, Claude Code, and other AI assistants.
+This guide covers getting started with Skilldex for recruiters. Skilldex works with Claude Desktop, Claude Code, and other AI assistants.
 
 ## Quick Start
 
-```bash
-# 1. Sign up at your Skilldex instance and generate an API key
-#    https://skilldex.yourcompany.com/keys
-
-# 2. Set your API key
-export SKILLDEX_API_KEY="sk_live_your_key_here"
-
-# 3. Download skills from the web UI and place in:
-mkdir -p ~/.claude/commands
-```
-
-That's it for basic ATS skills. LinkedIn lookup requires the **Skilldex Scraper** browser extension (included).
+1. **Log in** to your Skilldex instance (URL provided by your admin)
+2. **Generate API key** in Settings > API Keys
+3. **Install browser extension** for LinkedIn lookup
+4. **Start using** skills in Claude
 
 ## Overview
 
@@ -24,281 +16,157 @@ That's it for basic ATS skills. LinkedIn lookup requires the **Skilldex Scraper*
 │                     SKILLDEX ARCHITECTURE                             │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                       │
-│  ┌──────────────────┐                                                │
-│  │  Claude Code /   │                                                │
-│  │  Claude Desktop  │◄────── Skills call API ──────┐                 │
-│  └────────┬─────────┘                              │                 │
-│           │                                         │                 │
-│           │ /linkedin-lookup                        ▼                 │
-│           │ creates scrape task           ┌──────────────────┐       │
-│           └──────────────────────────────►│  Skilldex API    │       │
-│                                           │  ──────────────  │       │
-│  ┌──────────────────────────────────┐     │  • ATS CRUD      │       │
-│  │  Skilldex Scraper Extension      │     │  • Scrape tasks  │       │
-│  │  ────────────────────────────    │     │  • Usage logging │       │
-│  │  Polls API for pending tasks     │◄────│  • Auth          │       │
-│  │  Opens URLs in YOUR browser      │     └──────────────────┘       │
-│  │  (uses your LinkedIn session)    │                                │
-│  │  Returns extracted content       │                                │
-│  └──────────────────────────────────┘                                │
+│  YOUR BROWSER                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐│
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           ││
+│  │  │ Skilldex Web │  │ Skilldex Ext │  │ LLM Provider │           ││
+│  │  │ (Chat UI)    │  │ (LinkedIn)   │  │ (direct)     │           ││
+│  │  └──────────────┘  └──────────────┘  └──────────────┘           ││
+│  │         │                 │                 │                    ││
+│  │         └─────────────────┴─────────────────┘                    ││
+│  │                All data stays in your browser                    ││
+│  └──────────────────────────────────────────────────────────────────┘│
+│                              │                                        │
+│                              │ Auth only                              │
+│                              ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐│
+│  │  Skilldex Cloud - Skills library, auth, coordination             ││
+│  └──────────────────────────────────────────────────────────────────┘│
 │                                                                       │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Why a browser extension?** Unlike generic browser automation tools, the Skilldex Scraper extension opens pages in your actual browser session. This means LinkedIn pages load with your logged-in credentials - no need to handle OAuth or session management.
+**Privacy by design:** Chat conversations and ATS data never leave your browser. Skilldex servers only handle authentication and skill delivery.
 
 ## Step 1: Create Your Account
 
-1. Navigate to your Skilldex instance (e.g., `https://skilldex.yourcompany.com`)
-2. Create an account or log in
-3. Go to **API Keys** in the sidebar
-4. Click **Generate Key**
-5. Copy the key (starts with `sk_live_`)
+1. Navigate to your Skilldex instance (provided by your admin)
+2. Log in with credentials or SSO
+3. Complete any required onboarding steps
 
-**Note:** You can view your API key anytime from the dashboard - it's not hidden after creation.
+## Step 2: Generate API Key
 
-## Step 2: Store Your API Key
+1. Go to **Settings > API Keys**
+2. Click **Generate Key**
+3. Copy the key (starts with `sk_live_`)
 
-Choose one method based on your OS and security requirements:
+You can view your API key anytime from the dashboard.
 
-### Option A: macOS Keychain (Recommended)
+## Step 3: Install Browser Extension
 
-```bash
-# Store in Keychain
-security add-generic-password -a "$USER" -s "SKILLDEX_API_KEY" -w "sk_live_your_key_here"
+The Skilldex Scraper extension enables LinkedIn lookup using your authenticated LinkedIn session.
 
-# Add to ~/.zshrc to auto-load
-echo 'export SKILLDEX_API_KEY=$(security find-generic-password -a "$USER" -s "SKILLDEX_API_KEY" -w 2>/dev/null)' >> ~/.zshrc
-source ~/.zshrc
-```
+### Chrome Installation
 
-### Option B: 1Password CLI
+1. Get the extension from your IT department or:
+   - Open `chrome://extensions/`
+   - Enable **Developer mode**
+   - Click **Load unpacked** and select the extension folder
 
-```bash
-# Store in 1Password, then add to ~/.zshrc:
-export SKILLDEX_API_KEY=$(op read "op://Private/Skilldex/api-key")
-```
+2. Click the **Skilldex Scraper** icon in your toolbar
 
-### Option C: Environment File
+3. Configure:
+   - **API URL**: Your Skilldex instance URL
+   - **API Key**: Your `sk_live_...` key
 
-```bash
-# Create secure credentials file
-mkdir -p ~/.skilldex
-echo 'export SKILLDEX_API_KEY=sk_live_your_key_here' > ~/.skilldex/credentials
-chmod 600 ~/.skilldex/credentials
-
-# Add to ~/.zshrc
-echo '[ -f ~/.skilldex/credentials ] && source ~/.skilldex/credentials' >> ~/.zshrc
-source ~/.zshrc
-```
-
-### Option D: Direct Export (Development only)
-
-```bash
-# Add directly to ~/.zshrc (key visible in plaintext)
-echo 'export SKILLDEX_API_KEY="sk_live_your_key_here"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-## Step 3: Download Skills
-
-### From the Web UI (Recommended)
-
-1. Go to **Skills** in the Skilldex sidebar
-2. Click on a skill to view details
-3. Click **Download**
-4. Move to your commands directory:
-
-```bash
-mkdir -p ~/.claude/commands
-mv ~/Downloads/ats-candidate-search.md ~/.claude/commands/
-```
-
-### Via API
-
-```bash
-# Create skills directory
-mkdir -p ~/.claude/commands
-
-# Download a skill
-curl -H "Authorization: Bearer $SKILLDEX_API_KEY" \
-  https://skilldex.yourcompany.com/api/skills/ats-candidate-search/download \
-  -o ~/.claude/commands/ats-candidate-search.md
-
-# Download all skills (bulk)
-curl -H "Authorization: Bearer $SKILLDEX_API_KEY" \
-  https://skilldex.yourcompany.com/api/skills/install.sh | bash
-```
-
-## Step 4: Verify Installation
-
-```bash
-# Check API key is set
-echo $SKILLDEX_API_KEY | head -c 10  # Should show "sk_live_..."
-
-# Check skills are installed
-ls ~/.claude/commands/
-
-# Test API connection
-curl -s -H "Authorization: Bearer $SKILLDEX_API_KEY" \
-  https://skilldex.yourcompany.com/api/v1/me
-```
-
-Then in Claude Code or Claude Desktop:
-```
-/ats-candidate-search
-
-Senior Python developer with AWS experience
-```
-
-## Step 5: LinkedIn Lookup (Optional)
-
-The `/linkedin-lookup` skill requires the **Skilldex Scraper** browser extension to access LinkedIn with your authenticated session.
-
-### Install the Browser Extension
-
-#### Option A: Load Unpacked (Development)
-
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable **Developer mode** (toggle in top-right)
-3. Click **Load unpacked**
-4. Select the `apps/skilldex-scraper` folder from your Skilldex installation
-5. The extension icon should appear in your toolbar
-
-#### Option B: Install from CRX (Enterprise)
-
-If your IT department provides a packaged extension:
-
-```bash
-# IT will provide a .crx file or Chrome Web Store link
-# See IT_DEPLOYMENT.md for enterprise distribution
-```
-
-### Configure the Extension
-
-1. Click the **Skilldex Scraper** extension icon in your toolbar
-2. Enter your **API URL** (e.g., `https://skilldex.yourcompany.com`)
-3. Enter your **API Key** (same `sk_live_...` key from Step 2)
 4. Click **Save & Connect**
 
-The status should show a green dot indicating "Polling" when connected.
+The status should show a green dot when connected.
 
-### How It Works
+### How LinkedIn Lookup Works
 
-1. You run `/linkedin-lookup` in Claude with a job description
-2. The skill creates a "scrape task" via the Skilldex API
-3. The browser extension polls for pending tasks (every 5 seconds)
-4. When it claims a task, it opens the LinkedIn URL **in your browser**
-5. Because you're logged into LinkedIn, the page loads with full access
-6. The extension extracts the page content and sends it back to the API
-7. Claude receives the profile data and presents matching candidates
+1. You ask Claude to find candidates on LinkedIn
+2. Skilldex creates a "scrape task" for the LinkedIn URL
+3. The browser extension (running in your Chrome) picks up the task
+4. It opens LinkedIn **in your browser session** (you're already logged in)
+5. The extension extracts the page content and returns it to the chat
+6. Claude analyzes the profiles and presents results
 
 **Key benefit:** Your LinkedIn session is used, so no separate authentication is needed.
 
-## Skill Tiers
+## Step 4: Using the Chat
 
-Not all skills require the same setup:
+Navigate to **Chat** in the Skilldex sidebar to start using skills.
 
-| Tier | Skills | Requirements |
-|------|--------|--------------|
-| **Tier 1: ATS Only** | ats-candidate-search, ats-candidate-crud, daily-report | API key only |
-| **Tier 2: + Email** | email-draft | + Email integration (via Integrations page) |
-| **Tier 3: + LinkedIn** | linkedin-lookup, candidate-pipeline-builder | + Skilldex Scraper extension |
-| **Tier 4: Full Suite** | All skills | + Calendar integration |
+### Example: LinkedIn Lookup
 
-## Skill Format
-
-Skills are markdown files with YAML frontmatter:
-
-```markdown
----
-name: skill-name
-description: What the skill does
-intent: User's goal (e.g., "I want to find candidates")
-capabilities:
-  - List of capabilities
-allowed-tools:
-  - Skill
-  - Read
-  - Bash
----
-
-# Skill Title
-
-Instructions for Claude...
 ```
+Find senior Python developers with AWS experience in San Francisco
+```
+
+Claude will:
+1. Search LinkedIn using your session
+2. Extract relevant profiles
+3. Present a summary of matching candidates
+
+### Example: ATS Search
+
+```
+Show me candidates in our pipeline for the Senior Engineer role
+```
+
+Claude will:
+1. Query your connected ATS
+2. Retrieve matching candidates
+3. Present details and status
+
+## Available Skills
+
+Skills are organized by what they can do:
+
+| Category | Skills | Requirements |
+|----------|--------|--------------|
+| **Sourcing** | LinkedIn lookup, candidate search | Browser extension |
+| **ATS** | Candidate CRUD, pipeline management | ATS integration |
+| **Communication** | Email drafts, outreach templates | Email integration |
+| **Productivity** | Daily reports, summaries | None |
+
+View all available skills in the **Skills** section of the sidebar.
 
 ## Troubleshooting
 
-### "SKILLDEX_API_KEY not set"
+### "Extension not connecting"
 
-```bash
-# Verify the key is in your environment
-echo $SKILLDEX_API_KEY
+1. Check the extension icon shows a green status
+2. Verify API URL and key are correct
+3. Try clicking "Reconnect"
 
-# If empty, check your shell profile
-grep SKILLDEX ~/.zshrc ~/.bashrc
+### "LinkedIn lookup not working"
 
-# Re-source your profile
-source ~/.zshrc
-```
+1. Make sure you're logged into LinkedIn in Chrome
+2. Check the extension is running (green status)
+3. LinkedIn may rate-limit - wait a few minutes
+4. Ensure popup blocker isn't blocking new tabs
 
-### "401 Unauthorized" from API
+### "Skills not appearing"
 
-1. Check your API key is correct (not revoked)
-2. Go to **API Keys** in Skilldex dashboard to verify
-3. Generate a new key if needed
+1. Refresh the page
+2. Check your role has access to the skill (ask admin)
+3. Verify API key is valid
 
-### "Skills not appearing" in Claude
+### "401 Unauthorized"
 
-```bash
-# Verify skills are in the correct location
-ls -la ~/.claude/commands/
+1. Your API key may be expired or revoked
+2. Go to Settings > API Keys
+3. Generate a new key
 
-# Check file has .md extension
-file ~/.claude/commands/ats-candidate-search.md
-```
+## Security Notes
 
-### LinkedIn lookup not working
+### Your Data Stays Local
 
-1. **Check extension is running**: Click the Skilldex Scraper icon - status should show green "Polling"
-2. **Verify API key in extension**: The extension needs its own API key configured
-3. **Log into LinkedIn**: Open LinkedIn in your browser and make sure you're signed in
-4. **Check for rate limiting**: LinkedIn may block rapid requests - wait a few minutes
-5. **Check browser tab**: The extension opens a new tab - make sure it's not blocked by a popup blocker
+- Chat conversations exist only in your browser
+- ATS data is fetched directly, not stored
+- LinkedIn content is processed client-side
+- Skilldex servers only see metadata (skill usage logs)
 
-## Security Considerations
+### API Key Safety
 
-### API Key Protection
-
-- Never commit API keys to git
-- Use Keychain/Credential Manager when possible
-- Rotate keys periodically via Skilldex dashboard
-- Revoke keys immediately if compromised
-
-### Skills
-
-- Skills run locally in your Claude environment
-- They call the Skilldex API with your credentials
-- Review skill content before installing (click "View Raw" in the UI)
-
-## Uninstallation
-
-```bash
-# Remove skills
-rm ~/.claude/commands/ats-*.md
-rm ~/.claude/commands/linkedin-*.md
-rm ~/.claude/commands/email-*.md
-
-# Remove API key from shell profile
-# Edit ~/.zshrc and remove SKILLDEX_API_KEY lines
-
-# Remove from Keychain (if used)
-security delete-generic-password -s "SKILLDEX_API_KEY"
-```
+- Never share your API key
+- Revoke immediately if compromised
+- Your admin can view/revoke keys if needed
 
 ## Getting Help
 
-- **Technical issues**: Contact your Skilldex administrator
-- **Feature requests**: Use the Chat feature to suggest new skills
-- **Bug reports**: Report to your admin
+- **Account issues**: Contact your Skilldex admin
+- **Feature requests**: Use the Chat to propose new skills
+- **Technical problems**: Contact IT support

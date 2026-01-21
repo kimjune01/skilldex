@@ -5,12 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Globe,
-  Monitor,
   Shield,
   DollarSign,
-  Users,
-  Server,
-  Cloud,
   Lock,
   Eye,
   Zap,

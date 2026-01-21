@@ -94,8 +94,8 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions }: ChatMes
 
         {/* Skill suggestion card */}
         {message.skillSuggestion && (
-          <div className={cn(isUser ? 'flex justify-end' : '')}>
-            <div className="max-w-md">
+          <div className="w-full pr-2">
+            <div>
               <SkillCard
                 skill={message.skillSuggestion.skill}
                 executionType={message.skillSuggestion.executionType}
@@ -118,8 +118,8 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions }: ChatMes
 
         {/* Action result card */}
         {message.actionResult && (
-          <div className={cn(isUser ? 'flex justify-end' : '')}>
-            <div className="max-w-lg w-full">
+          <div className="w-full pr-2">
+            <div>
               <ActionResultCard
                 action={message.actionResult.action}
                 result={message.actionResult.result}
