@@ -10,6 +10,8 @@ export interface ApiKeyUser {
   email: string;
   name: string;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
+  organizationId: string | null;
   apiKeyId: string;
 }
 
@@ -65,6 +67,8 @@ export const apiKeyAuth = createMiddleware(async (c, next) => {
     email: user.email,
     name: user.name,
     isAdmin: user.isAdmin,
+    isSuperAdmin: user.isSuperAdmin ?? false,
+    organizationId: user.organizationId ?? null,
     apiKeyId: apiKey.id,
   });
 

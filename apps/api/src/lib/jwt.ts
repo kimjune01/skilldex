@@ -14,7 +14,9 @@ export interface JWTPayload {
   id: string; // alias for sub
   email: string;
   name: string;
-  isAdmin: boolean;
+  isAdmin: boolean; // Org admin
+  isSuperAdmin: boolean; // System-wide super admin
+  organizationId: string | null; // User's organization
 }
 
 export async function createToken(user: UserPublic): Promise<string> {
@@ -22,6 +24,8 @@ export async function createToken(user: UserPublic): Promise<string> {
     email: user.email,
     name: user.name,
     isAdmin: user.isAdmin,
+    isSuperAdmin: user.isSuperAdmin ?? false,
+    organizationId: user.organizationId ?? null,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -46,6 +50,8 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
       email: payload.email as string,
       name: payload.name as string,
       isAdmin: payload.isAdmin as boolean,
+      isSuperAdmin: (payload.isSuperAdmin as boolean) ?? false,
+      organizationId: (payload.organizationId as string) ?? null,
     };
   } catch {
     return null;

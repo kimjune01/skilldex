@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@skilldex/db';
-import { users } from '@skilldex/db/schema';
+import { users, organizations } from '@skilldex/db/schema';
 import { eq } from 'drizzle-orm';
 import { compareSync } from 'bcrypt-ts';
 import { createToken, verifyToken } from '../lib/jwt.js';
@@ -33,12 +33,26 @@ authRoutes.post('/login', async (c) => {
     return c.json({ error: { message: 'Invalid email or password' } }, 401);
   }
 
+  // Get organization name if user has one
+  let organizationName: string | undefined;
+  if (user[0].organizationId) {
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, user[0].organizationId))
+      .limit(1);
+    organizationName = org?.name;
+  }
+
   const userPublic: UserPublic = {
     id: user[0].id,
     email: user[0].email,
     name: user[0].name,
     avatarUrl: user[0].avatarUrl ?? undefined,
     isAdmin: user[0].isAdmin,
+    isSuperAdmin: user[0].isSuperAdmin ?? false,
+    organizationId: user[0].organizationId ?? undefined,
+    organizationName,
   };
 
   const token = await createToken(userPublic);
@@ -77,12 +91,26 @@ authRoutes.get('/me', async (c) => {
     return c.json({ error: { message: 'User not found' } }, 404);
   }
 
+  // Get organization name if user has one
+  let organizationName: string | undefined;
+  if (user[0].organizationId) {
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, user[0].organizationId))
+      .limit(1);
+    organizationName = org?.name;
+  }
+
   const userPublic: UserPublic = {
     id: user[0].id,
     email: user[0].email,
     name: user[0].name,
     avatarUrl: user[0].avatarUrl ?? undefined,
     isAdmin: user[0].isAdmin,
+    isSuperAdmin: user[0].isSuperAdmin ?? false,
+    organizationId: user[0].organizationId ?? undefined,
+    organizationName,
   };
 
   return c.json({ data: userPublic });

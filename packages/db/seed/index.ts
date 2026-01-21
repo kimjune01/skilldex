@@ -1,24 +1,131 @@
 import { db } from '../src/client.js';
-import { users, skills, roles, permissions, roleSkills, userRoles } from '../src/schema.js';
+import { users, skills, roles, permissions, roleSkills, userRoles, organizations, organizationInvites } from '../src/schema.js';
 import { randomUUID } from 'crypto';
 import { hashSync } from 'bcrypt-ts';
 
 async function seed() {
   console.log('Seeding database...');
 
-  // Create admin user
-  const adminId = randomUUID();
+  // ============ ORGANIZATIONS ============
+
+  // Create default organization
+  const defaultOrgId = 'org-default';
+  const acmeOrgId = 'org-acme';
+
+  const orgData = [
+    {
+      id: defaultOrgId,
+      name: 'Default Organization',
+      slug: 'default',
+      logoUrl: null,
+    },
+    {
+      id: acmeOrgId,
+      name: 'Acme Corp',
+      slug: 'acme',
+      logoUrl: null,
+    },
+  ];
+
+  for (const org of orgData) {
+    await db.insert(organizations).values(org).onConflictDoNothing();
+  }
+  console.log('Created organizations');
+
+  // ============ USERS ============
+
+  // Create super admin user (system-wide admin)
+  const superAdminId = randomUUID();
   const adminPassword = process.env.ADMIN_PASSWORD || 'changeme';
 
   await db.insert(users).values({
-    id: adminId,
+    id: superAdminId,
     email: process.env.ADMIN_EMAIL || 'admin@example.com',
     passwordHash: hashSync(adminPassword, 10),
-    name: 'Admin',
+    name: 'Super Admin',
     isAdmin: true,
+    isSuperAdmin: true,
+    organizationId: defaultOrgId,
   }).onConflictDoNothing();
 
-  console.log('Created admin user');
+  console.log('Created super admin user');
+
+  // Create org admin for Default Org
+  const defaultOrgAdminId = randomUUID();
+  await db.insert(users).values({
+    id: defaultOrgAdminId,
+    email: 'orgadmin@example.com',
+    passwordHash: hashSync('changeme', 10),
+    name: 'Org Admin',
+    isAdmin: true,
+    isSuperAdmin: false,
+    organizationId: defaultOrgId,
+  }).onConflictDoNothing();
+
+  console.log('Created org admin user');
+
+  // Create regular member for Default Org
+  const defaultMemberId = randomUUID();
+  await db.insert(users).values({
+    id: defaultMemberId,
+    email: 'member@example.com',
+    passwordHash: hashSync('changeme', 10),
+    name: 'Member User',
+    isAdmin: false,
+    isSuperAdmin: false,
+    organizationId: defaultOrgId,
+  }).onConflictDoNothing();
+
+  console.log('Created member user');
+
+  // Create org admin for Acme Corp
+  const acmeOrgAdminId = randomUUID();
+  await db.insert(users).values({
+    id: acmeOrgAdminId,
+    email: 'admin@acme.com',
+    passwordHash: hashSync('changeme', 10),
+    name: 'Acme Admin',
+    isAdmin: true,
+    isSuperAdmin: false,
+    organizationId: acmeOrgId,
+  }).onConflictDoNothing();
+
+  console.log('Created Acme org admin');
+
+  // Create member for Acme Corp
+  const acmeMemberId = randomUUID();
+  await db.insert(users).values({
+    id: acmeMemberId,
+    email: 'recruiter@acme.com',
+    passwordHash: hashSync('changeme', 10),
+    name: 'Acme Recruiter',
+    isAdmin: false,
+    isSuperAdmin: false,
+    organizationId: acmeOrgId,
+  }).onConflictDoNothing();
+
+  console.log('Created Acme member');
+
+  // ============ SAMPLE INVITE ============
+
+  // Create a sample pending invite (for demo purposes)
+  const inviteToken = randomUUID().replace(/-/g, ''); // Remove hyphens for cleaner token
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+  await db.insert(organizationInvites).values({
+    id: randomUUID(),
+    organizationId: defaultOrgId,
+    email: 'newuser@example.com',
+    role: 'member',
+    token: inviteToken,
+    invitedBy: superAdminId,
+    expiresAt,
+  }).onConflictDoNothing();
+
+  console.log(`Created sample invite (token: ${inviteToken})`);
+  console.log(`  Accept invite at: http://localhost:5173/invite/${inviteToken}`);
+
+  // ============ ROLES ============
 
   // Create default roles with fixed IDs for referencing
   const adminRoleId = 'role-admin';
@@ -36,14 +143,15 @@ async function seed() {
   }
   console.log('Created default roles');
 
-  // Assign admin role to admin user
+  // Assign admin role to super admin user
   await db.insert(userRoles).values({
-    userId: adminId,
+    userId: superAdminId,
     roleId: adminRoleId,
   }).onConflictDoNothing();
-  console.log('Assigned admin role to admin user');
+  console.log('Assigned admin role to super admin user');
 
-  // Create permissions
+  // ============ PERMISSIONS ============
+
   const permissionData = [
     { id: randomUUID(), name: 'admin:*', resource: 'admin', action: '*', description: 'Full admin access' },
     { id: randomUUID(), name: 'skills:read', resource: 'skills', action: 'read', description: 'View skills' },
@@ -62,7 +170,8 @@ async function seed() {
   }
   console.log('Created permissions');
 
-  // Create default skills with fixed IDs for role assignment
+  // ============ SKILLS ============
+
   const skillIds = {
     linkedinLookup: 'skill-linkedin-lookup',
     atsCandidateSearch: 'skill-ats-candidate-search',
@@ -76,7 +185,8 @@ async function seed() {
     dailyReport: 'skill-daily-report',
   };
 
-  // Note: intent and capabilities are now in SKILL.md frontmatter, not DB
+  // Note: All these skills are global (isGlobal: true, organizationId: null)
+  // Organization-specific skills would have isGlobal: false and organizationId set
   const skillData = [
     {
       id: skillIds.skilldexSync,
@@ -86,7 +196,8 @@ async function seed() {
       category: 'system',
       requiredIntegrations: JSON.stringify([]),
       requiredScopes: JSON.stringify(['skills:read']),
-      skillMdPath: 'skills/skilldex-sync/SKILL.md',
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.proposeNewSkill,
@@ -96,7 +207,8 @@ async function seed() {
       category: 'system',
       requiredIntegrations: JSON.stringify([]),
       requiredScopes: JSON.stringify(['proposals:write']),
-      skillMdPath: 'skills/propose-new-skill/SKILL.md',
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.linkedinLookup,
@@ -106,7 +218,8 @@ async function seed() {
       category: 'sourcing',
       requiredIntegrations: JSON.stringify([]),
       requiredScopes: JSON.stringify(['candidates:read']),
-      skillMdPath: 'skills/linkedin-lookup/SKILL.md',
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.atsCandidateSearch,
@@ -116,7 +229,8 @@ async function seed() {
       category: 'ats',
       requiredIntegrations: JSON.stringify(['ats']),
       requiredScopes: JSON.stringify(['candidates:read']),
-      skillMdPath: 'skills/ats-candidate-search/SKILL.md',
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.atsCandidateCrud,
@@ -126,7 +240,8 @@ async function seed() {
       category: 'ats',
       requiredIntegrations: JSON.stringify(['ats']),
       requiredScopes: JSON.stringify(['candidates:read', 'candidates:write']),
-      skillMdPath: 'skills/ats-candidate-crud/SKILL.md',
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.emailDraft,
@@ -136,8 +251,9 @@ async function seed() {
       category: 'communication',
       requiredIntegrations: JSON.stringify(['email']),
       requiredScopes: JSON.stringify(['email:draft', 'candidates:read']),
-      skillMdPath: 'skills/email-draft/SKILL.md',
       isEnabled: false, // Stub - not fully implemented
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.interviewScheduler,
@@ -147,8 +263,9 @@ async function seed() {
       category: 'scheduling',
       requiredIntegrations: JSON.stringify(['calendar']),
       requiredScopes: JSON.stringify(['calendar:write', 'candidates:read']),
-      skillMdPath: 'skills/interview-scheduler/SKILL.md',
       isEnabled: false, // Stub
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.meetingNotes,
@@ -158,8 +275,9 @@ async function seed() {
       category: 'productivity',
       requiredIntegrations: JSON.stringify(['granola']),
       requiredScopes: JSON.stringify(['meetings:read', 'candidates:write']),
-      skillMdPath: 'skills/meeting-notes/SKILL.md',
       isEnabled: false, // Stub
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.candidatePipelineBuilder,
@@ -169,7 +287,8 @@ async function seed() {
       category: 'sourcing',
       requiredIntegrations: JSON.stringify(['ats', 'email']),
       requiredScopes: JSON.stringify(['candidates:read', 'candidates:write', 'email:draft']),
-      skillMdPath: 'skills/candidate-pipeline-builder/SKILL.md',
+      isGlobal: true,
+      organizationId: null,
     },
     {
       id: skillIds.dailyReport,
@@ -179,16 +298,33 @@ async function seed() {
       category: 'productivity',
       requiredIntegrations: JSON.stringify(['ats']),
       requiredScopes: JSON.stringify(['candidates:read', 'applications:read', 'jobs:read']),
-      skillMdPath: 'skills/daily-report/SKILL.md',
+      isGlobal: true,
+      organizationId: null,
     },
   ];
 
   for (const skill of skillData) {
     await db.insert(skills).values(skill).onConflictDoNothing();
   }
-  console.log('Created skills');
+  console.log('Created global skills');
 
-  // Assign skills to roles (many-to-many)
+  // Create an example org-specific skill for Acme Corp
+  const acmeSkillId = 'skill-acme-internal';
+  await db.insert(skills).values({
+    id: acmeSkillId,
+    slug: 'acme-internal-process',
+    name: 'Acme Internal Process',
+    description: 'Acme Corp internal recruiting workflow and compliance checks',
+    category: 'custom',
+    requiredIntegrations: JSON.stringify([]),
+    requiredScopes: JSON.stringify([]),
+    isGlobal: false,
+    organizationId: acmeOrgId,
+  }).onConflictDoNothing();
+  console.log('Created org-specific skill for Acme Corp');
+
+  // ============ ROLE-SKILL ASSIGNMENTS ============
+
   const roleSkillAssignments = [
     // System skills available to everyone
     { roleId: adminRoleId, skillId: skillIds.skilldexSync },
@@ -225,7 +361,31 @@ async function seed() {
   }
   console.log('Assigned skills to roles');
 
+  // ============ SUMMARY ============
+
+  console.log('\n========================================');
   console.log('Seeding complete!');
+  console.log('========================================\n');
+
+  console.log('Organizations:');
+  console.log('  - Default Organization (slug: default)');
+  console.log('  - Acme Corp (slug: acme)');
+
+  console.log('\nUsers (password: changeme):');
+  console.log('  Super Admin:');
+  console.log('    - admin@example.com (super admin, Default Org)');
+  console.log('  Org Admins:');
+  console.log('    - orgadmin@example.com (org admin, Default Org)');
+  console.log('    - admin@acme.com (org admin, Acme Corp)');
+  console.log('  Members:');
+  console.log('    - member@example.com (member, Default Org)');
+  console.log('    - recruiter@acme.com (member, Acme Corp)');
+
+  console.log('\nSample Invite:');
+  console.log(`  URL: http://localhost:5173/invite/${inviteToken}`);
+  console.log('  Email: newuser@example.com');
+  console.log('  Role: member');
+  console.log('  Org: Default Organization');
 }
 
 seed().catch(console.error);

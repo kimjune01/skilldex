@@ -1,28 +1,52 @@
 import { Hono } from 'hono';
 import { db } from '@skilldex/db';
-import { users } from '@skilldex/db/schema';
+import { users, organizations } from '@skilldex/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { hashSync } from 'bcrypt-ts';
 import { jwtAuth, adminOnly } from '../middleware/auth.js';
+import { withOrganization } from '../middleware/organization.js';
 import type { UserPublic } from '@skilldex/shared';
 
 export const usersRoutes = new Hono();
 
-// All routes require JWT auth and admin
+// All routes require JWT auth and admin (org admin or super admin)
 usersRoutes.use('*', jwtAuth);
 usersRoutes.use('*', adminOnly);
+usersRoutes.use('*', withOrganization);
 
-// GET /api/users - List all users (admin only)
+// GET /api/users - List users (super admin sees all, org admin sees their org)
 usersRoutes.get('/', async (c) => {
-  const allUsers = await db.select().from(users);
+  const currentUser = c.get('user');
+  const org = c.get('organization');
 
-  const publicUsers: UserPublic[] = allUsers.map((user) => ({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    avatarUrl: user.avatarUrl ?? undefined,
-    isAdmin: user.isAdmin,
+  let allUsersWithOrg;
+  if (currentUser.isSuperAdmin) {
+    // Super admin sees all users
+    allUsersWithOrg = await db
+      .select()
+      .from(users)
+      .leftJoin(organizations, eq(users.organizationId, organizations.id));
+  } else if (org) {
+    // Org admin sees users in their org
+    allUsersWithOrg = await db
+      .select()
+      .from(users)
+      .leftJoin(organizations, eq(users.organizationId, organizations.id))
+      .where(eq(users.organizationId, org.id));
+  } else {
+    return c.json({ data: [] });
+  }
+
+  const publicUsers: UserPublic[] = allUsersWithOrg.map((row) => ({
+    id: row.users.id,
+    email: row.users.email,
+    name: row.users.name,
+    avatarUrl: row.users.avatarUrl ?? undefined,
+    isAdmin: row.users.isAdmin,
+    isSuperAdmin: row.users.isSuperAdmin ?? false,
+    organizationId: row.users.organizationId ?? undefined,
+    organizationName: row.organizations?.name ?? undefined,
   }));
 
   return c.json({ data: publicUsers });
@@ -31,23 +55,38 @@ usersRoutes.get('/', async (c) => {
 // GET /api/users/:id - Get user by ID (admin only)
 usersRoutes.get('/:id', async (c) => {
   const id = c.req.param('id');
+  const currentUser = c.get('user');
+  const org = c.get('organization');
 
-  const user = await db
+  const result = await db
     .select()
     .from(users)
+    .leftJoin(organizations, eq(users.organizationId, organizations.id))
     .where(eq(users.id, id))
     .limit(1);
 
-  if (user.length === 0) {
+  if (result.length === 0) {
     return c.json({ error: { message: 'User not found' } }, 404);
   }
 
+  const row = result[0];
+  const user = row.users;
+  const orgData = row.organizations;
+
+  // Org admins can only view users in their org
+  if (!currentUser.isSuperAdmin && user.organizationId !== org?.id) {
+    return c.json({ error: { message: 'Forbidden' } }, 403);
+  }
+
   const publicUser: UserPublic = {
-    id: user[0].id,
-    email: user[0].email,
-    name: user[0].name,
-    avatarUrl: user[0].avatarUrl ?? undefined,
-    isAdmin: user[0].isAdmin,
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl ?? undefined,
+    isAdmin: user.isAdmin,
+    isSuperAdmin: user.isSuperAdmin ?? false,
+    organizationId: user.organizationId ?? undefined,
+    organizationName: orgData?.name ?? undefined,
   };
 
   return c.json({ data: publicUser });
@@ -55,15 +94,33 @@ usersRoutes.get('/:id', async (c) => {
 
 // POST /api/users - Create user (admin only)
 usersRoutes.post('/', async (c) => {
+  const currentUser = c.get('user');
+  const org = c.get('organization');
+
   const body = await c.req.json<{
     email: string;
     password: string;
     name: string;
     isAdmin?: boolean;
+    organizationId?: string; // Super admin can specify org
   }>();
 
   if (!body.email || !body.password || !body.name) {
     return c.json({ error: { message: 'Email, password, and name are required' } }, 400);
+  }
+
+  // Determine target organization
+  let targetOrgId = body.organizationId;
+  if (!currentUser.isSuperAdmin) {
+    // Org admins can only create users in their org
+    if (!org) {
+      return c.json({ error: { message: 'No organization assigned' } }, 400);
+    }
+    targetOrgId = org.id;
+  }
+
+  if (!targetOrgId) {
+    return c.json({ error: { message: 'Organization ID required' } }, 400);
   }
 
   // Check if email already exists
@@ -77,6 +134,17 @@ usersRoutes.post('/', async (c) => {
     return c.json({ error: { message: 'Email already exists' } }, 400);
   }
 
+  // Get org name for response
+  const [targetOrg] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, targetOrgId))
+    .limit(1);
+
+  if (!targetOrg) {
+    return c.json({ error: { message: 'Organization not found' } }, 404);
+  }
+
   const id = randomUUID();
   const passwordHash = hashSync(body.password, 10);
 
@@ -86,6 +154,8 @@ usersRoutes.post('/', async (c) => {
     passwordHash,
     name: body.name,
     isAdmin: body.isAdmin ?? false,
+    isSuperAdmin: false, // Only super admins can create super admins via direct DB
+    organizationId: targetOrgId,
   });
 
   const publicUser: UserPublic = {
@@ -93,6 +163,9 @@ usersRoutes.post('/', async (c) => {
     email: body.email.toLowerCase(),
     name: body.name,
     isAdmin: body.isAdmin ?? false,
+    isSuperAdmin: false,
+    organizationId: targetOrgId,
+    organizationName: targetOrg.name,
   };
 
   return c.json({ data: publicUser }, 201);
@@ -102,20 +175,31 @@ usersRoutes.post('/', async (c) => {
 usersRoutes.delete('/:id', async (c) => {
   const id = c.req.param('id');
   const currentUser = c.get('user');
+  const org = c.get('organization');
 
   // Prevent self-deletion
   if (id === currentUser.sub) {
     return c.json({ error: { message: 'Cannot delete yourself' } }, 400);
   }
 
-  const user = await db
+  const [user] = await db
     .select()
     .from(users)
     .where(eq(users.id, id))
     .limit(1);
 
-  if (user.length === 0) {
+  if (!user) {
     return c.json({ error: { message: 'User not found' } }, 404);
+  }
+
+  // Org admins can only delete users in their org
+  if (!currentUser.isSuperAdmin && user.organizationId !== org?.id) {
+    return c.json({ error: { message: 'Forbidden' } }, 403);
+  }
+
+  // Prevent deleting super admins (only super admin can delete super admins)
+  if (user.isSuperAdmin && !currentUser.isSuperAdmin) {
+    return c.json({ error: { message: 'Cannot delete super admin' } }, 403);
   }
 
   await db.delete(users).where(eq(users.id, id));

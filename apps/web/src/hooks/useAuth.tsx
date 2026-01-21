@@ -12,6 +12,11 @@ interface AuthContextType {
   user: UserPublic | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean; // Org admin or super admin
+  isOrgAdmin: boolean; // Org admin only
+  isSuperAdmin: boolean; // Super admin only
+  organizationId: string | undefined;
+  organizationName: string | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -54,6 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isAdmin: !!user?.isAdmin || !!user?.isSuperAdmin,
+        isOrgAdmin: !!user?.isAdmin && !user?.isSuperAdmin,
+        isSuperAdmin: !!user?.isSuperAdmin,
+        organizationId: user?.organizationId,
+        organizationName: user?.organizationName,
         login,
         logout,
       }}

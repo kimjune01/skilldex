@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, FlaskConical, MessageSquare, Server } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, FlaskConical, MessageSquare, Server, Building2, Mail, Crown } from 'lucide-react';
 
 // Main navigation - visible to all authenticated users
 const navigation = [
@@ -34,6 +34,7 @@ const navigation = [
 // Admin navigation - visible only to users with isAdmin=true
 const adminNavigation = [
   { name: 'Users', href: '/admin/users', icon: Users },
+  { name: 'Invites', href: '/admin/invites', icon: Mail },
   { name: 'Manage Skills', href: '/admin/skills', icon: Zap },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Proposals', href: '/admin/proposals', icon: FileText },
@@ -41,8 +42,13 @@ const adminNavigation = [
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
+// Super admin navigation - visible only to super admins
+const superAdminNavigation = [
+  { name: 'Organizations', href: '/admin/organizations', icon: Building2 },
+];
+
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin, isSuperAdmin, organizationName } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const branding = useBranding();
@@ -112,7 +118,7 @@ export default function Layout() {
             );
           })}
 
-          {user?.isAdmin && (
+          {isAdmin && (
             <>
               <div className="pt-4 pb-2">
                 <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -139,10 +145,44 @@ export default function Layout() {
               })}
             </>
           )}
+
+          {isSuperAdmin && (
+            <>
+              <div className="pt-4 pb-2">
+                <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Super Admin
+                </p>
+              </div>
+              {superAdminNavigation.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      location.pathname === item.href
+                        ? "bg-purple-100 text-purple-700"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         {/* User section at bottom */}
         <div className="border-t p-4">
+          {organizationName && (
+            <div className="flex items-center gap-2 mb-3 px-1 py-2 bg-muted/50 rounded-md">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground truncate">{organizationName}</span>
+            </div>
+          )}
           <div className="flex items-center gap-3 mb-3">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-sm font-medium text-primary">
@@ -153,9 +193,14 @@ export default function Layout() {
               <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
               <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
-            {user?.isAdmin && (
+            {isSuperAdmin ? (
+              <Badge variant="destructive" className="text-xs">
+                <Crown className="h-3 w-3 mr-1" />
+                Super
+              </Badge>
+            ) : isAdmin ? (
               <Badge variant="warning" className="text-xs">Admin</Badge>
-            )}
+            ) : null}
           </div>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />

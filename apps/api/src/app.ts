@@ -31,6 +31,8 @@ import { settingsRoutes } from './routes/settings.js';
 import { docsRoutes } from './routes/docs.js';
 import { extensionRoutes } from './routes/extension.js';
 import { onboardingRoutes } from './routes/onboarding.js';
+import { organizationsRoutes } from './routes/organizations.js';
+import { invitesRoutes } from './routes/invites.js';
 
 // Skill API routes (API key auth) - called by Claude Code skills
 import { v1AtsRoutes } from './routes/v1/ats.js';
@@ -85,6 +87,8 @@ app.route('/api/analytics', analyticsRoutes); // Usage analytics (admin)
 app.route('/api/proposals', proposalsRoutes); // Skill proposals
 app.route('/api/chat', chatRoutes);           // LLM chat with skill suggestions
 app.route('/api/settings', settingsRoutes);   // System settings (admin)
+app.route('/api/organizations', organizationsRoutes); // Organization management
+app.route('/api/invites', invitesRoutes);     // Organization invites
 
 // ============ SKILL API ROUTES (API Key Auth) ============
 // Called by Claude Code skills - requires Authorization: Bearer sk_live_xxx

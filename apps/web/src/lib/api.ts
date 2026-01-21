@@ -13,6 +13,8 @@ import type {
   ChatEvent,
   ScrapeTaskPublic,
   CreateScrapeTaskResponse,
+  OrganizationPublic,
+  OrganizationInvitePublic,
 } from '@skilldex/shared';
 
 // In production, VITE_API_URL points to the Lambda function URL
@@ -406,5 +408,58 @@ export const settings = {
     request<{ defaultProvider: string; defaultModel: string }>('/settings/llm/default', {
       method: 'PUT',
       body: JSON.stringify({ provider, model }),
+    }),
+};
+
+// Organizations (super admin)
+export const organizations = {
+  list: () => request<OrganizationPublic[]>('/organizations'),
+
+  get: (id: string) => request<OrganizationPublic>(`/organizations/${id}`),
+
+  getCurrent: () => request<OrganizationPublic>('/organizations/current'),
+
+  create: (body: { name: string; slug?: string; logoUrl?: string }) =>
+    request<OrganizationPublic>('/organizations', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  update: (id: string, body: { name?: string; slug?: string; logoUrl?: string }) =>
+    request<OrganizationPublic>(`/organizations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  delete: (id: string) =>
+    request<{ message: string }>(`/organizations/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+// Organization Invites
+export const invites = {
+  list: () => request<OrganizationInvitePublic[]>('/invites'),
+
+  create: (body: { email: string; role?: 'admin' | 'member'; organizationId?: string }) =>
+    request<OrganizationInvitePublic & { token: string }>('/invites', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  validate: (token: string) =>
+    request<{ valid: boolean; email: string; organizationName: string; role: string }>(
+      `/invites/validate/${token}`
+    ),
+
+  accept: (token: string, password: string, name: string) =>
+    request<{ token: string; user: UserPublic }>('/invites/accept', {
+      method: 'POST',
+      body: JSON.stringify({ token, password, name }),
+    }),
+
+  cancel: (id: string) =>
+    request<{ message: string }>(`/invites/${id}`, {
+      method: 'DELETE',
     }),
 };

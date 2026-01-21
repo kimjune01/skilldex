@@ -41,6 +41,9 @@ import AdminAnalytics from './pages/admin/Analytics';
 import AdminProposals from './pages/admin/Proposals';
 import AdminSettings from './pages/admin/Settings';
 import AdminDeployment from './pages/admin/Deployment';
+import AdminOrganizations from './pages/admin/Organizations';
+import AdminInvites from './pages/admin/Invites';
+import AcceptInvite from './pages/invite/Accept';
 import Chat from './pages/Chat';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -62,7 +65,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { isAdmin, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -72,7 +75,25 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user?.isAdmin) {
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { isSuperAdmin, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isSuperAdmin) {
     return <Navigate to="/" replace />;
   }
 
@@ -85,6 +106,7 @@ export default function App() {
       <DemoProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/invite/:token" element={<AcceptInvite />} />
 
       <Route
         path="/"
@@ -150,6 +172,22 @@ export default function App() {
             <AdminRoute>
               <AdminDeployment />
             </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/invites"
+          element={
+            <AdminRoute>
+              <AdminInvites />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/organizations"
+          element={
+            <SuperAdminRoute>
+              <AdminOrganizations />
+            </SuperAdminRoute>
           }
         />
       </Route>

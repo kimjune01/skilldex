@@ -49,6 +49,7 @@ apiKeysRoutes.post('/', async (c) => {
   await db.insert(apiKeys).values({
     id,
     userId: user.sub,
+    organizationId: user.organizationId ?? null, // Add org context
     key,
     name,
   });

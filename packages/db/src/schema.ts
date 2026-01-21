@@ -29,7 +29,9 @@ export const users = sqliteTable('users', {
   passwordHash: text('password_hash').notNull(),
   name: text('name').notNull(),
   avatarUrl: text('avatar_url'),
-  isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false),
+  isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false), // Org admin
+  isSuperAdmin: integer('is_super_admin', { mode: 'boolean' }).notNull().default(false), // System-wide admin
+  organizationId: text('organization_id'), // FK added via migration (circular ref)
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
@@ -38,6 +40,41 @@ export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+// ============ ORGANIZATIONS ============
+
+/**
+ * Organizations table - multi-tenant support
+ *
+ * Each organization is an isolated tenant. Users belong to exactly one organization.
+ * Super admins can manage all organizations; org admins manage their own org.
+ */
+export const organizations = sqliteTable('organizations', {
+  id: text('id').primaryKey(), // UUID
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(), // URL-friendly identifier
+  logoUrl: text('logo_url'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Organization Invites table - invite-only org membership
+ *
+ * Invites are created by org admins or super admins.
+ * Users accept invites to join an organization.
+ */
+export const organizationInvites = sqliteTable('organization_invites', {
+  id: text('id').primaryKey(), // UUID
+  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  role: text('role').notNull().default('member'), // 'admin' | 'member'
+  token: text('token').notNull().unique(), // Random invite token
+  invitedBy: text('invited_by').notNull().references(() => users.id),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
@@ -55,6 +92,7 @@ export const sessions = sqliteTable('sessions', {
 export const apiKeys = sqliteTable('api_keys', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
   key: text('key').notNull(), // Full API key (sk_live_...) - retrievable anytime
   name: text('name').notNull(), // User-provided name like "My MacBook"
   lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
@@ -135,6 +173,10 @@ export const skills = sqliteTable('skills', {
   category: text('category').notNull(), // 'sourcing', 'communication', 'ats'
   version: text('version').notNull().default('1.0.0'),
 
+  // Organization scoping
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  isGlobal: integer('is_global', { mode: 'boolean' }).notNull().default(true), // Global skills visible to all orgs
+
   // Frontmatter fields (progressive disclosure - Level 1 metadata)
   intent: text('intent'), // When to use this skill (e.g., "user asks to find candidates on LinkedIn")
   capabilities: text('capabilities'), // JSON array of what the skill can do
@@ -158,6 +200,7 @@ export const integrations = sqliteTable('integrations', {
   provider: text('provider').notNull(), // 'linkedin', 'ats', 'email', 'google'
   nangoConnectionId: text('nango_connection_id'), // Nango's connection ID
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
 
   status: text('status').notNull().default('disconnected'), // 'connected', 'disconnected', 'error'
   lastSyncAt: integer('last_sync_at', { mode: 'timestamp' }),
@@ -174,6 +217,7 @@ export const skillUsageLogs = sqliteTable('skill_usage_logs', {
   skillId: text('skill_id').notNull().references(() => skills.id),
   userId: text('user_id').notNull().references(() => users.id),
   apiKeyId: text('api_key_id').references(() => apiKeys.id),
+  organizationId: text('organization_id').references(() => organizations.id),
 
   status: text('status').notNull(), // 'success', 'error', 'partial'
   durationMs: integer('duration_ms'),
@@ -206,6 +250,7 @@ export const scrapeTasks = sqliteTable('scrape_tasks', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   apiKeyId: text('api_key_id').references(() => apiKeys.id),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
 
   url: text('url').notNull(),
   urlHash: text('url_hash').notNull(), // SHA-256 hash of normalized URL for deduplication
@@ -224,6 +269,7 @@ export const scrapeTasks = sqliteTable('scrape_tasks', {
 export const skillProposals = sqliteTable('skill_proposals', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
 
   // Proposal content
   title: text('title').notNull(),
@@ -245,7 +291,33 @@ export const skillProposals = sqliteTable('skill_proposals', {
 
 // ============ RELATIONS ============
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  users: many(users),
+  invites: many(organizationInvites),
+  apiKeys: many(apiKeys),
+  skills: many(skills),
+  integrations: many(integrations),
+  skillUsageLogs: many(skillUsageLogs),
+  scrapeTasks: many(scrapeTasks),
+  skillProposals: many(skillProposals),
+}));
+
+export const organizationInvitesRelations = relations(organizationInvites, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [organizationInvites.organizationId],
+    references: [organizations.id],
+  }),
+  inviter: one(users, {
+    fields: [organizationInvites.invitedBy],
+    references: [users.id],
+  }),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [users.organizationId],
+    references: [organizations.id],
+  }),
   sessions: many(sessions),
   apiKeys: many(apiKeys),
   roles: many(userRoles),
@@ -270,6 +342,10 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
     fields: [apiKeys.userId],
     references: [users.id],
   }),
+  organization: one(organizations, {
+    fields: [apiKeys.organizationId],
+    references: [organizations.id],
+  }),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({
@@ -278,7 +354,11 @@ export const rolesRelations = relations(roles, ({ many }) => ({
   skills: many(roleSkills),
 }));
 
-export const skillsRelations = relations(skills, ({ many }) => ({
+export const skillsRelations = relations(skills, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [skills.organizationId],
+    references: [organizations.id],
+  }),
   usageLogs: many(skillUsageLogs),
   roles: many(roleSkills),
 }));
@@ -302,6 +382,10 @@ export const integrationsRelations = relations(integrations, ({ one }) => ({
   user: one(users, {
     fields: [integrations.userId],
     references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [integrations.organizationId],
+    references: [organizations.id],
   }),
 }));
 
@@ -327,6 +411,10 @@ export const systemSettings = sqliteTable('system_settings', {
 
 // ============ TYPE EXPORTS ============
 
+export type Organization = typeof organizations.$inferSelect;
+export type NewOrganization = typeof organizations.$inferInsert;
+export type OrganizationInvite = typeof organizationInvites.$inferSelect;
+export type NewOrganizationInvite = typeof organizationInvites.$inferInsert;
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type NewSystemSetting = typeof systemSettings.$inferInsert;
 export type User = typeof users.$inferSelect;

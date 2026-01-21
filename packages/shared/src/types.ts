@@ -33,6 +33,32 @@ export interface UserPublic {
   name: string;
   avatarUrl?: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
+  organizationId?: string;
+  organizationName?: string;
+}
+
+// ============ Organization Types ============
+
+export interface OrganizationPublic {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl?: string;
+  memberCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrganizationInvitePublic {
+  id: string;
+  email: string;
+  role: 'admin' | 'member';
+  status: 'pending' | 'accepted' | 'expired';
+  organizationId: string;
+  organizationName: string;
+  expiresAt: string;
+  createdAt: string;
 }
 
 // ============ API Key Types ============
