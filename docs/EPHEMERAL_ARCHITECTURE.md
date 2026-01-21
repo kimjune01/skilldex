@@ -523,6 +523,74 @@ Parse the iCal response. Time blocks marked "Busy" are unavailable.
 {{CALENDAR_PROVIDER}}    - 'google' | 'outlook' | 'other'
 ```
 
+### Calendar: Calendly Integration (Optional)
+
+For users with Calendly, we can provide a better scheduling experience via Nango OAuth.
+
+**Why Calendly:**
+- Recruiters often use Calendly for interview scheduling
+- Candidates book themselves - no calendar write access needed
+- Claude can include booking links in outreach emails
+
+**How it works:**
+1. User connects Calendly via Nango OAuth in Integrations page
+2. Rendered skill gets fresh access token via `{{CALENDLY_ACCESS_TOKEN}}`
+3. Client calls Calendly API directly to fetch event types and scheduling links
+4. Claude includes booking link in outreach: "Book a time: https://calendly.com/recruiter/interview"
+
+**Calendly API capabilities:**
+| Endpoint | Use Case |
+|----------|----------|
+| `GET /event_types` | List user's event types (30-min call, 1-hr interview) |
+| `GET /scheduled_events` | See upcoming bookings |
+| `GET /user` | Get user's Calendly profile and scheduling URL |
+
+**Example rendered skill:**
+```markdown
+## Scheduling
+
+To get your Calendly booking links:
+
+```javascript
+// Get event types
+fetch('https://api.calendly.com/event_types?user={{CALENDLY_USER_URI}}', {
+  headers: { 'Authorization': 'Bearer {{CALENDLY_ACCESS_TOKEN}}' }
+})
+```
+
+Include the scheduling_url in your outreach emails.
+```
+
+**Example Claude output:**
+```markdown
+I've drafted an outreach email for Sarah Chen:
+
+📧 [Send email](mailto:sarah@example.com?subject=Senior%20Engineer%20at%20Acme&body=Hi%20Sarah%2C%0A%0A...%0A%0ABook%20a%20time%20to%20chat%3A%20https%3A%2F%2Fcalendly.com%2Fyou%2F30min-interview)
+
+The email includes your Calendly link for 30-minute interviews.
+```
+
+**Variables to add:**
+```
+{{CALENDLY_ACCESS_TOKEN}}  - Fresh OAuth token from Nango
+{{CALENDLY_USER_URI}}      - User's Calendly URI (e.g., https://api.calendly.com/users/abc123)
+{{CALENDLY_SCHEDULING_URL}} - User's base scheduling URL
+```
+
+**Benefits over iCal:**
+- Can fetch actual booking links (not just free/busy)
+- Candidate self-schedules - no back-and-forth
+- See upcoming interviews
+- Still ephemeral - token embedded, API called client-side
+
+**When to use which:**
+
+| User Has | Calendar Approach |
+|----------|-------------------|
+| Calendly | Use Calendly API for scheduling links |
+| Google/Outlook only | Use free/busy iCal for availability checks |
+| Both | Calendly for scheduling, iCal as fallback |
+
 ### Email: mailto: Links (Send-Only)
 
 For sending emails, use `mailto:` links that open the user's default email client with pre-filled content.

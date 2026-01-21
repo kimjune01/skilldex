@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 .output/
+*.tsbuildinfo
 
 # Environment
 .env
@@ -15,6 +16,8 @@ build/
 # Database
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.sqlite
 
 # IDE
