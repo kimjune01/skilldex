@@ -63,6 +63,18 @@ export default function Landing() {
           </Link>
           <div className="flex items-center gap-3">
             <Link
+              to="/for-recruiters"
+              className="px-4 py-2 text-sm font-bold text-[hsl(220_20%_40%)] hover:text-primary transition-colors"
+            >
+              Use Cases
+            </Link>
+            <Link
+              to="/for-it"
+              className="px-4 py-2 text-sm font-bold text-[hsl(220_20%_40%)] hover:text-primary transition-colors"
+            >
+              For IT
+            </Link>
+            <Link
               to="/login"
               className="px-4 py-2 text-sm font-bold text-[hsl(220_20%_40%)] hover:text-primary transition-colors"
             >
@@ -99,13 +111,13 @@ export default function Landing() {
                 Claude Desktop, ChatGPT, or any BYOAI app to search candidates, sync with your ATS, and send personalized outreach.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link
-                  to="/login"
+                <a
+                  href="mailto:email@skillomatic.technology?subject=Demo%20Request&body=Hi%2C%20I%27d%20like%20to%20see%20a%20demo%20of%20Skillomatic."
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl robot-button text-white font-bold tracking-wide text-lg border-0"
                 >
-                  Start Free Trial
+                  Request Demo Video
                   <ArrowRight className="h-5 w-5" />
-                </Link>
+                </a>
                 <a
                   href="#how-it-works"
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[hsl(220_15%_92%)] border-2 border-[hsl(220_15%_82%)] text-[hsl(220_20%_35%)] font-bold tracking-wide text-lg hover:bg-[hsl(220_15%_88%)] transition-colors"
@@ -302,16 +314,16 @@ export default function Landing() {
             Ready to Supercharge Your Recruiting?
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            Join hundreds of recruiters using Skillomatic to automate their workflow.
-            Free 14-day trial, no credit card required.
+            We're looking for design partners to shape the future of recruiting automation.
+            Get early access and help us build the product you need.
           </p>
-          <Link
-            to="/login"
+          <a
+            href="mailto:email@skillomatic.technology?subject=Demo%20Request&body=Hi%2C%20I%27d%20like%20to%20see%20a%20demo%20of%20Skillomatic."
             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-primary font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
           >
-            Get Started Free
+            Request Demo Video
             <ArrowRight className="h-5 w-5" />
-          </Link>
+          </a>
         </div>
       </section>
 
@@ -326,10 +338,10 @@ export default function Landing() {
               <span className="text-lg font-black text-white">SKILLOMATIC</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-[hsl(220_15%_60%)]">
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
+              <Link to="/for-it" className="hover:text-white transition-colors">Security</Link>
+              <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
               <a href="#" className="hover:text-white transition-colors">Terms</a>
               <a href="#" className="hover:text-white transition-colors">Docs</a>
-              <a href="#" className="hover:text-white transition-colors">Support</a>
             </div>
             <div className="text-sm text-[hsl(220_15%_50%)]">
               © 2025 Skillomatic. All rights reserved.

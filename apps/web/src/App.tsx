@@ -49,6 +49,8 @@ import Chat from './pages/Chat';
 import Extension from './pages/Extension';
 import ExtensionInstall from './pages/ExtensionInstall';
 import Privacy from './pages/Privacy';
+import ForIT from './pages/ForIT';
+import ForRecruiters from './pages/ForRecruiters';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAuth();
@@ -224,6 +226,8 @@ export default function App() {
         {/* Public pages */}
         <Route path="/extension" element={<Extension />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/for-it" element={<ForIT />} />
+        <Route path="/for-recruiters" element={<ForRecruiters />} />
       </Routes>
     </DemoProvider>
   );
