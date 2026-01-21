@@ -23,9 +23,9 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Chat', href: '/chat', icon: MessageSquare },
   { name: 'Skills', href: '/skills', icon: Zap },
-  { name: 'API Keys', href: '/keys', icon: Key },
-  { name: 'Integrations', href: '/integrations', icon: Plug },
-  { name: 'Usage', href: '/usage', icon: BarChart3 },
+  { name: 'Desktop App', href: '/keys', icon: Key },
+  { name: 'Connections', href: '/integrations', icon: Plug },
+  { name: 'Activity', href: '/usage', icon: BarChart3 },
 ];
 
 // Admin navigation - visible only to users with isAdmin=true
@@ -179,15 +179,15 @@ export default function Layout() {
                     className={cn(
                       "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical",
                       isActive
-                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md border-2 border-amber-600"
-                        : "bg-amber-50 text-amber-800 border-2 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
+                        ? "robot-button text-white shadow-md"
+                        : "bg-[hsl(220_15%_88%)] text-[hsl(220_20%_35%)] border-2 border-[hsl(220_15%_78%)] hover:bg-[hsl(220_15%_85%)] hover:border-[hsl(220_15%_70%)]"
                     )}
                   >
                     <div className={cn(
                       "h-6 w-6 rounded flex items-center justify-center transition-all",
                       isActive
                         ? "bg-white/20"
-                        : "bg-amber-200 group-hover:bg-amber-300"
+                        : "bg-[hsl(220_15%_80%)] group-hover:bg-[hsl(220_15%_75%)]"
                     )}>
                       <Icon className="h-3.5 w-3.5" />
                     </div>
@@ -225,15 +225,15 @@ export default function Layout() {
                     className={cn(
                       "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical",
                       isActive
-                        ? "bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-md border-2 border-purple-600"
-                        : "bg-purple-50 text-purple-800 border-2 border-purple-200 hover:bg-purple-100 hover:border-purple-300"
+                        ? "robot-button text-white shadow-md"
+                        : "bg-[hsl(220_15%_88%)] text-[hsl(220_20%_35%)] border-2 border-[hsl(220_15%_78%)] hover:bg-[hsl(220_15%_85%)] hover:border-[hsl(220_15%_70%)]"
                     )}
                   >
                     <div className={cn(
                       "h-6 w-6 rounded flex items-center justify-center transition-all",
                       isActive
                         ? "bg-white/20"
-                        : "bg-purple-200 group-hover:bg-purple-300"
+                        : "bg-[hsl(220_15%_80%)] group-hover:bg-[hsl(220_15%_75%)]"
                     )}>
                       <Icon className="h-3.5 w-3.5" />
                     </div>

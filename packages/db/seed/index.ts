@@ -2,6 +2,49 @@ import { db } from '../src/client.js';
 import { users, skills, roles, permissions, roleSkills, userRoles, organizations, organizationInvites } from '../src/schema.js';
 import { randomUUID } from 'crypto';
 import { hashSync } from 'bcrypt-ts';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const skillsDir = join(__dirname, '../../../skills');
+
+// Parse YAML-like frontmatter from SKILL.md files
+function parseSkillFrontmatter(slug: string): { intent?: string; capabilities?: string[]; instructions?: string } {
+  const skillPath = join(skillsDir, slug, 'SKILL.md');
+  if (!existsSync(skillPath)) {
+    return {};
+  }
+
+  const content = readFileSync(skillPath, 'utf-8');
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!frontmatterMatch) {
+    return { instructions: content };
+  }
+
+  const frontmatter = frontmatterMatch[1];
+  const instructions = content.slice(frontmatterMatch[0].length).trim();
+
+  let intent: string | undefined;
+  let capabilities: string[] = [];
+
+  // Parse intent
+  const intentMatch = frontmatter.match(/^intent:\s*(.+)$/m);
+  if (intentMatch) {
+    intent = intentMatch[1].trim();
+  }
+
+  // Parse capabilities (YAML array)
+  const capabilitiesMatch = frontmatter.match(/^capabilities:\n((?:\s+-\s+.+\n?)+)/m);
+  if (capabilitiesMatch) {
+    capabilities = capabilitiesMatch[1]
+      .split('\n')
+      .map(line => line.replace(/^\s*-\s*/, '').trim())
+      .filter(Boolean);
+  }
+
+  return { intent, capabilities, instructions };
+}
 
 async function seed() {
   console.log('Seeding database...');
@@ -185,128 +228,52 @@ async function seed() {
     dailyReport: 'skill-daily-report',
   };
 
+  // Helper to build skill with frontmatter from SKILL.md
+  const buildSkill = (id: string, slug: string, name: string, description: string, category: string, requiredIntegrations: string[], requiredScopes: string[], isEnabled = true) => {
+    const frontmatter = parseSkillFrontmatter(slug);
+    return {
+      id,
+      slug,
+      name,
+      description,
+      category,
+      requiredIntegrations: JSON.stringify(requiredIntegrations),
+      requiredScopes: JSON.stringify(requiredScopes),
+      intent: frontmatter.intent || null,
+      capabilities: frontmatter.capabilities?.length ? JSON.stringify(frontmatter.capabilities) : null,
+      instructions: frontmatter.instructions || null,
+      isEnabled,
+      isGlobal: true,
+      organizationId: null,
+    };
+  };
+
   // Note: All these skills are global (isGlobal: true, organizationId: null)
   // Organization-specific skills would have isGlobal: false and organizationId set
   const skillData = [
-    {
-      id: skillIds.skillomaticSync,
-      slug: 'skillomatic-sync',
-      name: 'Skillomatic Sync',
-      description: 'Sync all available skills from Skillomatic server to your local Claude Desktop',
-      category: 'system',
-      requiredIntegrations: JSON.stringify([]),
-      requiredScopes: JSON.stringify(['skills:read']),
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.proposeNewSkill,
-      slug: 'propose-new-skill',
-      name: 'Propose New Skill',
-      description: 'Submit a proposal for a new skill to be added to Skillomatic',
-      category: 'system',
-      requiredIntegrations: JSON.stringify([]),
-      requiredScopes: JSON.stringify(['proposals:write']),
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.linkedinLookup,
-      slug: 'linkedin-lookup',
-      name: 'LinkedIn Profile Lookup',
-      description: 'Find candidate profiles on LinkedIn that match a job description using browser automation',
-      category: 'sourcing',
-      requiredIntegrations: JSON.stringify([]),
-      requiredScopes: JSON.stringify(['candidates:read']),
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.atsCandidateSearch,
-      slug: 'ats-candidate-search',
-      name: 'ATS Candidate Search',
-      description: 'Search for candidates in your Applicant Tracking System',
-      category: 'ats',
-      requiredIntegrations: JSON.stringify(['ats']),
-      requiredScopes: JSON.stringify(['candidates:read']),
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.atsCandidateCrud,
-      slug: 'ats-candidate-crud',
-      name: 'ATS Candidate Management',
-      description: 'Create, update, and manage candidates in your ATS',
-      category: 'ats',
-      requiredIntegrations: JSON.stringify(['ats']),
-      requiredScopes: JSON.stringify(['candidates:read', 'candidates:write']),
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.emailDraft,
-      slug: 'email-draft',
-      name: 'Recruitment Email Drafting',
-      description: 'Draft personalized recruitment emails for candidates',
-      category: 'communication',
-      requiredIntegrations: JSON.stringify(['email']),
-      requiredScopes: JSON.stringify(['email:draft', 'candidates:read']),
-      isEnabled: false, // Stub - not fully implemented
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.interviewScheduler,
-      slug: 'interview-scheduler',
-      name: 'Interview Scheduler',
-      description: 'Schedule interviews with candidates',
-      category: 'scheduling',
-      requiredIntegrations: JSON.stringify(['calendar']),
-      requiredScopes: JSON.stringify(['calendar:write', 'candidates:read']),
-      isEnabled: false, // Stub
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.meetingNotes,
-      slug: 'meeting-notes',
-      name: 'Meeting Notes Sync',
-      description: 'Sync meeting notes from recording apps to ATS',
-      category: 'productivity',
-      requiredIntegrations: JSON.stringify(['granola']),
-      requiredScopes: JSON.stringify(['meetings:read', 'candidates:write']),
-      isEnabled: false, // Stub
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.candidatePipelineBuilder,
-      slug: 'candidate-pipeline-builder',
-      name: 'Candidate Pipeline Builder',
-      description: 'End-to-end candidate sourcing: search LinkedIn profiles, add to ATS, generate personalized outreach emails, and log activity.',
-      category: 'sourcing',
-      requiredIntegrations: JSON.stringify(['ats', 'email']),
-      requiredScopes: JSON.stringify(['candidates:read', 'candidates:write', 'email:draft']),
-      isGlobal: true,
-      organizationId: null,
-    },
-    {
-      id: skillIds.dailyReport,
-      slug: 'daily-report',
-      name: 'Daily Recruiting Report',
-      description: 'Generate a summary report of recruiting activity from the ATS for standups, syncs, or tracking progress.',
-      category: 'productivity',
-      requiredIntegrations: JSON.stringify(['ats']),
-      requiredScopes: JSON.stringify(['candidates:read', 'applications:read', 'jobs:read']),
-      isGlobal: true,
-      organizationId: null,
-    },
+    buildSkill(skillIds.skillomaticSync, 'skillomatic-sync', 'Skillomatic Sync', 'Sync all available skills from Skillomatic server to your local Claude Desktop', 'system', [], ['skills:read']),
+    buildSkill(skillIds.proposeNewSkill, 'propose-new-skill', 'Propose New Skill', 'Submit a proposal for a new skill to be added to Skillomatic', 'system', [], ['proposals:write']),
+    buildSkill(skillIds.linkedinLookup, 'linkedin-lookup', 'LinkedIn Profile Lookup', 'Find candidate profiles on LinkedIn that match a job description using browser automation', 'sourcing', [], ['candidates:read']),
+    buildSkill(skillIds.atsCandidateSearch, 'ats-candidate-search', 'ATS Candidate Search', 'Search for candidates in your Applicant Tracking System', 'ats', ['ats'], ['candidates:read']),
+    buildSkill(skillIds.atsCandidateCrud, 'ats-candidate-crud', 'ATS Candidate Management', 'Create, update, and manage candidates in your ATS', 'ats', ['ats'], ['candidates:read', 'candidates:write']),
+    buildSkill(skillIds.emailDraft, 'email-draft', 'Recruitment Email Drafting', 'Draft personalized recruitment emails for candidates', 'communication', ['email'], ['email:draft', 'candidates:read'], false),
+    buildSkill(skillIds.interviewScheduler, 'interview-scheduler', 'Interview Scheduler', 'Schedule interviews with candidates', 'scheduling', ['calendar'], ['calendar:write', 'candidates:read'], false),
+    buildSkill(skillIds.meetingNotes, 'meeting-notes', 'Meeting Notes Sync', 'Sync meeting notes from recording apps to ATS', 'productivity', ['granola'], ['meetings:read', 'candidates:write'], false),
+    buildSkill(skillIds.candidatePipelineBuilder, 'candidate-pipeline-builder', 'Candidate Pipeline Builder', 'End-to-end candidate sourcing: search LinkedIn profiles, add to ATS, generate personalized outreach emails, and log activity.', 'sourcing', ['ats', 'email'], ['candidates:read', 'candidates:write', 'email:draft']),
+    buildSkill(skillIds.dailyReport, 'daily-report', 'Daily Recruiting Report', 'Generate a summary report of recruiting activity from the ATS for standups, syncs, or tracking progress.', 'productivity', ['ats'], ['candidates:read', 'applications:read', 'jobs:read']),
   ];
 
   for (const skill of skillData) {
-    await db.insert(skills).values(skill).onConflictDoNothing();
+    await db.insert(skills).values(skill).onConflictDoUpdate({
+      target: skills.id,
+      set: {
+        intent: skill.intent,
+        capabilities: skill.capabilities,
+        instructions: skill.instructions,
+      },
+    });
   }
-  console.log('Created global skills');
+  console.log('Created/updated global skills (with frontmatter from SKILL.md files)');
 
   // Create an example org-specific skill for Acme Corp
   const acmeSkillId = 'skill-acme-internal';

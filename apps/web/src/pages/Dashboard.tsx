@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Zap, Plug, Key, ArrowRight, AlertCircle, Copy, CheckCircle2, Terminal, CheckCircle, Eye, Bot, Cog, Gift, RefreshCw, Circle } from 'lucide-react';
-import { getCategoryBadgeVariant } from '@/lib/utils';
 import { Confetti } from '@/components/ui/confetti';
 import { SkeletonDashboard } from '@/components/ui/skeleton';
 
@@ -469,81 +468,6 @@ export default function Dashboard() {
                 <code className="bg-muted px-1.5 py-0.5 rounded">/ats-search</code>
               </p>
             </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="card-robot stagger-fade-in rounded-xl overflow-hidden" style={{ animationDelay: '400ms' }}>
-        <CardHeader className="bg-[hsl(220_15%_92%)] border-b-2 border-[hsl(220_15%_82%)]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-cyan-500 flex items-center justify-center">
-                <Zap className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <CardTitle className="font-black tracking-wide uppercase text-[hsl(220_30%_20%)] text-sm">
-                  Skill Inventory
-                </CardTitle>
-                <CardDescription className="text-[10px] font-mono">
-                  {enabledSkills.length} items in stock
-                </CardDescription>
-              </div>
-            </div>
-            <Link
-              to="/skills"
-              className="flex items-center gap-1 py-1.5 px-3 rounded-lg bg-[hsl(220_15%_88%)] border-2 border-[hsl(220_15%_78%)] text-[hsl(220_20%_35%)] text-xs font-bold tracking-wider uppercase hover:bg-primary hover:border-primary hover:text-white transition-all animate-mechanical"
-            >
-              View All
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-4">
-          {enabledSkills.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <div className="dispense-slot w-24 h-24 flex items-center justify-center mb-4">
-                <Zap className="h-10 w-10 text-cyan-400 animate-float" />
-              </div>
-              <h3 className="font-black text-[hsl(220_30%_20%)] uppercase tracking-wide mb-2">
-                Inventory Empty
-              </h3>
-              <p className="text-[hsl(220_15%_50%)] text-sm mb-4 max-w-sm font-mono">
-                No skills loaded in dispenser
-              </p>
-              <Link
-                to="/skills"
-                className="py-2 px-4 rounded-lg robot-button text-white text-sm font-bold tracking-wider uppercase border-0"
-              >
-                Load Skills
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {enabledSkills.slice(0, 6).map((skill, index) => (
-                <Link
-                  key={skill.id}
-                  to={`/skills/${skill.slug}`}
-                  className="group border-2 border-[hsl(220_15%_85%)] rounded-xl p-3 bg-[hsl(220_15%_97%)] hover:border-primary hover:bg-primary/5 transition-all stagger-fade-in"
-                  style={{ animationDelay: `${500 + index * 50}ms` }}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="font-bold text-sm text-[hsl(220_30%_20%)] group-hover:text-primary transition-colors">
-                      {skill.name}
-                    </div>
-                    <div className="led-light led-cyan flex-shrink-0" style={{ width: 6, height: 6 }} />
-                  </div>
-                  <div className="text-xs text-[hsl(220_15%_50%)] line-clamp-2 mb-2">
-                    {skill.description}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Badge variant={getCategoryBadgeVariant(skill.category)} className="text-[10px]">
-                      {skill.category}
-                    </Badge>
-                    <ArrowRight className="h-3 w-3 text-[hsl(220_15%_60%)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </Link>
-              ))}
-            </div>
           )}
         </CardContent>
       </Card>
