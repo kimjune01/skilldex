@@ -1,4 +1,4 @@
-import { User, Bot } from 'lucide-react';
+import { User, Bot, Mail, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { SkillCard, ActionResultCard } from './SkillCard';
@@ -74,11 +74,28 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions }: ChatMes
                   );
                 },
                 pre: ({ children }) => <>{children}</>,
-                a: ({ href, children }) => (
-                  <a href={href} className="text-primary underline hover:no-underline" target="_blank" rel="noopener noreferrer">
-                    {children}
-                  </a>
-                ),
+                a: ({ href, children }) => {
+                  const isMailto = href?.startsWith('mailto:');
+                  return isMailto ? (
+                    <a
+                      href={href}
+                      className="inline-flex items-center gap-1 text-primary underline hover:no-underline"
+                    >
+                      <Mail className="h-3 w-3 shrink-0" />
+                      {children}
+                    </a>
+                  ) : (
+                    <a
+                      href={href}
+                      className="inline-flex items-center gap-1 text-primary underline hover:no-underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {children}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  );
+                },
                 h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
                 h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
                 h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
