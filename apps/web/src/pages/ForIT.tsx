@@ -3,7 +3,6 @@
  *
  * Landing page targeted at IT professionals addressing common B2B SaaS concerns:
  * - Data security and ephemerality
- * - Compliance (GDPR)
  * - Control and visibility
  * - Easy deployment and offboarding
  */
@@ -63,12 +62,12 @@ const securityFeatures = [
 ];
 
 const complianceItems = [
-  { label: 'GDPR Compliant', status: 'certified', icon: FileCheck },
-  { label: 'Data Processing Agreement', status: 'available', icon: FileCheck },
+  { label: 'Minimal Data Collection', status: 'certified', icon: FileCheck },
+  { label: 'User Data Deletion', status: 'available', icon: Trash2 },
   { label: 'SSO/SAML Support', status: 'roadmap', icon: Key },
   { label: 'Role-Based Access Control', status: 'available', icon: Users },
-  { label: 'Custom Data Retention', status: 'available', icon: Clock },
-  { label: 'Source Code Audit', status: 'available', icon: ShieldCheck },
+  { label: 'Audit Logs', status: 'available', icon: Activity },
+  { label: 'Source Code Access', status: 'available', icon: ShieldCheck },
 ];
 
 const dataFlowSteps = [
