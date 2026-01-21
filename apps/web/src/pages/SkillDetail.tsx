@@ -8,6 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   ArrowLeft,
   Download,
@@ -20,26 +30,28 @@ import {
   Shield,
   Plug,
   FileCode,
+  Pencil,
+  X,
+  Save,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 
-// Reserved for future admin edit functionality
-const _CATEGORIES: SkillCategory[] = ['sourcing', 'ats', 'communication', 'scheduling', 'productivity', 'system'];
+const CATEGORIES: SkillCategory[] = ['sourcing', 'ats', 'communication', 'scheduling', 'productivity', 'system'];
 
 export default function SkillDetail() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
-  const _isAdmin = user?.isAdmin || false; // Reserved for edit mode
+  const isAdmin = user?.isAdmin || false;
 
   const [skill, setSkill] = useState<SkillPublic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
-  // Edit mode state - reserved for future admin functionality
-  const [_isEditing, _setIsEditing] = useState(false);
-  const [_isSaving, _setIsSaving] = useState(false);
-  const [_editForm, _setEditForm] = useState({
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
     name: '',
     description: '',
     category: '' as SkillCategory,
@@ -70,10 +82,9 @@ export default function SkillDetail() {
     return () => { cancelled = true; };
   }, [slug]);
 
-  // Reserved for future admin edit functionality
-  const _startEditing = () => {
+  const startEditing = () => {
     if (!skill) return;
-    _setEditForm({
+    setEditForm({
       name: skill.name,
       description: skill.description,
       category: skill.category,
@@ -81,34 +92,34 @@ export default function SkillDetail() {
       capabilities: skill.capabilities.join('\n'),
       isEnabled: skill.isEnabled,
     });
-    _setIsEditing(true);
+    setIsEditing(true);
   };
 
-  const _cancelEditing = () => {
-    _setIsEditing(false);
+  const cancelEditing = () => {
+    setIsEditing(false);
     setError('');
   };
 
-  const _handleSave = async () => {
+  const handleSave = async () => {
     if (!slug) return;
-    _setIsSaving(true);
+    setIsSaving(true);
     setError('');
 
     try {
       const updated = await skills.update(slug, {
-        name: _editForm.name,
-        description: _editForm.description,
-        category: _editForm.category,
-        intent: _editForm.intent,
-        capabilities: _editForm.capabilities.split('\n').map((c) => c.trim()).filter(Boolean),
-        isEnabled: _editForm.isEnabled,
+        name: editForm.name,
+        description: editForm.description,
+        category: editForm.category,
+        intent: editForm.intent,
+        capabilities: editForm.capabilities.split('\n').map((c) => c.trim()).filter(Boolean),
+        isEnabled: editForm.isEnabled,
       });
       setSkill(updated);
-      _setIsEditing(false);
+      setIsEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save changes');
     } finally {
-      _setIsSaving(false);
+      setIsSaving(false);
     }
   };
 

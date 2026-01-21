@@ -44,6 +44,8 @@ import AdminOrganizations from './pages/admin/Organizations';
 import AdminInvites from './pages/admin/Invites';
 import AcceptInvite from './pages/invite/Accept';
 import Chat from './pages/Chat';
+import Extension from './pages/Extension';
+import Privacy from './pages/Privacy';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAuth();
@@ -184,6 +186,10 @@ export default function App() {
         {/* Login */}
         <Route path="/login" element={<Login />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
+
+        {/* Public pages */}
+        <Route path="/extension" element={<Extension />} />
+        <Route path="/privacy" element={<Privacy />} />
       </Routes>
     </DemoProvider>
   );

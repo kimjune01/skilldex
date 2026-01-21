@@ -1,9 +1,12 @@
 // Skillomatic Scraper - Background Service Worker
 // Connects via WebSocket to receive scrape tasks in real-time
 
-const DEFAULT_API_URL = 'http://localhost:3000';
+const DEFAULT_API_URL = 'https://skillomatic.technology';
 const RECONNECT_DELAY_MS = 3000;
 const PING_INTERVAL_MS = 20000; // Keep alive every 20s (Chrome official recommendation)
+const THROTTLE_MIN_MS = 150;
+const THROTTLE_MAX_MS = 250;
+const ALLOWED_DOMAINS = ['www.linkedin.com', 'linkedin.com'];
 
 let apiKey = null;
 let apiUrl = DEFAULT_API_URL;
@@ -129,11 +132,34 @@ function startPingInterval() {
   }, PING_INTERVAL_MS);
 }
 
+// ============ Helpers ============
+
+function isAllowedUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_DOMAINS.includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function randomThrottle() {
+  const delay = Math.floor(Math.random() * (THROTTLE_MAX_MS - THROTTLE_MIN_MS + 1)) + THROTTLE_MIN_MS;
+  return new Promise(resolve => setTimeout(resolve, delay));
+}
+
 // ============ Task Handling ============
 
 async function handleTaskAssignment(task) {
   if (processingTask) {
     console.log('[Task] Already processing a task, ignoring new assignment');
+    return;
+  }
+
+  // Validate URL is LinkedIn
+  if (!isAllowedUrl(task.url)) {
+    console.log(`[Task] Rejected task ${task.id}: URL not allowed (${task.url})`);
+    await updateTask(task.id, 'failed', null, 'URL not allowed - only LinkedIn URLs are supported');
     return;
   }
 
@@ -147,6 +173,9 @@ async function processTask(task) {
   try {
     // Mark task as processing
     await updateTask(task.id, 'processing');
+
+    // Random throttle before scraping (150-250ms)
+    await randomThrottle();
 
     // Scrape the URL
     const markdown = await scrapeUrl(task.url);
@@ -264,7 +293,7 @@ async function scrapeUrl(url) {
   });
 }
 
-// Domain-specific exclusion/inclusion config (injected at runtime)
+// Domain-specific exclusion/inclusion config for LinkedIn
 const DOMAIN_EXCLUSIONS = {
   "www.linkedin.com": {
     "inclusionSelectors": ["main"],
@@ -292,25 +321,30 @@ const DOMAIN_EXCLUSIONS = {
       ".global-nav"
     ]
   },
-  "github.com": {
-    "inclusionSelectors": ["main", "article", ".markdown-body"],
+  "linkedin.com": {
+    "inclusionSelectors": ["main"],
     "exclusionSelectors": [
-      "header", "nav", "footer", ".Layout-sidebar",
-      ".js-header-wrapper", ".AppHeader", ".flash", ".pagehead-actions"
-    ]
-  },
-  "stackoverflow.com": {
-    "inclusionSelectors": ["#mainbar", "#question", ".answer"],
-    "exclusionSelectors": [
-      "header", "nav", "footer", ".left-sidebar",
-      ".js-consent-banner", ".js-dismissable-hero", ".s-sidebarwidget", "#sidebar"
-    ]
-  },
-  "_default": {
-    "exclusionSelectors": [
-      "script", "style", "noscript", "iframe", "link",
-      "header nav", "footer", ".advertisement", ".cookie-banner",
-      ".ad", ".ads", "[role='banner']", "[role='navigation']"
+      "div[class*='nav']",
+      "div[class*='global']",
+      ".visually-hidden",
+      "footer",
+      "div[class*='load']",
+      "section.scaffold-layout-toolbar",
+      "code",
+      "aside",
+      "style",
+      "noscript",
+      "iframe",
+      "header",
+      "header nav",
+      ".advertisement",
+      ".cookie-banner",
+      ".ad-banner-container",
+      ".pv-right-rail__empty-iframe",
+      ".artdeco-toast-item",
+      ".msg-overlay-list-bubble",
+      ".msg-overlay-conversation-bubble",
+      ".global-nav"
     ]
   }
 };

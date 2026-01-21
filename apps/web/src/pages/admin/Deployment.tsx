@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import {
   Globe,
   Shield,
@@ -17,8 +19,11 @@ import {
   AlertTriangle,
   Building2,
   Laptop,
+  RefreshCw,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { organizations, type DeploymentSettings } from '@/lib/api';
 
 type Concern = 'security' | 'cost' | 'control' | 'privacy' | 'compliance' | 'simplicity';
 
@@ -32,8 +37,56 @@ const concerns: { id: Concern; label: string; icon: typeof Shield; description: 
 ];
 
 export default function AdminDeployment() {
+  const navigate = useNavigate();
   const [selectedConcerns, setSelectedConcerns] = useState<Set<Concern>>(new Set());
   const [expandedMode, setExpandedMode] = useState<'web' | 'desktop' | null>(null);
+  const [deployment, setDeployment] = useState<DeploymentSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load deployment settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await organizations.getDeployment();
+        setDeployment(settings);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load settings');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  // Handle toggle changes
+  const handleToggle = async (mode: 'webUi' | 'desktop', enabled: boolean) => {
+    if (!deployment) return;
+
+    // If enabling Web UI and LLM not configured, redirect to settings
+    if (mode === 'webUi' && enabled && !deployment.hasLlmConfigured) {
+      navigate('/admin/settings', {
+        state: { message: 'Please configure LLM providers before enabling Web UI' },
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const updated = await organizations.updateDeployment({
+        webUiEnabled: mode === 'webUi' ? enabled : deployment.webUiEnabled,
+        desktopEnabled: mode === 'desktop' ? enabled : deployment.desktopEnabled,
+      });
+      setDeployment(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const toggleConcern = (concern: Concern) => {
     const next = new Set(selectedConcerns);
@@ -65,6 +118,17 @@ export default function AdminDeployment() {
 
   const recommendation = getRecommendation();
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          Loading deployment settings...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -73,6 +137,95 @@ export default function AdminDeployment() {
           Choose how your team uses Skillomatic based on your IT requirements
         </p>
       </div>
+
+      {/* Deployment Mode Toggles */}
+      {deployment && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Deployment Modes</CardTitle>
+            <CardDescription>
+              Enable the deployment modes you want your team to use
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Web UI Toggle */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                  <Globe className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-medium">Web UI</p>
+                  <p className="text-sm text-muted-foreground">
+                    Users access chat through the web interface
+                  </p>
+                  {!deployment.hasLlmConfigured && (
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Requires LLM configuration
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {!deployment.hasLlmConfigured && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/admin/settings')}
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Configure LLM
+                  </Button>
+                )}
+                <Switch
+                  checked={deployment.webUiEnabled}
+                  onCheckedChange={(checked) => handleToggle('webUi', checked)}
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+
+            {/* Desktop Mode Toggle */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
+                  <Laptop className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-medium">Desktop AI (MCP)</p>
+                  <p className="text-sm text-muted-foreground">
+                    Users connect their own AI clients via MCP
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={deployment.desktopEnabled}
+                onCheckedChange={(checked) => handleToggle('desktop', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Warning if both disabled */}
+            {!deployment.webUiEnabled && !deployment.desktopEnabled && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>No deployment modes enabled</AlertTitle>
+                <AlertDescription>
+                  Your team cannot access Skillomatic. Enable at least one deployment mode.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Concern Selector */}
       <Card>
@@ -205,9 +358,26 @@ export default function AdminDeployment() {
               </div>
             )}
 
-            <Button className="w-full" variant="outline" asChild>
-              <a href="/admin/settings">Configure LLM Providers</a>
-            </Button>
+            {deployment && (
+              <div className="flex gap-2">
+                <Button className="flex-1" variant="outline" asChild>
+                  <a href="/admin/settings">Configure LLM Providers</a>
+                </Button>
+                {!deployment.webUiEnabled && deployment.hasLlmConfigured && (
+                  <Button
+                    onClick={() => handleToggle('webUi', true)}
+                    disabled={isSaving}
+                  >
+                    Enable Web UI
+                  </Button>
+                )}
+              </div>
+            )}
+            {!deployment && (
+              <Button className="w-full" variant="outline" asChild>
+                <a href="/admin/settings">Configure LLM Providers</a>
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -284,9 +454,26 @@ export default function AdminDeployment() {
               </div>
             )}
 
-            <Button className="w-full" variant="outline" disabled>
-              MCP Endpoint Coming Soon
-            </Button>
+            {deployment && (
+              <div className="flex gap-2">
+                <Button className="flex-1" variant="outline" asChild>
+                  <a href="/keys">Setup Instructions</a>
+                </Button>
+                {!deployment.desktopEnabled && (
+                  <Button
+                    onClick={() => handleToggle('desktop', true)}
+                    disabled={isSaving}
+                  >
+                    Enable Desktop
+                  </Button>
+                )}
+              </div>
+            )}
+            {!deployment && (
+              <Button className="w-full" variant="outline" asChild>
+                <a href="/keys">Setup Instructions</a>
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

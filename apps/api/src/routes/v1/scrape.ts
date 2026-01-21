@@ -23,6 +23,23 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours - reuse completed results
 const STALL_THRESHOLD_MS = 30 * 1000; // 30 seconds - suggest extension install
 const PROCESSING_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes - mark as expired
 
+// Allowed domains for scraping (LinkedIn only)
+const ALLOWED_DOMAINS = ['www.linkedin.com', 'linkedin.com'];
+
+// ============ URL Validation ============
+
+/**
+ * Check if URL is an allowed domain (LinkedIn only)
+ */
+function isAllowedUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    return ALLOWED_DOMAINS.includes(url.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 // ============ URL Normalization & Hashing ============
 
 /**
@@ -117,6 +134,15 @@ v1ScrapeRoutes.post('/tasks', async (c) => {
 
   if (!body.url) {
     return c.json({ error: { message: 'URL is required' } }, 400);
+  }
+
+  // Validate URL is LinkedIn
+  if (!isAllowedUrl(body.url)) {
+    return c.json({
+      error: {
+        message: 'Only LinkedIn URLs are supported. The scrape API is restricted to linkedin.com domains.'
+      }
+    }, 400);
   }
 
   // Validate and normalize URL

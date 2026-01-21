@@ -30,10 +30,14 @@ You are a recruiting assistant that builds a complete candidate pipeline from a 
 This skill uses the Skillomatic "scrape task" system to access LinkedIn:
 
 1. You create scrape tasks via the Skillomatic API with LinkedIn URLs
-2. The **Skillomatic Scraper** browser extension polls for pending tasks
-3. The extension opens URLs in the user's actual browser (using their LinkedIn session)
-4. The extension extracts page content and returns it via the API
-5. You receive the profile data for analysis
+2. The **Skillomatic Scraper** browser extension receives tasks via WebSocket
+3. The extension validates the URL is LinkedIn (only linkedin.com is allowed)
+4. Built-in rate limiting (150-250ms throttle) prevents detection
+5. The extension opens URLs in the user's actual browser (using their LinkedIn session)
+6. The extension extracts page content and returns it via the API
+7. You receive the profile data for analysis
+
+**Security note:** The scrape API and extension only accept LinkedIn URLs. Requests to other domains will be rejected.
 
 This approach means no separate LinkedIn OAuth is needed - the extension uses the user's existing login.
 
@@ -126,7 +130,7 @@ Extract:
 - About section
 - Contact info (if visible)
 
-Rate limit: Wait 2-3 seconds between profiles to avoid detection.
+Note: The browser extension has built-in rate limiting (150-250ms throttle), but space out scrape task creation to be respectful of LinkedIn's servers.
 
 ## Step 4: Import to ATS
 
@@ -322,10 +326,16 @@ All 25 candidates have been tagged with:
 
 ## Error Handling
 
+### Non-LinkedIn URLs
+If you try to scrape a non-LinkedIn URL:
+- The API will return a 400 error: "Only LinkedIn URLs are supported"
+- Only linkedin.com and www.linkedin.com domains are allowed
+- This is a security feature to limit the extension's scope
+
 ### LinkedIn rate limiting
 If LinkedIn shows a rate limit:
 - Pause for 5 minutes
-- Reduce scraping speed (space out scrape tasks)
+- The extension has built-in 150-250ms throttle, but LinkedIn may still rate limit
 - Consider using LinkedIn Recruiter if available
 
 ### Browser extension not responding

@@ -1,0 +1,1 @@
+{"dependencies":{"@libsql/client":"*","@libsql/linux-x64-gnu":"*","better-sqlite3":"*"}}

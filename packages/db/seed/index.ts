@@ -54,6 +54,8 @@ async function seed() {
   // Create default organization
   const defaultOrgId = 'org-default';
   const acmeOrgId = 'org-acme';
+  // Fixed user IDs for consistent foreign key references
+  const superAdminIdFixed = 'user-super-admin';
 
   const orgData = [
     {
@@ -78,7 +80,8 @@ async function seed() {
   // ============ USERS ============
 
   // Create super admin user (system-wide admin)
-  const superAdminId = randomUUID();
+  // Use fixed ID for consistent foreign key references
+  const superAdminId = superAdminIdFixed;
   const adminPassword = process.env.ADMIN_PASSWORD || 'changeme';
 
   await db.insert(users).values({

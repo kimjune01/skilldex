@@ -56,8 +56,8 @@ export default function Landing() {
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-black tracking-tight text-[hsl(220_30%_20%)]">
-                SKILLOMATIC
+              <span className="text-lg logo-text text-[hsl(220_30%_20%)]">
+                Skillomatic
               </span>
             </div>
           </Link>

@@ -23,7 +23,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Chat', href: '/chat', icon: MessageSquare },
   { name: 'Skills', href: '/skills', icon: Zap },
-  { name: 'Desktop App', href: '/keys', icon: Key },
+  { name: 'Desktop Chat', href: '/keys', icon: Key },
   { name: 'Connections', href: '/integrations', icon: Plug },
   { name: 'Activity', href: '/usage', icon: BarChart3 },
 ];
@@ -75,10 +75,10 @@ export default function Layout() {
               <div className="absolute -top-1 -right-1 led-light led-green" />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-black tracking-tight text-[hsl(220_30%_20%)]">
-                SKILLOMATIC
+              <span className="text-lg logo-text text-[hsl(220_30%_20%)]">
+                Skillomatic
               </span>
-              <span className="text-[10px] font-bold tracking-widest text-[hsl(220_15%_50%)] uppercase">
+              <span className="text-[10px] font-bold tracking-widest text-[hsl(220_15%_50%)] uppercase font-body">
                 Dispenser 3000
               </span>
             </div>

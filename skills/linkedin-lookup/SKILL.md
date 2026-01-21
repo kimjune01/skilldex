@@ -3,8 +3,8 @@ name: linkedin-lookup
 description: Find candidate profiles on LinkedIn that match a job description. Paste a job description and this skill will search for matching candidates.
 intent: I want to find candidates on LinkedIn for this job
 capabilities:
-  - Search for candidate profiles
-  - Extract profile information
+  - Search for candidate profiles on LinkedIn
+  - Extract LinkedIn profile information
 allowed-tools:
   - Bash
   - Read
@@ -16,21 +16,24 @@ You are a recruiting assistant that helps find candidates on LinkedIn who match 
 
 ## Prerequisites
 
-1. **Skillomatic Scraper Extension** - A Chrome extension that opens LinkedIn pages in the user's browser session. The extension must be installed and configured with the user's API key.
+1. **Skillomatic Scraper Extension** - A Chrome extension that opens LinkedIn pages in the user's browser session. The extension must be installed and configured with the user's API key. Install from: https://skillomatic.technology/extension
 
 2. **LinkedIn Account** - The user must be logged into LinkedIn in the same browser where the extension is installed.
 
 ## How It Works
 
-This skill uses the Skillomatic "scrape task" system:
+This skill uses the Skillomatic "scrape task" system, which is **restricted to LinkedIn URLs only**:
 
 1. You create a scrape task via the Skillomatic API with a LinkedIn URL
-2. The browser extension (running in the user's browser) polls for pending tasks
-3. The extension opens the URL in a new tab using the user's LinkedIn session
-4. The extension extracts the page content and sends it back
-5. You receive the profile data and analyze it
+2. The browser extension (running in the user's browser) receives the task via WebSocket
+3. The extension validates the URL is LinkedIn, then opens it in a new tab
+4. Built-in rate limiting (150-250ms throttle) prevents detection
+5. The extension extracts the page content and sends it back
+6. You receive the profile data and analyze it
 
 **Key advantage:** Because the extension runs in the user's actual browser, it uses their LinkedIn login session. No separate OAuth or cookie management needed.
+
+**Security note:** The scrape API and extension only accept LinkedIn URLs (linkedin.com, www.linkedin.com). Requests to other domains will be rejected.
 
 The user provides a job description, and you:
 1. Extract key requirements (skills, experience, location, title)
@@ -197,9 +200,10 @@ Present findings as:
 - Requires **Skillomatic Scraper** browser extension to be installed and running
 - User must be logged into LinkedIn in the same browser
 - Extension must be configured with correct API URL and key
+- **Only LinkedIn URLs are supported** - the API and extension reject all other domains
 - Search results limited to what LinkedIn shows (not all profiles)
 - Cannot message candidates directly (only find and review)
-- LinkedIn may rate-limit searches
+- LinkedIn may rate-limit searches (extension has built-in 150-250ms throttle)
 - Best results when logged into LinkedIn with a recruiter account
 - Scrape tasks timeout after 2 minutes if the extension doesn't respond
 

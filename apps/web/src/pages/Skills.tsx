@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { skills, proposals } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import type { SkillPublic, SkillCategory, SkillProposalPublic } from '@skillomatic/shared';

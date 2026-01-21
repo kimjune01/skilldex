@@ -13,6 +13,7 @@ export interface ApiKeyUser {
   isSuperAdmin: boolean;
   organizationId: string | null;
   apiKeyId: string;
+  onboardingStep: number;
 }
 
 // Extend Hono's context
@@ -70,6 +71,7 @@ export const apiKeyAuth = createMiddleware(async (c, next) => {
     isSuperAdmin: user.isSuperAdmin ?? false,
     organizationId: user.organizationId ?? null,
     apiKeyId: apiKey.id,
+    onboardingStep: user.onboardingStep ?? 0,
   });
 
   await next();

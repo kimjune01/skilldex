@@ -328,7 +328,7 @@ apiUrlInput.addEventListener('keypress', (e) => {
 // Help link
 document.getElementById('helpLink').addEventListener('click', (e) => {
   e.preventDefault();
-  chrome.tabs.create({ url: 'https://skillomatic.yourcompany.com/docs/extension' });
+  chrome.tabs.create({ url: 'https://skillomatic.technology/extension' });
 });
 
 // ============ Initialization ============

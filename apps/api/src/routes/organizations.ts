@@ -90,6 +90,103 @@ organizationsRoutes.get('/current', jwtAuth, withOrganization, async (c) => {
   return c.json({ data: publicOrg });
 });
 
+// GET /api/organizations/current/deployment - Get deployment settings for current org
+organizationsRoutes.get('/current/deployment', jwtAuth, withOrganization, async (c) => {
+  const org = c.get('organization');
+  const user = c.get('user');
+
+  if (!org) {
+    return c.json({ error: { message: 'No organization assigned' } }, 404);
+  }
+
+  // Only org admins can view deployment settings
+  if (!user.isAdmin && !user.isSuperAdmin) {
+    return c.json({ error: { message: 'Forbidden' } }, 403);
+  }
+
+  const [fullOrg] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, org.id))
+    .limit(1);
+
+  // Check if LLM is configured (needed for Web UI)
+  const hasLlmConfigured = Boolean(fullOrg.llmApiKey);
+
+  return c.json({
+    data: {
+      webUiEnabled: fullOrg.webUiEnabled ?? false,
+      desktopEnabled: fullOrg.desktopEnabled ?? true,
+      hasLlmConfigured,
+    },
+  });
+});
+
+// PUT /api/organizations/current/deployment - Update deployment settings for current org
+organizationsRoutes.put('/current/deployment', jwtAuth, withOrganization, async (c) => {
+  const org = c.get('organization');
+  const user = c.get('user');
+
+  if (!org) {
+    return c.json({ error: { message: 'No organization assigned' } }, 404);
+  }
+
+  // Only org admins can update deployment settings
+  if (!user.isAdmin && !user.isSuperAdmin) {
+    return c.json({ error: { message: 'Forbidden' } }, 403);
+  }
+
+  const body = await c.req.json<{
+    webUiEnabled?: boolean;
+    desktopEnabled?: boolean;
+  }>();
+
+  // Get current org to check LLM config
+  const [fullOrg] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, org.id))
+    .limit(1);
+
+  // If enabling Web UI, check that LLM is configured
+  if (body.webUiEnabled === true && !fullOrg.llmApiKey) {
+    return c.json(
+      {
+        error: {
+          message: 'Cannot enable Web UI without LLM configuration',
+          code: 'LLM_NOT_CONFIGURED',
+        },
+      },
+      400
+    );
+  }
+
+  const now = new Date();
+
+  await db
+    .update(organizations)
+    .set({
+      webUiEnabled: body.webUiEnabled ?? fullOrg.webUiEnabled,
+      desktopEnabled: body.desktopEnabled ?? fullOrg.desktopEnabled,
+      updatedAt: now,
+    })
+    .where(eq(organizations.id, org.id));
+
+  const [updated] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, org.id))
+    .limit(1);
+
+  return c.json({
+    data: {
+      webUiEnabled: updated.webUiEnabled ?? false,
+      desktopEnabled: updated.desktopEnabled ?? true,
+      hasLlmConfigured: Boolean(updated.llmApiKey),
+    },
+  });
+});
+
 // POST /api/organizations - Create organization (super admin only)
 organizationsRoutes.post('/', jwtAuth, superAdminOnly, async (c) => {
   const body = await c.req.json<{

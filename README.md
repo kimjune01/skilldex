@@ -163,52 +163,106 @@ skillomatic/
 
 ### Prerequisites
 
-- AWS account with credentials configured
-- Turso account (free tier works)
+- **AWS account** with IAM user (AdministratorAccess or PowerUserAccess)
+- **Turso account** (free tier works) for production database
+- **Nango account** (optional) for OAuth integrations
 
-### Set Up Turso Database
+### 1. Set Up AWS Credentials
+
+```bash
+# Install AWS CLI if needed
+brew install awscli
+
+# Configure credentials
+aws configure
+# Enter: Access Key ID, Secret Access Key, Region (us-west-2), Output (json)
+```
+
+### 2. Set Up Turso Database
 
 ```bash
 # Install Turso CLI
-curl -sSfL https://get.tur.so/install.sh | bash
+brew install tursodatabase/tap/turso
+
+# Login to Turso
+turso auth login
 
 # Create database
 turso db create skillomatic
-turso db show skillomatic  # Get the URL
+
+# Get the database URL
+turso db show skillomatic --url
 
 # Create auth token
 turso db tokens create skillomatic
 ```
 
-### Configure SST Secrets
+### 3. Configure SST Secrets
 
 ```bash
-# Set required secrets
-npx sst secret set JwtSecret "your-secure-jwt-secret"
-npx sst secret set TursoDatabaseUrl "libsql://skillomatic-xxx.turso.io"
-npx sst secret set TursoAuthToken "your-turso-auth-token"
-npx sst secret set NangoSecretKey "your-nango-secret"  # Optional if not using Nango
+# Set required secrets for production
+pnpm sst secret set JwtSecret "$(openssl rand -hex 32)" --stage production
+pnpm sst secret set TursoDatabaseUrl "libsql://skillomatic-xxx.turso.io" --stage production
+pnpm sst secret set TursoAuthToken "your-turso-auth-token" --stage production
+pnpm sst secret set NangoSecretKey "your-nango-secret-key" --stage production
+pnpm sst secret set NangoPublicKey "" --stage production  # Deprecated, can be empty
 ```
 
-### Run Migrations on Turso
+### 4. Deploy
 
 ```bash
-# Connect to Turso shell and run migrations
-turso db shell skillomatic < packages/db/migrations.sql
-```
-
-### Deploy
-
-```bash
-# Deploy to development stage
-npx sst deploy
-
 # Deploy to production
-pnpm sst:deploy
+pnpm sst deploy --stage production
 
-# Remove deployment
-pnpm sst:remove
+# This will output:
+# - Web URL (CloudFront)
+# - API URL (Lambda)
 ```
+
+### 5. Run Database Migrations
+
+```bash
+# Push schema to Turso
+TURSO_DATABASE_URL="libsql://skillomatic-xxx.turso.io" \
+TURSO_AUTH_TOKEN="your-token" \
+pnpm db:push
+```
+
+### Custom Domain (Optional)
+
+To use a custom domain like `skillomatic.technology`:
+
+1. **Option A: Use Route 53** (easier)
+   - Transfer your domain's nameservers to Route 53
+   - Set `useCustomDomain = true` in `sst.config.ts`
+   - Redeploy - SST handles SSL certificates automatically
+
+2. **Option B: Use External DNS** (Namecheap, Cloudflare, etc.)
+   - Deploy first to get CloudFront URLs
+   - Add CNAME records pointing to the CloudFront distributions
+   - Configure SSL certificate in ACM manually
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `TURSO_DATABASE_URL` | Turso libsql URL | Yes (production) |
+| `TURSO_AUTH_TOKEN` | Turso auth token | Yes (production) |
+| `JWT_SECRET` | Secret for JWT signing | Yes |
+| `NANGO_SECRET_KEY` | Nango API secret key | No |
+| `NANGO_HOST` | Nango API host | No (defaults to api.nango.dev) |
+
+### Troubleshooting
+
+**Lambda 403 Forbidden:**
+- Ensure Lambda URL has `authorization: "none"` in SST config
+- Add `lambda:InvokeFunction` permission to resource policy
+
+**libsql/better-sqlite3 errors:**
+- Add native deps to SST config: `nodejs: { install: ["@libsql/linux-x64-gnu"] }`
+
+**CORS errors:**
+- Check `allowOrigins` in SST config matches your frontend URL
 
 ## Available Scripts
 

@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { skills, integrations, apiKeys } from '../lib/api';
+import { skills, integrations, apiKeys, organizations } from '../lib/api';
 import type { SkillPublic, IntegrationPublic, ApiKeyPublic } from '@skillomatic/shared';
+import type { DeploymentSettings } from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Zap, Plug, Key, ArrowRight, AlertCircle, Copy, CheckCircle2, Terminal, CheckCircle, Eye, Bot, Cog, Gift, RefreshCw, Circle } from 'lucide-react';
+import { Zap, Plug, Key, ArrowRight, AlertCircle, Copy, CheckCircle2, Terminal, CheckCircle, Eye, Bot, Cog, RefreshCw, Circle } from 'lucide-react';
 import { Confetti } from '@/components/ui/confetti';
 import { SkeletonDashboard } from '@/components/ui/skeleton';
 
@@ -29,6 +30,7 @@ export default function Dashboard() {
   const [scriptContent, setScriptContent] = useState<string | null>(null);
   const [loadingScript, setLoadingScript] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [deploymentSettings, setDeploymentSettings] = useState<DeploymentSettings | null>(null);
   const prevCompletedRef = useRef<number | null>(null);
 
   const copyToClipboard = (text: string, id: string) => {
@@ -61,11 +63,13 @@ export default function Dashboard() {
       skills.list(),
       integrations.list(),
       apiKeys.list(),
+      organizations.getDeployment().catch(() => null), // May fail for non-admins, that's ok
     ])
-      .then(([s, i, a]) => {
+      .then(([s, i, a, d]) => {
         setSkillList(s);
         setIntegrationList(i);
         setApiKeyList(a);
+        setDeploymentSettings(d);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
@@ -82,16 +86,57 @@ export default function Dashboard() {
     [integrationList]
   );
 
-  // Onboarding progress
+  // Onboarding progress - depends on deployment mode
   const setupSteps = useMemo(() => {
-    const steps = [
-      { label: 'Create API key', done: apiKeyList.length > 0, icon: Key },
-      { label: 'Connect integration', done: connectedIntegrations.length > 0, icon: Plug },
-      { label: 'Install skills', done: false, icon: Zap }, // Can't track this client-side
-    ];
+    // Default to desktop enabled if we couldn't fetch settings (non-admin user)
+    const desktopEnabled = deploymentSettings?.desktopEnabled ?? true;
+
+    const steps: Array<{
+      id: string;
+      label: string;
+      done: boolean;
+      icon: typeof Key;
+      route: string;
+      actionLabel: string;
+    }> = [];
+
+    // Desktop BYOAI mode: need API key for Claude Code connection
+    if (desktopEnabled) {
+      steps.push({
+        id: 'api-key',
+        label: 'Generate API key',
+        done: apiKeyList.length > 0,
+        icon: Key,
+        route: '/keys',
+        actionLabel: 'Generate Key',
+      });
+    }
+
+    // Always need at least one integration connected
+    steps.push({
+      id: 'integration',
+      label: 'Connect integration',
+      done: connectedIntegrations.length > 0,
+      icon: Plug,
+      route: '/integrations',
+      actionLabel: 'Connect',
+    });
+
+    // Desktop mode: need to install skills to Claude Code
+    if (desktopEnabled) {
+      steps.push({
+        id: 'skills',
+        label: 'Install skills',
+        done: enabledSkills.length > 0 && apiKeyList.length > 0, // Consider done if they have API key + skills enabled
+        icon: Terminal,
+        route: '/skills',
+        actionLabel: 'View Skills',
+      });
+    }
+
     const completed = steps.filter(s => s.done).length;
-    return { steps, completed, total: steps.length };
-  }, [apiKeyList, connectedIntegrations]);
+    return { steps, completed, total: steps.length, isFullyOnboarded: completed === steps.length };
+  }, [apiKeyList, connectedIntegrations, enabledSkills, deploymentSettings]);
 
   // Celebrate when a step is completed
   useEffect(() => {
@@ -162,8 +207,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Setup Progress - vending machine style */}
-          {setupSteps.completed < setupSteps.total ? (
+          {/* Setup Progress - only show if not fully onboarded */}
+          {!setupSteps.isFullyOnboarded && (
             <Card className="md:w-96 card-robot rounded-xl overflow-hidden">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between mb-3">
@@ -177,9 +222,9 @@ export default function Dashboard() {
                 </div>
                 {/* Progress bar - LED style */}
                 <div className="flex gap-1 mb-3">
-                  {setupSteps.steps.map((step, i) => (
+                  {setupSteps.steps.map((step) => (
                     <div
-                      key={i}
+                      key={step.id}
                       className={`h-2 flex-1 rounded-full transition-all ${
                         step.done
                           ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-[0_0_8px_hsl(145_70%_45%/0.5)]'
@@ -189,11 +234,11 @@ export default function Dashboard() {
                   ))}
                 </div>
                 <div className="space-y-1.5">
-                  {setupSteps.steps.map((step, i) => {
+                  {setupSteps.steps.map((step) => {
                     const Icon = step.icon;
                     return (
                       <div
-                        key={i}
+                        key={step.id}
                         className={`flex items-center gap-3 p-2 rounded-lg transition-all border-2 ${
                           step.done
                             ? 'bg-green-50 border-green-200'
@@ -211,27 +256,22 @@ export default function Dashboard() {
                             <Icon className="h-3.5 w-3.5" />
                           )}
                         </div>
-                        <span className={`text-sm font-bold ${step.done ? 'text-green-700' : 'text-[hsl(220_20%_40%)]'}`}>
+                        <span className={`text-sm font-bold flex-1 ${step.done ? 'text-green-700' : 'text-[hsl(220_20%_40%)]'}`}>
                           {step.label}
                         </span>
-                        {step.done && (
-                          <Circle className="h-2 w-2 fill-green-500 text-green-500 ml-auto" />
+                        {step.done ? (
+                          <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+                        ) : (
+                          <Link to={step.route}>
+                            <Button size="sm" variant="outline" className="h-6 text-xs px-2">
+                              {step.actionLabel}
+                              <ArrowRight className="h-3 w-3 ml-1" />
+                            </Button>
+                          </Link>
                         )}
                       </div>
                     );
                   })}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="md:w-80 card-robot rounded-xl border-2 border-green-300 bg-green-50">
-              <CardContent className="pt-4 pb-3 flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg glow-success">
-                  <Gift className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-black text-green-800 uppercase tracking-wide">Fully Loaded!</p>
-                  <p className="text-sm text-green-600 font-mono">&gt; All systems go</p>
                 </div>
               </CardContent>
             </Card>

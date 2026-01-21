@@ -1,0 +1,4 @@
+config:
+  aws:defaultTags: '{"tags":{"sst:app":"skillomatic","sst:stage":"production"}}'
+  aws:region: us-west-2
+encryptionsalt: v1:m64BiPrqcaI=:v1:BF2v64xtKMskfhlE:wFF2s8HnJu+pSvnF0aEeNS3O2YS8Ug==

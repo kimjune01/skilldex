@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 @theme {
+  /* Fonts - Campy vending machine style */
+  --font-display: 'Fredoka', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+
+  /* Colors */
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -83,6 +88,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
   }
 }
 
@@ -481,4 +490,20 @@
   position: absolute;
   inset: 3px;
   background: linear-gradient(45deg, transparent 45%, hsl(220 10% 40%) 45%, hsl(220 10% 40%) 55%, transparent 55%);
+}
+
+/* Font utilities */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* Logo text styling */
+.logo-text {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }

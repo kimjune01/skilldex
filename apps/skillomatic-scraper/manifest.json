@@ -3,7 +3,8 @@
   "name": "Skillomatic Scraper",
   "version": "1.0.0",
   "minimum_chrome_version": "116",
-  "description": "Scrapes web pages for Skillomatic skills. Connects via WebSocket to receive scrape tasks in real-time.",
+  "description": "Browser companion for Skillomatic recruiting skills. Enables LinkedIn profile extraction for Claude Code skills.",
+  "homepage_url": "https://skillomatic.technology/extension",
   "permissions": [
     "storage",
     "tabs",
@@ -11,7 +12,8 @@
     "activeTab"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://www.linkedin.com/*",
+    "https://linkedin.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -29,11 +31,5 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["lib/turndown.min.js"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }

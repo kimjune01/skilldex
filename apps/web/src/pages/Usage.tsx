@@ -104,7 +104,7 @@ export default function Usage() {
         <CardContent>
           {stats?.recentLogs?.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              No activity yet. Use skills from the Desktop App to see your history here.
+              No activity yet. Use skills from your desktop chat app to see your history here.
             </p>
           ) : (
             <div className="space-y-2">
