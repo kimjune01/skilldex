@@ -6,7 +6,7 @@
  */
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
-import { integrations } from '@skillomatic/db/schema';
+import { integrations, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const webhooksRoutes = new Hono();
@@ -72,6 +72,27 @@ webhooksRoutes.post('/nango', async (c) => {
             .where(eq(integrations.userId, userId));
 
           console.log(`[Nango Webhook] Updated integration:`, result);
+
+          /*
+           * INTEGRATION ONBOARDING: Advance user's onboarding when first integration connects.
+           * This is triggered by Nango webhook after successful OAuth.
+           */
+          const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, userId))
+            .limit(1);
+
+          if (user && user.onboardingStep < ONBOARDING_STEPS.ATS_CONNECTED) {
+            await db
+              .update(users)
+              .set({
+                onboardingStep: ONBOARDING_STEPS.ATS_CONNECTED,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, userId));
+            console.log(`[Nango Webhook] Advanced onboarding for user ${userId} to ATS_CONNECTED`);
+          }
         } else if (!authPayload.success) {
           console.error('[Nango Webhook] Connection creation failed:', authPayload.error);
         }

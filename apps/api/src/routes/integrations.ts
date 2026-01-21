@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
-import { integrations } from '@skillomatic/db/schema';
+import { integrations, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
 import type { IntegrationPublic } from '@skillomatic/shared';
@@ -187,6 +187,27 @@ integrationsRoutes.get('/callback', async (c) => {
         updatedAt: new Date(),
       })
       .where(eq(integrations.id, integration[0].id));
+
+    /*
+     * INTEGRATION ONBOARDING: Advance user's onboarding when first integration connects.
+     * This is triggered by the OAuth callback after successful connection.
+     */
+    const userId = integration[0].userId;
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user && user.onboardingStep < ONBOARDING_STEPS.ATS_CONNECTED) {
+      await db
+        .update(users)
+        .set({
+          onboardingStep: ONBOARDING_STEPS.ATS_CONNECTED,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+    }
   }
 
   // Redirect to integrations page with success
