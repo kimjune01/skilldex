@@ -38,6 +38,7 @@ import { invitesRoutes } from './routes/invites.js';
 import { v1AtsRoutes } from './routes/v1/ats.js';
 import { v1MeRoutes } from './routes/v1/me.js';
 import { v1ScrapeRoutes } from './routes/v1/scrape.js';
+import { v1ErrorsRoutes } from './routes/v1/errors.js';
 
 // WebSocket route handlers
 import { createWsScrapeHandler } from './routes/ws/scrape.js';
@@ -95,6 +96,7 @@ app.route('/api/invites', invitesRoutes);     // Organization invites
 app.route('/api/v1/ats', v1AtsRoutes);        // ATS operations (search, CRUD)
 app.route('/api/v1/me', v1MeRoutes);          // Get current user info
 app.route('/api/v1/scrape', v1ScrapeRoutes);  // Web scraping task management
+app.route('/api/v1/errors', v1ErrorsRoutes);  // Client error reporting (ephemeral architecture)
 
 // ============ WEBSOCKET ROUTES ============
 // Real-time updates for long-running operations

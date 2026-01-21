@@ -56,6 +56,16 @@ export const organizations = sqliteTable('organizations', {
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(), // URL-friendly identifier
   logoUrl: text('logo_url'),
+
+  // LLM Configuration (ephemeral architecture)
+  llmProvider: text('llm_provider').default('anthropic'), // 'anthropic' | 'openai' | 'groq'
+  llmApiKey: text('llm_api_key'), // Encrypted API key for org's LLM
+  llmModel: text('llm_model'), // Model override (e.g., 'claude-sonnet-4-20250514')
+
+  // ATS Configuration
+  atsProvider: text('ats_provider'), // 'greenhouse' | 'lever' | 'ashby'
+  atsBaseUrl: text('ats_base_url'), // ATS API base URL override
+
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

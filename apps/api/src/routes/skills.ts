@@ -4,6 +4,12 @@ import { skills } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
 import type { SkillPublic } from '@skillomatic/shared';
+import {
+  buildCapabilityProfile,
+  checkCapabilityRequirements,
+  renderSkillInstructions,
+  buildConfigSkill,
+} from '../lib/skill-renderer.js';
 
 export const skillsRoutes = new Hono();
 
@@ -124,6 +130,32 @@ skillsRoutes.get('/', async (c) => {
   return c.json({ data: publicSkills });
 });
 
+// GET /api/skills/config - Get config skill (ephemeral architecture)
+// This returns all credentials needed for client-side LLM calls
+// MUST be before /:slug routes to avoid being caught as a slug
+skillsRoutes.get('/config', async (c) => {
+  const user = c.get('user');
+  const profile = await buildCapabilityProfile(user.sub);
+  const configContent = buildConfigSkill(profile);
+
+  return c.json({
+    data: {
+      slug: '_config',
+      name: 'System Configuration',
+      rendered: true,
+      instructions: configContent,
+      profile: {
+        hasLLM: !!profile.llm,
+        hasATS: !!profile.ats,
+        hasCalendar: !!(profile.calendar?.ical || profile.calendar?.calendly),
+        hasEmail: !!profile.email,
+        llmProvider: profile.llm?.provider,
+        atsProvider: profile.ats?.provider,
+      },
+    },
+  });
+});
+
 // GET /api/skills/:slug - Get skill by slug
 skillsRoutes.get('/:slug', async (c) => {
   const slug = c.req.param('slug');
@@ -139,5 +171,81 @@ skillsRoutes.get('/:slug', async (c) => {
   }
 
   return c.json({ data: toSkillPublic(skill[0]) });
+});
+
+// GET /api/skills/:slug/rendered - Get skill with rendered credentials (ephemeral architecture)
+// This returns the skill instructions with all {{VARIABLE}} placeholders replaced
+// with actual credentials from the user's capability profile
+skillsRoutes.get('/:slug/rendered', async (c) => {
+  const slug = c.req.param('slug');
+  const user = c.get('user');
+
+  // Special case: _config skill returns all credentials
+  if (slug === '_config') {
+    const profile = await buildCapabilityProfile(user.sub);
+    const configContent = buildConfigSkill(profile);
+
+    return c.json({
+      data: {
+        slug: '_config',
+        name: 'System Configuration',
+        rendered: true,
+        instructions: configContent,
+      },
+    });
+  }
+
+  // Load skill from DB
+  const [skill] = await db
+    .select()
+    .from(skills)
+    .where(eq(skills.slug, slug))
+    .limit(1);
+
+  if (!skill) {
+    return c.json({ error: { message: 'Skill not found' } }, 404);
+  }
+
+  if (!skill.isEnabled) {
+    return c.json({ error: { message: 'Skill is disabled' } }, 403);
+  }
+
+  if (!skill.instructions) {
+    return c.json({ error: { message: 'Skill has no instructions' } }, 400);
+  }
+
+  // Build user's capability profile
+  const profile = await buildCapabilityProfile(user.sub);
+
+  // Check capability requirements
+  const requiredIntegrations = skill.requiredIntegrations
+    ? JSON.parse(skill.requiredIntegrations)
+    : [];
+
+  const capabilityCheck = checkCapabilityRequirements(requiredIntegrations, profile);
+
+  if (!capabilityCheck.satisfied) {
+    return c.json(
+      {
+        error: {
+          message: `This skill requires: ${capabilityCheck.missing.join(', ')}. Please connect these integrations in Settings.`,
+          code: 'MISSING_CAPABILITIES',
+          missing: capabilityCheck.missing,
+        },
+      },
+      400
+    );
+  }
+
+  // Render the skill with credentials
+  const renderedInstructions = renderSkillInstructions(skill.instructions, profile);
+
+  return c.json({
+    data: {
+      ...toSkillPublic(skill),
+      rendered: true,
+      instructions: renderedInstructions,
+    },
+  });
 });
 

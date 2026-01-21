@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { integrations } from '../lib/api';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,13 +17,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Briefcase,
   Linkedin,
@@ -35,7 +35,8 @@ import {
   Plug,
   Unplug,
   RefreshCw,
-  RotateCcw,
+  ExternalLink,
+  Clock,
 } from 'lucide-react';
 
 const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
@@ -46,110 +47,201 @@ const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
   granola: FileText,
 };
 
-const availableProviders: { id: IntegrationProvider; name: string; description: string }[] = [
-  { id: 'ats', name: 'ATS', description: 'Applicant Tracking System integration' },
-  { id: 'linkedin', name: 'LinkedIn', description: 'LinkedIn profile lookup (via browser)' },
-  { id: 'email', name: 'Email', description: 'Email drafting and sending' },
-  { id: 'calendar', name: 'Calendar', description: 'Interview scheduling' },
-  { id: 'granola', name: 'Granola', description: 'Meeting notes sync' },
+// ATS sub-providers for specific ATS selection
+const atsProviders = [
+  { id: 'greenhouse', name: 'Greenhouse' },
+  { id: 'lever', name: 'Lever' },
+  { id: 'ashby', name: 'Ashby' },
+  { id: 'workable', name: 'Workable' },
 ];
 
-// Mock connected state for demo purposes
-const mockConnectedProviders: IntegrationProvider[] = ['ats', 'email', 'calendar'];
+// Calendar sub-providers
+const calendarProviders = [
+  { id: 'google-calendar', name: 'Google Calendar' },
+  { id: 'outlook-calendar', name: 'Outlook Calendar' },
+  { id: 'calendly', name: 'Calendly' },
+];
+
+// Email sub-providers
+const emailProviders = [
+  { id: 'gmail', name: 'Gmail' },
+  { id: 'outlook', name: 'Outlook' },
+];
+
+const availableProviders: {
+  id: IntegrationProvider;
+  name: string;
+  description: string;
+  subProviders?: { id: string; name: string }[];
+}[] = [
+  {
+    id: 'ats',
+    name: 'ATS',
+    description: 'Connect your Applicant Tracking System',
+    subProviders: atsProviders,
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    description: 'LinkedIn profile lookup (via browser extension)',
+  },
+  {
+    id: 'email',
+    name: 'Email',
+    description: 'Email integration for outreach',
+    subProviders: emailProviders,
+  },
+  {
+    id: 'calendar',
+    name: 'Calendar',
+    description: 'Calendar integration for scheduling',
+    subProviders: calendarProviders,
+  },
+  {
+    id: 'granola',
+    name: 'Granola',
+    description: 'Meeting notes sync',
+  },
+];
 
 export default function Integrations() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [integrationList, setIntegrationList] = useState<IntegrationPublic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const useMockData = true;
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Dialog states
-  const [oauthDialogProvider, setOauthDialogProvider] = useState<string | null>(null);
-  const [isAuthorizing, setIsAuthorizing] = useState(false);
-  const [disconnectTarget, setDisconnectTarget] = useState<{ id: string; name: string } | null>(null);
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [connectDialogProvider, setConnectDialogProvider] = useState<{
+    id: IntegrationProvider;
+    name: string;
+    subProviders?: { id: string; name: string }[];
+  } | null>(null);
+  const [selectedSubProvider, setSelectedSubProvider] = useState<string>('');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [disconnectTarget, setDisconnectTarget] = useState<{ id: string; name: string } | null>(
+    null
+  );
 
-  // Mock integrations for demo
-  const mockIntegrations: IntegrationPublic[] = mockConnectedProviders.map((provider, index) => ({
-    id: `mock-${provider}`,
-    provider,
-    status: 'connected' as const,
-    lastSyncAt: new Date(Date.now() - index * 86400000), // Stagger last sync dates
-    createdAt: new Date(Date.now() - 30 * 86400000),
-  }));
-
-  const loadIntegrations = () => {
-    if (useMockData) {
-      setIntegrationList(mockIntegrations);
+  const loadIntegrations = async () => {
+    setIsLoading(true);
+    try {
+      const data = await integrations.list();
+      setIntegrationList(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load integrations');
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    integrations
-      .list()
-      .then(setIntegrationList)
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to load integrations');
-      })
-      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
     loadIntegrations();
-  }, [useMockData]);
+  }, []);
 
-  const handleConnect = (provider: string) => {
-    setOauthDialogProvider(provider);
-  };
+  // Handle OAuth callback query params
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    const successParam = searchParams.get('success');
 
-  const handleAuthorize = async () => {
-    if (!oauthDialogProvider) return;
-
-    setIsAuthorizing(true);
-
-    // Simulate OAuth authorization
-    await new Promise(resolve => setTimeout(resolve, 1200));
-
-    if (useMockData) {
-      // Add to mock connected list
-      const newIntegration: IntegrationPublic = {
-        id: `mock-${oauthDialogProvider}`,
-        provider: oauthDialogProvider as IntegrationProvider,
-        status: 'connected',
-        lastSyncAt: new Date(),
-        createdAt: new Date(),
-      };
-      setIntegrationList(prev => [...prev, newIntegration]);
+    if (errorParam) {
+      setError(errorParam);
+      searchParams.delete('error');
+      setSearchParams(searchParams, { replace: true });
     }
 
-    setIsAuthorizing(false);
-    setOauthDialogProvider(null);
+    if (successParam) {
+      setSuccessMessage(successParam);
+      loadIntegrations(); // Refresh list after successful connection
+      searchParams.delete('success');
+      setSearchParams(searchParams, { replace: true });
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handleConnect = (provider: (typeof availableProviders)[0]) => {
+    if (provider.subProviders && provider.subProviders.length > 0) {
+      // Show dialog to select sub-provider
+      setConnectDialogProvider(provider);
+      setSelectedSubProvider(provider.subProviders[0].id);
+    } else {
+      // Direct connect for providers without sub-providers
+      initiateOAuth(provider.id);
+    }
+  };
+
+  const initiateOAuth = async (provider: string, subProvider?: string) => {
+    setIsConnecting(true);
+    setError('');
+
+    try {
+      const response = await integrations.connect(provider, subProvider);
+
+      // Redirect to OAuth URL
+      if (response.url) {
+        window.location.href = response.url;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start connection');
+      setIsConnecting(false);
+    }
+  };
+
+  const handleConfirmConnect = () => {
+    if (connectDialogProvider) {
+      initiateOAuth(connectDialogProvider.id, selectedSubProvider);
+      setConnectDialogProvider(null);
+    }
   };
 
   const handleDisconnect = async () => {
     if (!disconnectTarget) return;
 
-    if (useMockData) {
-      setIntegrationList(prev => prev.filter(i => i.id !== disconnectTarget.id));
-    } else {
-      try {
-        await integrations.disconnect(disconnectTarget.id);
-        loadIntegrations();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to disconnect');
-      }
+    try {
+      await integrations.disconnect(disconnectTarget.id);
+      await loadIntegrations();
+      setSuccessMessage('Integration disconnected successfully');
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to disconnect');
     }
 
     setDisconnectTarget(null);
   };
 
-  const handleReset = () => {
-    setIntegrationList(mockIntegrations);
-    setResetDialogOpen(false);
-  };
-
   const getIntegrationStatus = (provider: IntegrationProvider) => {
     return integrationList.find((i) => i.provider === provider);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'connected':
+        return (
+          <Badge variant="success">
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Connected
+          </Badge>
+        );
+      case 'pending':
+        return (
+          <Badge variant="secondary">
+            <Clock className="h-3 w-3 mr-1" /> Pending
+          </Badge>
+        );
+      case 'error':
+        return (
+          <Badge variant="destructive">
+            <AlertCircle className="h-3 w-3 mr-1" /> Error
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary">
+            <XCircle className="h-3 w-3 mr-1" /> Not connected
+          </Badge>
+        );
+    }
   };
 
   if (isLoading) {
@@ -166,7 +258,7 @@ export default function Integrations() {
       <div>
         <h1 className="text-2xl font-bold">Integrations</h1>
         <p className="text-muted-foreground mt-1">
-          Connect your external services to use with Claude Code skills
+          Connect external services to enable skill capabilities
         </p>
       </div>
 
@@ -174,6 +266,13 @@ export default function Integrations() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription>{successMessage}</AlertDescription>
         </Alert>
       )}
 
@@ -189,30 +288,27 @@ export default function Integrations() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : 'bg-muted'}`}>
-                      <Icon className={`h-5 w-5 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`} />
+                      <Icon
+                        className={`h-5 w-5 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`}
+                      />
                     </div>
                     <div>
                       <CardTitle className="text-lg">{provider.name}</CardTitle>
                       <CardDescription>{provider.description}</CardDescription>
                     </div>
                   </div>
-                  <Badge variant={isConnected ? 'success' : 'secondary'}>
-                    {isConnected ? (
-                      <><CheckCircle2 className="h-3 w-3 mr-1" /> Connected</>
-                    ) : (
-                      <><XCircle className="h-3 w-3 mr-1" /> Not connected</>
-                    )}
-                  </Badge>
+                  {getStatusBadge(integration?.status || 'disconnected')}
                 </div>
               </CardHeader>
               <CardContent>
-                {isConnected && integration ? (
+                {integration && integration.status !== 'disconnected' ? (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
                       {integration.lastSyncAt && (
                         <>
                           <RefreshCw className="h-3 w-3 inline mr-1" />
-                          Last sync: {integration.lastSyncAt instanceof Date
+                          Last sync:{' '}
+                          {integration.lastSyncAt instanceof Date
                             ? integration.lastSyncAt.toLocaleDateString()
                             : new Date(integration.lastSyncAt).toLocaleDateString()}
                         </>
@@ -231,10 +327,20 @@ export default function Integrations() {
                 ) : (
                   <Button
                     className="w-full"
-                    onClick={() => handleConnect(provider.id)}
+                    onClick={() => handleConnect(provider)}
+                    disabled={isConnecting}
                   >
-                    <Plug className="h-4 w-4 mr-2" />
-                    Connect
+                    {isConnecting ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Plug className="h-4 w-4 mr-2" />
+                        Connect
+                      </>
+                    )}
                   </Button>
                 )}
               </CardContent>
@@ -243,18 +349,40 @@ export default function Integrations() {
         })}
       </div>
 
-      {/* Reset button - faint at the bottom */}
-      <div className="pt-8 flex justify-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground/50 hover:text-muted-foreground"
-          onClick={() => setResetDialogOpen(true)}
-        >
-          <RotateCcw className="h-3 w-3 mr-1" />
-          Reset integrations to default
-        </Button>
-      </div>
+      {/* Connect Dialog for providers with sub-providers */}
+      <AlertDialog open={!!connectDialogProvider} onOpenChange={() => setConnectDialogProvider(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Connect {connectDialogProvider?.name}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select which {connectDialogProvider?.name.toLowerCase()} service you want to connect.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <Select value={selectedSubProvider} onValueChange={setSelectedSubProvider}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a service" />
+              </SelectTrigger>
+              <SelectContent>
+                {connectDialogProvider?.subProviders?.map((sub) => (
+                  <SelectItem key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmConnect}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Connect with OAuth
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Disconnect Confirmation Dialog */}
       <AlertDialog open={!!disconnectTarget} onOpenChange={() => setDisconnectTarget(null)}>
@@ -262,8 +390,8 @@ export default function Integrations() {
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect Integration</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to disconnect the {disconnectTarget?.name} integration?
-              Skills that require this integration will stop working until you reconnect.
+              Are you sure you want to disconnect the {disconnectTarget?.name} integration? Skills
+              that require this integration will stop working until you reconnect.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -277,151 +405,6 @@ export default function Integrations() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Reset Confirmation Dialog */}
-      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset Integrations</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will reset all integrations to their default demo state (ATS, Email, and Calendar connected).
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReset}>
-              Reset
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Fake OAuth Dialog */}
-      <Dialog open={!!oauthDialogProvider} onOpenChange={() => !isAuthorizing && setOauthDialogProvider(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="text-center sm:text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              {oauthDialogProvider && (() => {
-                const Icon = providerIcons[oauthDialogProvider as IntegrationProvider];
-                return <Icon className="h-6 w-6 text-primary" />;
-              })()}
-            </div>
-            <DialogTitle>
-              Connect to {availableProviders.find(p => p.id === oauthDialogProvider)?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Skillomatic is requesting access to your {availableProviders.find(p => p.id === oauthDialogProvider)?.name} account
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <p className="text-sm font-medium">This will allow Skillomatic to:</p>
-              <div className="space-y-2">
-                {oauthDialogProvider === 'ats' && (
-                  <>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Read candidate profiles and applications
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Create and update candidates
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Move candidates through pipeline stages
-                    </div>
-                  </>
-                )}
-                {oauthDialogProvider === 'linkedin' && (
-                  <>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Search and view public profiles
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Access profile details and work history
-                    </div>
-                  </>
-                )}
-                {oauthDialogProvider === 'email' && (
-                  <>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Send emails on your behalf
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Read email templates
-                    </div>
-                  </>
-                )}
-                {oauthDialogProvider === 'calendar' && (
-                  <>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      View your calendar availability
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Create and manage interview events
-                    </div>
-                  </>
-                )}
-                {oauthDialogProvider === 'granola' && (
-                  <>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Read meeting notes and transcripts
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Sync notes to candidate profiles
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <input type="checkbox" id="terms" defaultChecked disabled className="mt-0.5 h-4 w-4 rounded border-gray-300" />
-              <label htmlFor="terms" className="text-xs text-muted-foreground leading-tight">
-                By authorizing, you agree to Skillomatic's Terms of Service and Privacy Policy
-              </label>
-            </div>
-          </div>
-
-          <DialogFooter className="flex-col sm:flex-col gap-2">
-            <Button
-              className="w-full"
-              onClick={handleAuthorize}
-              disabled={isAuthorizing}
-            >
-              {isAuthorizing ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Authorizing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Authorize Skillomatic
-                </>
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={() => setOauthDialogProvider(null)}
-              disabled={isAuthorizing}
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

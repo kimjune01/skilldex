@@ -96,11 +96,39 @@ export const auth = {
   },
 };
 
+// Rendered skill response type (ephemeral architecture)
+export interface RenderedSkill extends SkillPublic {
+  rendered: true;
+  instructions: string;
+}
+
+// Config skill response type (ephemeral architecture)
+export interface ConfigSkill {
+  slug: '_config';
+  name: string;
+  rendered: true;
+  instructions: string;
+  profile: {
+    hasLLM: boolean;
+    hasATS: boolean;
+    hasCalendar: boolean;
+    hasEmail: boolean;
+    llmProvider?: string;
+    atsProvider?: string;
+  };
+}
+
 // Skills
 export const skills = {
   list: () => request<SkillPublic[]>('/skills'),
 
   get: (slug: string) => request<SkillPublic>(`/skills/${slug}`),
+
+  // Get rendered skill with embedded credentials (ephemeral architecture)
+  getRendered: (slug: string) => request<RenderedSkill>(`/skills/${slug}/rendered`),
+
+  // Get config skill with all credentials (ephemeral architecture)
+  getConfig: () => request<ConfigSkill>('/skills/config'),
 
   download: async (slug: string): Promise<string> => {
     const token = localStorage.getItem('token');
@@ -154,10 +182,10 @@ export const apiKeys = {
 export const integrations = {
   list: () => request<IntegrationPublic[]>('/integrations'),
 
-  connect: (provider: string) =>
-    request<{ url: string; message: string }>('/integrations/connect', {
+  connect: (provider: string, subProvider?: string) =>
+    request<{ url: string; connectionId: string; message: string }>('/integrations/connect', {
       method: 'POST',
-      body: JSON.stringify({ provider }),
+      body: JSON.stringify({ provider, subProvider }),
     }),
 
   disconnect: (integrationId: string) =>
@@ -165,6 +193,16 @@ export const integrations = {
       method: 'POST',
       body: JSON.stringify({ integrationId }),
     }),
+
+  getToken: (integrationId: string) =>
+    request<{ accessToken: string; tokenType: string; expiresAt?: string }>(
+      `/integrations/${integrationId}/token`
+    ),
+
+  checkStatus: (provider: string) =>
+    request<{ connected: boolean; status: string; lastSyncAt?: Date; message?: string }>(
+      `/integrations/status/${provider}`
+    ),
 };
 
 // Users (admin)

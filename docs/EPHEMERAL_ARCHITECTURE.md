@@ -6,6 +6,67 @@ Migrate Skillomatic to a fully ephemeral architecture where no PII passes throug
 
 **Key insight:** Skills are rendered server-side with sensitive keys embedded, then sent to client. Client uses rendered skills directly with LLM/ATS - no separate key distribution.
 
+## Implementation Status
+
+> **Last Updated:** January 2026
+
+### Completed Phases
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| **Phase 0** | ✅ Done | Nango OAuth integration |
+| **Phase 1** | ✅ Done | Skill rendering + client-side LLM chat |
+| **Phase 2** | ✅ Done | Client-side action execution |
+| **Phase 3** | ✅ Done | Client-side scrape cache (IndexedDB) |
+| **Phase 4** | ✅ Done | Error reporting infrastructure |
+| **Phase 5** | ✅ Done | Cleanup & hardening |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `apps/api/src/lib/nango.ts` | Nango OAuth client for managing integrations |
+| `apps/api/src/lib/skill-renderer.ts` | Template variable rendering and capability gating |
+| `apps/api/src/routes/v1/errors.ts` | Anonymized error reporting endpoint |
+| `apps/web/src/lib/llm-client.ts` | Client-side LLM streaming (Anthropic, OpenAI, Groq) |
+| `apps/web/src/lib/skills-client.ts` | Skill fetching and system prompt building |
+| `apps/web/src/lib/action-executor.ts` | Client-side action routing and execution |
+| `apps/web/src/lib/scrape-cache.ts` | IndexedDB cache with BroadcastChannel sync |
+| `apps/web/src/lib/error-reporter.ts` | Anonymized error reporting with PII stripping |
+| `apps/web/src/hooks/useClientChat.ts` | React hook for ephemeral chat mode |
+| `apps/web/src/hooks/useScrapeCache.ts` | React hook for scrape cache integration |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `packages/db/src/schema.ts` | Added `llmProvider`, `llmApiKey`, `llmModel`, `atsProvider`, `atsBaseUrl` to organizations |
+| `apps/api/src/routes/integrations.ts` | Real OAuth flow with Nango |
+| `apps/api/src/routes/skills.ts` | Added `/config` and `/:slug/rendered` endpoints |
+| `apps/api/src/app.ts` | Registered error reporting routes |
+| `apps/web/src/pages/Integrations.tsx` | Real OAuth UI with sub-provider selection |
+| `apps/web/src/pages/Chat.tsx` | Server/Ephemeral mode toggle |
+| `apps/web/src/lib/api.ts` | Added skill rendering and integration methods |
+
+### What's Working
+
+- **Ephemeral Chat Mode**: Toggle between server-proxied and client-direct LLM calls
+- **Skill Rendering**: Template variables (`{{LLM_API_KEY}}`, `{{ATS_TOKEN}}`, etc.) replaced at render time
+- **Capability Gating**: Skills check for required integrations before rendering
+- **Client-side LLM**: Direct streaming to Anthropic, OpenAI, or Groq from browser
+- **Action Execution**: Client-side routing for `load_skill`, ATS actions, scrape actions
+- **Scrape Cache**: IndexedDB storage with 24-hour TTL and multi-tab sync via BroadcastChannel
+- **Error Reporting**: Anonymized errors sent to server for monitoring
+
+### Not Yet Implemented
+
+- **Admin Query Skills**: `org-analytics`, `org-users`, `org-integrations`, `org-skills`
+- **Superadmin Skills**: `platform-analytics`, `platform-orgs`, `escalations`
+- **Usage Tracking**: Per-user LLM/ATS call tracking
+- **iCal Validation**: Free/busy feed PII detection
+- **Calendly Integration**: Full OAuth flow for scheduling links
+- **Email Read Access**: Gmail/Outlook OAuth for reading emails
+
 ## Current vs Target Architecture
 
 ### Current (Server-Proxied)
