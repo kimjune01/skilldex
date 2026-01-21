@@ -6,9 +6,7 @@
  * - Control and visibility
  * - Easy deployment and offboarding
  */
-import { Link } from 'react-router-dom';
 import {
-  Bot,
   Shield,
   Eye,
   Trash2,
@@ -28,6 +26,7 @@ import {
   CloudOff,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { MarketingNav, MarketingFooter } from '@/components/marketing';
 
 const securityFeatures = [
   {
@@ -135,37 +134,7 @@ const antiPatterns = [
 export default function ForIT() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b-2 border-[hsl(220_15%_88%)]">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl robot-button flex items-center justify-center">
-              <Bot className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg logo-text text-[hsl(220_30%_20%)]">Skillomatic</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/for-recruiters"
-              className="px-4 py-2 text-sm font-bold text-[hsl(220_20%_40%)] hover:text-primary transition-colors"
-            >
-              For Recruiters
-            </Link>
-            <Link
-              to="/login"
-              className="px-4 py-2 text-sm font-bold text-[hsl(220_20%_40%)] hover:text-primary transition-colors"
-            >
-              Log In
-            </Link>
-            <Link
-              to="/login"
-              className="px-4 py-2 rounded-lg robot-button text-white text-sm font-bold tracking-wide border-0"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <MarketingNav links={[{ to: '/for-recruiters', label: 'For Recruiters' }]} />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
@@ -498,36 +467,7 @@ export default function ForIT() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 bg-[hsl(220_25%_10%)]">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-                <Bot className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-lg font-black text-white">SKILLOMATIC</span>
-            </div>
-            <div className="flex items-center gap-6 text-sm text-[hsl(220_15%_60%)]">
-              <Link to="/privacy" className="hover:text-white transition-colors">
-                Privacy
-              </Link>
-              <a href="#" className="hover:text-white transition-colors">
-                Terms
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
-                Security
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
-                Docs
-              </a>
-            </div>
-            <div className="text-sm text-[hsl(220_15%_50%)]">
-              © 2025 Skillomatic. All rights reserved.
-            </div>
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }
