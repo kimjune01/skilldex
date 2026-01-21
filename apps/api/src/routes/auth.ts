@@ -53,6 +53,7 @@ authRoutes.post('/login', async (c) => {
     isSuperAdmin: user[0].isSuperAdmin ?? false,
     organizationId: user[0].organizationId ?? undefined,
     organizationName,
+    onboardingStep: user[0].onboardingStep ?? 0,
   };
 
   const token = await createToken(userPublic);
@@ -111,6 +112,7 @@ authRoutes.get('/me', async (c) => {
     isSuperAdmin: user[0].isSuperAdmin ?? false,
     organizationId: user[0].organizationId ?? undefined,
     organizationName,
+    onboardingStep: user[0].onboardingStep ?? 0,
   };
 
   return c.json({ data: userPublic });

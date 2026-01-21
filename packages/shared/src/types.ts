@@ -1,3 +1,57 @@
+// ============ Onboarding Types ============
+
+/**
+ * Onboarding step definitions using floats for future flexibility.
+ * New steps can be shimmed between existing steps (e.g., 1.5 between 1 and 2).
+ */
+export const ONBOARDING_STEPS = {
+  /** User just created account, hasn't started onboarding */
+  NOT_STARTED: 0,
+  /** User has connected their ATS integration */
+  ATS_CONNECTED: 1,
+  /** User has generated their API key for desktop chat */
+  API_KEY_GENERATED: 2,
+  /** User has configured deployment mode (web UI or desktop) */
+  DEPLOYMENT_CONFIGURED: 3,
+  /** Onboarding complete */
+  COMPLETE: 4,
+} as const;
+
+export type OnboardingStep = typeof ONBOARDING_STEPS[keyof typeof ONBOARDING_STEPS];
+
+/** Get the maximum onboarding step value (used to check completion) */
+export const MAX_ONBOARDING_STEP = Math.max(...Object.values(ONBOARDING_STEPS));
+
+/** Check if a user has completed onboarding */
+export function isOnboardingComplete(step: number): boolean {
+  return step >= MAX_ONBOARDING_STEP;
+}
+
+/** Get the next recommended onboarding step */
+export function getNextOnboardingStep(currentStep: number): OnboardingStep | null {
+  const steps = Object.values(ONBOARDING_STEPS).sort((a, b) => a - b);
+  for (const step of steps) {
+    if (step > currentStep) return step as OnboardingStep;
+  }
+  return null;
+}
+
+/** Get human-readable name for an onboarding step */
+export function getOnboardingStepName(step: number): string {
+  if (step >= ONBOARDING_STEPS.COMPLETE) return 'Complete';
+  if (step >= ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) return 'Configure Deployment';
+  if (step >= ONBOARDING_STEPS.API_KEY_GENERATED) return 'Generate API Key';
+  if (step >= ONBOARDING_STEPS.ATS_CONNECTED) return 'Connect ATS';
+  return 'Get Started';
+}
+
+export interface OnboardingStatus {
+  currentStep: number;
+  isComplete: boolean;
+  nextStep: OnboardingStep | null;
+  nextStepName: string | null;
+}
+
 // ============ API Response Types ============
 
 export interface ApiResponse<T> {
@@ -36,6 +90,8 @@ export interface UserPublic {
   isSuperAdmin?: boolean;
   organizationId?: string;
   organizationName?: string;
+  /** User's onboarding progress (see ONBOARDING_STEPS) */
+  onboardingStep: number;
 }
 
 // ============ Organization Types ============

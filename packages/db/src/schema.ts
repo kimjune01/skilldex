@@ -13,8 +13,38 @@
  * @see docs/ADMIN_GUIDE.md for admin operations
  * @see docs/IT_DEPLOYMENT.md for database deployment
  */
-import { sqliteTable, text, integer, primaryKey, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, primaryKey, index } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
+
+// ============ ONBOARDING STEPS ============
+
+/**
+ * Onboarding step definitions using floats for future flexibility.
+ * New steps can be shimmed between existing steps (e.g., 1.5 between 1 and 2).
+ *
+ * To check if onboarding is complete:
+ *   user.onboardingStep >= ONBOARDING_STEPS.COMPLETE
+ *
+ * To get the max step value:
+ *   Math.max(...Object.values(ONBOARDING_STEPS))
+ */
+export const ONBOARDING_STEPS = {
+  /** User just created account, hasn't started onboarding */
+  NOT_STARTED: 0,
+  /** User has connected their ATS integration */
+  ATS_CONNECTED: 1,
+  /** User has generated their API key for desktop chat */
+  API_KEY_GENERATED: 2,
+  /** User has configured deployment mode (web UI or desktop) */
+  DEPLOYMENT_CONFIGURED: 3,
+  /** Onboarding complete */
+  COMPLETE: 4,
+} as const;
+
+export type OnboardingStep = typeof ONBOARDING_STEPS[keyof typeof ONBOARDING_STEPS];
+
+/** Get the maximum onboarding step value (used to check completion) */
+export const MAX_ONBOARDING_STEP = Math.max(...Object.values(ONBOARDING_STEPS));
 
 // ============ USERS & AUTH ============
 
@@ -32,6 +62,8 @@ export const users = sqliteTable('users', {
   isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false), // Org admin
   isSuperAdmin: integer('is_super_admin', { mode: 'boolean' }).notNull().default(false), // System-wide admin
   organizationId: text('organization_id'), // FK added via migration (circular ref)
+  /** Onboarding progress tracked as float for flexibility (see ONBOARDING_STEPS) */
+  onboardingStep: real('onboarding_step').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
@@ -65,6 +97,10 @@ export const organizations = sqliteTable('organizations', {
   // ATS Configuration
   atsProvider: text('ats_provider'), // 'greenhouse' | 'lever' | 'ashby'
   atsBaseUrl: text('ats_base_url'), // ATS API base URL override
+
+  // Deployment modes - which chat interfaces are enabled for the organization
+  webUiEnabled: integer('web_ui_enabled', { mode: 'boolean' }).notNull().default(false),
+  desktopEnabled: integer('desktop_enabled', { mode: 'boolean' }).notNull().default(true),
 
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

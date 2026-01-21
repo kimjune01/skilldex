@@ -15,7 +15,9 @@ import type {
   CreateScrapeTaskResponse,
   OrganizationPublic,
   OrganizationInvitePublic,
+  OnboardingStatus,
 } from '@skillomatic/shared';
+import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import type { RenderedSkill, ConfigSkill } from './skills-client';
 import { isDemoModeEnabled } from '../hooks/useDemo';
 
@@ -445,6 +447,13 @@ export const settings = {
     }),
 };
 
+// Deployment settings
+export interface DeploymentSettings {
+  webUiEnabled: boolean;
+  desktopEnabled: boolean;
+  hasLlmConfigured: boolean;
+}
+
 // Organizations (super admin)
 export const organizations = {
   list: () => request<OrganizationPublic[]>('/organizations'),
@@ -468,6 +477,14 @@ export const organizations = {
   delete: (id: string) =>
     request<{ message: string }>(`/organizations/${id}`, {
       method: 'DELETE',
+    }),
+
+  getDeployment: () => request<DeploymentSettings>('/organizations/current/deployment'),
+
+  updateDeployment: (body: { webUiEnabled?: boolean; desktopEnabled?: boolean }) =>
+    request<DeploymentSettings>('/organizations/current/deployment', {
+      method: 'PUT',
+      body: JSON.stringify(body),
     }),
 };
 
@@ -495,5 +512,27 @@ export const invites = {
   cancel: (id: string) =>
     request<{ message: string }>(`/invites/${id}`, {
       method: 'DELETE',
+    }),
+};
+
+// Onboarding
+export const onboarding = {
+  getStatus: () => request<OnboardingStatus>('/onboarding/status'),
+
+  advance: (step: number) =>
+    request<OnboardingStatus>('/onboarding/advance', {
+      method: 'POST',
+      body: JSON.stringify({ step }),
+    }),
+
+  completeStep: (stepName: keyof typeof ONBOARDING_STEPS) =>
+    request<OnboardingStatus>('/onboarding/complete-step', {
+      method: 'POST',
+      body: JSON.stringify({ stepName }),
+    }),
+
+  reset: () =>
+    request<OnboardingStatus>('/onboarding/reset', {
+      method: 'POST',
     }),
 };

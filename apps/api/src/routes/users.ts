@@ -47,6 +47,7 @@ usersRoutes.get('/', async (c) => {
     isSuperAdmin: row.users.isSuperAdmin ?? false,
     organizationId: row.users.organizationId ?? undefined,
     organizationName: row.organizations?.name ?? undefined,
+    onboardingStep: row.users.onboardingStep ?? 0,
   }));
 
   return c.json({ data: publicUsers });
@@ -87,6 +88,7 @@ usersRoutes.get('/:id', async (c) => {
     isSuperAdmin: user.isSuperAdmin ?? false,
     organizationId: user.organizationId ?? undefined,
     organizationName: orgData?.name ?? undefined,
+    onboardingStep: user.onboardingStep ?? 0,
   };
 
   return c.json({ data: publicUser });
@@ -166,6 +168,7 @@ usersRoutes.post('/', async (c) => {
     isSuperAdmin: false,
     organizationId: targetOrgId,
     organizationName: targetOrg.name,
+    onboardingStep: 0,
   };
 
   return c.json({ data: publicUser }, 201);

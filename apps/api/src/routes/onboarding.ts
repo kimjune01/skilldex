@@ -1,6 +1,204 @@
 import { Hono } from 'hono';
+import { db } from '@skillomatic/db';
+import { users, ONBOARDING_STEPS, MAX_ONBOARDING_STEP } from '@skillomatic/db/schema';
+import { eq } from 'drizzle-orm';
+import { jwtAuth } from '../middleware/auth.js';
+import type { OnboardingStatus } from '@skillomatic/shared';
+import { getNextOnboardingStep, getOnboardingStepName } from '@skillomatic/shared';
 
 export const onboardingRoutes = new Hono();
+
+/**
+ * GET /api/onboarding/status
+ * Get the current user's onboarding status
+ */
+onboardingRoutes.get('/status', jwtAuth, async (c) => {
+  const user = c.get('user');
+
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+
+  if (!dbUser) {
+    return c.json({ error: { message: 'User not found' } }, 404);
+  }
+
+  const currentStep = dbUser.onboardingStep ?? 0;
+  const isComplete = currentStep >= MAX_ONBOARDING_STEP;
+  const nextStep = getNextOnboardingStep(currentStep);
+
+  const status: OnboardingStatus = {
+    currentStep,
+    isComplete,
+    nextStep,
+    nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null,
+  };
+
+  return c.json({ data: status });
+});
+
+/**
+ * POST /api/onboarding/advance
+ * Advance the user's onboarding to a specific step (must be >= current step)
+ */
+onboardingRoutes.post('/advance', jwtAuth, async (c) => {
+  const user = c.get('user');
+  const body = await c.req.json<{ step: number }>();
+
+  if (typeof body.step !== 'number') {
+    return c.json({ error: { message: 'Step must be a number' } }, 400);
+  }
+
+  // Get current step
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+
+  if (!dbUser) {
+    return c.json({ error: { message: 'User not found' } }, 404);
+  }
+
+  const currentStep = dbUser.onboardingStep ?? 0;
+
+  // Only allow advancing forward (or staying same)
+  if (body.step < currentStep) {
+    return c.json(
+      { error: { message: 'Cannot go back in onboarding. Current step: ' + currentStep } },
+      400
+    );
+  }
+
+  // Update the step
+  await db
+    .update(users)
+    .set({
+      onboardingStep: body.step,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id));
+
+  const isComplete = body.step >= MAX_ONBOARDING_STEP;
+  const nextStep = getNextOnboardingStep(body.step);
+
+  const status: OnboardingStatus = {
+    currentStep: body.step,
+    isComplete,
+    nextStep,
+    nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null,
+  };
+
+  return c.json({ data: status });
+});
+
+/**
+ * POST /api/onboarding/complete-step
+ * Complete a specific named step (e.g., 'ATS_CONNECTED')
+ * This is a convenience endpoint that looks up the step value by name
+ */
+onboardingRoutes.post('/complete-step', jwtAuth, async (c) => {
+  const user = c.get('user');
+  const body = await c.req.json<{ stepName: keyof typeof ONBOARDING_STEPS }>();
+
+  if (!body.stepName || !(body.stepName in ONBOARDING_STEPS)) {
+    return c.json(
+      {
+        error: {
+          message: 'Invalid step name. Valid steps: ' + Object.keys(ONBOARDING_STEPS).join(', '),
+        },
+      },
+      400
+    );
+  }
+
+  const stepValue = ONBOARDING_STEPS[body.stepName];
+
+  // Get current step
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+
+  if (!dbUser) {
+    return c.json({ error: { message: 'User not found' } }, 404);
+  }
+
+  const currentStep = dbUser.onboardingStep ?? 0;
+
+  // Only update if this step is ahead of current
+  if (stepValue <= currentStep) {
+    // Already at or past this step, return current status
+    const isComplete = currentStep >= MAX_ONBOARDING_STEP;
+    const nextStep = getNextOnboardingStep(currentStep);
+
+    return c.json({
+      data: {
+        currentStep,
+        isComplete,
+        nextStep,
+        nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null,
+        message: 'Already completed this step',
+      },
+    });
+  }
+
+  // Update the step
+  await db
+    .update(users)
+    .set({
+      onboardingStep: stepValue,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id));
+
+  const isComplete = stepValue >= MAX_ONBOARDING_STEP;
+  const nextStep = getNextOnboardingStep(stepValue);
+
+  const status: OnboardingStatus = {
+    currentStep: stepValue,
+    isComplete,
+    nextStep,
+    nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null,
+  };
+
+  return c.json({ data: status });
+});
+
+/**
+ * POST /api/onboarding/reset
+ * Reset onboarding to the beginning (for testing/admin purposes)
+ * Only super admins can reset their own onboarding
+ */
+onboardingRoutes.post('/reset', jwtAuth, async (c) => {
+  const user = c.get('user');
+
+  if (!user.isSuperAdmin) {
+    return c.json({ error: { message: 'Only super admins can reset onboarding' } }, 403);
+  }
+
+  await db
+    .update(users)
+    .set({
+      onboardingStep: ONBOARDING_STEPS.NOT_STARTED,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id));
+
+  const nextStep = getNextOnboardingStep(ONBOARDING_STEPS.NOT_STARTED);
+
+  const status: OnboardingStatus = {
+    currentStep: ONBOARDING_STEPS.NOT_STARTED,
+    isComplete: false,
+    nextStep,
+    nextStepName: nextStep !== null ? getOnboardingStepName(nextStep) : null,
+  };
+
+  return c.json({ data: status });
+});
 
 /**
  * GET /onboarding - Simple getting started guide for new users

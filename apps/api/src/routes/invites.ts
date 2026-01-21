@@ -288,6 +288,7 @@ invitesRoutes.post('/accept', async (c) => {
     isSuperAdmin: false,
     organizationId: invite.organizationId,
     organizationName: org.name,
+    onboardingStep: 0,
   };
 
   const jwtToken = await createToken(userPublic);

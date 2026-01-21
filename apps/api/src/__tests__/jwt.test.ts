@@ -7,6 +7,7 @@ describe('JWT', () => {
     email: 'test@example.com',
     name: 'Test User',
     isAdmin: false,
+    onboardingStep: 0,
     createdAt: Date.now(),
   }
 
