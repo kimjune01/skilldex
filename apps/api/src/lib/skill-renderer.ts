@@ -30,6 +30,14 @@ import { db } from '@skillomatic/db';
 import { users, apiKeys, integrations, organizations, systemSettings } from '@skillomatic/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { getNangoClient, PROVIDER_CONFIG_KEYS } from './nango.js';
+import {
+  getEffectiveAccessForUser,
+  getUserIntegrationsByCategory,
+  canRead,
+  canWrite,
+  type EffectiveAccess,
+  type IntegrationCategory,
+} from './integration-permissions.js';
 
 /**
  * Capability profile - what a user has access to
@@ -98,11 +106,15 @@ const LLM_DEFAULTS: Record<string, { model: string }> = {
 
 /**
  * Build capability profile for a user
- * Fetches all available credentials and tokens
+ * Fetches all available credentials and tokens based on three-way intersection:
+ * 1. Admin allows (org-level permissions)
+ * 2. Integration connected
+ * 3. User's personal access level choice
  */
-export async function buildCapabilityProfile(userId: string): Promise<CapabilityProfile> {
-  const profile: CapabilityProfile = {
+export async function buildCapabilityProfile(userId: string): Promise<CapabilityProfile & { effectiveAccess: EffectiveAccess | null }> {
+  const profile: CapabilityProfile & { effectiveAccess: EffectiveAccess | null } = {
     skillomaticApiUrl: process.env.SKILLOMATIC_API_URL || 'http://localhost:3000',
+    effectiveAccess: null,
   };
 
   // Get user with org
@@ -112,9 +124,13 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
     .where(eq(users.id, userId))
     .limit(1);
 
-  if (!user) {
+  if (!user || !user.organizationId) {
     return profile;
   }
+
+  // Get effective access levels (three-way intersection)
+  const effectiveAccess = await getEffectiveAccessForUser(userId, user.organizationId);
+  profile.effectiveAccess = effectiveAccess;
 
   // Get user's active API key
   const [apiKey] = await db
@@ -128,23 +144,36 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
   }
 
   // Get organization's LLM config
-  if (user.organizationId) {
-    const llmConfig = await getOrgLLMConfig(user.organizationId);
-    if (llmConfig) {
-      profile.llm = llmConfig;
-    }
+  const llmConfig = await getOrgLLMConfig(user.organizationId);
+  if (llmConfig) {
+    profile.llm = llmConfig;
   }
 
-  // Get user's integrations and fetch fresh tokens
-  const userIntegrations = await db
-    .select()
-    .from(integrations)
-    .where(and(eq(integrations.userId, userId), eq(integrations.status, 'connected')));
-
+  // Get integrations by category
+  const integrationsByCategory = await getUserIntegrationsByCategory(userId, user.organizationId);
   const nango = getNangoClient();
 
-  for (const integration of userIntegrations) {
-    if (!integration.nangoConnectionId) continue;
+  // Fetch tokens for each category based on effective access
+  const categories: IntegrationCategory[] = ['ats', 'email', 'calendar'];
+
+  for (const category of categories) {
+    // Skip if no read access for this category
+    if (!canRead(effectiveAccess[category])) continue;
+
+    const categoryIntegrations = integrationsByCategory[category];
+    if (categoryIntegrations.length === 0) continue;
+
+    // Get the first connected integration for this category
+    const integrationInfo = categoryIntegrations[0];
+
+    // Get full integration record
+    const [integration] = await db
+      .select()
+      .from(integrations)
+      .where(eq(integrations.id, integrationInfo.id))
+      .limit(1);
+
+    if (!integration || !integration.nangoConnectionId) continue;
 
     const providerConfigKey = PROVIDER_CONFIG_KEYS[integration.provider] || integration.provider;
     const metadata = integration.metadata ? JSON.parse(integration.metadata) : {};
@@ -153,7 +182,7 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
       // Fetch fresh token from Nango
       const token = await nango.getToken(providerConfigKey, integration.nangoConnectionId);
 
-      switch (integration.provider) {
+      switch (category) {
         case 'ats': {
           const atsProvider = metadata.subProvider || 'greenhouse';
           profile.ats = {
@@ -278,17 +307,27 @@ function getEnvApiKey(provider: string): string | null {
 
 /**
  * Check if a capability profile satisfies skill requirements
+ * Uses the three-way intersection model for access checking
  */
 export function checkCapabilityRequirements(
   requiredIntegrations: string[],
-  profile: CapabilityProfile
+  profile: CapabilityProfile & { effectiveAccess?: EffectiveAccess | null }
 ): CapabilityCheckResult {
   const missing: string[] = [];
+  const effectiveAccess = profile.effectiveAccess;
 
   for (const req of requiredIntegrations) {
     switch (req) {
       case 'ats':
-        if (!profile.ats) missing.push('ATS (Greenhouse, Lever, etc.)');
+        if (effectiveAccess && !canRead(effectiveAccess.ats)) {
+          if (effectiveAccess.ats === 'disabled') {
+            missing.push('ATS access (disabled by admin)');
+          } else {
+            missing.push('ATS (Greenhouse, Lever, etc.)');
+          }
+        } else if (!profile.ats) {
+          missing.push('ATS (Greenhouse, Lever, etc.)');
+        }
         break;
       case 'calendly':
         if (!profile.calendar?.calendly) missing.push('Calendly');
@@ -299,7 +338,28 @@ export function checkCapabilityRequirements(
         }
         break;
       case 'email-read':
-        if (!profile.email) missing.push('Email (Gmail or Outlook)');
+        if (effectiveAccess && !canRead(effectiveAccess.email)) {
+          if (effectiveAccess.email === 'disabled') {
+            missing.push('Email access (disabled by admin)');
+          } else {
+            missing.push('Email (Gmail or Outlook)');
+          }
+        } else if (!profile.email) {
+          missing.push('Email (Gmail or Outlook)');
+        }
+        break;
+      case 'email-send':
+        if (effectiveAccess && !canWrite(effectiveAccess.email)) {
+          if (effectiveAccess.email === 'disabled') {
+            missing.push('Email access (disabled by admin)');
+          } else if (effectiveAccess.email === 'read-only') {
+            missing.push('Email write access (you have read-only)');
+          } else {
+            missing.push('Email (Gmail or Outlook)');
+          }
+        } else if (!profile.email) {
+          missing.push('Email (Gmail or Outlook)');
+        }
         break;
       case 'llm':
         if (!profile.llm) missing.push('LLM API Key');

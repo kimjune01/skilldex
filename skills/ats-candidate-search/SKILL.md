@@ -5,6 +5,8 @@ intent: I want to search for candidates in my ATS
 capabilities:
   - Search candidates by skills
   - Filter by job requisition
+requires:
+  ats: read-only
 allowed-tools:
   - Bash
   - Read

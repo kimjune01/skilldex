@@ -178,10 +178,12 @@ export interface IntegrationPublic {
   status: IntegrationStatus;
   lastSyncAt?: Date;
   createdAt: Date;
+  accessLevel?: IntegrationAccessLevel;
 }
 
 export type IntegrationProvider = 'linkedin' | 'ats' | 'email' | 'calendar' | 'granola';
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error';
+export type IntegrationAccessLevel = 'read-write' | 'read-only';
 
 // ============ ATS Types (for Mock ATS and Skills) ============
 

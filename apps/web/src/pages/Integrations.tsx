@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Nango from '@nangohq/frontend';
-import { integrations } from '../lib/api';
+import { integrations, type IntegrationAccessLevel } from '../lib/api';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import {
   Briefcase,
   Linkedin,
@@ -38,6 +39,8 @@ import {
   RefreshCw,
   ExternalLink,
   Clock,
+  Shield,
+  ShieldCheck,
 } from 'lucide-react';
 
 const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
@@ -139,10 +142,12 @@ export default function Integrations() {
     subProviders?: { id: string; name: string }[];
   } | null>(null);
   const [selectedSubProvider, setSelectedSubProvider] = useState<string>('');
+  const [selectedAccessLevel, setSelectedAccessLevel] = useState<IntegrationAccessLevel>('read-write');
   const [isConnecting, setIsConnecting] = useState(false);
   const [disconnectTarget, setDisconnectTarget] = useState<{ id: string; name: string } | null>(
     null
   );
+  const [updatingAccessLevel, setUpdatingAccessLevel] = useState<string | null>(null);
 
   // Nango Connect UI ref
   const nangoConnectRef = useRef<ReturnType<Nango['openConnectUI']> | null>(null);
@@ -190,13 +195,15 @@ export default function Integrations() {
       // Show dialog to select sub-provider
       setConnectDialogProvider(provider);
       setSelectedSubProvider(provider.subProviders[0].id);
+      setSelectedAccessLevel('read-write'); // Reset to default
     } else {
-      // Direct connect for providers without sub-providers
-      initiateOAuth(provider.id);
+      // Direct connect for providers without sub-providers - show dialog for access level
+      setConnectDialogProvider(provider);
+      setSelectedAccessLevel('read-write');
     }
   };
 
-  const initiateOAuth = async (_provider: string, subProvider?: string) => {
+  const initiateOAuth = async (provider: string, subProvider?: string, accessLevel?: IntegrationAccessLevel) => {
     setIsConnecting(true);
     setError('');
 
@@ -225,8 +232,8 @@ export default function Integrations() {
 
       nangoConnectRef.current = connect;
 
-      // Get session token from backend and set it
-      const session = await integrations.getSession(allowedIntegrations);
+      // Get session token from backend and set it, including access level preference
+      const session = await integrations.getSession(allowedIntegrations, accessLevel, provider);
       connect.setSessionToken(session.token);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start connection');
@@ -236,8 +243,23 @@ export default function Integrations() {
 
   const handleConfirmConnect = () => {
     if (connectDialogProvider) {
-      initiateOAuth(connectDialogProvider.id, selectedSubProvider);
+      const subProvider = connectDialogProvider.subProviders ? selectedSubProvider : undefined;
+      initiateOAuth(connectDialogProvider.id, subProvider, selectedAccessLevel);
       setConnectDialogProvider(null);
+    }
+  };
+
+  const handleUpdateAccessLevel = async (integrationId: string, newLevel: IntegrationAccessLevel) => {
+    setUpdatingAccessLevel(integrationId);
+    try {
+      await integrations.updateAccessLevel(integrationId, newLevel);
+      await loadIntegrations();
+      setSuccessMessage(`Access level updated to ${newLevel === 'read-write' ? 'Full access' : 'Read only'}`);
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update access level');
+    } finally {
+      setUpdatingAccessLevel(null);
     }
   };
 
@@ -287,6 +309,21 @@ export default function Integrations() {
           </Badge>
         );
     }
+  };
+
+  const getAccessLevelBadge = (accessLevel?: string) => {
+    if (accessLevel === 'read-only') {
+      return (
+        <Badge variant="secondary" className="text-xs">
+          <Shield className="h-3 w-3 mr-1" /> Read only
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="text-xs">
+        <ShieldCheck className="h-3 w-3 mr-1" /> Full access
+      </Badge>
+    );
   };
 
   if (isLoading) {
@@ -349,16 +386,44 @@ export default function Integrations() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   {integration && integration.status !== 'disconnected' ? (
-                    <div className="flex items-center justify-between">
-                      {getStatusBadge(integration.status)}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
-                      >
-                        <Unplug className="h-4 w-4" />
-                      </Button>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        {getStatusBadge(integration.status)}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
+                        >
+                          <Unplug className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {/* Access level selector for connected integrations */}
+                      {isConnected && (
+                        <div className="flex items-center justify-between pt-1">
+                          <Select
+                            value={integration.accessLevel || 'read-write'}
+                            onValueChange={(value) => handleUpdateAccessLevel(integration.id, value as IntegrationAccessLevel)}
+                            disabled={updatingAccessLevel === integration.id}
+                          >
+                            <SelectTrigger className="h-7 w-[130px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="read-write">
+                                <span className="flex items-center gap-1">
+                                  <ShieldCheck className="h-3 w-3" /> Full access
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="read-only">
+                                <span className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" /> Read only
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <Button
@@ -411,32 +476,64 @@ export default function Integrations() {
                         <CardDescription>{provider.description}</CardDescription>
                       </div>
                     </div>
-                    {getStatusBadge(integration?.status || 'disconnected')}
+                    <div className="flex flex-col items-end gap-1">
+                      {getStatusBadge(integration?.status || 'disconnected')}
+                      {isConnected && getAccessLevelBadge(integration?.accessLevel)}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   {integration && integration.status !== 'disconnected' ? (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        {integration.lastSyncAt && (
-                          <>
-                            <RefreshCw className="h-3 w-3 inline mr-1" />
-                            Last sync:{' '}
-                            {integration.lastSyncAt instanceof Date
-                              ? integration.lastSyncAt.toLocaleDateString()
-                              : new Date(integration.lastSyncAt).toLocaleDateString()}
-                          </>
-                        )}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
-                      >
-                        <Unplug className="h-4 w-4 mr-1" />
-                        Disconnect
-                      </Button>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          {integration.lastSyncAt && (
+                            <>
+                              <RefreshCw className="h-3 w-3 inline mr-1" />
+                              Last sync:{' '}
+                              {integration.lastSyncAt instanceof Date
+                                ? integration.lastSyncAt.toLocaleDateString()
+                                : new Date(integration.lastSyncAt).toLocaleDateString()}
+                            </>
+                          )}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
+                        >
+                          <Unplug className="h-4 w-4 mr-1" />
+                          Disconnect
+                        </Button>
+                      </div>
+                      {/* Access level selector for connected integrations */}
+                      {isConnected && (
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs text-muted-foreground">Access level:</Label>
+                          <Select
+                            value={integration.accessLevel || 'read-write'}
+                            onValueChange={(value) => handleUpdateAccessLevel(integration.id, value as IntegrationAccessLevel)}
+                            disabled={updatingAccessLevel === integration.id}
+                          >
+                            <SelectTrigger className="h-7 w-[140px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="read-write">
+                                <span className="flex items-center gap-1">
+                                  <ShieldCheck className="h-3 w-3" /> Full access
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="read-only">
+                                <span className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" /> Read only
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <Button
@@ -464,29 +561,70 @@ export default function Integrations() {
         </div>
       </div>
 
-      {/* Connect Dialog for providers with sub-providers */}
+      {/* Connect Dialog for providers */}
       <AlertDialog open={!!connectDialogProvider} onOpenChange={() => setConnectDialogProvider(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Connect {connectDialogProvider?.name}</AlertDialogTitle>
             <AlertDialogDescription>
-              Select which {connectDialogProvider?.name.toLowerCase()} service you want to connect.
+              {connectDialogProvider?.subProviders
+                ? `Select which ${connectDialogProvider?.name.toLowerCase()} service you want to connect.`
+                : `Configure your ${connectDialogProvider?.name.toLowerCase()} connection settings.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <div className="py-4">
-            <Select value={selectedSubProvider} onValueChange={setSelectedSubProvider}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a service" />
-              </SelectTrigger>
-              <SelectContent>
-                {connectDialogProvider?.subProviders?.map((sub) => (
-                  <SelectItem key={sub.id} value={sub.id}>
-                    {sub.name}
+          <div className="space-y-4 py-4">
+            {/* Sub-provider selection (if applicable) */}
+            {connectDialogProvider?.subProviders && (
+              <div className="space-y-2">
+                <Label>Service</Label>
+                <Select value={selectedSubProvider} onValueChange={setSelectedSubProvider}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {connectDialogProvider?.subProviders?.map((sub) => (
+                      <SelectItem key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Access level selection */}
+            <div className="space-y-2">
+              <Label>Access Level</Label>
+              <Select value={selectedAccessLevel} onValueChange={(v) => setSelectedAccessLevel(v as IntegrationAccessLevel)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="read-write">
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3" /> Full access
+                      </span>
+                      <span className="text-xs text-muted-foreground">Read and write data</span>
+                    </div>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  <SelectItem value="read-only">
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1">
+                        <Shield className="h-3 w-3" /> Read only
+                      </span>
+                      <span className="text-xs text-muted-foreground">Only read data, no modifications</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {selectedAccessLevel === 'read-only'
+                  ? 'Some skills that require write access will be limited.'
+                  : 'Skills will have full access to this integration.'}
+              </p>
+            </div>
           </div>
 
           <AlertDialogFooter>

@@ -12,6 +12,8 @@ import { db } from '@skillomatic/db';
 import { skills, roleSkills, userRoles } from '@skillomatic/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 
+import type { SkillRequirements } from './skill-access.js';
+
 // Skill metadata (Level 1) - always in context
 export interface SkillMetadata {
   id: string;
@@ -22,6 +24,7 @@ export interface SkillMetadata {
   intent: string | null;
   capabilities: string[];
   requiredIntegrations: string[];
+  requires: SkillRequirements | null;
 }
 
 // Full skill (Level 2) - loaded on demand
@@ -143,6 +146,24 @@ export async function userCanAccessSkill(userId: string, skillSlug: string): Pro
 
 // Convert DB record to SkillMetadata
 function toSkillMetadata(skill: typeof skills.$inferSelect): SkillMetadata {
+  // Parse requiredIntegrations - can be either:
+  // - New format: {"ats": "read-write", "email": "read-only"}
+  // - Old format: ["ats", "email"]
+  let requiredIntegrations: string[] = [];
+  let requires: SkillRequirements | null = null;
+
+  if (skill.requiredIntegrations) {
+    const parsed = JSON.parse(skill.requiredIntegrations);
+    if (Array.isArray(parsed)) {
+      // Old format - just provider names
+      requiredIntegrations = parsed;
+    } else if (typeof parsed === 'object') {
+      // New format - category: access-level mapping
+      requires = parsed as SkillRequirements;
+      requiredIntegrations = Object.keys(parsed);
+    }
+  }
+
   return {
     id: skill.id,
     slug: skill.slug,
@@ -151,20 +172,55 @@ function toSkillMetadata(skill: typeof skills.$inferSelect): SkillMetadata {
     category: skill.category,
     intent: skill.intent,
     capabilities: skill.capabilities ? JSON.parse(skill.capabilities) : [],
-    requiredIntegrations: skill.requiredIntegrations ? JSON.parse(skill.requiredIntegrations) : [],
+    requiredIntegrations,
+    requires,
   };
+}
+
+import { type EffectiveAccess } from './integration-permissions.js';
+import { getSkillStatus, type SkillStatusResult } from './skill-access.js';
+
+/**
+ * Skill with status information for system prompt
+ */
+export interface SkillWithStatus extends SkillMetadata {
+  statusInfo: SkillStatusResult;
 }
 
 /**
  * Build the skills portion of the system prompt using only metadata
  * This is the Level 1 disclosure - enough for LLM to decide when to load a skill
+ *
+ * @param skillsMetadata - List of skills to include
+ * @param effectiveAccess - Optional user's effective access levels
+ * @param disabledSkills - Optional list of admin-disabled skill slugs
  */
-export function buildSkillsPromptSection(skillsMetadata: SkillMetadata[]): string {
+export function buildSkillsPromptSection(
+  skillsMetadata: SkillMetadata[],
+  effectiveAccess?: EffectiveAccess,
+  disabledSkills?: string[]
+): string {
   if (skillsMetadata.length === 0) {
     return 'No skills are currently available.';
   }
 
-  const skillsList = skillsMetadata
+  // Calculate status for each skill
+  const skillsWithStatus: SkillWithStatus[] = skillsMetadata.map(s => ({
+    ...s,
+    statusInfo: getSkillStatus(
+      s.slug,
+      s.requires,
+      effectiveAccess || { ats: 'read-write', email: 'read-write', calendar: 'read-write' },
+      disabledSkills || []
+    ),
+  }));
+
+  // Separate available and limited skills
+  const availableSkills = skillsWithStatus.filter(s => s.statusInfo.status === 'available');
+  const limitedSkills = skillsWithStatus.filter(s => s.statusInfo.status === 'limited');
+
+  // Build available skills list
+  const availableSkillsList = availableSkills
     .map(s => {
       let entry = `- **${s.slug}**: ${s.description}`;
       if (s.intent) {
@@ -177,11 +233,39 @@ export function buildSkillsPromptSection(skillsMetadata: SkillMetadata[]): strin
     })
     .join('\n');
 
-  return `## Available Skills
+  // Build limited skills list with guidance
+  const limitedSkillsList = limitedSkills
+    .map(s => {
+      let entry = `- **${s.slug}** (LIMITED): ${s.description}`;
+      if (s.statusInfo.limitations && s.statusInfo.limitations.length > 0) {
+        entry += `\n  - *Limitations*: ${s.statusInfo.limitations.join(', ')}`;
+      }
+      if (s.statusInfo.guidance) {
+        entry += `\n  - *How to enable*: ${s.statusInfo.guidance}`;
+      }
+      return entry;
+    })
+    .join('\n');
+
+  let output = `## Available Skills
 
 The following skills are available. To use a skill, first load its full instructions with the load_skill action, then follow those instructions.
 
-${skillsList}
+${availableSkillsList || 'No skills currently have full access.'}`;
+
+  if (limitedSkillsList) {
+    output += `
+
+## Limited Skills
+
+These skills have reduced functionality due to access restrictions:
+
+${limitedSkillsList}
+
+**Note**: Limited skills may not work fully. Inform the user about limitations before attempting to use them.`;
+  }
+
+  output += `
 
 ### How to Use Skills
 
@@ -192,4 +276,6 @@ ${skillsList}
 
 2. The system will return the skill's full instructions
 3. Follow those instructions to complete the task (may involve additional actions like \`scrape_url\`)`;
+
+  return output;
 }

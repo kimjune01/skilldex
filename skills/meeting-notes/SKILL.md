@@ -5,6 +5,8 @@ intent: I want to sync my meeting notes to the ATS
 capabilities:
   - Import meeting transcripts
   - Attach notes to candidates
+requires:
+  ats: read-write
 allowed-tools:
   - Read
 ---

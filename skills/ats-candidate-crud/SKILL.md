@@ -6,6 +6,8 @@ capabilities:
   - Create new candidates
   - Update candidate information
   - Move candidates through pipeline
+requires:
+  ats: read-write
 allowed-tools:
   - Bash
   - Read

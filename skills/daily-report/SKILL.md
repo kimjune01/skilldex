@@ -7,6 +7,8 @@ capabilities:
   - Summarize candidates added, updated, or moved through pipeline
   - Generate formatted reports for standups or syncs
   - Track recruiting metrics over time
+requires:
+  ats: read-only
 allowed-tools:
   - Bash
   - Read

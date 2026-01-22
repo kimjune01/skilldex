@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db } from '@skillomatic/db';
-import { scrapeTasks } from '@skillomatic/db/schema';
+import { scrapeTasks, integrations } from '@skillomatic/db/schema';
 import { eq, and, gt, desc } from 'drizzle-orm';
 import { randomUUID, createHash } from 'crypto';
 import { jwtAuth } from '../middleware/auth.js';
@@ -26,6 +26,15 @@ import {
   buildSkillsPromptSection,
   type SkillMetadata,
 } from '../lib/skills.js';
+import { GmailClient, type EmailMessage, type EmailAddress } from '../lib/gmail.js';
+import { getNangoClient, PROVIDER_CONFIG_KEYS } from '../lib/nango.js';
+import {
+  getEffectiveAccessForUser,
+  getOrgDisabledSkills,
+  canRead,
+  canWrite,
+  type EffectiveAccess,
+} from '../lib/integration-permissions.js';
 
 export const chatRoutes = new Hono();
 
@@ -47,23 +56,160 @@ type ATSAction =
   | { action: 'list_applications'; candidateId?: string; jobId?: string; stage?: string }
   | { action: 'update_application_stage'; id: string; stage: string }
   | { action: 'scrape_url'; url: string }
-  | { action: 'load_skill'; slug: string };
+  | { action: 'load_skill'; slug: string }
+  // Email actions
+  | { action: 'draft_email'; to: string; subject: string; body: string; cc?: string; bcc?: string }
+  | { action: 'send_email'; to: string; subject: string; body: string; cc?: string; bcc?: string }
+  | { action: 'search_emails'; query: string; maxResults?: number };
 
 // Determine if a skill requires browser extension
 function skillRequiresBrowser(skill: SkillMetadata): boolean {
-  const integrations = skill.requiredIntegrations || [];
-  return integrations.includes('linkedin') || integrations.includes('browser');
+  const reqs = skill.requiredIntegrations || [];
+  return reqs.includes('linkedin') || reqs.includes('browser');
+}
+
+/**
+ * Email capability info for the chat system
+ */
+interface EmailCapability {
+  hasEmail: boolean;
+  canSendEmail: boolean;
+  emailAddress?: string;
+}
+
+/**
+ * Get a Gmail client for the user if they have email connected
+ */
+async function getGmailClientForUser(userId: string): Promise<{ client: GmailClient; emailAddress: string } | null> {
+  // Find the user's Gmail integration
+  const integration = await db
+    .select()
+    .from(integrations)
+    .where(and(eq(integrations.userId, userId), eq(integrations.provider, 'gmail')))
+    .limit(1);
+
+  if (integration.length === 0 || integration[0].status !== 'connected') {
+    return null;
+  }
+
+  const int = integration[0];
+  if (!int.nangoConnectionId) {
+    return null;
+  }
+
+  try {
+    const nango = getNangoClient();
+    const providerConfigKey = PROVIDER_CONFIG_KEYS['gmail'];
+    const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
+
+    // Get user email from Gmail profile
+    const tempClient = new GmailClient(token.access_token, '');
+    const profile = await tempClient.getProfile();
+
+    return {
+      client: new GmailClient(token.access_token, profile.emailAddress),
+      emailAddress: profile.emailAddress,
+    };
+  } catch (error) {
+    console.error('Failed to get Gmail client for chat:', error);
+    return null;
+  }
+}
+
+/**
+ * Check user's email capabilities based on the three-way intersection model
+ */
+async function getEmailCapability(userId: string, organizationId: string): Promise<EmailCapability> {
+  // Get effective access using the three-way intersection model
+  const effectiveAccess = await getEffectiveAccessForUser(userId, organizationId);
+
+  // Check if user has read access to email
+  if (!canRead(effectiveAccess.email)) {
+    return { hasEmail: false, canSendEmail: false };
+  }
+
+  // Check if user has Gmail connected
+  const gmail = await getGmailClientForUser(userId);
+  if (!gmail) {
+    return { hasEmail: false, canSendEmail: false };
+  }
+
+  return {
+    hasEmail: true,
+    canSendEmail: canWrite(effectiveAccess.email),
+    emailAddress: gmail.emailAddress,
+  };
+}
+
+/**
+ * Parse recipient input - supports string or array of EmailAddress
+ */
+function parseRecipients(input: unknown): EmailAddress[] {
+  if (!input) return [];
+
+  if (typeof input === 'string') {
+    return [{ email: input }];
+  }
+
+  if (Array.isArray(input)) {
+    return input.map((item) => {
+      if (typeof item === 'string') {
+        return { email: item };
+      }
+      return item as EmailAddress;
+    });
+  }
+
+  return [];
 }
 
 // Build system prompt with skills metadata (progressive disclosure Level 1)
-function buildSystemPrompt(skillsMetadata: SkillMetadata[]): string {
-  const skillsSection = buildSkillsPromptSection(skillsMetadata);
+function buildSystemPrompt(
+  skillsMetadata: SkillMetadata[],
+  emailCapability?: EmailCapability,
+  effectiveAccess?: EffectiveAccess,
+  disabledSkills?: string[]
+): string {
+  const skillsSection = buildSkillsPromptSection(skillsMetadata, effectiveAccess, disabledSkills);
 
   // Identify skills requiring browser extension
   const browserSkills = skillsMetadata
     .filter(skillRequiresBrowser)
     .map(s => `- **${s.name}**: ${s.description}`)
     .join('\n');
+
+  // Build email actions section if available
+  let emailActionsSection = '';
+  if (emailCapability?.hasEmail) {
+    emailActionsSection = `
+### Email Actions
+${emailCapability.canSendEmail ? `11. **draft_email** - Create an email draft (saved to Gmail Drafts folder)
+   \`\`\`action
+   {"action": "draft_email", "to": "candidate@example.com", "subject": "Exciting Opportunity", "body": "Hi [Name],\\n\\nI came across your profile..."}
+   \`\`\`
+   - to: Recipient email address
+   - subject: Email subject line
+   - body: Email body text
+   - cc: (optional) CC recipient
+   - bcc: (optional) BCC recipient
+
+12. **send_email** - Send an email directly
+   \`\`\`action
+   {"action": "send_email", "to": "candidate@example.com", "subject": "Following up", "body": "Hi [Name],\\n\\nThank you for your time..."}
+   \`\`\`
+   - Same parameters as draft_email
+   - IMPORTANT: Always confirm with user before sending` : ''}
+
+13. **search_emails** - Search user's mailbox
+   \`\`\`action
+   {"action": "search_emails", "query": "from:candidate@example.com", "maxResults": 5}
+   \`\`\`
+   - query: Gmail search query (e.g., "from:user@example.com", "subject:interview")
+   - maxResults: (optional) Maximum results to return (default: 10)
+
+Your connected email: ${emailCapability.emailAddress || 'unknown'}${emailCapability.canSendEmail ? '' : '\n**Note**: Email sending is disabled by your admin. You can only search emails.'}
+`;
+  }
 
   return `You are a recruiting assistant with direct access to the ATS (Applicant Tracking System) and various recruiting skills. You can execute actions to help users manage candidates, jobs, and applications.
 
@@ -142,7 +288,7 @@ The system ONLY executes code blocks marked as \`\`\`action. Any other format wi
    - Returns the skill's complete instructions
    - Use this when you need to execute a skill
    - After loading, follow the skill's instructions
-
+${emailActionsSection}
 ## Skills Requiring Browser Extension
 These skills require the Skillomatic browser extension:
 ${browserSkills || 'None'}
@@ -153,7 +299,7 @@ ${browserSkills || 'None'}
 - **CANDIDATE SOURCING**: When users ask to "find candidates", "search for engineers", "look for developers", etc. - this means sourcing NEW candidates. Use load_skill to get the appropriate skill's instructions.
 - **ATS SEARCH**: Only use search_candidates when the user explicitly asks about "existing candidates", "candidates in our system", "our database", or "the ATS".
 - For READ operations: Execute immediately without asking for confirmation.
-- For WRITE operations: Ask for confirmation first.
+- For WRITE operations: Ask for confirmation first.${emailCapability?.hasEmail && emailCapability?.canSendEmail ? '\n- For EMAIL SEND operations: ALWAYS confirm with the user before sending.' : ''}
 - Keep your initial response brief. The action results will be shown to the user automatically.
 - Be conversational and helpful.`;
 }
@@ -302,7 +448,12 @@ async function waitForScrapeTask(
 }
 
 // Execute ATS action
-async function executeAction(action: ATSAction, isDemo: boolean, userId?: string): Promise<unknown> {
+async function executeAction(
+  action: ATSAction,
+  isDemo: boolean,
+  userId?: string,
+  emailCapability?: EmailCapability
+): Promise<unknown> {
   switch (action.action) {
     case 'search_candidates': {
       let candidates = generateDemoCandidates();
@@ -516,6 +667,116 @@ async function executeAction(action: ATSAction, isDemo: boolean, userId?: string
       }
     }
 
+    // Email actions
+    case 'draft_email': {
+      if (!userId) {
+        return { error: 'Authentication required for email' };
+      }
+
+      if (!emailCapability?.hasEmail) {
+        return { error: 'Email not connected. Please connect Gmail in the Skillomatic dashboard.' };
+      }
+
+      if (!emailCapability.canSendEmail) {
+        return { error: 'Email drafting is disabled by your admin.' };
+      }
+
+      const gmail = await getGmailClientForUser(userId);
+      if (!gmail) {
+        return { error: 'Failed to connect to Gmail. Please try reconnecting.' };
+      }
+
+      const message: EmailMessage = {
+        to: parseRecipients(action.to),
+        cc: action.cc ? parseRecipients(action.cc) : undefined,
+        bcc: action.bcc ? parseRecipients(action.bcc) : undefined,
+        subject: action.subject,
+        body: action.body,
+        bodyType: 'text',
+      };
+
+      try {
+        const result = await gmail.client.createDraft(message);
+        return {
+          success: true,
+          draftId: result.id,
+          messageId: result.message.id,
+          message: `Draft created successfully. You can find it in your Gmail Drafts folder.`,
+        };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to create draft';
+        return { error: msg };
+      }
+    }
+
+    case 'send_email': {
+      if (!userId) {
+        return { error: 'Authentication required for email' };
+      }
+
+      if (!emailCapability?.hasEmail) {
+        return { error: 'Email not connected. Please connect Gmail in the Skillomatic dashboard.' };
+      }
+
+      if (!emailCapability.canSendEmail) {
+        return { error: 'Email sending is disabled by your admin.' };
+      }
+
+      const gmail = await getGmailClientForUser(userId);
+      if (!gmail) {
+        return { error: 'Failed to connect to Gmail. Please try reconnecting.' };
+      }
+
+      const message: EmailMessage = {
+        to: parseRecipients(action.to),
+        cc: action.cc ? parseRecipients(action.cc) : undefined,
+        bcc: action.bcc ? parseRecipients(action.bcc) : undefined,
+        subject: action.subject,
+        body: action.body,
+        bodyType: 'text',
+      };
+
+      try {
+        const result = await gmail.client.sendEmail(message);
+        return {
+          success: true,
+          messageId: result.id,
+          threadId: result.threadId,
+          message: `Email sent successfully to ${action.to}.`,
+        };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to send email';
+        return { error: msg };
+      }
+    }
+
+    case 'search_emails': {
+      if (!userId) {
+        return { error: 'Authentication required for email' };
+      }
+
+      if (!emailCapability?.hasEmail) {
+        return { error: 'Email not connected. Please connect Gmail in the Skillomatic dashboard.' };
+      }
+
+      const gmail = await getGmailClientForUser(userId);
+      if (!gmail) {
+        return { error: 'Failed to connect to Gmail. Please try reconnecting.' };
+      }
+
+      try {
+        const result = await gmail.client.searchMessages(action.query, action.maxResults || 10);
+        return {
+          success: true,
+          emails: result.messages,
+          total: result.messages.length,
+        };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to search emails';
+        return { error: msg };
+      }
+    }
+
     default:
       return { error: 'Unknown action' };
   }
@@ -537,8 +798,21 @@ chatRoutes.post('/', async (c) => {
     ? await getSkillMetadataForUser(user.id)
     : await getAllSkillMetadata();
 
+  // Get email capability for the user (if authenticated)
+  const emailCapability = user?.id && user?.organizationId
+    ? await getEmailCapability(user.id, user.organizationId)
+    : undefined;
+
+  // Get effective access and disabled skills for skill status display
+  let effectiveAccess: EffectiveAccess | undefined;
+  let disabledSkills: string[] | undefined;
+  if (user?.id && user?.organizationId) {
+    effectiveAccess = await getEffectiveAccessForUser(user.id, user.organizationId);
+    disabledSkills = await getOrgDisabledSkills(user.organizationId);
+  }
+
   // Build messages with skills metadata (progressive disclosure Level 1)
-  const systemPrompt = buildSystemPrompt(skillsMetadata);
+  const systemPrompt = buildSystemPrompt(skillsMetadata, emailCapability, effectiveAccess, disabledSkills);
   const chatMessages: LLMChatMessage[] = [
     { role: 'system', content: systemPrompt },
     ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
@@ -567,7 +841,7 @@ chatRoutes.post('/', async (c) => {
         actionCount++;
 
         // Execute the action
-        const result = await executeAction(action, isDemo, user?.id);
+        const result = await executeAction(action, isDemo, user?.id, emailCapability);
 
         // Send action result
         await stream.writeSSE({

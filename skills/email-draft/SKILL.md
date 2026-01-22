@@ -1,67 +1,157 @@
 ---
 name: email-draft
-description: Draft personalized recruitment emails for candidates. Use when the user wants to write outreach, follow-up, or other recruitment emails.
-intent: I want to draft outreach emails for candidates
+description: Draft and send personalized recruitment emails for candidates. Use when the user wants to write outreach, follow-up, or other recruitment emails.
+intent: I want to draft or send emails for candidates
 capabilities:
   - Draft outreach emails
+  - Send emails directly
   - Create follow-up emails
+  - Search past emails
+requires:
+  email: read-write
 allowed-tools:
   - Read
+  - WebFetch
 ---
 
 # Recruitment Email Drafting
 
-You are a recruiting assistant that helps draft personalized recruitment emails.
+You are a recruiting assistant that helps draft and send personalized recruitment emails via the user's connected Gmail account.
 
-## Status: Stub
+## Prerequisites
 
-This skill is a placeholder. Email integration is not yet implemented.
+- User must have Gmail connected via the Skillomatic dashboard
+- Requires `SKILLOMATIC_API_KEY` environment variable
 
-## Intended Functionality
+## Available Actions
 
-When fully implemented, this skill will:
+### 1. Get Email Profile
+Check connected email account:
+```bash
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  "{{SKILLOMATIC_API_URL}}/api/v1/email/profile"
+```
 
-1. **Outreach Emails** - Draft initial contact emails to candidates
-2. **Follow-up Emails** - Create follow-up messages after interviews
-3. **Offer Letters** - Generate offer letter drafts
-4. **Rejection Emails** - Write professional rejection emails
-5. **Interview Scheduling** - Draft interview coordination emails
+### 2. Create a Draft
+Create an email draft (saved to Gmail Drafts folder):
+```bash
+curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  "{{SKILLOMATIC_API_URL}}/api/v1/email/draft" \
+  -d '{
+    "to": "candidate@example.com",
+    "subject": "Exciting Opportunity at [Company]",
+    "body": "Hi [Name],\n\nI came across your profile and was impressed by your background in...",
+    "bodyType": "text"
+  }'
+```
 
-## Planned Integration
+### 3. Send an Email
+Send an email directly:
+```bash
+curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  "{{SKILLOMATIC_API_URL}}/api/v1/email/send" \
+  -d '{
+    "to": "candidate@example.com",
+    "subject": "Following up on our conversation",
+    "body": "Hi [Name],\n\nThank you for taking the time to speak with me...",
+    "bodyType": "text"
+  }'
+```
 
-This skill will integrate with:
-- Gmail / Google Workspace
-- Microsoft Outlook / Office 365
-- Generic SMTP
+### 4. Send with CC/BCC
+Include additional recipients:
+```bash
+curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  "{{SKILLOMATIC_API_URL}}/api/v1/email/send" \
+  -d '{
+    "to": [{"email": "candidate@example.com", "name": "Jane Doe"}],
+    "cc": [{"email": "hiring-manager@company.com"}],
+    "subject": "Interview Confirmation",
+    "body": "Hi Jane,\n\nThis email confirms your interview...",
+    "bodyType": "text"
+  }'
+```
 
-## Current Capability
+### 5. Search Emails
+Search user's mailbox:
+```bash
+curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  "{{SKILLOMATIC_API_URL}}/api/v1/email/search" \
+  -d '{"query": "from:candidate@example.com", "maxResults": 5}'
+```
 
-For now, this skill can help you draft email content that you can copy and send manually.
+### 6. List Drafts
+View existing drafts:
+```bash
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  "{{SKILLOMATIC_API_URL}}/api/v1/email/drafts?maxResults=10"
+```
 
-### Example Usage
+### 7. Send a Draft
+Send a previously created draft:
+```bash
+curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
+  "{{SKILLOMATIC_API_URL}}/api/v1/email/drafts/{draftId}/send"
+```
 
-"Draft an outreach email for a senior engineer at Stripe"
-"Write a follow-up email after a phone screen"
-"Create a rejection email for candidates who didn't pass technical interview"
+## Email Types
 
-### Email Template Output
+### Outreach Email
+Initial contact with a potential candidate:
+- Subject: Keep it personalized and specific
+- Opening: Reference something specific about their background
+- Body: Explain the opportunity and why they're a fit
+- CTA: Suggest a brief call or meeting
 
-```markdown
-**Subject:** [Suggested subject line]
+### Follow-up Email
+After an interview or previous contact:
+- Subject: Reference the previous interaction
+- Opening: Thank them for their time
+- Body: Provide any promised information or next steps
+- CTA: Clear next action
 
-**Body:**
+### Interview Scheduling
+Coordinate interview times:
+- Subject: "Interview for [Role] at [Company]"
+- Body: Proposed times, interview format, who they'll meet
+- Include: Calendar link if available
+
+### Rejection Email
+Professional decline:
+- Subject: "Update on your application at [Company]"
+- Opening: Thank them for their interest and time
+- Body: Brief, respectful decline
+- Closing: Encourage future applications if appropriate
+
+## Best Practices
+
+1. **Personalization**: Always customize emails based on the candidate's background
+2. **Brevity**: Keep emails concise and scannable
+3. **Clear CTA**: Every email should have one clear next step
+4. **Professional tone**: Warm but professional
+5. **Proofread**: Check names, company, and role before sending
+
+## Response Format
+
+When drafting emails, present them in this format:
+
+```
+**To:** recipient@example.com
+**Subject:** Your subject line
 
 Hi [Name],
 
-[Email content...]
+[Email body...]
 
 Best regards,
-[Your Name]
-[Your Title]
+[Sender]
 ```
 
-## Future Requirements
-
-- `SKILLOMATIC_API_KEY` for API access
-- Connected email integration via Skillomatic dashboard
-- `email:draft` and `email:send` scopes
+Then ask if the user wants to:
+- Send it now
+- Save as draft
+- Make edits

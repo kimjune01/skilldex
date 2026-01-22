@@ -5,6 +5,8 @@ intent: I want to schedule interviews with candidates
 capabilities:
   - Schedule interview slots
   - Send calendar invites
+requires:
+  calendar: read-write
 allowed-tools:
   - Read
 ---

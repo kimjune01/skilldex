@@ -14,6 +14,21 @@ import { randomUUID } from 'crypto';
 
 export const integrationsRoutes = new Hono();
 
+// In-memory store for pending access level preferences during OAuth flow
+// Key: `${userId}:${provider}`, Value: { accessLevel, expiresAt }
+// This is cleaned up on callback or after expiration
+const pendingAccessLevels = new Map<string, { accessLevel: 'read-write' | 'read-only'; expiresAt: number }>();
+
+// Clean up expired entries periodically (simple approach)
+function cleanupExpiredPendingAccessLevels() {
+  const now = Date.now();
+  for (const [key, value] of pendingAccessLevels.entries()) {
+    if (value.expiresAt < now) {
+      pendingAccessLevels.delete(key);
+    }
+  }
+}
+
 // All routes require JWT auth
 integrationsRoutes.use('*', jwtAuth);
 
@@ -26,22 +41,43 @@ integrationsRoutes.get('/', async (c) => {
     .from(integrations)
     .where(eq(integrations.userId, user.sub));
 
-  const publicIntegrations: IntegrationPublic[] = userIntegrations.map((int) => ({
-    id: int.id,
-    provider: int.provider as IntegrationPublic['provider'],
-    status: int.status as IntegrationPublic['status'],
-    lastSyncAt: int.lastSyncAt ?? undefined,
-    createdAt: int.createdAt,
-  }));
+  const publicIntegrations: IntegrationPublic[] = userIntegrations.map((int) => {
+    // Parse metadata to get access level
+    const metadata = int.metadata ? JSON.parse(int.metadata) : {};
+    return {
+      id: int.id,
+      provider: int.provider as IntegrationPublic['provider'],
+      status: int.status as IntegrationPublic['status'],
+      lastSyncAt: int.lastSyncAt ?? undefined,
+      createdAt: int.createdAt,
+      accessLevel: metadata.accessLevel || 'read-write', // Default to read-write
+    };
+  });
 
   return c.json({ data: publicIntegrations });
 });
 
+// Valid access levels for user preference
+type UserAccessLevel = 'read-write' | 'read-only';
+
 // POST /api/integrations/session - Create a Nango Connect session token
 // Frontend uses this token to open the Nango Connect UI
+// Accepts optional accessLevel ('read-write' | 'read-only') to store user's preference
 integrationsRoutes.post('/session', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<{ allowedIntegrations?: string[] }>().catch(() => ({} as { allowedIntegrations?: string[] }));
+  const body = await c.req.json<{
+    allowedIntegrations?: string[];
+    accessLevel?: UserAccessLevel;
+    provider?: string;
+  }>().catch(() => ({} as { allowedIntegrations?: string[]; accessLevel?: UserAccessLevel; provider?: string }));
+
+  // Validate accessLevel if provided
+  if (body.accessLevel && !['read-write', 'read-only'].includes(body.accessLevel)) {
+    return c.json(
+      { error: { message: 'Invalid accessLevel. Must be "read-write" or "read-only"' } },
+      400
+    );
+  }
 
   try {
     const nango = getNangoClient();
@@ -50,6 +86,16 @@ integrationsRoutes.post('/session', async (c) => {
       userEmail: user.email,
       allowedIntegrations: body.allowedIntegrations,
     });
+
+    // Store pending access level preference in session for callback to retrieve
+    // We'll store this in memory keyed by session token (simple approach)
+    // In production, you might use Redis or a separate table
+    if (body.accessLevel && body.provider) {
+      pendingAccessLevels.set(`${user.sub}:${body.provider}`, {
+        accessLevel: body.accessLevel,
+        expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+      });
+    }
 
     return c.json({
       data: {
@@ -71,12 +117,25 @@ integrationsRoutes.post('/session', async (c) => {
 });
 
 // POST /api/integrations/connect - Initiate OAuth connection (deprecated - use /session)
+// Accepts optional accessLevel ('read-write' | 'read-only') to store user's preference
 integrationsRoutes.post('/connect', async (c) => {
-  const body = await c.req.json<{ provider: string; subProvider?: string }>();
+  const body = await c.req.json<{
+    provider: string;
+    subProvider?: string;
+    accessLevel?: UserAccessLevel;
+  }>();
   const user = c.get('user');
 
   if (!body.provider) {
     return c.json({ error: { message: 'Provider is required' } }, 400);
+  }
+
+  // Validate accessLevel if provided
+  if (body.accessLevel && !['read-write', 'read-only'].includes(body.accessLevel)) {
+    return c.json(
+      { error: { message: 'Invalid accessLevel. Must be "read-write" or "read-only"' } },
+      400
+    );
   }
 
   // Map provider to Nango provider config key
@@ -106,6 +165,19 @@ integrationsRoutes.post('/connect', async (c) => {
   const nango = getNangoClient();
   const oauthUrl = nango.getConnectUrl(providerConfigKey, connectionId, callbackUrl);
 
+  // Store pending access level preference for callback to retrieve
+  if (body.accessLevel) {
+    pendingAccessLevels.set(`${user.sub}:${body.provider}`, {
+      accessLevel: body.accessLevel,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    });
+  }
+
+  // Build metadata with subProvider and accessLevel
+  const metadata: { subProvider?: string; accessLevel?: string } = {};
+  if (body.subProvider) metadata.subProvider = body.subProvider;
+  if (body.accessLevel) metadata.accessLevel = body.accessLevel;
+
   // Check if integration record exists, create or update
   const existingIntegration = await db
     .select()
@@ -122,18 +194,23 @@ integrationsRoutes.post('/connect', async (c) => {
       provider: body.provider,
       nangoConnectionId: connectionId,
       status: 'pending',
-      metadata: JSON.stringify({ subProvider: body.subProvider }),
+      metadata: JSON.stringify(metadata),
       createdAt: new Date(),
       updatedAt: new Date(),
     });
   } else {
-    // Update existing to pending
+    // Update existing to pending, preserve existing metadata and add new fields
+    const existingMetadata = existingIntegration[0].metadata
+      ? JSON.parse(existingIntegration[0].metadata)
+      : {};
+    const mergedMetadata = { ...existingMetadata, ...metadata };
+
     await db
       .update(integrations)
       .set({
         nangoConnectionId: connectionId,
         status: 'pending',
-        metadata: JSON.stringify({ subProvider: body.subProvider }),
+        metadata: JSON.stringify(mergedMetadata),
         updatedAt: new Date(),
       })
       .where(eq(integrations.id, existingIntegration[0].id));
@@ -158,6 +235,9 @@ integrationsRoutes.get('/callback', async (c) => {
   // Build redirect URL to frontend
   const webUrl = process.env.WEB_URL || 'http://localhost:5173';
 
+  // Clean up expired pending access levels
+  cleanupExpiredPendingAccessLevels();
+
   if (error) {
     // OAuth failed - redirect to integrations page with error
     const errorUrl = new URL(`${webUrl}/integrations`);
@@ -179,20 +259,40 @@ integrationsRoutes.get('/callback', async (c) => {
     .limit(1);
 
   if (integration.length > 0) {
+    const int = integration[0];
+
+    // Check if there's a pending access level preference for this user+provider
+    const pendingKey = `${int.userId}:${int.provider}`;
+    const pendingPref = pendingAccessLevels.get(pendingKey);
+
+    // Build updated metadata
+    const existingMetadata = int.metadata ? JSON.parse(int.metadata) : {};
+    const updatedMetadata = { ...existingMetadata };
+
+    // Apply pending access level if available, otherwise default to 'read-write'
+    if (pendingPref && pendingPref.expiresAt > Date.now()) {
+      updatedMetadata.accessLevel = pendingPref.accessLevel;
+      pendingAccessLevels.delete(pendingKey); // Clean up
+    } else if (!updatedMetadata.accessLevel) {
+      // Default to read-write if no preference set
+      updatedMetadata.accessLevel = 'read-write';
+    }
+
     await db
       .update(integrations)
       .set({
         status: 'connected',
+        metadata: JSON.stringify(updatedMetadata),
         lastSyncAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(integrations.id, integration[0].id));
+      .where(eq(integrations.id, int.id));
 
     /*
      * INTEGRATION ONBOARDING: Advance user's onboarding when first integration connects.
      * This is triggered by the OAuth callback after successful connection.
      */
-    const userId = integration[0].userId;
+    const userId = int.userId;
     const [user] = await db
       .select()
       .from(users)
@@ -331,6 +431,55 @@ integrationsRoutes.get('/:id/token', async (c) => {
   }
 });
 
+// PATCH /api/integrations/:id/access-level - Update access level for an integration
+// Allows users to change their access level preference (read-write or read-only)
+integrationsRoutes.patch('/:id/access-level', async (c) => {
+  const user = c.get('user');
+  const integrationId = c.req.param('id');
+  const body = await c.req.json<{ accessLevel: UserAccessLevel }>();
+
+  if (!body.accessLevel || !['read-write', 'read-only'].includes(body.accessLevel)) {
+    return c.json(
+      { error: { message: 'Invalid accessLevel. Must be "read-write" or "read-only"' } },
+      400
+    );
+  }
+
+  // Get the integration
+  const integration = await db
+    .select()
+    .from(integrations)
+    .where(and(eq(integrations.id, integrationId), eq(integrations.userId, user.sub)))
+    .limit(1);
+
+  if (integration.length === 0) {
+    return c.json({ error: { message: 'Integration not found' } }, 404);
+  }
+
+  const int = integration[0];
+
+  // Update metadata with new access level
+  const existingMetadata = int.metadata ? JSON.parse(int.metadata) : {};
+  const updatedMetadata = { ...existingMetadata, accessLevel: body.accessLevel };
+
+  await db
+    .update(integrations)
+    .set({
+      metadata: JSON.stringify(updatedMetadata),
+      updatedAt: new Date(),
+    })
+    .where(eq(integrations.id, integrationId));
+
+  return c.json({
+    data: {
+      id: int.id,
+      provider: int.provider,
+      accessLevel: body.accessLevel,
+      message: `Access level updated to ${body.accessLevel}`,
+    },
+  });
+});
+
 // GET /api/integrations/status/:provider - Check connection status for a provider
 integrationsRoutes.get('/status/:provider', async (c) => {
   const user = c.get('user');
@@ -381,11 +530,15 @@ integrationsRoutes.get('/status/:provider', async (c) => {
     }
   }
 
+  // Parse metadata to get access level
+  const metadata = int.metadata ? JSON.parse(int.metadata) : {};
+
   return c.json({
     data: {
       connected: int.status === 'connected',
       status: int.status,
       lastSyncAt: int.lastSyncAt,
+      accessLevel: metadata.accessLevel || 'read-write', // Default to read-write
     },
   });
 });

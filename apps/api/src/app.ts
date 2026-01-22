@@ -34,12 +34,14 @@ import { onboardingRoutes } from './routes/onboarding.js';
 import { organizationsRoutes } from './routes/organizations.js';
 import { invitesRoutes } from './routes/invites.js';
 import { webhooksRoutes } from './routes/webhooks.js';
+import { capabilityProfilesRoutes } from './routes/capability-profiles.js';
 
 // Skill API routes (API key auth) - called by Claude Code skills
 import { v1AtsRoutes } from './routes/v1/ats.js';
 import { v1MeRoutes } from './routes/v1/me.js';
 import { v1ScrapeRoutes } from './routes/v1/scrape.js';
 import { v1ErrorsRoutes } from './routes/v1/errors.js';
+import { v1EmailRoutes } from './routes/v1/email.js';
 
 // WebSocket route handlers
 import { createWsScrapeHandler } from './routes/ws/scrape.js';
@@ -92,6 +94,7 @@ app.route('/api/chat', chatRoutes);           // LLM chat with skill suggestions
 app.route('/api/settings', settingsRoutes);   // System settings (admin)
 app.route('/api/organizations', organizationsRoutes); // Organization management
 app.route('/api/invites', invitesRoutes);     // Organization invites
+app.route('/api/capability-profiles', capabilityProfilesRoutes); // Capability profile management
 
 // ============ SKILL API ROUTES (API Key Auth) ============
 // Called by Claude Code skills - requires Authorization: Bearer sk_live_xxx
@@ -99,6 +102,7 @@ app.route('/api/v1/ats', v1AtsRoutes);        // ATS operations (search, CRUD)
 app.route('/api/v1/me', v1MeRoutes);          // Get current user info
 app.route('/api/v1/scrape', v1ScrapeRoutes);  // Web scraping task management
 app.route('/api/v1/errors', v1ErrorsRoutes);  // Client error reporting (ephemeral architecture)
+app.route('/api/v1/email', v1EmailRoutes);    // Email operations (Gmail/Outlook)
 
 // ============ WEBSOCKET ROUTES ============
 // Real-time updates for long-running operations

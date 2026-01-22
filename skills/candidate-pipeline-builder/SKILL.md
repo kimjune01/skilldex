@@ -8,6 +8,9 @@ capabilities:
   - Add new candidates to ATS
   - Generate personalized outreach emails
   - Log sourcing activity in ATS notes
+requires:
+  ats: read-write
+  email: read-write
 allowed-tools:
   - Bash
   - Read

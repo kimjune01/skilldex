@@ -104,6 +104,15 @@ export const organizations = sqliteTable('organizations', {
   webUiEnabled: integer('web_ui_enabled', { mode: 'boolean' }).notNull().default(false),
   desktopEnabled: integer('desktop_enabled', { mode: 'boolean' }).notNull().default(true),
 
+  // Integration permissions - admin controls read/write access per category
+  // JSON: { "ats": "read-write", "email": "read-only", "calendar": "disabled" }
+  // null = all integrations allowed with full access
+  integrationPermissions: text('integration_permissions'),
+
+  // Skill allowlist - admin can disable specific skills
+  // JSON array: ["skill-slug-1", "skill-slug-2"] or null (all enabled)
+  disabledSkills: text('disabled_skills'),
+
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

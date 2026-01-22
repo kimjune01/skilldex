@@ -10,7 +10,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const skillsDir = join(__dirname, '../../../skills');
 
 // Parse YAML-like frontmatter from SKILL.md files
-function parseSkillFrontmatter(slug: string): { intent?: string; capabilities?: string[]; instructions?: string } {
+function parseSkillFrontmatter(slug: string): {
+  intent?: string;
+  capabilities?: string[];
+  requires?: Record<string, string>;
+  instructions?: string;
+} {
   const skillPath = join(skillsDir, slug, 'SKILL.md');
   if (!existsSync(skillPath)) {
     return {};
@@ -27,6 +32,7 @@ function parseSkillFrontmatter(slug: string): { intent?: string; capabilities?: 
 
   let intent: string | undefined;
   let capabilities: string[] = [];
+  let requires: Record<string, string> | undefined;
 
   // Parse intent
   const intentMatch = frontmatter.match(/^intent:\s*(.+)$/m);
@@ -43,7 +49,21 @@ function parseSkillFrontmatter(slug: string): { intent?: string; capabilities?: 
       .filter(Boolean);
   }
 
-  return { intent, capabilities, instructions };
+  // Parse requires (YAML object with category: access-level)
+  const requiresMatch = frontmatter.match(/^requires:\n((?:\s+\w+:\s+.+\n?)+)/m);
+  if (requiresMatch) {
+    requires = {};
+    const lines = requiresMatch[1].split('\n').filter(Boolean);
+    for (const line of lines) {
+      const match = line.match(/^\s+(\w+):\s+(.+)$/);
+      if (match) {
+        const [, category, accessLevel] = match;
+        requires[category.trim()] = accessLevel.trim();
+      }
+    }
+  }
+
+  return { intent, capabilities, requires, instructions };
 }
 
 async function seed() {
@@ -152,6 +172,20 @@ async function seed() {
 
   console.log('Created Acme member');
 
+  // Create demo user for dev environment
+  const demoUserId = 'user-demo';
+  await db.insert(users).values({
+    id: demoUserId,
+    email: 'demo@skillomatic.technology',
+    passwordHash: hashSync('demopassword123', 10),
+    name: 'Demo User',
+    isAdmin: false,
+    isSuperAdmin: false,
+    organizationId: defaultOrgId,
+  }).onConflictDoNothing();
+
+  console.log('Created demo user');
+
   // ============ SAMPLE INVITE ============
 
   // Create a sample pending invite (for demo purposes)
@@ -234,13 +268,33 @@ async function seed() {
   // Helper to build skill with frontmatter from SKILL.md
   const buildSkill = (id: string, slug: string, name: string, description: string, category: string, requiredIntegrations: string[], requiredScopes: string[], isEnabled = true) => {
     const frontmatter = parseSkillFrontmatter(slug);
+
+    // Use 'requires' from frontmatter if available, otherwise fall back to requiredIntegrations list
+    // New format: {"ats": "read-write", "email": "read-only"}
+    // Old format: ["ats", "email"] (will be treated as read-write for each)
+    let requiredIntegrationsJson: string;
+    if (frontmatter.requires && Object.keys(frontmatter.requires).length > 0) {
+      requiredIntegrationsJson = JSON.stringify(frontmatter.requires);
+    } else {
+      // Convert old format to new format (assuming read-write for backwards compatibility)
+      const legacyFormat: Record<string, string> = {};
+      for (const provider of requiredIntegrations) {
+        // Map provider names to categories
+        const category = provider === 'gmail' || provider === 'email' ? 'email' :
+                        provider === 'ats' || provider === 'greenhouse' || provider === 'lever' ? 'ats' :
+                        provider === 'calendar' || provider === 'calendly' ? 'calendar' : provider;
+        legacyFormat[category] = 'read-write';
+      }
+      requiredIntegrationsJson = Object.keys(legacyFormat).length > 0 ? JSON.stringify(legacyFormat) : JSON.stringify({});
+    }
+
     return {
       id,
       slug,
       name,
       description,
       category,
-      requiredIntegrations: JSON.stringify(requiredIntegrations),
+      requiredIntegrations: requiredIntegrationsJson,
       requiredScopes: JSON.stringify(requiredScopes),
       intent: frontmatter.intent || null,
       capabilities: frontmatter.capabilities?.length ? JSON.stringify(frontmatter.capabilities) : null,
@@ -341,13 +395,15 @@ async function seed() {
   console.log('  - Default Organization (slug: default)');
   console.log('  - Acme Corp (slug: acme)');
 
-  console.log('\nUsers (password: changeme):');
-  console.log('  Super Admin:');
+  console.log('\nUsers:');
+  console.log('  Demo User:');
+  console.log('    - demo@skillomatic.technology / demopassword123 (member, Default Org)');
+  console.log('  Super Admin (password: changeme):');
   console.log('    - admin@example.com (super admin, Default Org)');
-  console.log('  Org Admins:');
+  console.log('  Org Admins (password: changeme):');
   console.log('    - orgadmin@example.com (org admin, Default Org)');
   console.log('    - admin@acme.com (org admin, Acme Corp)');
-  console.log('  Members:');
+  console.log('  Members (password: changeme):');
   console.log('    - member@example.com (member, Default Org)');
   console.log('    - recruiter@acme.com (member, Acme Corp)');
 
