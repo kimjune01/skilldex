@@ -42,6 +42,7 @@ import { v1MeRoutes } from './routes/v1/me.js';
 import { v1ScrapeRoutes } from './routes/v1/scrape.js';
 import { v1ErrorsRoutes } from './routes/v1/errors.js';
 import { v1EmailRoutes } from './routes/v1/email.js';
+import { v1DatabaseRoutes } from './routes/v1/database.js';
 
 // WebSocket route handlers
 import { createWsScrapeHandler } from './routes/ws/scrape.js';
@@ -103,6 +104,7 @@ app.route('/api/v1/me', v1MeRoutes);          // Get current user info
 app.route('/api/v1/scrape', v1ScrapeRoutes);  // Web scraping task management
 app.route('/api/v1/errors', v1ErrorsRoutes);  // Client error reporting (ephemeral architecture)
 app.route('/api/v1/email', v1EmailRoutes);    // Email operations (Gmail/Outlook)
+app.route('/api/v1/database', v1DatabaseRoutes);  // Database queries (super admin only)
 
 // ============ WEBSOCKET ROUTES ============
 // Real-time updates for long-running operations

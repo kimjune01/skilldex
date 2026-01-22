@@ -180,6 +180,7 @@ skillsRoutes.get('/config', async (c) => {
         hasATS: !!profile.ats,
         hasCalendar: !!(profile.calendar?.ical || profile.calendar?.calendly),
         hasEmail: !!profile.email,
+        isSuperAdmin: !!user.isSuperAdmin,
         llmProvider: profile.llm?.provider,
         atsProvider: profile.ats?.provider,
       },

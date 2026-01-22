@@ -9,6 +9,7 @@ import type { SkillomaticClient, CapabilityProfile } from '../api-client.js';
 import { registerAtsTools } from './ats.js';
 import { registerScrapeTools } from './scrape.js';
 import { registerEmailTools } from './email.js';
+import { registerDatabaseTools } from './database.js';
 import { log } from '../logger.js';
 
 /**
@@ -127,6 +128,13 @@ export async function registerTools(
   //   registeredTools.push('check_availability', 'schedule_meeting');
   //   log.info('Calendar tools registered');
   // }
+
+  // Database tools - only for super admins
+  if (profile.isSuperAdmin) {
+    registerDatabaseTools(server, client);
+    registeredTools.push('list_database_tables', 'get_table_schema', 'query_database', 'get_database_stats');
+    log.info('Database tools registered (super admin)');
+  }
 
   log.info(`Registered ${registeredTools.length} tools: ${registeredTools.join(', ')}`);
 }

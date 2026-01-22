@@ -274,4 +274,47 @@ export class SkillomaticClient {
     const params = maxResults ? `?maxResults=${maxResults}` : '';
     return this.request<{ drafts: EmailDraft[] }>(`/api/v1/email/drafts${params}`);
   }
+
+  // ============ Database Operations (Super Admin Only) ============
+
+  /**
+   * List available database tables.
+   */
+  async listDatabaseTables(): Promise<{ tables: string[]; redactedColumns: string[] }> {
+    return this.request<{ tables: string[]; redactedColumns: string[] }>('/api/v1/database/tables');
+  }
+
+  /**
+   * Get schema for a specific table.
+   */
+  async getTableSchema(table: string): Promise<{ table: string; columns: unknown[] }> {
+    return this.request<{ table: string; columns: unknown[] }>(`/api/v1/database/schema/${table}`);
+  }
+
+  /**
+   * Execute a read-only SQL query.
+   */
+  async queryDatabase(query: string, limit?: number): Promise<{
+    rows: Record<string, unknown>[];
+    rowCount: number;
+    durationMs: number;
+    query: string;
+  }> {
+    return this.request<{
+      rows: Record<string, unknown>[];
+      rowCount: number;
+      durationMs: number;
+      query: string;
+    }>('/api/v1/database/query', {
+      method: 'POST',
+      body: JSON.stringify({ query, limit }),
+    });
+  }
+
+  /**
+   * Get row counts for all tables.
+   */
+  async getDatabaseStats(): Promise<{ stats: Record<string, number> }> {
+    return this.request<{ stats: Record<string, number> }>('/api/v1/database/stats');
+  }
 }

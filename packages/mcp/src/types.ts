@@ -27,6 +27,7 @@ export interface CapabilityProfile {
   hasATS: boolean;
   hasCalendar: boolean;
   hasEmail: boolean;
+  isSuperAdmin?: boolean;
   llmProvider?: string;
   atsProvider?: string;
 }
