@@ -10,6 +10,14 @@ declare module "sst" {
       "type": "sst.aws.Function"
       "url": string
     }
+    "GoogleClientId": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "GoogleClientSecret": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "JwtSecret": {
       "type": "sst.sst.Secret"
       "value": string

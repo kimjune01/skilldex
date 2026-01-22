@@ -289,7 +289,7 @@ export const PROVIDER_CONFIG_KEYS: Record<string, string> = {
   calendly: 'calendly',
 
   // Email providers
-  gmail: 'gmail',
+  gmail: 'google-mail',
   outlook: 'outlook',
 
   // Generic mappings (for backwards compatibility)

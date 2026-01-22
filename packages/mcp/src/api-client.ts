@@ -11,6 +11,10 @@ import type {
   ConfigResponse,
   Candidate,
   ScrapeTask,
+  EmailProfile,
+  EmailDraft,
+  SentEmail,
+  EmailSearchResult,
 } from './types.js';
 
 // Re-export types for consumers
@@ -22,6 +26,10 @@ export type {
   Candidate,
   ScrapeTask,
   ApiError,
+  EmailProfile,
+  EmailDraft,
+  SentEmail,
+  EmailSearchResult,
 } from './types.js';
 
 export class SkillomaticClient {
@@ -204,5 +212,66 @@ export class SkillomaticClient {
     }
 
     throw new Error(`Scrape task ${id} timed out after ${timeout}ms`);
+  }
+
+  // ============ Email Operations ============
+
+  /**
+   * Get the user's email profile.
+   */
+  async getEmailProfile(): Promise<EmailProfile> {
+    return this.request<EmailProfile>('/api/v1/email/profile');
+  }
+
+  /**
+   * Create an email draft.
+   */
+  async createDraft(data: {
+    to: string;
+    subject: string;
+    body: string;
+    cc?: string;
+    bcc?: string;
+    bodyType?: 'text' | 'html';
+  }): Promise<EmailDraft> {
+    return this.request<EmailDraft>('/api/v1/email/draft', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Send an email directly.
+   */
+  async sendEmail(data: {
+    to: string;
+    subject: string;
+    body: string;
+    cc?: string;
+    bcc?: string;
+    bodyType?: 'text' | 'html';
+  }): Promise<SentEmail> {
+    return this.request<SentEmail>('/api/v1/email/send', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Search user's mailbox.
+   */
+  async searchEmails(query: string, maxResults?: number): Promise<EmailSearchResult> {
+    return this.request<EmailSearchResult>('/api/v1/email/search', {
+      method: 'POST',
+      body: JSON.stringify({ query, maxResults: maxResults || 10 }),
+    });
+  }
+
+  /**
+   * List email drafts.
+   */
+  async listDrafts(maxResults?: number): Promise<{ drafts: EmailDraft[] }> {
+    const params = maxResults ? `?maxResults=${maxResults}` : '';
+    return this.request<{ drafts: EmailDraft[] }>(`/api/v1/email/drafts${params}`);
   }
 }

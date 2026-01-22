@@ -40,7 +40,7 @@ const features = [
 ];
 
 const steps = [
-  { number: '01', title: 'Connect Your Tools', description: 'Link your ATS, email, and calendar' },
+  { number: '01', title: 'Connect Your Tools', description: 'Link your ATS, email, calendar, and browser extension' },
   { number: '02', title: 'Choose Your AI', description: 'Use our web chat or your favorite desktop app' },
   { number: '03', title: 'Start Recruiting', description: 'Chat naturally to automate your workflow' },
 ];
@@ -194,11 +194,8 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
-              Up and Running in 3 Steps
+              Up and Running in just a few minutes
             </h2>
-            <p className="text-lg text-[hsl(220_15%_45%)]">
-              From zero to recruiting automation in under 5 minutes
-            </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">

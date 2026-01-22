@@ -8,6 +8,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SkillomaticClient, CapabilityProfile } from '../api-client.js';
 import { registerAtsTools } from './ats.js';
 import { registerScrapeTools } from './scrape.js';
+import { registerEmailTools } from './email.js';
 import { log } from '../logger.js';
 
 /**
@@ -108,12 +109,17 @@ export async function registerTools(
   registeredTools.push('create_scrape_task', 'get_scrape_task', 'scrape_url');
   log.info('Scrape tools registered');
 
-  // TODO: Email tools - only if email is connected
-  // if (profile.hasEmail) {
-  //   registerEmailTools(server, client);
-  //   registeredTools.push('draft_email', 'send_email');
-  //   log.info('Email tools registered');
-  // }
+  // Email tools - only if email is connected
+  if (profile.hasEmail) {
+    // Note: canSendEmail flag should come from capability profile
+    // For now, we pass true as default since the profile doesn't have this flag yet
+    // The API will still enforce canSendEmail from the server-side capability profile
+    registerEmailTools(server, client, true);
+    registeredTools.push('get_email_profile', 'search_emails', 'list_email_drafts', 'draft_email', 'send_email');
+    log.info('Email tools registered');
+  } else {
+    log.info('Email tools not registered (no email integration connected)');
+  }
 
   // TODO: Calendar tools - only if calendar is connected
   // if (profile.hasCalendar) {

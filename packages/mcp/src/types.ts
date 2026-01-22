@@ -73,3 +73,41 @@ export interface ApiError {
   message: string;
   code?: string;
 }
+
+// Email types
+export interface EmailAddress {
+  email: string;
+  name?: string;
+}
+
+export interface EmailProfile {
+  emailAddress: string;
+  messagesTotal?: number;
+  threadsTotal?: number;
+}
+
+export interface EmailDraft {
+  draftId: string;
+  messageId: string;
+  threadId?: string;
+}
+
+export interface SentEmail {
+  messageId: string;
+  threadId?: string;
+}
+
+export interface EmailSearchResult {
+  emails: EmailMessage[];
+  total: number;
+}
+
+export interface EmailMessage {
+  id: string;
+  threadId: string;
+  snippet: string;
+  subject?: string;
+  from?: string;
+  to?: string;
+  date?: string;
+}

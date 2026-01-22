@@ -25,6 +25,11 @@ import {
   RefreshCw,
   TrendingUp,
   Play,
+  Shield,
+  Eye,
+  Lock,
+  KeyRound,
+  Wrench,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
@@ -447,8 +452,192 @@ export default function ForRecruiters() {
         </div>
       </section>
 
-      {/* Integrations Section */}
+      {/* Trust & Safety Section */}
       <section className="py-20 px-6 bg-[hsl(220_20%_97%)]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <Badge className="mb-4 bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold">
+              <Shield className="h-3 w-3 mr-1" />
+              Enterprise-Grade Security
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
+              You Control What the AI Can Do
+            </h2>
+            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
+              Not ready to let AI take action? Start with read-only access.
+              Every integration uses scoped permissions—you decide exactly what Skillomatic can see and do.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            {/* BYOAI - Your AI, Your Data */}
+            <div className="card-robot rounded-2xl p-6">
+              <div className="h-12 w-12 rounded-xl bg-blue-500 flex items-center justify-center mb-4">
+                <Eye className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-lg font-black text-[hsl(220_30%_20%)] mb-2">
+                Bring Your Own AI
+              </h3>
+              <p className="text-[hsl(220_15%_45%)] text-sm mb-4">
+                Use your own Claude API key. Your conversations go directly to Anthropic—we never see them.
+                Your data can't train our models because we don't have models.
+              </p>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Your API key, your data
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  No training on your conversations
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Anthropic's enterprise privacy
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  We just provide the tools
+                </li>
+              </ul>
+            </div>
+
+            {/* Scoped Permissions */}
+            <div className="card-robot rounded-2xl p-6">
+              <div className="h-12 w-12 rounded-xl bg-amber-500 flex items-center justify-center mb-4">
+                <KeyRound className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-lg font-black text-[hsl(220_30%_20%)] mb-2">
+                Scoped Permissions + RBAC
+              </h3>
+              <p className="text-[hsl(220_15%_45%)] text-sm mb-4">
+                Grant access to specific tools and actions. Role-based access control lets IT
+                define what each team member's AI can do.
+              </p>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Role-based access control (RBAC)
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Per-integration controls
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Read vs. write toggles
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Admin-managed policies
+                </li>
+              </ul>
+            </div>
+
+            {/* Read-Only Start */}
+            <div className="card-robot rounded-2xl p-6">
+              <div className="h-12 w-12 rounded-xl bg-purple-500 flex items-center justify-center mb-4">
+                <Lock className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-lg font-black text-[hsl(220_30%_20%)] mb-2">
+                Start Read-Only
+              </h3>
+              <p className="text-[hsl(220_15%_45%)] text-sm mb-4">
+                Not ready to let AI take action? Start with read-only access.
+                Search and analyze without making any changes.
+              </p>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Search candidates in your ATS
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  View LinkedIn profiles
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Draft messages (you send them)
+                </li>
+                <li className="flex items-center gap-2 text-[hsl(220_15%_45%)]">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                  Enable writes when ready
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Trust progression */}
+          <div className="robot-panel rounded-2xl p-6 md:p-8">
+            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
+              <div className="text-center md:text-left flex-1">
+                <h3 className="text-xl font-black text-[hsl(220_30%_20%)] mb-2">
+                  Start Cautious, Scale Confidently
+                </h3>
+                <p className="text-[hsl(220_15%_45%)] text-sm">
+                  Most recruiters start with read-only access and gradually enable more automation
+                  as they build trust. There's no pressure to go full autopilot—use what you're comfortable with.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-sm flex-shrink-0">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <Eye className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <span className="text-[hsl(220_15%_50%)] text-xs font-medium">BYOAI</span>
+                </div>
+                <ArrowRight className="h-4 w-4 text-[hsl(220_15%_70%)]" />
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    <Lock className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <span className="text-[hsl(220_15%_50%)] text-xs font-medium">Read-Only</span>
+                </div>
+                <ArrowRight className="h-4 w-4 text-[hsl(220_15%_70%)]" />
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <KeyRound className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <span className="text-[hsl(220_15%_50%)] text-xs font-medium">Scoped</span>
+                </div>
+                <ArrowRight className="h-4 w-4 text-[hsl(220_15%_70%)]" />
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <Zap className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <span className="text-[hsl(220_15%_50%)] text-xs font-medium">Full Access</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Skills callout */}
+          <div className="mt-6 card-robot rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6">
+            <div className="h-14 w-14 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
+              <Wrench className="h-7 w-7 text-white" />
+            </div>
+            <div className="text-center md:text-left flex-1">
+              <h3 className="text-lg font-black text-[hsl(220_30%_20%)] mb-1">
+                Build Your Own Skills
+              </h3>
+              <p className="text-[hsl(220_15%_45%)] text-sm">
+                Got a unique workflow? Build custom skills for any process—internal tools, niche ATS systems,
+                proprietary databases. If it has an API, you can automate it.
+              </p>
+            </div>
+            <a
+              href="mailto:email@skillomatic.technology?subject=Custom%20Skills%20Interest"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors flex-shrink-0"
+            >
+              Learn More
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Integrations Section */}
+      <section className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">

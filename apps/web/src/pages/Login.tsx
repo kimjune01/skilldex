@@ -33,9 +33,13 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
+const isDev = import.meta.env.DEV;
+const DEMO_EMAIL = 'demo@skillomatic.technology';
+const DEMO_PASSWORD = 'demopassword123';
+
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(isDev ? DEMO_EMAIL : '');
+  const [password, setPassword] = useState(isDev ? DEMO_PASSWORD : '');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, loginWithToken } = useAuth();
@@ -146,6 +150,14 @@ export default function Login() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {isDev && (
+              <Alert className="bg-amber-50 border-amber-200">
+                <AlertDescription className="text-amber-800 text-xs">
+                  <strong>Dev mode:</strong> Demo credentials pre-filled
+                </AlertDescription>
               </Alert>
             )}
 
