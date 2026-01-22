@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono';
+import type { Context, Next } from 'hono';
 import { jwtAuth } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
 import {
@@ -29,9 +30,9 @@ capabilityProfilesRoutes.use('*', jwtAuth);
 capabilityProfilesRoutes.use('*', withOrganization);
 
 // Middleware to require org admin
-async function requireOrgAdmin(c: any, next: any) {
-  const user = c.get('user');
-  if (!user.isAdmin && !user.isSuperAdmin) {
+async function requireOrgAdmin(c: Context, next: Next) {
+  const user = c.get('user') as { isAdmin?: boolean; isSuperAdmin?: boolean } | undefined;
+  if (!user?.isAdmin && !user?.isSuperAdmin) {
     return c.json({ error: { message: 'Forbidden - Org admin required' } }, 403);
   }
   await next();
@@ -78,10 +79,15 @@ capabilityProfilesRoutes.put('/', requireOrgAdmin, async (c) => {
     return c.json({ error: { message: 'No organization assigned' } }, 400);
   }
 
-  const body = await c.req.json<{
+  let body: {
     integrations?: Partial<OrgIntegrationPermissions>;
     disabledSkills?: string[];
-  }>();
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { message: 'Invalid JSON body' } }, 400);
+  }
 
   // Validate access levels
   const validLevels: AccessLevel[] = ['read-write', 'read-only', 'disabled'];
@@ -142,7 +148,12 @@ capabilityProfilesRoutes.put('/integrations', requireOrgAdmin, async (c) => {
     return c.json({ error: { message: 'No organization assigned' } }, 400);
   }
 
-  const body = await c.req.json<Partial<OrgIntegrationPermissions>>();
+  let body: Partial<OrgIntegrationPermissions>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { message: 'Invalid JSON body' } }, 400);
+  }
 
   // Validate access levels
   const validLevels: AccessLevel[] = ['read-write', 'read-only', 'disabled'];
@@ -178,7 +189,12 @@ capabilityProfilesRoutes.put('/disabled-skills', requireOrgAdmin, async (c) => {
     return c.json({ error: { message: 'No organization assigned' } }, 400);
   }
 
-  const body = await c.req.json<{ skills: string[] }>();
+  let body: { skills: string[] };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { message: 'Invalid JSON body' } }, 400);
+  }
 
   if (!Array.isArray(body.skills) || !body.skills.every(s => typeof s === 'string')) {
     return c.json(

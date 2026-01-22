@@ -13,7 +13,7 @@
 
 import { db } from '@skillomatic/db';
 import { organizations, integrations } from '@skillomatic/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 
 /**
  * Access level for an integration category
@@ -108,7 +108,12 @@ export async function getOrgDisabledSkills(orgId: string): Promise<string[]> {
   }
 
   try {
-    return JSON.parse(org.disabledSkills);
+    const parsed = JSON.parse(org.disabledSkills);
+    // Validate it's an array of strings
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter((item): item is string => typeof item === 'string');
   } catch {
     return [];
   }
@@ -150,6 +155,11 @@ export async function updateOrgDisabledSkills(
 }
 
 /**
+ * Valid access levels that can be stored in metadata
+ */
+const VALID_ACCESS_LEVELS: AccessLevel[] = ['read-write', 'read-only', 'disabled', 'none'];
+
+/**
  * Get the user's access level for a connected integration from metadata
  */
 function getUserAccessLevel(integration: { metadata: string | null }): AccessLevel {
@@ -159,7 +169,11 @@ function getUserAccessLevel(integration: { metadata: string | null }): AccessLev
 
   try {
     const meta: IntegrationMetadata = JSON.parse(integration.metadata);
-    return meta.accessLevel || 'read-write';
+    // Validate that the access level is a valid value
+    if (meta.accessLevel && VALID_ACCESS_LEVELS.includes(meta.accessLevel)) {
+      return meta.accessLevel;
+    }
+    return 'read-write';
   } catch {
     return 'read-write';
   }
@@ -244,45 +258,52 @@ export function getEffectiveAccess(
 
 /**
  * Get all user's connected integrations grouped by category
+ *
+ * Optimized to use a single database query for both user-specific
+ * and org-wide integrations, filtering org-wide in memory.
  */
 export async function getUserIntegrationsByCategory(
   userId: string,
   organizationId: string
 ): Promise<Record<IntegrationCategory, Array<{ id: string; provider: string; metadata: string | null }>>> {
-  const userIntegrations = await db
+  // Single query: get user's integrations OR org's integrations (for org-wide filtering)
+  const allIntegrations = await db
     .select()
     .from(integrations)
     .where(
       and(
-        eq(integrations.userId, userId),
-        eq(integrations.status, 'connected')
+        eq(integrations.status, 'connected'),
+        or(
+          eq(integrations.userId, userId),
+          eq(integrations.organizationId, organizationId)
+        )
       )
     );
 
-  // Also get org-wide integrations
-  const orgIntegrations = await db
-    .select()
-    .from(integrations)
-    .where(
-      and(
-        eq(integrations.organizationId, organizationId),
-        eq(integrations.status, 'connected')
-      )
-    );
+  // Separate user integrations and filter org-wide integrations
+  const userIntegrations: typeof allIntegrations = [];
+  const orgWideIntegrations: typeof allIntegrations = [];
 
-  // Filter org-wide integrations
-  const orgWide = orgIntegrations.filter((int) => {
-    if (!int.metadata) return false;
-    try {
-      const meta = JSON.parse(int.metadata);
-      return meta.isOrgWide === true;
-    } catch {
-      return false;
+  for (const int of allIntegrations) {
+    if (int.userId === userId) {
+      userIntegrations.push(int);
+    } else {
+      // Check if it's org-wide
+      if (int.metadata) {
+        try {
+          const meta = JSON.parse(int.metadata);
+          if (meta.isOrgWide === true) {
+            orgWideIntegrations.push(int);
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
     }
-  });
+  }
 
-  // Combine and dedupe by provider
-  const all = [...userIntegrations, ...orgWide];
+  // Combine and dedupe by ID
+  const all = [...userIntegrations, ...orgWideIntegrations];
   const byCategory: Record<IntegrationCategory, Array<{ id: string; provider: string; metadata: string | null }>> = {
     ats: [],
     email: [],
@@ -338,12 +359,29 @@ export function canWrite(level: AccessLevel): boolean {
 }
 
 /**
+ * Valid access levels for user preference (subset of AccessLevel)
+ * Users can only choose read-write or read-only; disabled/none are system-set
+ */
+export type UserAccessLevel = 'read-write' | 'read-only';
+
+/**
  * Update user's access level for an integration
+ *
+ * @param integrationId - The integration ID to update
+ * @param userId - The user ID (for ownership verification)
+ * @param accessLevel - The new access level (must be 'read-write' or 'read-only')
+ * @throws Error if integration not found, user doesn't own it, or invalid access level
  */
 export async function updateUserAccessLevel(
   integrationId: string,
-  accessLevel: AccessLevel
+  userId: string,
+  accessLevel: UserAccessLevel
 ): Promise<void> {
+  // Validate access level
+  if (accessLevel !== 'read-write' && accessLevel !== 'read-only') {
+    throw new Error('Invalid access level. Must be "read-write" or "read-only"');
+  }
+
   const [integration] = await db
     .select()
     .from(integrations)
@@ -352,6 +390,11 @@ export async function updateUserAccessLevel(
 
   if (!integration) {
     throw new Error('Integration not found');
+  }
+
+  // Verify ownership
+  if (integration.userId !== userId) {
+    throw new Error('Not authorized to modify this integration');
   }
 
   let metadata: IntegrationMetadata = {};

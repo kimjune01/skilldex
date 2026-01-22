@@ -4,7 +4,6 @@ import {
   providerToCategory,
   canRead,
   canWrite,
-  type AccessLevel,
   type OrgIntegrationPermissions,
 } from '../lib/integration-permissions.js';
 

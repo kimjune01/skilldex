@@ -3,7 +3,7 @@ import { db } from '@skillomatic/db';
 import { integrations, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
-import type { IntegrationPublic } from '@skillomatic/shared';
+import type { IntegrationPublic, IntegrationAccessLevel } from '@skillomatic/shared';
 import {
   getNangoClient,
   generateConnectionId,
@@ -13,21 +13,6 @@ import {
 import { randomUUID } from 'crypto';
 
 export const integrationsRoutes = new Hono();
-
-// In-memory store for pending access level preferences during OAuth flow
-// Key: `${userId}:${provider}`, Value: { accessLevel, expiresAt }
-// This is cleaned up on callback or after expiration
-const pendingAccessLevels = new Map<string, { accessLevel: 'read-write' | 'read-only'; expiresAt: number }>();
-
-// Clean up expired entries periodically (simple approach)
-function cleanupExpiredPendingAccessLevels() {
-  const now = Date.now();
-  for (const [key, value] of pendingAccessLevels.entries()) {
-    if (value.expiresAt < now) {
-      pendingAccessLevels.delete(key);
-    }
-  }
-}
 
 // All routes require JWT auth
 integrationsRoutes.use('*', jwtAuth);
@@ -43,14 +28,27 @@ integrationsRoutes.get('/', async (c) => {
 
   const publicIntegrations: IntegrationPublic[] = userIntegrations.map((int) => {
     // Parse metadata to get access level
-    const metadata = int.metadata ? JSON.parse(int.metadata) : {};
+    let metadata: Record<string, unknown> = {};
+    if (int.metadata) {
+      try {
+        metadata = JSON.parse(int.metadata);
+      } catch {
+        // Ignore malformed metadata
+      }
+    }
+    // Validate and default access level
+    const rawAccessLevel = metadata.accessLevel;
+    const accessLevel: IntegrationAccessLevel =
+      rawAccessLevel === 'read-write' || rawAccessLevel === 'read-only'
+        ? rawAccessLevel
+        : 'read-write';
     return {
       id: int.id,
       provider: int.provider as IntegrationPublic['provider'],
       status: int.status as IntegrationPublic['status'],
       lastSyncAt: int.lastSyncAt ?? undefined,
       createdAt: int.createdAt,
-      accessLevel: metadata.accessLevel || 'read-write', // Default to read-write
+      accessLevel,
     };
   });
 
@@ -87,14 +85,50 @@ integrationsRoutes.post('/session', async (c) => {
       allowedIntegrations: body.allowedIntegrations,
     });
 
-    // Store pending access level preference in session for callback to retrieve
-    // We'll store this in memory keyed by session token (simple approach)
-    // In production, you might use Redis or a separate table
+    // Store pending access level in the database (in the integration record's metadata)
+    // This ensures it works across multiple server instances
     if (body.accessLevel && body.provider) {
-      pendingAccessLevels.set(`${user.sub}:${body.provider}`, {
-        accessLevel: body.accessLevel,
-        expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-      });
+      const existingIntegration = await db
+        .select()
+        .from(integrations)
+        .where(and(eq(integrations.userId, user.sub), eq(integrations.provider, body.provider)))
+        .limit(1);
+
+      const pendingMetadata = {
+        pendingAccessLevel: body.accessLevel,
+        subProvider: body.allowedIntegrations?.[0],
+      };
+
+      if (existingIntegration.length === 0) {
+        // Create a pending integration record to store the preference
+        await db.insert(integrations).values({
+          id: randomUUID(),
+          userId: user.sub,
+          organizationId: user.organizationId,
+          provider: body.provider,
+          status: 'pending',
+          metadata: JSON.stringify(pendingMetadata),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } else {
+        // Update existing record with pending access level
+        let existingMetadata: Record<string, unknown> = {};
+        if (existingIntegration[0].metadata) {
+          try {
+            existingMetadata = JSON.parse(existingIntegration[0].metadata);
+          } catch {
+            // Ignore malformed metadata
+          }
+        }
+        await db
+          .update(integrations)
+          .set({
+            metadata: JSON.stringify({ ...existingMetadata, ...pendingMetadata }),
+            updatedAt: new Date(),
+          })
+          .where(eq(integrations.id, existingIntegration[0].id));
+      }
     }
 
     return c.json({
@@ -165,18 +199,10 @@ integrationsRoutes.post('/connect', async (c) => {
   const nango = getNangoClient();
   const oauthUrl = nango.getConnectUrl(providerConfigKey, connectionId, callbackUrl);
 
-  // Store pending access level preference for callback to retrieve
-  if (body.accessLevel) {
-    pendingAccessLevels.set(`${user.sub}:${body.provider}`, {
-      accessLevel: body.accessLevel,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-    });
-  }
-
-  // Build metadata with subProvider and accessLevel
-  const metadata: { subProvider?: string; accessLevel?: string } = {};
+  // Build metadata with subProvider and pendingAccessLevel (to be converted to accessLevel on callback)
+  const metadata: { subProvider?: string; pendingAccessLevel?: string } = {};
   if (body.subProvider) metadata.subProvider = body.subProvider;
-  if (body.accessLevel) metadata.accessLevel = body.accessLevel;
+  if (body.accessLevel) metadata.pendingAccessLevel = body.accessLevel;
 
   // Check if integration record exists, create or update
   const existingIntegration = await db
@@ -200,9 +226,14 @@ integrationsRoutes.post('/connect', async (c) => {
     });
   } else {
     // Update existing to pending, preserve existing metadata and add new fields
-    const existingMetadata = existingIntegration[0].metadata
-      ? JSON.parse(existingIntegration[0].metadata)
-      : {};
+    let existingMetadata: Record<string, unknown> = {};
+    if (existingIntegration[0].metadata) {
+      try {
+        existingMetadata = JSON.parse(existingIntegration[0].metadata);
+      } catch {
+        // Ignore malformed metadata
+      }
+    }
     const mergedMetadata = { ...existingMetadata, ...metadata };
 
     await db
@@ -235,9 +266,6 @@ integrationsRoutes.get('/callback', async (c) => {
   // Build redirect URL to frontend
   const webUrl = process.env.WEB_URL || 'http://localhost:5173';
 
-  // Clean up expired pending access levels
-  cleanupExpiredPendingAccessLevels();
-
   if (error) {
     // OAuth failed - redirect to integrations page with error
     const errorUrl = new URL(`${webUrl}/integrations`);
@@ -261,18 +289,21 @@ integrationsRoutes.get('/callback', async (c) => {
   if (integration.length > 0) {
     const int = integration[0];
 
-    // Check if there's a pending access level preference for this user+provider
-    const pendingKey = `${int.userId}:${int.provider}`;
-    const pendingPref = pendingAccessLevels.get(pendingKey);
-
-    // Build updated metadata
-    const existingMetadata = int.metadata ? JSON.parse(int.metadata) : {};
+    // Build updated metadata - convert pendingAccessLevel to accessLevel
+    let existingMetadata: Record<string, unknown> = {};
+    if (int.metadata) {
+      try {
+        existingMetadata = JSON.parse(int.metadata);
+      } catch {
+        // Ignore malformed metadata
+      }
+    }
     const updatedMetadata = { ...existingMetadata };
 
     // Apply pending access level if available, otherwise default to 'read-write'
-    if (pendingPref && pendingPref.expiresAt > Date.now()) {
-      updatedMetadata.accessLevel = pendingPref.accessLevel;
-      pendingAccessLevels.delete(pendingKey); // Clean up
+    if (updatedMetadata.pendingAccessLevel) {
+      updatedMetadata.accessLevel = updatedMetadata.pendingAccessLevel;
+      delete updatedMetadata.pendingAccessLevel; // Clean up the pending field
     } else if (!updatedMetadata.accessLevel) {
       // Default to read-write if no preference set
       updatedMetadata.accessLevel = 'read-write';
@@ -459,7 +490,14 @@ integrationsRoutes.patch('/:id/access-level', async (c) => {
   const int = integration[0];
 
   // Update metadata with new access level
-  const existingMetadata = int.metadata ? JSON.parse(int.metadata) : {};
+  let existingMetadata: Record<string, unknown> = {};
+  if (int.metadata) {
+    try {
+      existingMetadata = JSON.parse(int.metadata);
+    } catch {
+      // Ignore malformed metadata
+    }
+  }
   const updatedMetadata = { ...existingMetadata, accessLevel: body.accessLevel };
 
   await db
@@ -531,14 +569,27 @@ integrationsRoutes.get('/status/:provider', async (c) => {
   }
 
   // Parse metadata to get access level
-  const metadata = int.metadata ? JSON.parse(int.metadata) : {};
+  let metadata: Record<string, unknown> = {};
+  if (int.metadata) {
+    try {
+      metadata = JSON.parse(int.metadata);
+    } catch {
+      // Ignore malformed metadata
+    }
+  }
+  // Validate and default access level
+  const rawAccessLevel = metadata.accessLevel;
+  const accessLevel: IntegrationAccessLevel =
+    rawAccessLevel === 'read-write' || rawAccessLevel === 'read-only'
+      ? rawAccessLevel
+      : 'read-write';
 
   return c.json({
     data: {
       connected: int.status === 'connected',
       status: int.status,
       lastSyncAt: int.lastSyncAt,
-      accessLevel: metadata.accessLevel || 'read-write', // Default to read-write
+      accessLevel,
     },
   });
 });
