@@ -340,39 +340,59 @@ async function getOrgLLMConfig(
     .where(eq(systemSettings.key, 'llm.default_provider'))
     .limit(1);
 
-  const provider = (defaultProviderSetting?.value || 'groq') as 'anthropic' | 'openai' | 'groq';
+  // If explicit default provider is set, use it
+  if (defaultProviderSetting?.value) {
+    const provider = defaultProviderSetting.value as 'anthropic' | 'openai' | 'groq';
 
-  // Get API key for provider from system settings
-  const [apiKeySetting] = await db
-    .select()
-    .from(systemSettings)
-    .where(eq(systemSettings.key, `llm.${provider}_api_key`))
-    .limit(1);
+    // Get API key for provider from system settings
+    const [apiKeySetting] = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, `llm.${provider}_api_key`))
+      .limit(1);
 
-  if (!apiKeySetting?.value) {
-    // Try environment variable fallback
-    const envKey = getEnvApiKey(provider);
-    if (!envKey) return null;
+    if (!apiKeySetting?.value) {
+      // Try environment variable fallback
+      const envKey = getEnvApiKey(provider);
+      if (!envKey) return null;
+
+      return {
+        provider,
+        apiKey: envKey,
+        model: LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
+      };
+    }
+
+    // Get model preference from system settings
+    const [modelSetting] = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, 'llm.default_model'))
+      .limit(1);
 
     return {
       provider,
-      apiKey: envKey,
-      model: LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
+      apiKey: apiKeySetting.value,
+      model: modelSetting?.value || LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
     };
   }
 
-  // Get model preference from system settings
-  const [modelSetting] = await db
-    .select()
-    .from(systemSettings)
-    .where(eq(systemSettings.key, 'llm.default_model'))
-    .limit(1);
+  // No explicit default - try providers in order of capability (most powerful first)
+  // Priority: Anthropic (Claude) > OpenAI (GPT-4) > Groq (Llama)
+  const providerPriority: Array<'anthropic' | 'openai' | 'groq'> = ['anthropic', 'openai', 'groq'];
 
-  return {
-    provider,
-    apiKey: apiKeySetting.value,
-    model: modelSetting?.value || LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
-  };
+  for (const provider of providerPriority) {
+    const envKey = getEnvApiKey(provider);
+    if (envKey) {
+      return {
+        provider,
+        apiKey: envKey,
+        model: LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
+      };
+    }
+  }
+
+  return null;
 }
 
 function getEnvApiKey(provider: string): string | null {

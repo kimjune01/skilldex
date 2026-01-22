@@ -78,22 +78,34 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
     };
   }
 
-  // Fall back to env var for Groq (backwards compatibility)
-  if (process.env.GROQ_API_KEY) {
-    return {
-      apiKey: process.env.GROQ_API_KEY,
-      model: options.model || 'llama-3.1-8b-instant',
-      provider: 'groq',
-    };
-  }
+  // Fall back to env vars, prioritized by model capability (most powerful first)
+  // Priority: Anthropic (Claude) > OpenAI (GPT-4) > Groq (Llama)
+  const envFallbacks: Array<{ provider: 'anthropic' | 'openai' | 'groq'; envKey: string }> = [
+    { provider: 'anthropic', envKey: 'ANTHROPIC_API_KEY' },
+    { provider: 'openai', envKey: 'OPENAI_API_KEY' },
+    { provider: 'groq', envKey: 'GROQ_API_KEY' },
+  ];
 
-  // Try any configured provider
-  for (const [provider, apiKey] of Object.entries(providers)) {
+  for (const { provider, envKey } of envFallbacks) {
+    const apiKey = process.env[envKey];
     if (apiKey) {
       return {
         apiKey,
-        model: options.model || DEFAULT_MODELS[provider as keyof typeof DEFAULT_MODELS],
-        provider: provider as 'groq' | 'anthropic' | 'openai',
+        model: options.model || DEFAULT_MODELS[provider],
+        provider,
+      };
+    }
+  }
+
+  // Try any configured provider from settings (prioritized by capability)
+  const providerPriority: Array<'anthropic' | 'openai' | 'groq'> = ['anthropic', 'openai', 'groq'];
+  for (const provider of providerPriority) {
+    const apiKey = providers[provider];
+    if (apiKey) {
+      return {
+        apiKey,
+        model: options.model || DEFAULT_MODELS[provider],
+        provider,
       };
     }
   }
