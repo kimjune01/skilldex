@@ -10,6 +10,11 @@ declare module "sst" {
       "type": "sst.aws.Function"
       "url": string
     }
+    "Email": {
+      "configSet": string
+      "sender": string
+      "type": "sst.aws.Email"
+    }
     "GoogleClientId": {
       "type": "sst.sst.Secret"
       "value": string

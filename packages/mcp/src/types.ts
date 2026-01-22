@@ -22,6 +22,14 @@ export interface RenderedSkill extends SkillPublic {
   instructions: string;
 }
 
+export type AccessLevel = 'read-write' | 'read-only' | 'disabled' | 'none';
+
+export interface EffectiveAccess {
+  ats: AccessLevel;
+  email: AccessLevel;
+  calendar: AccessLevel;
+}
+
 export interface CapabilityProfile {
   hasLLM: boolean;
   hasATS: boolean;
@@ -30,6 +38,7 @@ export interface CapabilityProfile {
   isSuperAdmin?: boolean;
   llmProvider?: string;
   atsProvider?: string;
+  effectiveAccess?: EffectiveAccess;
 }
 
 export interface ConfigResponse {

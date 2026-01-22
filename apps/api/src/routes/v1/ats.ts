@@ -13,6 +13,11 @@ import {
 import type { ErrorCode } from '@skillomatic/shared';
 import { ZohoRecruitClient } from '../../lib/zoho-recruit.js';
 import { getNangoClient, PROVIDER_CONFIG_KEYS } from '../../lib/nango.js';
+import {
+  getEffectiveAccessForUser,
+  canRead,
+  canWrite,
+} from '../../lib/integration-permissions.js';
 
 export const v1AtsRoutes = new Hono();
 
@@ -527,5 +532,287 @@ v1AtsRoutes.post('/applications/:id/stage', async (c) => {
     return c.json(data);
   } catch (error) {
     return c.json({ error: { message: 'Failed to update application stage in ATS' } }, 502);
+  }
+});
+
+// ============ Dynamic Tool Proxy ============
+
+/**
+ * Provider-specific base URLs and auth configuration
+ */
+const PROVIDER_CONFIG: Record<string, {
+  getBaseUrl: (region?: string) => string;
+  getAuthHeader: (token: string) => Record<string, string>;
+  requiresNango?: boolean;
+}> = {
+  'greenhouse': {
+    getBaseUrl: () => 'https://harvest.greenhouse.io/v1',
+    getAuthHeader: (token) => ({
+      'Authorization': `Basic ${Buffer.from(`${token}:`).toString('base64')}`,
+    }),
+    requiresNango: true,
+  },
+  'zoho-recruit': {
+    getBaseUrl: (region = 'us') => {
+      const urls: Record<string, string> = {
+        us: 'https://recruit.zoho.com/recruit/v2',
+        eu: 'https://recruit.zoho.eu/recruit/v2',
+        cn: 'https://recruit.zoho.com.cn/recruit/v2',
+        in: 'https://recruit.zoho.in/recruit/v2',
+        au: 'https://recruit.zoho.com.au/recruit/v2',
+      };
+      return urls[region] || urls.us;
+    },
+    getAuthHeader: (token) => ({
+      'Authorization': `Zoho-oauthtoken ${token}`,
+    }),
+    requiresNango: true,
+  },
+  'mock-ats': {
+    getBaseUrl: () => process.env.MOCK_ATS_URL || 'http://localhost:3001',
+    getAuthHeader: (token) => ({
+      'Authorization': `Bearer ${token}`,
+    }),
+    requiresNango: false,
+  },
+};
+
+/**
+ * Blocklisted paths that should never be proxied (security)
+ */
+const BLOCKLISTED_PATHS: Record<string, RegExp[]> = {
+  'greenhouse': [
+    /^\/users/i,
+    /^\/user_roles/i,
+    /^\/custom_fields/i,
+    /^\/webhooks/i,
+    /^\/tracking_links/i,
+    /^\/eeoc/i,
+    /^\/demographics/i,
+  ],
+  'zoho-recruit': [
+    /^\/settings/i,
+    /^\/org/i,
+    /^\/users/i,
+    /\/__schedule_mass_delete/i,
+  ],
+};
+
+/**
+ * Check if a path is blocklisted for a provider
+ */
+function isPathBlocklisted(provider: string, path: string): boolean {
+  const patterns = BLOCKLISTED_PATHS[provider] || [];
+  return patterns.some((pattern) => pattern.test(path));
+}
+
+/**
+ * Check if a method requires write access
+ */
+function requiresWriteAccess(method: string): boolean {
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase());
+}
+
+/**
+ * Proxy request schema
+ */
+interface ProxyRequestBody {
+  provider: string;
+  method: string;
+  path: string;
+  query?: Record<string, unknown>;
+  body?: unknown;
+  headers?: Record<string, string>;
+}
+
+// POST /api/v1/ats/proxy - Proxy requests to ATS provider
+v1AtsRoutes.post('/proxy', async (c) => {
+  const user = c.get('apiKeyUser');
+  const startTime = Date.now();
+
+  let requestBody: ProxyRequestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch {
+    return c.json({ error: { message: 'Invalid JSON body' } }, 400);
+  }
+
+  const { provider, method, path, query, body, headers: customHeaders } = requestBody;
+
+  // Validate required fields
+  if (!provider || !method || !path) {
+    return c.json({ error: { message: 'Missing required fields: provider, method, path' } }, 400);
+  }
+
+  // Check if provider is supported
+  const providerConfig = PROVIDER_CONFIG[provider];
+  if (!providerConfig) {
+    return c.json({ error: { message: `Unsupported provider: ${provider}` } }, 400);
+  }
+
+  // Check if path is blocklisted
+  if (isPathBlocklisted(provider, path)) {
+    return c.json({ error: { message: 'Access to this endpoint is not allowed' } }, 403);
+  }
+
+  // Check user's effective access level
+  if (!user.organizationId) {
+    return c.json({ error: { message: 'User must belong to an organization' } }, 403);
+  }
+
+  const effectiveAccess = await getEffectiveAccessForUser(user.id, user.organizationId);
+  const atsAccess = effectiveAccess.ats;
+
+  // Check if user has any ATS access
+  if (!canRead(atsAccess)) {
+    return c.json({ error: { message: 'ATS access is disabled or not connected' } }, 403);
+  }
+
+  // Check write access for mutating operations
+  if (requiresWriteAccess(method) && !canWrite(atsAccess)) {
+    return c.json({ error: { message: 'You have read-only access to the ATS' } }, 403);
+  }
+
+  // Get the user's ATS integration - look for provider 'ats' or specific provider like 'mock-ats'
+  const integration = await db
+    .select()
+    .from(integrations)
+    .where(
+      and(
+        eq(integrations.status, 'connected'),
+        user.organizationId
+          ? eq(integrations.organizationId, user.organizationId)
+          : eq(integrations.userId, user.id)
+      )
+    );
+
+  // Find matching integration - prefer exact provider match, fallback to 'ats' provider
+  const atsIntegration = integration.find(
+    (i) => i.provider === provider || i.provider === 'ats' || i.provider === 'mock-ats'
+  );
+
+  if (!atsIntegration) {
+    return c.json({ error: { message: 'No ATS integration connected' } }, 400);
+  }
+
+  const int = atsIntegration;
+  const metadata = int.metadata ? JSON.parse(int.metadata) : {};
+
+  // Get access token - mock-ats doesn't need Nango
+  let accessToken: string;
+  let region: string | undefined;
+
+  if (providerConfig.requiresNango !== false) {
+    // OAuth providers: get token from Nango
+    if (!int.nangoConnectionId) {
+      return c.json({ error: { message: 'ATS integration not properly configured' } }, 400);
+    }
+
+    try {
+      const nango = getNangoClient();
+      const providerKey = metadata.subProvider || provider;
+      const providerConfigKey = PROVIDER_CONFIG_KEYS[providerKey] || providerKey;
+
+      const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
+      accessToken = token.access_token;
+      region = metadata.zohoRegion || metadata.region;
+    } catch (error) {
+      console.error('Failed to get OAuth token:', error);
+      return c.json({ error: { message: 'Failed to authenticate with ATS provider' } }, 502);
+    }
+  } else {
+    // Mock ATS or other non-OAuth providers: use mock token
+    accessToken = 'mock-token';
+    region = undefined;
+  }
+
+  // Build the full URL
+  // Note: new URL(path, base) treats '/path' as absolute from origin, losing the base path
+  // So we concatenate manually to preserve the full base URL
+  const baseUrl = providerConfig.getBaseUrl(region);
+  const fullPath = baseUrl.endsWith('/') && path.startsWith('/')
+    ? baseUrl + path.slice(1)
+    : baseUrl + path;
+  const url = new URL(fullPath);
+
+  // Add query parameters
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== null) {
+        url.searchParams.set(key, String(value));
+      }
+    }
+  }
+
+  // Build headers
+  const authHeaders = providerConfig.getAuthHeader(accessToken);
+  const requestHeaders: Record<string, string> = {
+    ...authHeaders,
+    'Content-Type': 'application/json',
+    ...customHeaders,
+  };
+
+  // For Greenhouse, add On-Behalf-Of header if required
+  if (provider === 'greenhouse' && customHeaders?.['X-Requires-On-Behalf-Of']) {
+    // In a real implementation, you'd get the Greenhouse user ID
+    // For now, we'll skip this or use a default
+    delete requestHeaders['X-Requires-On-Behalf-Of'];
+  }
+
+  // Make the request to the provider
+  try {
+    const response = await fetch(url.toString(), {
+      method: method.toUpperCase(),
+      headers: requestHeaders,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    // Get response body
+    let responseData: unknown;
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      responseData = await response.text();
+    }
+
+    // Log usage
+    const skillSlug = 'ats-proxy';
+    const status = response.ok ? 'success' : 'error';
+    const errorCode = response.ok ? undefined : classifyAtsError(new Error(`HTTP ${response.status}`));
+    logUsage(user.id, user.apiKeyId, skillSlug, status, Date.now() - startTime, errorCode);
+
+    // Return error responses with proper status
+    if (!response.ok) {
+      return c.json({
+        error: {
+          message: `Provider returned ${response.status}`,
+          status: response.status,
+          data: responseData,
+        },
+      }, response.status as 400 | 401 | 403 | 404 | 500 | 502);
+    }
+
+    // Return successful response
+    return c.json({
+      data: responseData,
+      meta: {
+        provider,
+        method,
+        path,
+        durationMs: Date.now() - startTime,
+      },
+    });
+  } catch (error) {
+    console.error('ATS proxy error:', error);
+    const errorCode = classifyAtsError(error);
+    logUsage(user.id, user.apiKeyId, 'ats-proxy', 'error', Date.now() - startTime, errorCode);
+
+    return c.json({
+      error: {
+        message: 'Failed to communicate with ATS provider',
+        code: errorCode,
+      },
+    }, 502);
   }
 });

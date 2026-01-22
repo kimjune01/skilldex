@@ -95,6 +95,8 @@ const ATS_BASE_URLS: Record<string, string> = {
   lever: 'https://api.lever.co/v1',
   ashby: 'https://api.ashbyhq.com',
   workable: 'https://www.workable.com/spi/v3',
+  'zoho-recruit': 'https://recruit.zoho.com/recruit/v2',
+  'mock-ats': process.env.MOCK_ATS_URL || 'http://localhost:3001',
 };
 
 // LLM model defaults per provider
@@ -173,10 +175,25 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
       .where(eq(integrations.id, integrationInfo.id))
       .limit(1);
 
-    if (!integration || !integration.nangoConnectionId) continue;
+    if (!integration) continue;
+
+    const metadata = integration.metadata ? JSON.parse(integration.metadata) : {};
+    const atsProvider = metadata.subProvider || integration.provider;
+
+    // Special handling for mock-ats (no OAuth needed)
+    if (category === 'ats' && (integration.provider === 'mock-ats' || atsProvider === 'mock-ats')) {
+      profile.ats = {
+        provider: 'mock-ats',
+        token: 'mock-token', // Mock ATS doesn't require auth
+        baseUrl: ATS_BASE_URLS['mock-ats'] || 'http://localhost:3001',
+      };
+      continue;
+    }
+
+    // Skip OAuth-based integrations without Nango connection
+    if (!integration.nangoConnectionId) continue;
 
     const providerConfigKey = PROVIDER_CONFIG_KEYS[integration.provider] || integration.provider;
-    const metadata = integration.metadata ? JSON.parse(integration.metadata) : {};
 
     try {
       // Fetch fresh token from Nango
@@ -184,7 +201,6 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
 
       switch (category) {
         case 'ats': {
-          const atsProvider = metadata.subProvider || 'greenhouse';
           profile.ats = {
             provider: atsProvider,
             token: token.access_token,

@@ -24,6 +24,12 @@ import {
   ShieldCheck,
   HardDrive,
   CloudOff,
+  Boxes,
+  Settings,
+  UserCog,
+  Laptop,
+  RefreshCcw,
+  Wrench,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
@@ -131,6 +137,39 @@ const antiPatterns = [
   { bad: 'Vendor lock-in with data export fees', good: 'Nothing to export—data doesn\'t live here' },
 ];
 
+const diyPainPoints = [
+  {
+    icon: Boxes,
+    pain: 'Install MCP servers for each tool',
+    description: 'Greenhouse MCP, Gmail MCP, Calendar MCP... each requires separate setup, dependencies, and configuration.',
+  },
+  {
+    icon: Laptop,
+    pain: 'Configure every user\'s machine',
+    description: 'Edit claude_desktop_config.json on each laptop. Debug path issues. Handle different OS configs.',
+  },
+  {
+    icon: RefreshCcw,
+    pain: 'Keep everything updated',
+    description: 'New skill? Push updates to every machine. Bug fix? Do it again. Version mismatches everywhere.',
+  },
+  {
+    icon: UserCog,
+    pain: 'Manage permissions manually',
+    description: 'Who can send emails? Who gets ATS write access? Track it in a spreadsheet and hope for the best.',
+  },
+  {
+    icon: Wrench,
+    pain: 'Support every integration yourself',
+    description: 'OAuth token expired? Debug it. API changed? Fix the MCP server. User locked out? Your problem.',
+  },
+  {
+    icon: Settings,
+    pain: 'No visibility or audit trail',
+    description: 'Who ran what skill? When? No logs, no usage tracking, no way to know what\'s happening.',
+  },
+];
+
 export default function ForIT() {
   return (
     <div className="min-h-screen bg-background">
@@ -173,8 +212,58 @@ export default function ForIT() {
         </div>
       </section>
 
+      {/* DIY MCP Alternative Section */}
+      <section className="py-20 px-6 bg-[hsl(220_20%_97%)]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <Badge className="mb-4 bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold">
+              <Wrench className="h-3 w-3 mr-1" />
+              The Alternative
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
+              Or You Could DIY It
+            </h2>
+            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
+              Install MCP servers on every machine, maintain configs across your team,
+              and become the integration support desk. Here's what that looks like:
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+            {diyPainPoints.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={index}
+                  className="card-robot rounded-xl p-5 border-l-4 border-amber-400"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[hsl(220_30%_20%)] mb-1">{item.pain}</h3>
+                      <p className="text-sm text-[hsl(220_15%_50%)]">{item.description}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="text-center">
+            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-xl bg-white border-2 border-emerald-500/20 shadow-sm">
+              <CheckCircle className="h-6 w-6 text-emerald-500" />
+              <span className="text-[hsl(220_30%_20%)] font-semibold">
+                Or use Skillomatic: one dashboard, one config, managed for you.
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Anti-patterns Section */}
-      <section className="py-16 px-6 bg-[hsl(220_20%_97%)]">
+      <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-black text-[hsl(220_30%_15%)] mb-3">

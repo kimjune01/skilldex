@@ -11,6 +11,14 @@ import { registerScrapeTools } from './scrape.js';
 import { registerEmailTools } from './email.js';
 import { registerDatabaseTools } from './database.js';
 import { log } from '../logger.js';
+import {
+  getManifest,
+  isProviderSupported,
+  generateToolsFromManifest,
+  getToolSummary,
+  registerGeneratedTools,
+} from '../providers/index.js';
+import type { AccessLevel } from '../providers/index.js';
 
 /**
  * Register all tools based on user's capabilities.
@@ -98,9 +106,30 @@ export async function registerTools(
 
   // ATS tools - only if ATS is connected
   if (profile.hasATS) {
-    registerAtsTools(server, client);
-    registeredTools.push('search_ats_candidates', 'get_ats_candidate', 'create_ats_candidate', 'update_ats_candidate');
-    log.info(`ATS tools registered (provider: ${profile.atsProvider || 'unknown'})`);
+    const atsProvider = profile.atsProvider || 'zoho-recruit';
+    const atsAccess: AccessLevel = profile.effectiveAccess?.ats || 'read-write';
+
+    // Use dynamic tools if provider has a manifest
+    if (isProviderSupported(atsProvider)) {
+      const manifest = getManifest(atsProvider);
+      if (manifest) {
+        const tools = generateToolsFromManifest(manifest, atsAccess);
+        const toolNames = registerGeneratedTools(server, tools, client);
+        registeredTools.push(...toolNames);
+
+        const summary = getToolSummary(manifest, atsAccess);
+        log.info(
+          `Dynamic ATS tools registered: ${toolNames.length} tools ` +
+          `(provider: ${atsProvider}, access: ${atsAccess}, ` +
+          `read: ${summary.read}, write: ${summary.write}, filtered: ${summary.filtered})`
+        );
+      }
+    } else {
+      // Fallback to static generic tools
+      registerAtsTools(server, client);
+      registeredTools.push('search_ats_candidates', 'get_ats_candidate', 'create_ats_candidate', 'update_ats_candidate');
+      log.info(`Static ATS tools registered (provider: ${atsProvider} not supported for dynamic tools)`);
+    }
   } else {
     log.info('ATS tools not registered (no ATS integration connected)');
   }

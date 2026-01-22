@@ -234,6 +234,12 @@ skillsRoutes.get('/config', async (c) => {
   const profile = await buildCapabilityProfile(user.sub);
   const configContent = buildConfigSkill(profile);
 
+  // Get effective access if user has org context
+  let effectiveAccess: Awaited<ReturnType<typeof getEffectiveAccessForUser>> | undefined;
+  if (user.organizationId) {
+    effectiveAccess = await getEffectiveAccessForUser(user.sub, user.organizationId);
+  }
+
   return c.json({
     data: {
       slug: '_config',
@@ -248,6 +254,13 @@ skillsRoutes.get('/config', async (c) => {
         isSuperAdmin: !!user.isSuperAdmin,
         llmProvider: profile.llm?.provider,
         atsProvider: profile.ats?.provider,
+        effectiveAccess: effectiveAccess
+          ? {
+              ats: effectiveAccess.ats,
+              email: effectiveAccess.email,
+              calendar: effectiveAccess.calendar,
+            }
+          : undefined,
       },
     },
   });

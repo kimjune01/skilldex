@@ -4,9 +4,12 @@ import type { LibSQLDatabase } from 'drizzle-orm/libsql';
 import * as schema from './schema.js';
 
 // Determine which database to use based on environment
-// In production (Lambda), NODE_ENV=production and Turso vars should be set
+// Local dev uses SQLite even if Turso vars are present (for testing prod configs locally)
+// Only use Turso when NODE_ENV=production OR USE_TURSO=true is explicitly set
 const isProduction = process.env.NODE_ENV === 'production';
-const isTurso = !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
+const forceTurso = process.env.USE_TURSO === 'true';
+const hasTursoConfig = !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
+const isTurso = hasTursoConfig && (isProduction || forceTurso);
 
 type DbType = BetterSQLite3Database<typeof schema> | LibSQLDatabase<typeof schema>;
 

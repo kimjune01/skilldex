@@ -230,6 +230,8 @@ export function providerToCategory(provider: string): IntegrationCategory | null
     case 'lever':
     case 'ashby':
     case 'workable':
+    case 'zoho-recruit':
+    case 'mock-ats':
       return 'ats';
     case 'email':
     case 'gmail':

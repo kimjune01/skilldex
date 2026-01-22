@@ -317,4 +317,24 @@ export class SkillomaticClient {
   async getDatabaseStats(): Promise<{ stats: Record<string, number> }> {
     return this.request<{ stats: Record<string, number> }>('/api/v1/database/stats');
   }
+
+  // ============ ATS Proxy Operations (Dynamic Tools) ============
+
+  /**
+   * Proxy a request to the connected ATS provider.
+   * Used by dynamically generated tools to make provider-specific API calls.
+   */
+  async proxyAtsRequest(request: {
+    provider: string;
+    method: string;
+    path: string;
+    query?: Record<string, unknown>;
+    body?: unknown;
+    headers?: Record<string, string>;
+  }): Promise<unknown> {
+    return this.request<unknown>('/api/v1/ats/proxy', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
 }
