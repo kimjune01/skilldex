@@ -67,17 +67,25 @@ async function request<T>(endpoint: string): Promise<T> {
 
 /**
  * Fetch skill metadata (Level 1 - cached)
+ * @param forceRefresh - Force refresh the cache
+ * @param includeAccess - Include access info (permissions status)
  */
-export async function fetchSkillMetadata(forceRefresh = false): Promise<SkillPublic[]> {
+export async function fetchSkillMetadata(forceRefresh = false, includeAccess = false): Promise<SkillPublic[]> {
   const now = Date.now();
 
-  if (!forceRefresh && metadataCache && now - metadataCacheTime < METADATA_CACHE_TTL) {
+  // Only use cache if not requesting access info (access info can change with integration status)
+  if (!forceRefresh && !includeAccess && metadataCache && now - metadataCacheTime < METADATA_CACHE_TTL) {
     return metadataCache;
   }
 
-  const skills = await request<SkillPublic[]>('/skills');
-  metadataCache = skills;
-  metadataCacheTime = now;
+  const endpoint = includeAccess ? '/skills?includeAccess=true' : '/skills';
+  const skills = await request<SkillPublic[]>(endpoint);
+
+  // Only cache non-access requests (access info should always be fresh)
+  if (!includeAccess) {
+    metadataCache = skills;
+    metadataCacheTime = now;
+  }
 
   return skills;
 }
@@ -143,16 +151,34 @@ export async function checkCapability(
 }
 
 /**
+ * Check if a skill is executable based on its access info
+ */
+export function isSkillExecutable(skill: SkillPublic): boolean {
+  // Disabled skills are not executable
+  if (!skill.isEnabled) return false;
+
+  // If no access info, assume executable (backwards compatibility)
+  if (!skill.accessInfo) return true;
+
+  // Only 'available' status skills are fully executable
+  // 'limited' and 'disabled' statuses mean the skill can't be executed
+  return skill.accessInfo.status === 'available';
+}
+
+/**
  * Build system prompt from skill metadata
  * This mirrors the server-side buildSkillsPromptSection function
+ * Only includes skills that are fully executable (not limited or disabled)
  */
 export function buildSkillsPromptSection(skillsMetadata: SkillPublic[]): string {
-  if (skillsMetadata.length === 0) {
+  // Filter to only executable skills
+  const executableSkills = skillsMetadata.filter(isSkillExecutable);
+
+  if (executableSkills.length === 0) {
     return 'No skills are currently available.';
   }
 
-  const skillsList = skillsMetadata
-    .filter((s) => s.isEnabled)
+  const skillsList = executableSkills
     .map((s) => {
       let entry = `- **${s.slug}**: ${s.description}`;
       if (s.intent) {
@@ -186,7 +212,8 @@ ${skillsList}
  * Build the full system prompt for client-side chat
  */
 export async function buildSystemPrompt(): Promise<string> {
-  const metadata = await fetchSkillMetadata();
+  // Fetch with access info to properly filter limited/disabled skills
+  const metadata = await fetchSkillMetadata(false, true);
   const skillsSection = buildSkillsPromptSection(metadata);
 
   return `You are a recruiting assistant with access to various skills for sourcing candidates, managing applications, and scheduling interviews.

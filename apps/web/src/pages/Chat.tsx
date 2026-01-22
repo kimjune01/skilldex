@@ -2,7 +2,9 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { MessageList, ChatInput } from '@/components/chat';
 import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Download, Wrench, ChevronRight } from 'lucide-react';
+import { AlertCircle, Loader2, Download, Wrench, ChevronRight, Lock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { isSkillExecutable } from '@/lib/skills-client';
 import {
   Dialog,
   DialogContent,
@@ -212,7 +214,7 @@ function ToolsSkillsPanel({
     if (open) {
       setLoading(true);
       skills
-        .list()
+        .list({ includeAccess: true })
         .then((data) => setSkillsList(data))
         .catch(() => setSkillsList([]))
         .finally(() => setLoading(false));
@@ -263,19 +265,45 @@ function ToolsSkillsPanel({
               <p className="text-sm text-muted-foreground text-center py-8">No skills available</p>
             ) : (
               <div className="space-y-1">
-                {skillsList.map((skill) => (
-                  <a
-                    key={skill.slug}
-                    href={`/skills/${skill.slug}`}
-                    className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors group"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{skill.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{skill.description}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2" />
-                  </a>
-                ))}
+                {skillsList.map((skill) => {
+                  const executable = isSkillExecutable(skill);
+                  const isLimited = skill.accessInfo?.status === 'limited';
+
+                  return (
+                    <a
+                      key={skill.slug}
+                      href={`/skills/${skill.slug}`}
+                      className={`flex items-center justify-between p-2 rounded-md transition-colors group ${
+                        executable
+                          ? 'hover:bg-muted'
+                          : 'opacity-50 cursor-default'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-medium truncate ${!executable ? 'text-muted-foreground' : ''}`}>
+                            {skill.name}
+                          </p>
+                          {isLimited && (
+                            <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-300 flex-shrink-0">
+                              <Lock className="h-3 w-3 mr-1" />
+                              Limited
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{skill.description}</p>
+                        {isLimited && skill.accessInfo?.limitations?.[0] && (
+                          <p className="text-xs text-yellow-600 truncate mt-0.5">
+                            {skill.accessInfo.limitations[0]}
+                          </p>
+                        )}
+                      </div>
+                      <ChevronRight className={`h-4 w-4 text-muted-foreground flex-shrink-0 ml-2 ${
+                        executable ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
+                      } transition-opacity`} />
+                    </a>
+                  );
+                })}
               </div>
             )
           ) : (
