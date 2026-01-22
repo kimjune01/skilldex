@@ -381,16 +381,9 @@ organizationsRoutes.get('/:id/domains', jwtAuth, async (c) => {
   return c.json({ data: { domains } });
 });
 
-// PUT /api/organizations/:id/domains - Update allowed domains for an org
-organizationsRoutes.put('/:id/domains', jwtAuth, async (c) => {
+// PUT /api/organizations/:id/domains - Update allowed domains for an org (super admin only)
+organizationsRoutes.put('/:id/domains', jwtAuth, superAdminOnly, async (c) => {
   const id = c.req.param('id');
-  const user = c.get('user');
-
-  // Allow super admin or org admin of the org
-  const isOrgAdmin = user.isAdmin && user.organizationId === id;
-  if (!user.isSuperAdmin && !isOrgAdmin) {
-    return c.json({ error: { message: 'Forbidden' } }, 403);
-  }
 
   const [existing] = await db
     .select()
@@ -503,18 +496,12 @@ organizationsRoutes.get('/current/domains', jwtAuth, withOrganization, async (c)
   return c.json({ data: { domains } });
 });
 
-// PUT /api/organizations/current/domains - Update allowed domains for current user's org
-organizationsRoutes.put('/current/domains', jwtAuth, withOrganization, async (c) => {
+// PUT /api/organizations/current/domains - Update allowed domains for current user's org (super admin only)
+organizationsRoutes.put('/current/domains', jwtAuth, superAdminOnly, withOrganization, async (c) => {
   const org = c.get('organization');
-  const user = c.get('user');
 
   if (!org) {
     return c.json({ error: { message: 'No organization assigned' } }, 404);
-  }
-
-  // Only org admins can update domains
-  if (!user.isAdmin && !user.isSuperAdmin) {
-    return c.json({ error: { message: 'Forbidden' } }, 403);
   }
 
   // Redirect to the :id version
