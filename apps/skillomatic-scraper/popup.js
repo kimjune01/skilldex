@@ -152,7 +152,7 @@ async function saveConfig() {
 
   try {
     // Test the API connection first
-    const testResponse = await fetch(`${apiUrl}/api/v1/me`, {
+    const testResponse = await fetch(`${apiUrl}/v1/me`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
       },
@@ -196,7 +196,7 @@ async function reconnect() {
     await chrome.runtime.sendMessage({ type: 'DISCONNECT' });
 
     // Test the API connection
-    const testResponse = await fetch(`${stored.apiUrl}/api/v1/me`, {
+    const testResponse = await fetch(`${stored.apiUrl}/v1/me`, {
       headers: {
         'Authorization': `Bearer ${stored.apiKey}`,
       },
@@ -286,7 +286,7 @@ async function autoConfigureFromPage() {
     }
 
     // Test and save the config
-    const testResponse = await fetch(`${config.apiUrl}/api/v1/me`, {
+    const testResponse = await fetch(`${config.apiUrl}/v1/me`, {
       headers: { 'Authorization': `Bearer ${config.apiKey}` },
     });
 

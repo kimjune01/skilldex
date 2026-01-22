@@ -4,7 +4,7 @@ import { openApiSpec } from '../openapi.js';
 export const docsRoutes = new Hono();
 
 /**
- * GET /api/docs/openapi.json - Raw OpenAPI spec (for chatbots/AI)
+ * GET /docs/openapi.json - Raw OpenAPI spec (for chatbots/AI)
  *
  * Chatbots and AI tools can fetch this to understand the API structure.
  */
@@ -13,14 +13,14 @@ docsRoutes.get('/openapi.json', (c) => {
 });
 
 /**
- * GET /api/docs - Simplified markdown for LLM/chatbot consumption
+ * GET /docs - Simplified markdown for LLM/chatbot consumption
  *
  * Concise API reference optimized for LLM context windows.
  */
 docsRoutes.get('/', (c) => {
   const markdown = `# Skillomatic API Reference
 
-Base URL: \`/api\`
+Base URL: \`https://api.skillomatic.technology\`
 
 ## Authentication
 All protected endpoints require: \`Authorization: Bearer <jwt-token>\`
@@ -69,11 +69,11 @@ Success: \`{ "data": { ... } }\`
 Error: \`{ "error": { "message": "..." } }\`
 
 ## Full OpenAPI Spec
-Available at: \`/api/docs/openapi.json\`
+Available at: \`/docs/openapi.json\`
 
 ## Getting Started
-- New user onboarding: \`/api/onboarding\`
-- Browser extension guide: \`/api/extension\`
+- New user onboarding: \`/onboarding\`
+- Browser extension guide: \`/extension\`
 `;
 
   return c.text(markdown, 200, {

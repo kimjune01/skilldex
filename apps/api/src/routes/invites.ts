@@ -35,7 +35,7 @@ function getInviteStatus(acceptedAt: Date | null, expiresAt: Date): 'pending' | 
   return 'pending';
 }
 
-// GET /api/invites - List invites for current org (org admin) or all (super admin)
+// GET /invites - List invites for current org (org admin) or all (super admin)
 invitesRoutes.get('/', jwtAuth, orgAdminOnly, withOrganization, async (c) => {
   const user = c.get('user');
   const org = c.get('organization');
@@ -71,7 +71,7 @@ invitesRoutes.get('/', jwtAuth, orgAdminOnly, withOrganization, async (c) => {
   return c.json({ data: publicInvites });
 });
 
-// POST /api/invites - Create invite (org admin for their org, super admin for any org)
+// POST /invites - Create invite (org admin for their org, super admin for any org)
 invitesRoutes.post('/', jwtAuth, orgAdminOnly, withOrganization, async (c) => {
   const user = c.get('user');
   const currentOrg = c.get('organization');
@@ -190,7 +190,7 @@ invitesRoutes.post('/', jwtAuth, orgAdminOnly, withOrganization, async (c) => {
   return c.json({ data: { ...publicInvite, token } }, 201);
 });
 
-// GET /api/invites/validate/:token - Validate invite token (public)
+// GET /invites/validate/:token - Validate invite token (public)
 invitesRoutes.get('/validate/:token', async (c) => {
   const token = c.req.param('token');
 
@@ -227,7 +227,7 @@ invitesRoutes.get('/validate/:token', async (c) => {
   });
 });
 
-// POST /api/invites/accept - Accept invite and create user (public)
+// POST /invites/accept - Accept invite and create user (public)
 invitesRoutes.post('/accept', async (c) => {
   const body = await c.req.json<{
     token: string;
@@ -330,7 +330,7 @@ invitesRoutes.post('/accept', async (c) => {
   });
 });
 
-// DELETE /api/invites/:id - Cancel invite (org admin)
+// DELETE /invites/:id - Cancel invite (org admin)
 invitesRoutes.delete('/:id', jwtAuth, orgAdminOnly, withOrganization, async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');

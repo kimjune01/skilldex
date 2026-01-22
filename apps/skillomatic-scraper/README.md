@@ -32,10 +32,10 @@ You can use any image editor or online tool to create these. Recommended: Simple
 
 ## How It Works
 
-1. The extension polls `/api/v1/scrape/tasks?status=pending&claim=true` every 5 seconds
+1. The extension polls `/v1/scrape/tasks?status=pending&claim=true` every 5 seconds
 2. When a task is claimed, it opens the URL in a background tab
 3. After the page loads, it extracts the content and converts to Markdown
-4. The result is PUT back to `/api/v1/scrape/tasks/:id`
+4. The result is PUT back to `/v1/scrape/tasks/:id`
 
 ## Troubleshooting
 

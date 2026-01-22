@@ -125,7 +125,7 @@ function formatTask(task: typeof scrapeTasks.$inferSelect): ScrapeTaskPublic {
   };
 }
 
-// POST /api/v1/scrape/tasks - Create scrape task, return pointer (task ID)
+// POST /v1/scrape/tasks - Create scrape task, return pointer (task ID)
 // Supports deduplication: returns cached result if same URL was scraped recently
 v1ScrapeRoutes.post('/tasks', async (c) => {
   const user = c.get('apiKeyUser');
@@ -231,7 +231,7 @@ v1ScrapeRoutes.post('/tasks', async (c) => {
   return c.json(response, 201);
 });
 
-// GET /api/v1/scrape/tasks - List tasks or claim pending task (for extension)
+// GET /v1/scrape/tasks - List tasks or claim pending task (for extension)
 v1ScrapeRoutes.get('/tasks', async (c) => {
   const user = c.get('apiKeyUser');
   const status = c.req.query('status');
@@ -301,7 +301,7 @@ v1ScrapeRoutes.get('/tasks', async (c) => {
   });
 });
 
-// GET /api/v1/scrape/tasks/:id - Get single task by ID (pointer lookup)
+// GET /v1/scrape/tasks/:id - Get single task by ID (pointer lookup)
 v1ScrapeRoutes.get('/tasks/:id', async (c) => {
   const user = c.get('apiKeyUser');
   const taskId = c.req.param('id');
@@ -358,7 +358,7 @@ v1ScrapeRoutes.get('/tasks/:id', async (c) => {
   return c.json(formatTask(task));
 });
 
-// PUT /api/v1/scrape/tasks/:id - Update task (extension reports result)
+// PUT /v1/scrape/tasks/:id - Update task (extension reports result)
 v1ScrapeRoutes.put('/tasks/:id', async (c) => {
   const user = c.get('apiKeyUser');
   const taskId = c.req.param('id');
@@ -418,7 +418,7 @@ v1ScrapeRoutes.put('/tasks/:id', async (c) => {
   return c.json(formatTask(updated));
 });
 
-// DELETE /api/v1/scrape/tasks/:id - Cancel/delete a task
+// DELETE /v1/scrape/tasks/:id - Cancel/delete a task
 v1ScrapeRoutes.delete('/tasks/:id', async (c) => {
   const user = c.get('apiKeyUser');
   const taskId = c.req.param('id');

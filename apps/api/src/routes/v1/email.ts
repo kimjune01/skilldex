@@ -135,7 +135,7 @@ function parseRecipients(input: unknown): EmailAddress[] {
   return [];
 }
 
-// GET /api/v1/email/profile - Get user's email profile
+// GET /v1/email/profile - Get user's email profile
 v1EmailRoutes.get('/profile', async (c) => {
   const user = c.get('apiKeyUser');
   const startTime = Date.now();
@@ -163,7 +163,7 @@ v1EmailRoutes.get('/profile', async (c) => {
   }
 });
 
-// GET /api/v1/email/labels - List Gmail labels
+// GET /v1/email/labels - List Gmail labels
 v1EmailRoutes.get('/labels', async (c) => {
   const user = c.get('apiKeyUser');
 
@@ -188,7 +188,7 @@ v1EmailRoutes.get('/labels', async (c) => {
   }
 });
 
-// POST /api/v1/email/search - Search emails
+// POST /v1/email/search - Search emails
 v1EmailRoutes.post('/search', async (c) => {
   const user = c.get('apiKeyUser');
   const body = await c.req.json<{ query: string; maxResults?: number }>();
@@ -218,7 +218,7 @@ v1EmailRoutes.post('/search', async (c) => {
   }
 });
 
-// POST /api/v1/email/send - Send an email
+// POST /v1/email/send - Send an email
 v1EmailRoutes.post('/send', async (c) => {
   const user = c.get('apiKeyUser');
   const startTime = Date.now();
@@ -286,7 +286,7 @@ v1EmailRoutes.post('/send', async (c) => {
   }
 });
 
-// POST /api/v1/email/draft - Create a draft
+// POST /v1/email/draft - Create a draft
 v1EmailRoutes.post('/draft', async (c) => {
   const user = c.get('apiKeyUser');
   const startTime = Date.now();
@@ -355,7 +355,7 @@ v1EmailRoutes.post('/draft', async (c) => {
   }
 });
 
-// GET /api/v1/email/drafts - List drafts
+// GET /v1/email/drafts - List drafts
 v1EmailRoutes.get('/drafts', async (c) => {
   const user = c.get('apiKeyUser');
   const maxResults = parseInt(c.req.query('maxResults') || '10');
@@ -381,7 +381,7 @@ v1EmailRoutes.get('/drafts', async (c) => {
   }
 });
 
-// POST /api/v1/email/drafts/:id/send - Send a draft
+// POST /v1/email/drafts/:id/send - Send a draft
 v1EmailRoutes.post('/drafts/:id/send', async (c) => {
   const user = c.get('apiKeyUser');
   const draftId = c.req.param('id');
@@ -418,7 +418,7 @@ v1EmailRoutes.post('/drafts/:id/send', async (c) => {
   }
 });
 
-// DELETE /api/v1/email/drafts/:id - Delete a draft
+// DELETE /v1/email/drafts/:id - Delete a draft
 v1EmailRoutes.delete('/drafts/:id', async (c) => {
   const user = c.get('apiKeyUser');
   const draftId = c.req.param('id');

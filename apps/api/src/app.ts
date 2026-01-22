@@ -4,11 +4,11 @@
  * This is the main entry point for the Skillomatic backend API.
  * Built with Hono framework for lightweight, fast HTTP handling.
  *
- * Route groups:
- * - /api/auth/* - Authentication (login, logout, me)
- * - /api/docs/* - API documentation (public, for chatbots/AI)
- * - /api/* - Protected routes requiring JWT auth (skills, api-keys, etc.)
- * - /api/v1/* - API key authenticated routes for skills to call
+ * Route groups (served from api.skillomatic.technology):
+ * - /auth/* - Authentication (login, logout, me)
+ * - /docs/* - API documentation (public, for chatbots/AI)
+ * - /* - Protected routes requiring JWT auth (skills, api-keys, etc.)
+ * - /v1/* - API key authenticated routes for skills to call
  * - /ws/* - WebSocket routes for real-time updates
  *
  * @see docs/IT_DEPLOYMENT.md for deployment information
@@ -72,37 +72,36 @@ app.use('*', cors({
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
-app.get('/api/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
 // ============ PUBLIC ROUTES ============
 // No authentication required
-app.route('/api/auth', authRoutes);
-app.route('/api/docs', docsRoutes);            // API documentation (OpenAPI spec, markdown)
-app.route('/api/extension', extensionRoutes);  // Browser extension installation guide
-app.route('/api/onboarding', onboardingRoutes); // New user getting started guide
-app.route('/api/webhooks', webhooksRoutes);    // External service webhooks (Nango, etc.)
+app.route('/auth', authRoutes);
+app.route('/docs', docsRoutes);            // API documentation (OpenAPI spec, markdown)
+app.route('/extension', extensionRoutes);  // Browser extension installation guide
+app.route('/onboarding', onboardingRoutes); // New user getting started guide
+app.route('/webhooks', webhooksRoutes);    // External service webhooks (Nango, etc.)
 
 // ============ PROTECTED ROUTES (JWT Auth) ============
 // Used by the web UI - requires Authorization: Bearer <jwt-token>
-app.route('/api/skills', skillsRoutes);       // Browse/download skills
-app.route('/api/api-keys', apiKeysRoutes);    // Manage API keys
-app.route('/api/integrations', integrationsRoutes);  // OAuth connections
-app.route('/api/users', usersRoutes);         // User management (admin)
-app.route('/api/analytics', analyticsRoutes); // Usage analytics (admin)
-app.route('/api/proposals', proposalsRoutes); // Skill proposals
-app.route('/api/settings', settingsRoutes);   // System settings (admin)
-app.route('/api/organizations', organizationsRoutes); // Organization management
-app.route('/api/invites', invitesRoutes);     // Organization invites
-app.route('/api/capability-profiles', capabilityProfilesRoutes); // Capability profile management
+app.route('/skills', skillsRoutes);       // Browse/download skills
+app.route('/api-keys', apiKeysRoutes);    // Manage API keys
+app.route('/integrations', integrationsRoutes);  // OAuth connections
+app.route('/users', usersRoutes);         // User management (admin)
+app.route('/analytics', analyticsRoutes); // Usage analytics (admin)
+app.route('/proposals', proposalsRoutes); // Skill proposals
+app.route('/settings', settingsRoutes);   // System settings (admin)
+app.route('/organizations', organizationsRoutes); // Organization management
+app.route('/invites', invitesRoutes);     // Organization invites
+app.route('/capability-profiles', capabilityProfilesRoutes); // Capability profile management
 
 // ============ SKILL API ROUTES (API Key Auth) ============
 // Called by Claude Code skills - requires Authorization: Bearer sk_live_xxx
-app.route('/api/v1/ats', v1AtsRoutes);        // ATS operations (search, CRUD)
-app.route('/api/v1/me', v1MeRoutes);          // Get current user info
-app.route('/api/v1/scrape', v1ScrapeRoutes);  // Web scraping task management
-app.route('/api/v1/errors', v1ErrorsRoutes);  // Client error reporting (ephemeral architecture)
-app.route('/api/v1/email', v1EmailRoutes);    // Email operations (Gmail/Outlook)
-app.route('/api/v1/database', v1DatabaseRoutes);  // Database queries (super admin only)
+app.route('/v1/ats', v1AtsRoutes);        // ATS operations (search, CRUD)
+app.route('/v1/me', v1MeRoutes);          // Get current user info
+app.route('/v1/scrape', v1ScrapeRoutes);  // Web scraping task management
+app.route('/v1/errors', v1ErrorsRoutes);  // Client error reporting (ephemeral architecture)
+app.route('/v1/email', v1EmailRoutes);    // Email operations (Gmail/Outlook)
+app.route('/v1/database', v1DatabaseRoutes);  // Database queries (super admin only)
 
 // ============ WEBSOCKET ROUTES ============
 // Real-time updates for long-running operations

@@ -28,7 +28,7 @@ Claude Code                    Skillomatic API                   Your Browser
     │ ──────────────────────────►  │                              │
     │                              │                              │
     │ 2. Create scrape task        │                              │
-    │    POST /api/v1/scrape/tasks │                              │
+    │    POST /v1/scrape/tasks     │                              │
     │                              │                              │
     │                              │ 3. Extension polls for tasks │
     │                              │ ◄──────────────────────────  │

@@ -25,7 +25,7 @@ const log = {
 // All routes require JWT auth
 integrationsRoutes.use('*', jwtAuth);
 
-// GET /api/integrations - List user's integrations
+// GET /integrations - List user's integrations
 integrationsRoutes.get('/', async (c) => {
   const user = c.get('user');
 
@@ -66,7 +66,7 @@ integrationsRoutes.get('/', async (c) => {
 // Valid access levels for user preference
 type UserAccessLevel = 'read-write' | 'read-only';
 
-// POST /api/integrations/session - Create a Nango Connect session token
+// POST /integrations/session - Create a Nango Connect session token
 // Frontend uses this token to open the Nango Connect UI
 // Accepts optional accessLevel ('read-write' | 'read-only') to store user's preference
 integrationsRoutes.post('/session', async (c) => {
@@ -158,7 +158,7 @@ integrationsRoutes.post('/session', async (c) => {
   }
 });
 
-// POST /api/integrations/connect - Initiate OAuth connection (deprecated - use /session)
+// POST /integrations/connect - Initiate OAuth connection (deprecated - use /session)
 // Accepts optional accessLevel ('read-write' | 'read-only') to store user's preference
 integrationsRoutes.post('/connect', async (c) => {
   const body = await c.req.json<{
@@ -201,7 +201,7 @@ integrationsRoutes.post('/connect', async (c) => {
 
   // Build callback URL - this should point to our callback endpoint
   const apiUrl = process.env.SKILLOMATIC_API_URL || 'http://localhost:3000';
-  const callbackUrl = `${apiUrl}/api/integrations/callback`;
+  const callbackUrl = `${apiUrl}/integrations/callback`;
 
   // Get the Nango connect URL
   const nango = getNangoClient();
@@ -264,7 +264,7 @@ integrationsRoutes.post('/connect', async (c) => {
   });
 });
 
-// GET /api/integrations/callback - OAuth callback handler
+// GET /integrations/callback - OAuth callback handler
 // This is called by Nango after OAuth completes
 integrationsRoutes.get('/callback', async (c) => {
   const connectionId = c.req.query('connection_id');
@@ -363,7 +363,7 @@ integrationsRoutes.get('/callback', async (c) => {
   return c.redirect(successUrl.toString());
 });
 
-// POST /api/integrations/disconnect - Disconnect an integration
+// POST /integrations/disconnect - Disconnect an integration
 integrationsRoutes.post('/disconnect', async (c) => {
   const body = await c.req.json<{ integrationId: string }>();
   const user = c.get('user');
@@ -416,7 +416,7 @@ integrationsRoutes.post('/disconnect', async (c) => {
   return c.json({ data: { message: 'Integration disconnected' } });
 });
 
-// GET /api/integrations/:id/token - Get fresh access token for an integration
+// GET /integrations/:id/token - Get fresh access token for an integration
 // This is used by skill rendering to embed fresh tokens
 integrationsRoutes.get('/:id/token', async (c) => {
   const user = c.get('user');
@@ -484,7 +484,7 @@ integrationsRoutes.get('/:id/token', async (c) => {
   }
 });
 
-// PATCH /api/integrations/:id/access-level - Update access level for an integration
+// PATCH /integrations/:id/access-level - Update access level for an integration
 // Allows users to change their access level preference (read-write or read-only)
 integrationsRoutes.patch('/:id/access-level', async (c) => {
   const user = c.get('user');
@@ -552,7 +552,7 @@ integrationsRoutes.patch('/:id/access-level', async (c) => {
   });
 });
 
-// GET /api/integrations/status/:provider - Check connection status for a provider
+// GET /integrations/status/:provider - Check connection status for a provider
 integrationsRoutes.get('/status/:provider', async (c) => {
   const user = c.get('user');
   const provider = c.req.param('provider');

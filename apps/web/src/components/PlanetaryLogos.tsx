@@ -25,7 +25,7 @@ const logoClass = "w-10 h-10 rounded-lg object-cover shadow-md";
 
 // AI Providers
 const aiProviders = [
-  <img src="/logos/anthropic.png" alt="Anthropic" className={logoClass} />,
+  <img src="/claude-ai.svg" alt="Claude" className={logoClass} />,
   <img src="/logos/gemini.svg" alt="Gemini" className={logoClass} />,
   <img src="/logos/openai.png" alt="OpenAI" className={logoClass} />,
 ];

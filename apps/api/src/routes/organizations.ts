@@ -41,7 +41,7 @@ async function getAllMemberCounts(): Promise<Map<string, number>> {
   return countMap;
 }
 
-// GET /api/organizations - List all organizations (super admin only)
+// GET /organizations - List all organizations (super admin only)
 organizationsRoutes.get('/', jwtAuth, superAdminOnly, async (c) => {
   const [orgs, countMap] = await Promise.all([
     db.select().from(organizations),
@@ -61,7 +61,7 @@ organizationsRoutes.get('/', jwtAuth, superAdminOnly, async (c) => {
   return c.json({ data: publicOrgs });
 });
 
-// GET /api/organizations/current - Get current user's organization
+// GET /organizations/current - Get current user's organization
 organizationsRoutes.get('/current', jwtAuth, withOrganization, async (c) => {
   const org = c.get('organization');
 
@@ -90,7 +90,7 @@ organizationsRoutes.get('/current', jwtAuth, withOrganization, async (c) => {
   return c.json({ data: publicOrg });
 });
 
-// GET /api/organizations/current/deployment - Get deployment settings for current org
+// GET /organizations/current/deployment - Get deployment settings for current org
 organizationsRoutes.get('/current/deployment', jwtAuth, withOrganization, async (c) => {
   const org = c.get('organization');
   const user = c.get('user');
@@ -122,7 +122,7 @@ organizationsRoutes.get('/current/deployment', jwtAuth, withOrganization, async 
   });
 });
 
-// PUT /api/organizations/current/deployment - Update deployment settings for current org
+// PUT /organizations/current/deployment - Update deployment settings for current org
 organizationsRoutes.put('/current/deployment', jwtAuth, withOrganization, async (c) => {
   const org = c.get('organization');
   const user = c.get('user');
@@ -187,7 +187,7 @@ organizationsRoutes.put('/current/deployment', jwtAuth, withOrganization, async 
   });
 });
 
-// POST /api/organizations - Create organization (super admin only)
+// POST /organizations - Create organization (super admin only)
 organizationsRoutes.post('/', jwtAuth, superAdminOnly, async (c) => {
   const body = await c.req.json<{
     name: string;
@@ -237,7 +237,7 @@ organizationsRoutes.post('/', jwtAuth, superAdminOnly, async (c) => {
   return c.json({ data: publicOrg }, 201);
 });
 
-// GET /api/organizations/:id - Get organization by ID (super admin or org member)
+// GET /organizations/:id - Get organization by ID (super admin or org member)
 organizationsRoutes.get('/:id', jwtAuth, async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');
@@ -272,7 +272,7 @@ organizationsRoutes.get('/:id', jwtAuth, async (c) => {
   return c.json({ data: publicOrg });
 });
 
-// PUT /api/organizations/:id - Update organization (super admin or org admin)
+// PUT /organizations/:id - Update organization (super admin or org admin)
 organizationsRoutes.put('/:id', jwtAuth, async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');
@@ -345,7 +345,7 @@ organizationsRoutes.put('/:id', jwtAuth, async (c) => {
   return c.json({ data: publicOrg });
 });
 
-// GET /api/organizations/:id/domains - Get allowed domains for an org
+// GET /organizations/:id/domains - Get allowed domains for an org
 organizationsRoutes.get('/:id/domains', jwtAuth, async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');
@@ -381,7 +381,7 @@ organizationsRoutes.get('/:id/domains', jwtAuth, async (c) => {
   return c.json({ data: { domains } });
 });
 
-// PUT /api/organizations/:id/domains - Update allowed domains for an org (super admin only)
+// PUT /organizations/:id/domains - Update allowed domains for an org (super admin only)
 organizationsRoutes.put('/:id/domains', jwtAuth, superAdminOnly, async (c) => {
   const id = c.req.param('id');
 
@@ -461,7 +461,7 @@ organizationsRoutes.put('/:id/domains', jwtAuth, superAdminOnly, async (c) => {
   return c.json({ data: { domains: normalizedDomains } });
 });
 
-// GET /api/organizations/current/domains - Get allowed domains for current user's org
+// GET /organizations/current/domains - Get allowed domains for current user's org
 organizationsRoutes.get('/current/domains', jwtAuth, withOrganization, async (c) => {
   const org = c.get('organization');
   const user = c.get('user');
@@ -496,7 +496,7 @@ organizationsRoutes.get('/current/domains', jwtAuth, withOrganization, async (c)
   return c.json({ data: { domains } });
 });
 
-// PUT /api/organizations/current/domains - Update allowed domains for current user's org (super admin only)
+// PUT /organizations/current/domains - Update allowed domains for current user's org (super admin only)
 organizationsRoutes.put('/current/domains', jwtAuth, superAdminOnly, withOrganization, async (c) => {
   const org = c.get('organization');
 
@@ -575,7 +575,7 @@ organizationsRoutes.put('/current/domains', jwtAuth, superAdminOnly, withOrganiz
   return c.json({ data: { domains: normalizedDomains } });
 });
 
-// DELETE /api/organizations/:id - Delete organization (super admin only)
+// DELETE /organizations/:id - Delete organization (super admin only)
 organizationsRoutes.delete('/:id', jwtAuth, superAdminOnly, async (c) => {
   const id = c.req.param('id');
 

@@ -34,7 +34,7 @@ const LLM_PROVIDERS = {
 
 type ProviderId = keyof typeof LLM_PROVIDERS;
 
-// GET /api/settings/llm - Get LLM configuration
+// GET /settings/llm - Get LLM configuration
 settingsRoutes.get('/llm', async (c) => {
   const settings = await db.select().from(systemSettings);
   const settingsMap = new Map(settings.map(s => [s.key, s]));
@@ -68,7 +68,7 @@ settingsRoutes.get('/llm', async (c) => {
   });
 });
 
-// PUT /api/settings/llm/:provider - Set API key for a provider
+// PUT /settings/llm/:provider - Set API key for a provider
 settingsRoutes.put('/llm/:provider', async (c) => {
   const providerId = c.req.param('provider') as ProviderId;
   const provider = LLM_PROVIDERS[providerId];
@@ -118,7 +118,7 @@ settingsRoutes.put('/llm/:provider', async (c) => {
   });
 });
 
-// DELETE /api/settings/llm/:provider - Remove API key
+// DELETE /settings/llm/:provider - Remove API key
 settingsRoutes.delete('/llm/:provider', async (c) => {
   const providerId = c.req.param('provider') as ProviderId;
   const provider = LLM_PROVIDERS[providerId];
@@ -132,7 +132,7 @@ settingsRoutes.delete('/llm/:provider', async (c) => {
   return c.json({ data: { success: true } });
 });
 
-// PUT /api/settings/llm/default - Set default provider and model
+// PUT /settings/llm/default - Set default provider and model
 settingsRoutes.put('/llm/default', async (c) => {
   const body = await c.req.json<{ provider: string; model: string }>();
   const { provider, model } = body;

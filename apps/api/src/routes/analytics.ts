@@ -10,7 +10,7 @@ export const analyticsRoutes = new Hono();
 // All routes require JWT auth
 analyticsRoutes.use('*', jwtAuth);
 
-// GET /api/analytics/usage - Get user's own usage stats
+// GET /analytics/usage - Get user's own usage stats
 analyticsRoutes.get('/usage', async (c) => {
   const user = c.get('user');
   const days = parseInt(c.req.query('days') || '30');
@@ -173,7 +173,7 @@ analyticsRoutes.get('/usage', async (c) => {
   });
 });
 
-// GET /api/analytics/admin - Admin-only aggregated analytics
+// GET /analytics/admin - Admin-only aggregated analytics
 analyticsRoutes.get('/admin', async (c) => {
   const user = c.get('user');
 

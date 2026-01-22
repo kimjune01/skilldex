@@ -9,7 +9,7 @@ export const v1MeRoutes = new Hono();
 // All routes require API key auth
 v1MeRoutes.use('*', apiKeyAuth);
 
-// GET /api/v1/me - Get current user info (for skills to verify auth)
+// GET /v1/me - Get current user info (for skills to verify auth)
 v1MeRoutes.get('/', async (c) => {
   const user = c.get('apiKeyUser');
 

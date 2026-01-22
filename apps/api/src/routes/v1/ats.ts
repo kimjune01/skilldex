@@ -166,7 +166,7 @@ async function proxyToMockAts(path: string, options?: RequestInit) {
   return response.json();
 }
 
-// GET /api/v1/ats/candidates - Search candidates
+// GET /v1/ats/candidates - Search candidates
 v1AtsRoutes.get('/candidates', async (c) => {
   const query = c.req.query();
   const params = new URLSearchParams(query);
@@ -230,7 +230,7 @@ v1AtsRoutes.get('/candidates', async (c) => {
   }
 });
 
-// GET /api/v1/ats/candidates/:id - Get candidate by ID
+// GET /v1/ats/candidates/:id - Get candidate by ID
 v1AtsRoutes.get('/candidates/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('apiKeyUser');
@@ -275,7 +275,7 @@ v1AtsRoutes.get('/candidates/:id', async (c) => {
   }
 });
 
-// POST /api/v1/ats/candidates - Create candidate
+// POST /v1/ats/candidates - Create candidate
 v1AtsRoutes.post('/candidates', async (c) => {
   const body = await c.req.json();
   const user = c.get('apiKeyUser');
@@ -327,7 +327,7 @@ v1AtsRoutes.post('/candidates', async (c) => {
   }
 });
 
-// PUT /api/v1/ats/candidates/:id - Update candidate
+// PUT /v1/ats/candidates/:id - Update candidate
 v1AtsRoutes.put('/candidates/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
@@ -378,7 +378,7 @@ v1AtsRoutes.put('/candidates/:id', async (c) => {
   }
 });
 
-// GET /api/v1/ats/jobs - List jobs
+// GET /v1/ats/jobs - List jobs
 v1AtsRoutes.get('/jobs', async (c) => {
   const query = c.req.query();
   const user = c.get('apiKeyUser');
@@ -412,7 +412,7 @@ v1AtsRoutes.get('/jobs', async (c) => {
   }
 });
 
-// GET /api/v1/ats/jobs/:id - Get job by ID
+// GET /v1/ats/jobs/:id - Get job by ID
 v1AtsRoutes.get('/jobs/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('apiKeyUser');
@@ -451,7 +451,7 @@ v1AtsRoutes.get('/jobs/:id', async (c) => {
   }
 });
 
-// GET /api/v1/ats/applications - List applications
+// GET /v1/ats/applications - List applications
 v1AtsRoutes.get('/applications', async (c) => {
   const query = c.req.query();
   const params = new URLSearchParams(query);
@@ -501,7 +501,7 @@ v1AtsRoutes.get('/applications', async (c) => {
   }
 });
 
-// POST /api/v1/ats/applications/:id/stage - Move application to new stage
+// POST /v1/ats/applications/:id/stage - Move application to new stage
 v1AtsRoutes.post('/applications/:id/stage', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
@@ -647,7 +647,7 @@ interface ProxyRequestBody {
   headers?: Record<string, string>;
 }
 
-// POST /api/v1/ats/proxy - Proxy requests to ATS provider
+// POST /v1/ats/proxy - Proxy requests to ATS provider
 v1AtsRoutes.post('/proxy', async (c) => {
   const user = c.get('apiKeyUser');
   const startTime = Date.now();

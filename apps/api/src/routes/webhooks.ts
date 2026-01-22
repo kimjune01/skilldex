@@ -39,7 +39,7 @@ interface NangoSyncWebhook {
 
 type NangoWebhook = NangoAuthWebhook | NangoSyncWebhook;
 
-// POST /api/webhooks/nango - Handle Nango webhooks
+// POST /webhooks/nango - Handle Nango webhooks
 webhooksRoutes.post('/nango', async (c) => {
   try {
     const payload = await c.req.json<NangoWebhook>();

@@ -1,8 +1,8 @@
 /**
  * OpenAPI 3.1 Specification for Skillomatic API
  *
- * This spec is served statically for chatbot/AI consumption at /api/docs/openapi.json
- * Human-readable docs available at /api/docs (Swagger UI) or /api/docs/redoc (ReDoc)
+ * This spec is served statically for chatbot/AI consumption at /docs/openapi.json
+ * Human-readable docs available at /docs (Swagger UI) or /docs/redoc (ReDoc)
  */
 
 export const openApiSpec = {

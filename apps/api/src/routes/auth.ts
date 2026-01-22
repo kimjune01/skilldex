@@ -60,7 +60,7 @@ async function findOrgByEmailDomain(email: string): Promise<{ id: string; name: 
 
 export const authRoutes = new Hono();
 
-// POST /api/auth/login
+// POST /auth/login
 authRoutes.post('/login', async (c) => {
   const body = await c.req.json<LoginRequest>();
 
@@ -118,7 +118,7 @@ authRoutes.post('/login', async (c) => {
   return c.json({ data: response });
 });
 
-// GET /api/auth/me
+// GET /auth/me
 authRoutes.get('/me', async (c) => {
   const authHeader = c.req.header('Authorization');
 
@@ -170,12 +170,12 @@ authRoutes.get('/me', async (c) => {
   return c.json({ data: userPublic });
 });
 
-// POST /api/auth/logout (client-side token removal, this is a no-op)
+// POST /auth/logout (client-side token removal, this is a no-op)
 authRoutes.post('/logout', (c) => {
   return c.json({ data: { message: 'Logged out' } });
 });
 
-// GET /api/auth/google - Redirect to Google OAuth
+// GET /auth/google - Redirect to Google OAuth
 authRoutes.get('/google', (c) => {
   if (!GOOGLE_CLIENT_ID) {
     return c.json({ error: { message: 'Google OAuth not configured' } }, 500);
@@ -185,7 +185,7 @@ authRoutes.get('/google', (c) => {
   const host = c.req.header('host') || 'localhost:3000';
   const protocol = host.includes('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${host}`;
-  const redirectUri = `${baseUrl}/api/auth/google/callback`;
+  const redirectUri = `${baseUrl}/auth/google/callback`;
 
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -199,7 +199,7 @@ authRoutes.get('/google', (c) => {
   return c.redirect(`${GOOGLE_AUTH_URL}?${params.toString()}`);
 });
 
-// GET /api/auth/google/callback - Handle Google OAuth callback
+// GET /auth/google/callback - Handle Google OAuth callback
 authRoutes.get('/google/callback', async (c) => {
   const code = c.req.query('code');
   const error = c.req.query('error');
@@ -208,8 +208,12 @@ authRoutes.get('/google/callback', async (c) => {
   const host = c.req.header('host') || 'localhost:3000';
   const protocol = host.includes('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${host}`;
-  const webUrl = baseUrl.replace('/api', '').replace(':3000', ':5173'); // Adjust for dev
-  const redirectUri = `${baseUrl}/api/auth/google/callback`;
+  // In prod: api.skillomatic.technology -> skillomatic.technology
+  // In dev: localhost:3000 -> localhost:5173
+  const webUrl = host.includes('localhost')
+    ? baseUrl.replace(':3000', ':5173')
+    : baseUrl.replace('api.', '');
+  const redirectUri = `${baseUrl}/auth/google/callback`;
 
   if (error) {
     return c.redirect(`${webUrl}/login?error=${encodeURIComponent(error)}`);

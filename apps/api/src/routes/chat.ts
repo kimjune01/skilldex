@@ -782,7 +782,7 @@ async function executeAction(
   }
 }
 
-// POST /api/chat - Stream chat response with action execution
+// POST /chat - Stream chat response with action execution
 chatRoutes.post('/', async (c) => {
   const body = await c.req.json<ChatRequest>();
   const { messages } = body;
@@ -900,7 +900,7 @@ chatRoutes.post('/', async (c) => {
   });
 });
 
-// POST /api/chat/execute-skill - Execute a skill via API (uses progressive disclosure)
+// POST /chat/execute-skill - Execute a skill via API (uses progressive disclosure)
 chatRoutes.post('/execute-skill', async (c) => {
   const body = await c.req.json<{ skillSlug: string; params?: Record<string, unknown> }>();
   const { skillSlug, params } = body;

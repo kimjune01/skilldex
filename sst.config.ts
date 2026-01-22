@@ -34,13 +34,25 @@ export default $config({
       dmarc: "v=DMARC1; p=quarantine;",
     });
 
-    // API - Hono on Lambda
+    // API subdomain
+    const apiDomain = `api.${domain}`;
+
+    // API - Hono on Lambda with custom domain
     const api = new sst.aws.Function("Api", {
       handler: "apps/api/src/lambda.handler",
       runtime: "nodejs20.x",
       timeout: "30 seconds",
       memory: "1024 MB", // Increased for faster cold starts
-      url: true, // Public Lambda URL with default CORS
+      url: {
+        cors: {
+          allowOrigins: useCustomDomain
+            ? [`https://${domain}`, "http://localhost:5173", "http://localhost:4173"]
+            : ["*"],
+          allowCredentials: true,
+          allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+          allowHeaders: ["Content-Type", "Authorization"],
+        },
+      },
       nodejs: {
         // Install native deps for Lambda (Linux x64)
         install: ["@libsql/linux-x64-gnu", "@libsql/client", "better-sqlite3"],
@@ -60,6 +72,14 @@ export default $config({
       },
     });
 
+    // Custom domain for API using CloudFront (for proper SSL)
+    const apiRouter = useCustomDomain ? new sst.aws.Router("ApiRouter", {
+      domain: apiDomain,
+      routes: {
+        "/*": api.url,
+      },
+    }) : undefined;
+
     // Web - Static site on CloudFront
     const web = new sst.aws.StaticSite("Web", {
       path: "apps/web",
@@ -69,12 +89,13 @@ export default $config({
       },
       domain: useCustomDomain ? domain : undefined,
       environment: {
-        VITE_API_URL: api.url,
+        // Use custom API domain in production, Lambda URL otherwise
+        VITE_API_URL: useCustomDomain ? `https://${apiDomain}` : api.url,
       },
     });
 
     return {
-      api: api.url,
+      api: useCustomDomain ? `https://${apiDomain}` : api.url,
       web: web.url,
       domain: useCustomDomain ? `https://${domain}` : "Custom domain not configured",
     };

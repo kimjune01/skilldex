@@ -10,9 +10,7 @@
 import type { ErrorCode, ErrorEventReport } from '@skillomatic/shared';
 import { getErrorCategory } from '@skillomatic/shared';
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+const API_BASE = import.meta.env.VITE_API_URL;
 
 // Session ID for correlating errors (not user identity)
 let sessionId: string | null = null;

@@ -9,7 +9,7 @@ import { getNextOnboardingStep, getOnboardingStepName } from '@skillomatic/share
 export const onboardingRoutes = new Hono();
 
 /**
- * GET /api/onboarding/status
+ * GET /onboarding/status
  * Get the current user's onboarding status
  */
 onboardingRoutes.get('/status', jwtAuth, async (c) => {
@@ -40,7 +40,7 @@ onboardingRoutes.get('/status', jwtAuth, async (c) => {
 });
 
 /**
- * POST /api/onboarding/advance
+ * POST /onboarding/advance
  * Advance the user's onboarding to a specific step (must be >= current step)
  */
 onboardingRoutes.post('/advance', jwtAuth, async (c) => {
@@ -95,7 +95,7 @@ onboardingRoutes.post('/advance', jwtAuth, async (c) => {
 });
 
 /**
- * POST /api/onboarding/complete-step
+ * POST /onboarding/complete-step
  * Complete a specific named step (e.g., 'ATS_CONNECTED')
  * This is a convenience endpoint that looks up the step value by name
  */
@@ -169,7 +169,7 @@ onboardingRoutes.post('/complete-step', jwtAuth, async (c) => {
 });
 
 /**
- * POST /api/onboarding/reset
+ * POST /onboarding/reset
  * Reset onboarding to the beginning (for testing/admin purposes)
  * Only super admins can reset their own onboarding
  */
@@ -280,7 +280,7 @@ For \`/linkedin-lookup\`, install the browser extension:
 2. Click extension icon > enter API URL \`${baseUrl}\` + your API key
 3. Stay logged into LinkedIn in Chrome
 
-Guide: ${baseUrl}/api/extension
+Guide: ${baseUrl}/extension
 
 ---
 

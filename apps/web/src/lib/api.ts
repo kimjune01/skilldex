@@ -19,11 +19,9 @@ import type {
 import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import type { RenderedSkill, ConfigSkill } from './skills-client';
 
-// In production, VITE_API_URL points to the Lambda function URL
-// In development, we use '/api' which Vite proxies to localhost:3000
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
-  : '/api';
+// API base URL - set via environment variable
+// Dev: http://localhost:3000, Prod: https://api.skillomatic.technology
+const API_BASE = import.meta.env.VITE_API_URL;
 
 async function request<T>(
   endpoint: string,

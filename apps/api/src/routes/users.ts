@@ -15,7 +15,7 @@ usersRoutes.use('*', jwtAuth);
 usersRoutes.use('*', adminOnly);
 usersRoutes.use('*', withOrganization);
 
-// GET /api/users - List users (super admin sees all, org admin sees their org)
+// GET /users - List users (super admin sees all, org admin sees their org)
 usersRoutes.get('/', async (c) => {
   const currentUser = c.get('user');
   const org = c.get('organization');
@@ -53,7 +53,7 @@ usersRoutes.get('/', async (c) => {
   return c.json({ data: publicUsers });
 });
 
-// GET /api/users/:id - Get user by ID (admin only)
+// GET /users/:id - Get user by ID (admin only)
 usersRoutes.get('/:id', async (c) => {
   const id = c.req.param('id');
   const currentUser = c.get('user');
@@ -94,7 +94,7 @@ usersRoutes.get('/:id', async (c) => {
   return c.json({ data: publicUser });
 });
 
-// POST /api/users - Create user (admin only)
+// POST /users - Create user (admin only)
 usersRoutes.post('/', async (c) => {
   const currentUser = c.get('user');
   const org = c.get('organization');
@@ -174,7 +174,7 @@ usersRoutes.post('/', async (c) => {
   return c.json({ data: publicUser }, 201);
 });
 
-// DELETE /api/users/:id - Delete user (admin only)
+// DELETE /users/:id - Delete user (admin only)
 usersRoutes.delete('/:id', async (c) => {
   const id = c.req.param('id');
   const currentUser = c.get('user');

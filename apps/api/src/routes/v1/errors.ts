@@ -51,7 +51,7 @@ const VALID_ERROR_CODES = new Set<string>([
   'NETWORK_ERROR', 'VALIDATION_ERROR', 'UNKNOWN_ERROR',
 ]);
 
-// POST /api/v1/errors - Report errors from client
+// POST /v1/errors - Report errors from client
 v1ErrorsRoutes.post('/', async (c) => {
   try {
     const body = await c.req.json<{ errors: ClientErrorEvent[]; userId?: string; organizationId?: string }>();
@@ -105,7 +105,7 @@ v1ErrorsRoutes.post('/', async (c) => {
   }
 });
 
-// GET /api/v1/errors/stats - Get error statistics (admin only)
+// GET /v1/errors/stats - Get error statistics (admin only)
 v1ErrorsRoutes.get('/stats', async (c) => {
   const adminKey = c.req.header('x-admin-key');
 
@@ -202,7 +202,7 @@ v1ErrorsRoutes.get('/stats', async (c) => {
   });
 });
 
-// GET /api/v1/errors/recent - Get recent errors (admin only)
+// GET /v1/errors/recent - Get recent errors (admin only)
 v1ErrorsRoutes.get('/recent', async (c) => {
   const adminKey = c.req.header('x-admin-key');
 
@@ -233,7 +233,7 @@ v1ErrorsRoutes.get('/recent', async (c) => {
   });
 });
 
-// DELETE /api/v1/errors - Clear old errors (admin only)
+// DELETE /v1/errors - Clear old errors (admin only)
 v1ErrorsRoutes.delete('/', async (c) => {
   const adminKey = c.req.header('x-admin-key');
 

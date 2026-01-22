@@ -11,7 +11,7 @@ export const proposalsRoutes = new Hono();
 // All routes require JWT auth
 proposalsRoutes.use('*', jwtAuth);
 
-// GET /api/proposals - List proposals (user sees own, admin sees all)
+// GET /proposals - List proposals (user sees own, admin sees all)
 proposalsRoutes.get('/', async (c) => {
   const user = c.get('user');
   const status = c.req.query('status'); // 'pending', 'approved', 'denied'
@@ -62,7 +62,7 @@ proposalsRoutes.get('/', async (c) => {
   });
 });
 
-// POST /api/proposals - Create a new skill proposal
+// POST /proposals - Create a new skill proposal
 proposalsRoutes.post('/', async (c) => {
   const user = c.get('user');
   const body = await c.req.json<SkillProposalCreateRequest>();
@@ -98,7 +98,7 @@ proposalsRoutes.post('/', async (c) => {
   }, 201);
 });
 
-// GET /api/proposals/:id - Get a specific proposal
+// GET /proposals/:id - Get a specific proposal
 proposalsRoutes.get('/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
@@ -142,7 +142,7 @@ proposalsRoutes.get('/:id', async (c) => {
   });
 });
 
-// PUT /api/proposals/:id - Update a proposal (only owner, only if pending)
+// PUT /proposals/:id - Update a proposal (only owner, only if pending)
 proposalsRoutes.put('/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
@@ -193,7 +193,7 @@ proposalsRoutes.put('/:id', async (c) => {
   });
 });
 
-// DELETE /api/proposals/:id - Delete a proposal (only owner, only if pending)
+// DELETE /proposals/:id - Delete a proposal (only owner, only if pending)
 proposalsRoutes.delete('/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
@@ -220,7 +220,7 @@ proposalsRoutes.delete('/:id', async (c) => {
   return c.json({ data: { success: true } });
 });
 
-// POST /api/proposals/:id/review - Admin review (approve/deny)
+// POST /proposals/:id/review - Admin review (approve/deny)
 proposalsRoutes.post('/:id/review', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');

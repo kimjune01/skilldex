@@ -121,7 +121,7 @@ function validateQuery(query: string): string | null {
   return null;
 }
 
-// GET /api/v1/database/tables - List available tables
+// GET /v1/database/tables - List available tables
 v1DatabaseRoutes.get('/tables', async (c) => {
   return c.json({
     data: {
@@ -131,7 +131,7 @@ v1DatabaseRoutes.get('/tables', async (c) => {
   });
 });
 
-// GET /api/v1/database/schema/:table - Get table schema
+// GET /v1/database/schema/:table - Get table schema
 v1DatabaseRoutes.get('/schema/:table', async (c) => {
   const table = c.req.param('table');
 
@@ -156,7 +156,7 @@ v1DatabaseRoutes.get('/schema/:table', async (c) => {
   }
 });
 
-// POST /api/v1/database/query - Execute a read-only SQL query
+// POST /v1/database/query - Execute a read-only SQL query
 v1DatabaseRoutes.post('/query', async (c) => {
   const body = await c.req.json<{ query: string; limit?: number }>();
 
@@ -213,7 +213,7 @@ v1DatabaseRoutes.post('/query', async (c) => {
   }
 });
 
-// GET /api/v1/database/stats - Get database statistics
+// GET /v1/database/stats - Get database statistics
 v1DatabaseRoutes.get('/stats', async (c) => {
   try {
     const stats: Record<string, number> = {};

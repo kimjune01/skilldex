@@ -20,7 +20,7 @@ import { getSkillStatus } from '../lib/skill-access.js';
 export const skillsRoutes = new Hono();
 
 // Public routes (no auth required for downloads)
-// GET /api/skills/install.sh - Download install script for all skills
+// GET /skills/install.sh - Download install script for all skills
 skillsRoutes.get('/install.sh', async (c) => {
   const host = c.req.header('host') || 'localhost:3000';
   const protocol = c.req.header('x-forwarded-proto') || 'http';
@@ -32,7 +32,7 @@ skillsRoutes.get('/install.sh', async (c) => {
     .where(eq(skills.isEnabled, true));
 
   const skillDownloads = enabledSkills
-    .map(s => `  echo "  - ${s.name}"\n  curl -sf "${baseUrl}/api/skills/${s.slug}/download" -o "${s.slug}.md"`)
+    .map(s => `  echo "  - ${s.name}"\n  curl -sf "${baseUrl}/skills/${s.slug}/download" -o "${s.slug}.md"`)
     .join('\n');
 
   const script = `#!/bin/bash
@@ -70,7 +70,7 @@ echo "  3. Open Claude Code and try: /ats-search"
   });
 });
 
-// GET /api/skills/:slug/download - Download skill markdown file (public)
+// GET /skills/:slug/download - Download skill markdown file (public)
 skillsRoutes.get('/:slug/download', async (c) => {
   const slug = c.req.param('slug');
 
@@ -128,7 +128,7 @@ function toSkillPublic(skill: typeof skills.$inferSelect): SkillPublic {
   };
 }
 
-// GET /api/skills - List skills available to the authenticated user
+// GET /skills - List skills available to the authenticated user
 // Returns: global skills + skills for user's organization (if any)
 // Query params:
 //   - includeAccess=true: include access status for each skill
@@ -226,7 +226,7 @@ skillsRoutes.get('/', async (c) => {
   return c.json({ data: filteredSkills });
 });
 
-// GET /api/skills/config - Get config skill (ephemeral architecture)
+// GET /skills/config - Get config skill (ephemeral architecture)
 // This returns all credentials needed for client-side LLM calls
 // MUST be before /:slug routes to avoid being caught as a slug
 skillsRoutes.get('/config', async (c) => {
@@ -280,7 +280,7 @@ function canAccessSkill(
   return false;
 }
 
-// GET /api/skills/:slug - Get skill by slug
+// GET /skills/:slug - Get skill by slug
 skillsRoutes.get('/:slug', async (c) => {
   const slug = c.req.param('slug');
   const user = c.get('user');
@@ -308,7 +308,7 @@ skillsRoutes.get('/:slug', async (c) => {
   return c.json({ data: toSkillPublic(skill) });
 });
 
-// GET /api/skills/:slug/rendered - Get skill with rendered credentials (ephemeral architecture)
+// GET /skills/:slug/rendered - Get skill with rendered credentials (ephemeral architecture)
 // This returns the skill instructions with all {{VARIABLE}} placeholders replaced
 // with actual credentials from the user's capability profile
 skillsRoutes.get('/:slug/rendered', async (c) => {
@@ -389,7 +389,7 @@ skillsRoutes.get('/:slug/rendered', async (c) => {
   });
 });
 
-// PUT /api/skills/:slug - Update skill (admin only)
+// PUT /skills/:slug - Update skill (admin only)
 skillsRoutes.put('/:slug', async (c) => {
   const user = c.get('user');
 
@@ -433,7 +433,7 @@ skillsRoutes.put('/:slug', async (c) => {
   return c.json({ data: toSkillPublic(updatedSkill) });
 });
 
-// GET /api/skills/:slug/access - Get skill access info (debug view)
+// GET /skills/:slug/access - Get skill access info (debug view)
 // Returns detailed information about why a skill is available, limited, or disabled
 skillsRoutes.get('/:slug/access', combinedAuth, async (c) => {
   const slug = c.req.param('slug');

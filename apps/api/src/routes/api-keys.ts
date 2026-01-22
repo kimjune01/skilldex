@@ -12,7 +12,7 @@ export const apiKeysRoutes = new Hono();
 // All routes require JWT auth
 apiKeysRoutes.use('*', jwtAuth);
 
-// GET /api/api-keys - List user's API keys (full key visible)
+// GET /api-keys - List user's API keys (full key visible)
 apiKeysRoutes.get('/', async (c) => {
   const user = c.get('user');
 
@@ -37,7 +37,7 @@ apiKeysRoutes.get('/', async (c) => {
   return c.json({ data: publicKeys });
 });
 
-// POST /api/api-keys - Create new API key
+// POST /api-keys - Create new API key
 apiKeysRoutes.post('/', async (c) => {
   const user = c.get('user');
   const body = await c.req.json<{ name?: string }>();
@@ -94,7 +94,7 @@ apiKeysRoutes.post('/', async (c) => {
   return c.json({ data: response }, 201);
 });
 
-// DELETE /api/api-keys/:id - Revoke API key
+// DELETE /api-keys/:id - Revoke API key
 apiKeysRoutes.delete('/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');

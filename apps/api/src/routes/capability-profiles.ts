@@ -53,7 +53,7 @@ async function requireOrgAdmin(c: Context, next: Next) {
 }
 
 /**
- * GET /api/capability-profiles
+ * GET /capability-profiles
  *
  * Get the organization's integration permissions and disabled skills.
  * This is the new simplified API replacing the old capability profiles CRUD.
@@ -76,7 +76,7 @@ capabilityProfilesRoutes.get('/', async (c) => {
 });
 
 /**
- * PUT /api/capability-profiles
+ * PUT /capability-profiles
  *
  * Update the organization's integration permissions and/or disabled skills.
  * Only org admins can modify these settings.
@@ -152,7 +152,7 @@ capabilityProfilesRoutes.put('/', requireOrgAdmin, async (c) => {
 });
 
 /**
- * PUT /api/capability-profiles/integrations
+ * PUT /capability-profiles/integrations
  *
  * Update only the integration permissions.
  */
@@ -193,7 +193,7 @@ capabilityProfilesRoutes.put('/integrations', requireOrgAdmin, async (c) => {
 });
 
 /**
- * PUT /api/capability-profiles/disabled-skills
+ * PUT /capability-profiles/disabled-skills
  *
  * Update only the disabled skills list.
  */

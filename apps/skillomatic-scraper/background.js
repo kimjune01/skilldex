@@ -230,7 +230,7 @@ async function updateTask(taskId, status, result, errorMessage) {
     if (result) body.result = result;
     if (errorMessage) body.errorMessage = errorMessage;
 
-    const response = await fetch(`${apiUrl}/api/v1/scrape/tasks/${taskId}`, {
+    const response = await fetch(`${apiUrl}/v1/scrape/tasks/${taskId}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
