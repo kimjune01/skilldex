@@ -39,3 +39,47 @@ Dev environment status:
 - Web (5173): restarted
 - API (3000): started
 ```
+
+---
+
+## Cloudflare Tunnel (for OAuth/Integrations)
+
+OAuth callbacks from external providers (Google, Nango) require a public URL. Use Cloudflare Tunnel to expose your local API.
+
+### Setup (one-time)
+
+```bash
+brew install cloudflared
+```
+
+### Start tunnel
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+This outputs a public URL like `https://random-words.trycloudflare.com`.
+
+### Configure environment
+
+Update your `.env` (or `.env.local`) with the tunnel URL:
+
+```bash
+API_URL=https://random-words.trycloudflare.com
+```
+
+Also update in:
+- **Google Cloud Console**: Add `${API_URL}/api/auth/google/callback` to authorized redirect URIs
+- **Nango Dashboard**: Update callback URL if using custom callbacks
+
+### Alternative: localhost.run (no install)
+
+```bash
+ssh -R 80:localhost:3000 localhost.run
+```
+
+### When tunnel is needed
+
+- Testing Google OAuth login flow
+- Testing Nango integration connections (ATS, Calendar, Email)
+- Any OAuth callback that needs to reach your local machine

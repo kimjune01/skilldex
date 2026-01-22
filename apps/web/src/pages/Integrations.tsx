@@ -77,9 +77,9 @@ const calendarProviders = [
   { id: 'calendly', name: 'Calendly' },
 ];
 
-// Email sub-providers
+// Email sub-providers - IDs must match Nango Integration IDs
 const emailProviders = [
-  { id: 'gmail', name: 'Gmail' },
+  { id: 'google-mail', name: 'Gmail' },
   { id: 'outlook', name: 'Outlook' },
 ];
 
@@ -208,19 +208,25 @@ export default function Integrations() {
     setError('');
 
     try {
-      // Get allowed integrations based on selected sub-provider
+      // Special handling for Gmail - use direct OAuth instead of Nango
+      if (provider === 'email' && (subProvider === 'google-mail' || subProvider === 'gmail')) {
+        // Redirect to our Gmail OAuth endpoint with token
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('token');
+        window.location.href = `${apiUrl}/integrations/gmail/connect?token=${encodeURIComponent(token || '')}`;
+        return;
+      }
+
+      // For other providers, use Nango Connect UI
       const allowedIntegrations = subProvider ? [subProvider] : undefined;
 
-      // Open Nango Connect UI
       const nango = new Nango();
       const connect = nango.openConnectUI({
         onEvent: (event) => {
           if (event.type === 'close') {
-            // Modal closed
             setIsConnecting(false);
             nangoConnectRef.current = null;
           } else if (event.type === 'connect') {
-            // Auth flow successful
             setSuccessMessage('Integration connected successfully');
             loadIntegrations();
             setIsConnecting(false);
@@ -232,7 +238,6 @@ export default function Integrations() {
 
       nangoConnectRef.current = connect;
 
-      // Get session token from backend and set it, including access level preference
       const session = await integrations.getSession(allowedIntegrations, accessLevel, provider);
       connect.setSessionToken(session.token);
     } catch (err) {
