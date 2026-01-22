@@ -39,6 +39,8 @@ export interface CapabilityProfile {
   isSuperAdmin?: boolean;
   llmProvider?: string;
   atsProvider?: string;
+  calendarProvider?: string;
+  emailProvider?: string;
   effectiveAccess?: EffectiveAccess;
 }
 

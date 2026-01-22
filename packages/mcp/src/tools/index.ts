@@ -151,12 +151,32 @@ export async function registerTools(
     log.info('Email tools not registered (no email integration connected)');
   }
 
-  // TODO: Calendar tools - only if calendar is connected
-  // if (profile.hasCalendar) {
-  //   registerCalendarTools(server, client);
-  //   registeredTools.push('check_availability', 'schedule_meeting');
-  //   log.info('Calendar tools registered');
-  // }
+  // Calendar tools - only if calendar is connected
+  if (profile.hasCalendar) {
+    const calendarProvider = profile.calendarProvider || 'calendly';
+    const calendarAccess: AccessLevel = profile.effectiveAccess?.calendar || 'read-write';
+
+    // Use dynamic tools if provider has a manifest
+    if (isProviderSupported(calendarProvider)) {
+      const manifest = getManifest(calendarProvider);
+      if (manifest) {
+        const tools = generateToolsFromManifest(manifest, calendarAccess);
+        const toolNames = registerGeneratedTools(server, tools, client);
+        registeredTools.push(...toolNames);
+
+        const summary = getToolSummary(manifest, calendarAccess);
+        log.info(
+          `Dynamic Calendar tools registered: ${toolNames.length} tools ` +
+          `(provider: ${calendarProvider}, access: ${calendarAccess}, ` +
+          `read: ${summary.read}, write: ${summary.write}, filtered: ${summary.filtered})`
+        );
+      }
+    } else {
+      log.info(`Calendar tools not registered (provider: ${calendarProvider} not supported for dynamic tools)`);
+    }
+  } else {
+    log.info('Calendar tools not registered (no calendar integration connected)');
+  }
 
   // Database tools - only for super admins
   if (profile.isSuperAdmin) {

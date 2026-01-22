@@ -94,14 +94,23 @@ export function registerGeneratedTools(
         }
 
         // Make the proxy request through Skillomatic API
-        const result = await client.proxyAtsRequest({
+        // Use the appropriate proxy based on category
+        const proxyRequest = {
           provider: tool.meta.provider,
           method: tool.meta.method,
           path,
           query: Object.keys(queryParams).length > 0 ? queryParams : undefined,
           body,
           headers: Object.keys(headers).length > 0 ? headers : undefined,
-        });
+        };
+
+        let result: unknown;
+        if (tool.meta.category === 'calendar') {
+          result = await client.proxyCalendarRequest(proxyRequest);
+        } else {
+          // Default to ATS proxy for backwards compatibility
+          result = await client.proxyAtsRequest(proxyRequest);
+        }
 
         const durationMs = Date.now() - startTime;
         log.debug(`Tool ${tool.name} completed`, {

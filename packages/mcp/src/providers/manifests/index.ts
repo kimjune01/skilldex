@@ -8,6 +8,7 @@ import type { ProviderManifest } from '../types.js';
 import { greenhouseManifest } from './greenhouse.js';
 import { zohoRecruitManifest } from './zoho-recruit.js';
 import { mockAtsManifest } from './mock-ats.js';
+import { calendlyManifest } from './calendly.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -16,10 +17,13 @@ const isDev = process.env.NODE_ENV !== 'production';
  * Note: mock-ats is only available in development mode
  */
 export const manifests: Record<string, ProviderManifest> = {
+  // ATS providers
   greenhouse: greenhouseManifest,
   'zoho-recruit': zohoRecruitManifest,
   // Only include mock-ats in development
   ...(isDev ? { 'mock-ats': mockAtsManifest } : {}),
+  // Calendar providers
+  calendly: calendlyManifest,
 };
 
 /**
@@ -43,4 +47,4 @@ export function isProviderSupported(provider: string): boolean {
   return provider in manifests;
 }
 
-export { greenhouseManifest, zohoRecruitManifest, mockAtsManifest };
+export { greenhouseManifest, zohoRecruitManifest, mockAtsManifest, calendlyManifest };

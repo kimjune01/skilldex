@@ -337,4 +337,22 @@ export class SkillomaticClient {
       body: JSON.stringify(request),
     });
   }
+
+  /**
+   * Proxy a request to the connected calendar provider.
+   * Used by dynamically generated tools to make provider-specific API calls.
+   */
+  async proxyCalendarRequest(request: {
+    provider: string;
+    method: string;
+    path: string;
+    query?: Record<string, unknown>;
+    body?: unknown;
+    headers?: Record<string, string>;
+  }): Promise<unknown> {
+    return this.request<unknown>('/api/v1/calendar/proxy', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
 }

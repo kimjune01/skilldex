@@ -240,6 +240,15 @@ skillsRoutes.get('/config', async (c) => {
     effectiveAccess = await getEffectiveAccessForUser(user.sub, user.organizationId);
   }
 
+  // Determine calendar provider (prioritize calendly if connected)
+  const calendarProvider = profile.calendar?.calendly
+    ? 'calendly'
+    : profile.calendar?.ical?.provider === 'google'
+      ? 'google-calendar'
+      : profile.calendar?.ical?.provider === 'outlook'
+        ? 'outlook-calendar'
+        : undefined;
+
   return c.json({
     data: {
       slug: '_config',
@@ -254,6 +263,8 @@ skillsRoutes.get('/config', async (c) => {
         isSuperAdmin: !!user.isSuperAdmin,
         llmProvider: profile.llm?.provider,
         atsProvider: profile.ats?.provider,
+        calendarProvider,
+        emailProvider: profile.email?.provider,
         effectiveAccess: effectiveAccess
           ? {
               ats: effectiveAccess.ats,
