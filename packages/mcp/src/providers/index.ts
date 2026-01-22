@@ -16,6 +16,7 @@ export { filterOperationsByAccess, isOperationAllowed } from './types.js';
 export { manifests, getManifest, getAvailableProviders, isProviderSupported } from './manifests/index.js';
 export { greenhouseManifest } from './manifests/greenhouse.js';
 export { zohoRecruitManifest } from './manifests/zoho-recruit.js';
+export { mockAtsManifest } from './manifests/mock-ats.js';
 
 // Generator
 export type { GeneratedTool } from './generator.js';

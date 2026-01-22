@@ -22,12 +22,13 @@ export interface RenderedSkill extends SkillPublic {
   instructions: string;
 }
 
-export type AccessLevel = 'read-write' | 'read-only' | 'disabled' | 'none';
+// Re-export from providers to avoid duplication
+export type { AccessLevel } from './providers/permissions.js';
 
 export interface EffectiveAccess {
-  ats: AccessLevel;
-  email: AccessLevel;
-  calendar: AccessLevel;
+  ats: import('./providers/permissions.js').AccessLevel;
+  email: import('./providers/permissions.js').AccessLevel;
+  calendar: import('./providers/permissions.js').AccessLevel;
 }
 
 export interface CapabilityProfile {

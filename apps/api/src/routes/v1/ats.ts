@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { apiKeyAuth } from '../../middleware/apiKey.js';
 import { db } from '@skillomatic/db';
 import { skillUsageLogs, skills, integrations } from '@skillomatic/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import {
   isDemoMode,
@@ -673,8 +673,9 @@ v1AtsRoutes.post('/proxy', async (c) => {
     return c.json({ error: { message: 'You have read-only access to the ATS' } }, 403);
   }
 
-  // Get the user's ATS integration - look for provider 'ats' or specific provider like 'mock-ats'
-  const integration = await db
+  // Get the user's ATS integration - look for specific provider or any ATS provider
+  const atsProviders = [provider, 'ats', 'mock-ats', 'greenhouse', 'zoho-recruit'];
+  const [atsIntegration] = await db
     .select()
     .from(integrations)
     .where(
@@ -682,14 +683,11 @@ v1AtsRoutes.post('/proxy', async (c) => {
         eq(integrations.status, 'connected'),
         user.organizationId
           ? eq(integrations.organizationId, user.organizationId)
-          : eq(integrations.userId, user.id)
+          : eq(integrations.userId, user.id),
+        or(...atsProviders.map((p) => eq(integrations.provider, p)))
       )
-    );
-
-  // Find matching integration - prefer exact provider match, fallback to 'ats' provider
-  const atsIntegration = integration.find(
-    (i) => i.provider === provider || i.provider === 'ats' || i.provider === 'mock-ats'
-  );
+    )
+    .limit(1);
 
   if (!atsIntegration) {
     return c.json({ error: { message: 'No ATS integration connected' } }, 400);
@@ -727,13 +725,10 @@ v1AtsRoutes.post('/proxy', async (c) => {
   }
 
   // Build the full URL
-  // Note: new URL(path, base) treats '/path' as absolute from origin, losing the base path
-  // So we concatenate manually to preserve the full base URL
-  const baseUrl = providerConfig.getBaseUrl(region);
-  const fullPath = baseUrl.endsWith('/') && path.startsWith('/')
-    ? baseUrl + path.slice(1)
-    : baseUrl + path;
-  const url = new URL(fullPath);
+  // Normalize: remove trailing slash from base, ensure path starts with /
+  const baseUrl = providerConfig.getBaseUrl(region).replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = new URL(baseUrl + normalizedPath);
 
   // Add query parameters
   if (query) {

@@ -95,7 +95,7 @@ describe('registerTools', () => {
   });
 
   describe('conditional ATS tools registration', () => {
-    it('should register ATS tools when hasATS is true', async () => {
+    it('should register dynamic ATS tools when hasATS is true and provider has manifest', async () => {
       const profile: CapabilityProfile = {
         hasLLM: false,
         hasATS: true,
@@ -110,6 +110,29 @@ describe('registerTools', () => {
         profile
       );
 
+      // With dynamic tools, registerAtsTools is NOT called - tools are generated from manifest
+      // Instead, server.tool() is called directly for each generated tool
+      expect(registerAtsTools).not.toHaveBeenCalled();
+      // Verify server.tool was called (at least for list_skills, get_skill, and dynamic tools)
+      expect(mockServer.tool).toHaveBeenCalled();
+    });
+
+    it('should register static ATS tools when provider has no manifest', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: true,
+        hasCalendar: false,
+        hasEmail: false,
+        atsProvider: 'unsupported-ats', // Provider without a manifest
+      };
+
+      await registerTools(
+        mockServer as any,
+        mockClient as SkillomaticClient,
+        profile
+      );
+
+      // Static tools are used for unsupported providers
       expect(registerAtsTools).toHaveBeenCalledWith(mockServer, mockClient);
     });
 
