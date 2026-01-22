@@ -212,6 +212,7 @@ async function seed() {
             VALUES (?, ?, ?, ?, ?, ?, ?, 4)
             ON CONFLICT(id) DO UPDATE SET
               email = excluded.email,
+              password_hash = excluded.password_hash,
               name = excluded.name,
               is_admin = excluded.is_admin,
               is_super_admin = excluded.is_super_admin,

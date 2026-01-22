@@ -1,17 +1,51 @@
 Deploy Skillomatic to production using SST.
 
-## Pre-deploy: Validate and run database migrations
+## Quick Deploy (All Steps)
 
-First, get the Turso credentials:
+Run all steps in sequence:
+
+```bash
+# 1. Set Turso credentials
+export TURSO_DATABASE_URL=$(turso db show skillomatic --url)
+export TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic)
+
+# 2. Run migrations
+pnpm --filter @skillomatic/db migrate:prod
+
+# 3. Deploy infrastructure
+pnpm sst deploy --stage production
+
+# 4. CRITICAL: Run seed to ensure users/skills are properly configured
+pnpm --filter @skillomatic/db seed:prod
+
+# 5. Verify login works
+curl -s -X POST "$(cat .sst/outputs.json | jq -r .api)/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"superadmin@skillomatic.technology","password":"Skillomatic2024!"}'
+```
+
+## Important Notes
+
+**CRITICAL**: Always run `seed:prod` AFTER deployment. The seed script:
+- Creates/updates test users with properly hashed passwords
+- Ensures all skills from `skills/` directory are in the database
+- Creates the super admin API key for debugging
+- Is idempotent - safe to run multiple times
+
+Without running seed, users may exist in the database but have incorrect password hashes, causing "Invalid email or password" errors on login.
+
+## Detailed Steps
+
+### Step 1: Set Turso credentials
 
 ```bash
 export TURSO_DATABASE_URL=$(turso db show skillomatic --url)
 export TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic)
 ```
 
-### Step 1: Validate current state
+### Step 2: Validate current state (optional)
 
-Check what's currently in production and compare with expected seed data:
+Check what's currently in production:
 
 ```bash
 # Check current users
@@ -19,9 +53,6 @@ turso db shell skillomatic "SELECT email, is_admin, is_super_admin FROM users OR
 
 # Check current skills
 turso db shell skillomatic "SELECT slug, name, is_enabled FROM skills ORDER BY slug"
-
-# Check current roles
-turso db shell skillomatic "SELECT name, description FROM roles"
 ```
 
 **Expected users:**
@@ -29,56 +60,59 @@ turso db shell skillomatic "SELECT name, description FROM roles"
 - orgadmin@skillomatic.technology (org admin)
 - member@skillomatic.technology (member)
 
-**Expected skills (from `skills/` directory):**
-- linkedin-lookup, ats-candidate-search, ats-candidate-crud (enabled)
-- candidate-pipeline-builder, daily-report (enabled)
-- email-draft, interview-scheduler, meeting-notes (disabled)
+**All users share password:** `Skillomatic2024!`
 
-**Expected roles:**
-- admin, recruiter, viewer
-
-If any are missing or outdated, run the seed script.
-
-### Step 2: Run migrations and seed
+### Step 3: Run migrations
 
 ```bash
-# Run migrations (idempotent - safe to run multiple times)
 pnpm --filter @skillomatic/db migrate:prod
-
-# Seed essential data (idempotent)
-pnpm --filter @skillomatic/db seed:prod
 ```
 
-### Step 3: Verify seed applied correctly
-
-```bash
-# Verify user count
-turso db shell skillomatic "SELECT COUNT(*) as user_count FROM users"
-
-# Verify skill count
-turso db shell skillomatic "SELECT COUNT(*) as skill_count FROM skills"
-
-# Verify API key exists and is active
-turso db shell skillomatic "SELECT key, revoked_at FROM api_keys WHERE id = 'apikey-super-admin'"
-```
-
-## Deploy
+### Step 4: Deploy infrastructure
 
 ```bash
 pnpm sst deploy --stage production
 ```
 
-Wait for the deployment to complete and report the URLs when done.
+Wait for the deployment to complete.
 
-## Post-deploy verification
+### Step 5: Run seed (REQUIRED)
 
-Test the API is working:
 ```bash
-curl -s https://api.skillomatic.technology/health
+pnpm --filter @skillomatic/db seed:prod
 ```
 
-Test database access with super admin key:
+This ensures:
+- Test users have correct password hashes
+- All skills from `skills/` directory are synced
+- Super admin API key is active
+
+### Step 6: Verify deployment
+
 ```bash
-curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  "https://api.skillomatic.technology/api/v1/database/stats"
+# Get API URL
+API_URL=$(cat .sst/outputs.json | jq -r .api)
+
+# Test health endpoint
+curl -s "$API_URL/api/health"
+
+# Test login
+curl -s -X POST "$API_URL/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"superadmin@skillomatic.technology","password":"Skillomatic2024!"}'
+
+# Test with super admin API key
+export SKILLOMATIC_API_KEY=sk_live_prod_super_admin_debug_key_2024
+curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" "$API_URL/api/v1/me"
 ```
+
+## Troubleshooting
+
+**"Invalid email or password" error:**
+- Run `pnpm --filter @skillomatic/db seed:prod` to reset password hashes
+
+**"Not Found" error on login:**
+- User doesn't exist. Run seed:prod to create test users
+
+**Skills not showing:**
+- Run seed:prod to sync skills from `skills/` directory

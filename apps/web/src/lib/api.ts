@@ -25,7 +25,7 @@ import { isDemoModeEnabled } from '../hooks/useDemo';
 // In production, VITE_API_URL points to the Lambda function URL
 // In development, we use '/api' which Vite proxies to localhost:3000
 const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
   : '/api';
 
 async function request<T>(

@@ -219,14 +219,26 @@ pnpm sst deploy --stage production
 # - API URL (Lambda)
 ```
 
-### 5. Run Database Migrations
+### 5. Run Database Migrations and Seed
 
 ```bash
-# Push schema to Turso
-TURSO_DATABASE_URL="libsql://skillomatic-xxx.turso.io" \
-TURSO_AUTH_TOKEN="your-token" \
-pnpm db:push
+# Set Turso credentials
+export TURSO_DATABASE_URL=$(turso db show skillomatic --url)
+export TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic)
+
+# Run migrations
+pnpm --filter @skillomatic/db migrate:prod
+
+# CRITICAL: Run seed to create users with proper password hashes
+pnpm --filter @skillomatic/db seed:prod
 ```
+
+**Important:** Always run `seed:prod` after deployment. This ensures:
+- Test users have correctly hashed passwords
+- All skills from `skills/` directory are synced to the database
+- Super admin API key is created and active
+
+Without running seed, users may exist but login will fail with "Invalid email or password".
 
 ### Custom Domain (Optional)
 
@@ -253,6 +265,10 @@ To use a custom domain like `skillomatic.technology`:
 | `NANGO_HOST` | Nango API host | No (defaults to api.nango.dev) |
 
 ### Troubleshooting
+
+**"Invalid email or password" on login:**
+- Run `pnpm --filter @skillomatic/db seed:prod` to reset password hashes
+- This is the most common issue after deployment
 
 **Lambda 403 Forbidden:**
 - Ensure Lambda URL has `authorization: "none"` in SST config
