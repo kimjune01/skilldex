@@ -16,6 +16,19 @@ import { organizations, integrations } from '@skillomatic/db/schema';
 import { eq, and, or } from 'drizzle-orm';
 
 /**
+ * Structured logging for permissions telemetry.
+ * Logs to stderr for serverless compatibility, uses JSON for structured data.
+ */
+const log = {
+  info: (event: string, data?: Record<string, unknown>) =>
+    console.log(`[Permissions] ${event}`, data ? JSON.stringify(data) : ''),
+  warn: (event: string, data?: Record<string, unknown>) =>
+    console.warn(`[Permissions] ${event}`, data ? JSON.stringify(data) : ''),
+  error: (event: string, data?: Record<string, unknown>) =>
+    console.error(`[Permissions] ${event}`, data ? JSON.stringify(data) : ''),
+};
+
+/**
  * Access level for an integration category
  * - 'read-write': Full access (can read and modify data)
  * - 'read-only': Can only read data, not modify
@@ -129,6 +142,19 @@ export async function updateOrgIntegrationPermissions(
   const current = await getOrgIntegrationPermissions(orgId);
   const updated = { ...current, ...permissions };
 
+  // Log permission changes for audit trail
+  const changes: Record<string, { from: AccessLevel; to: AccessLevel }> = {};
+  for (const [key, value] of Object.entries(permissions)) {
+    const category = key as IntegrationCategory;
+    if (current[category] !== value) {
+      changes[category] = { from: current[category], to: value as AccessLevel };
+    }
+  }
+
+  if (Object.keys(changes).length > 0) {
+    log.info('org_permissions_updated', { orgId, changes });
+  }
+
   await db
     .update(organizations)
     .set({
@@ -145,6 +171,21 @@ export async function updateOrgDisabledSkills(
   orgId: string,
   disabledSkills: string[]
 ): Promise<void> {
+  const current = await getOrgDisabledSkills(orgId);
+
+  // Calculate what changed
+  const added = disabledSkills.filter((s) => !current.includes(s));
+  const removed = current.filter((s) => !disabledSkills.includes(s));
+
+  if (added.length > 0 || removed.length > 0) {
+    log.info('org_disabled_skills_updated', {
+      orgId,
+      added: added.length > 0 ? added : undefined,
+      removed: removed.length > 0 ? removed : undefined,
+      totalDisabled: disabledSkills.length,
+    });
+  }
+
   await db
     .update(organizations)
     .set({
@@ -379,6 +420,7 @@ export async function updateUserAccessLevel(
 ): Promise<void> {
   // Validate access level
   if (accessLevel !== 'read-write' && accessLevel !== 'read-only') {
+    log.warn('invalid_access_level_attempt', { integrationId, userId, accessLevel });
     throw new Error('Invalid access level. Must be "read-write" or "read-only"');
   }
 
@@ -389,11 +431,17 @@ export async function updateUserAccessLevel(
     .limit(1);
 
   if (!integration) {
+    log.warn('integration_not_found', { integrationId, userId });
     throw new Error('Integration not found');
   }
 
   // Verify ownership
   if (integration.userId !== userId) {
+    log.warn('unauthorized_access_level_change', {
+      integrationId,
+      requestingUserId: userId,
+      ownerUserId: integration.userId,
+    });
     throw new Error('Not authorized to modify this integration');
   }
 
@@ -406,7 +454,19 @@ export async function updateUserAccessLevel(
     }
   }
 
+  const previousLevel = metadata.accessLevel || 'read-write';
   metadata.accessLevel = accessLevel;
+
+  // Log the change
+  if (previousLevel !== accessLevel) {
+    log.info('user_access_level_changed', {
+      integrationId,
+      userId,
+      provider: integration.provider,
+      from: previousLevel,
+      to: accessLevel,
+    });
+  }
 
   await db
     .update(integrations)

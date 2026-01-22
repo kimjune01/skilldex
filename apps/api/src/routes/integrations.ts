@@ -14,6 +14,14 @@ import { randomUUID } from 'crypto';
 
 export const integrationsRoutes = new Hono();
 
+/** Structured logging for integration events */
+const log = {
+  info: (event: string, data?: Record<string, unknown>) =>
+    console.log(`[Integrations] ${event}`, data ? JSON.stringify(data) : ''),
+  warn: (event: string, data?: Record<string, unknown>) =>
+    console.warn(`[Integrations] ${event}`, data ? JSON.stringify(data) : ''),
+};
+
 // All routes require JWT auth
 integrationsRoutes.use('*', jwtAuth);
 
@@ -268,6 +276,7 @@ integrationsRoutes.get('/callback', async (c) => {
 
   if (error) {
     // OAuth failed - redirect to integrations page with error
+    log.warn('oauth_callback_error', { error, errorDescription, connectionId });
     const errorUrl = new URL(`${webUrl}/integrations`);
     errorUrl.searchParams.set('error', errorDescription || error);
     return c.redirect(errorUrl.toString());
@@ -318,6 +327,13 @@ integrationsRoutes.get('/callback', async (c) => {
         updatedAt: new Date(),
       })
       .where(eq(integrations.id, int.id));
+
+    log.info('integration_connected', {
+      integrationId: int.id,
+      userId: int.userId,
+      provider: int.provider,
+      accessLevel: updatedMetadata.accessLevel,
+    });
 
     /*
      * INTEGRATION ONBOARDING: Advance user's onboarding when first integration connects.
@@ -390,6 +406,12 @@ integrationsRoutes.post('/disconnect', async (c) => {
       updatedAt: new Date(),
     })
     .where(eq(integrations.id, body.integrationId));
+
+  log.info('integration_disconnected', {
+    integrationId: body.integrationId,
+    userId: user.sub,
+    provider: int.provider,
+  });
 
   return c.json({ data: { message: 'Integration disconnected' } });
 });
@@ -498,6 +520,7 @@ integrationsRoutes.patch('/:id/access-level', async (c) => {
       // Ignore malformed metadata
     }
   }
+  const previousLevel = (existingMetadata.accessLevel as string) || 'read-write';
   const updatedMetadata = { ...existingMetadata, accessLevel: body.accessLevel };
 
   await db
@@ -507,6 +530,17 @@ integrationsRoutes.patch('/:id/access-level', async (c) => {
       updatedAt: new Date(),
     })
     .where(eq(integrations.id, integrationId));
+
+  // Log access level change
+  if (previousLevel !== body.accessLevel) {
+    log.info('access_level_changed', {
+      integrationId,
+      userId: user.sub,
+      provider: int.provider,
+      from: previousLevel,
+      to: body.accessLevel,
+    });
+  }
 
   return c.json({
     data: {

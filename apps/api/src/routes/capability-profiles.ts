@@ -25,14 +25,28 @@ import {
 
 export const capabilityProfilesRoutes = new Hono();
 
+/** Structured logging for permissions admin routes */
+const log = {
+  info: (event: string, data?: Record<string, unknown>) =>
+    console.log(`[Permissions:Admin] ${event}`, data ? JSON.stringify(data) : ''),
+  warn: (event: string, data?: Record<string, unknown>) =>
+    console.warn(`[Permissions:Admin] ${event}`, data ? JSON.stringify(data) : ''),
+};
+
 // All routes require JWT auth and org context
 capabilityProfilesRoutes.use('*', jwtAuth);
 capabilityProfilesRoutes.use('*', withOrganization);
 
 // Middleware to require org admin
 async function requireOrgAdmin(c: Context, next: Next) {
-  const user = c.get('user') as { isAdmin?: boolean; isSuperAdmin?: boolean } | undefined;
+  const user = c.get('user') as { sub?: string; isAdmin?: boolean; isSuperAdmin?: boolean } | undefined;
   if (!user?.isAdmin && !user?.isSuperAdmin) {
+    const org = c.get('organization') as { id?: string } | undefined;
+    log.warn('admin_access_denied', {
+      userId: user?.sub,
+      orgId: org?.id,
+      path: c.req.path,
+    });
     return c.json({ error: { message: 'Forbidden - Org admin required' } }, 403);
   }
   await next();
