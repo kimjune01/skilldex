@@ -53,6 +53,8 @@ const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
 
 // ATS sub-providers for specific ATS selection
 const atsProviders = [
+  // Mock ATS only in development
+  ...(import.meta.env.DEV ? [{ id: 'mock-ats', name: 'Mock ATS (Dev)' }] : []),
   { id: 'zoho-recruit', name: 'Zoho Recruit' },
   { id: 'greenhouse', name: 'Greenhouse' },
   { id: 'lever', name: 'Lever' },
@@ -210,6 +212,25 @@ export default function Integrations() {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('token');
+
+      // Special handling for Mock ATS - direct connect without OAuth (dev only)
+      if (provider === 'ats' && subProvider === 'mock-ats') {
+        const response = await fetch(`${apiUrl}/integrations/mock-ats/connect`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to connect Mock ATS');
+        }
+        setSuccessMessage('Mock ATS connected successfully');
+        await loadIntegrations();
+        setIsConnecting(false);
+        setTimeout(() => setSuccessMessage(''), 5000);
+        return;
+      }
 
       // Special handling for Gmail - use direct OAuth instead of Nango
       if (provider === 'email' && (subProvider === 'google-mail' || subProvider === 'gmail')) {
