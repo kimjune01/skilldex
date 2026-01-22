@@ -28,6 +28,12 @@ export default $config({
     const googleClientId = new sst.Secret("GoogleClientId");
     const googleClientSecret = new sst.Secret("GoogleClientSecret");
 
+    // Email - AWS SES for transactional emails
+    const email = new sst.aws.Email("Email", {
+      sender: domain,
+      dmarc: "v=DMARC1; p=quarantine;",
+    });
+
     // API - Hono on Lambda
     const api = new sst.aws.Function("Api", {
       handler: "apps/api/src/lambda.handler",
@@ -39,7 +45,7 @@ export default $config({
         // Install native deps for Lambda (Linux x64)
         install: ["@libsql/linux-x64-gnu", "@libsql/client", "better-sqlite3"],
       },
-      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey, googleClientId, googleClientSecret],
+      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey, googleClientId, googleClientSecret, email],
       environment: {
         NODE_ENV: "production",
         NANGO_HOST: "https://api.nango.dev",
@@ -49,6 +55,8 @@ export default $config({
         // Google OAuth
         GOOGLE_CLIENT_ID: googleClientId.value,
         GOOGLE_CLIENT_SECRET: googleClientSecret.value,
+        // Web URL for email links
+        WEB_URL: useCustomDomain ? `https://${domain}` : "",
       },
     });
 

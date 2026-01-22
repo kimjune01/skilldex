@@ -7,6 +7,7 @@ import { hashSync } from 'bcrypt-ts';
 import { jwtAuth, orgAdminOnly } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
 import { createToken } from '../lib/jwt.js';
+import { sendInviteEmail, sendWelcomeEmail } from '../lib/email.js';
 import type { UserPublic } from '@skillomatic/shared';
 
 export interface InvitePublic {
@@ -166,7 +167,25 @@ invitesRoutes.post('/', jwtAuth, orgAdminOnly, withOrganization, async (c) => {
     createdAt: now.toISOString(),
   };
 
-  // TODO: Send invite email with link containing token
+  // Send invite email (non-blocking, log errors but don't fail the request)
+  const webUrl = process.env.WEB_URL || 'https://skillomatic.technology';
+  const inviteUrl = `${webUrl}/invite/${token}`;
+
+  // Get inviter name from the authenticated user
+  const [inviter] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, user.sub))
+    .limit(1);
+
+  sendInviteEmail(body.email.toLowerCase(), {
+    inviterName: inviter?.name || 'A team member',
+    organizationName: targetOrg.name,
+    inviteUrl,
+    role: body.role ?? 'member',
+  }).catch((err) => {
+    console.error('[Invites] Failed to send invite email:', err);
+  });
 
   return c.json({ data: { ...publicInvite, token } }, 201);
 });
@@ -292,6 +311,16 @@ invitesRoutes.post('/accept', async (c) => {
   };
 
   const jwtToken = await createToken(userPublic);
+
+  // Send welcome email (non-blocking)
+  const webUrl = process.env.WEB_URL || 'https://skillomatic.technology';
+  sendWelcomeEmail(invite.email, {
+    userName: body.name,
+    organizationName: org.name,
+    webUrl,
+  }).catch((err) => {
+    console.error('[Invites] Failed to send welcome email:', err);
+  });
 
   return c.json({
     data: {

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.972.0",
     "@hono/node-server": "^1.12.0",
     "@hono/node-ws": "^1.3.0",
     "@skillomatic/db": "workspace:*",

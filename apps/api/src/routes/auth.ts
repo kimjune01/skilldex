@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { compareSync } from 'bcrypt-ts';
 import { randomUUID } from 'crypto';
 import { createToken, verifyToken } from '../lib/jwt.js';
+import { sendWelcomeEmail } from '../lib/email.js';
 import type { LoginRequest, LoginResponse, UserPublic } from '@skillomatic/shared';
 
 // Google OAuth configuration
@@ -268,8 +269,10 @@ authRoutes.get('/google/callback', async (c) => {
       .limit(1);
 
     let dbUser = user[0];
+    let isNewUser = false;
 
     if (!dbUser) {
+      isNewUser = true;
       // Check for domain-based org assignment
       const matchedOrg = await findOrgByEmailDomain(googleUser.email);
 
@@ -331,6 +334,17 @@ authRoutes.get('/google/callback', async (c) => {
     };
 
     const token = await createToken(userPublic);
+
+    // Send welcome email to new users (non-blocking)
+    if (isNewUser) {
+      sendWelcomeEmail(dbUser.email, {
+        userName: dbUser.name,
+        organizationName: organizationName || 'Skillomatic',
+        webUrl,
+      }).catch((err) => {
+        console.error('[Auth] Failed to send welcome email:', err);
+      });
+    }
 
     // Redirect to frontend with token
     return c.redirect(`${webUrl}/login?token=${token}`);
