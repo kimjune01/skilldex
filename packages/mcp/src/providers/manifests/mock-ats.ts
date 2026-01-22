@@ -264,6 +264,227 @@ export const mockAtsManifest: ProviderManifest = {
       },
       responseHints: ['data', 'stageHistory'],
     },
+
+    // ============ INTERVIEW NOTES ============
+    {
+      id: 'list_interview_notes',
+      method: 'GET',
+      path: '/api/interview-notes',
+      access: 'read',
+      description: 'List interview notes with optional filtering. Returns summaries by default (use includeTranscript=true for full transcripts).',
+      params: {
+        candidateId: {
+          type: 'string',
+          description: 'Filter by candidate ID',
+          required: false,
+        },
+        applicationId: {
+          type: 'string',
+          description: 'Filter by application ID',
+          required: false,
+        },
+        jobId: {
+          type: 'string',
+          description: 'Filter by job ID',
+          required: false,
+        },
+        type: {
+          type: 'string',
+          description: 'Filter by interview type',
+          required: false,
+          enum: ['phone_screen', 'technical', 'behavioral', 'hiring_manager', 'culture_fit', 'panel', 'debrief', 'other'],
+        },
+        includeTranscript: {
+          type: 'boolean',
+          description: 'Include full transcript in response (default: false)',
+          required: false,
+          default: false,
+        },
+      },
+      responseHints: ['data', 'candidate', 'job', 'hasTranscript'],
+    },
+    {
+      id: 'get_interview_note',
+      method: 'GET',
+      path: '/api/interview-notes/{id}',
+      access: 'read',
+      description: 'Get a specific interview note by ID, including full transcript',
+      params: {
+        id: {
+          type: 'string',
+          description: 'Interview note ID',
+          required: true,
+        },
+      },
+      responseHints: ['data', 'transcript', 'summary', 'highlights', 'concerns', 'recommendation'],
+    },
+    {
+      id: 'get_candidate_interview_notes',
+      method: 'GET',
+      path: '/api/candidates/{id}/interview-notes',
+      access: 'read',
+      description: 'Get all interview notes for a specific candidate',
+      params: {
+        id: {
+          type: 'string',
+          description: 'Candidate ID',
+          required: true,
+        },
+        includeTranscript: {
+          type: 'boolean',
+          description: 'Include full transcripts in response (default: false)',
+          required: false,
+          default: false,
+        },
+      },
+      responseHints: ['data', 'job', 'hasTranscript'],
+    },
+    {
+      id: 'create_interview_note',
+      method: 'POST',
+      path: '/api/interview-notes',
+      access: 'write',
+      description: 'Create a new interview note for a candidate',
+      body: {
+        candidateId: {
+          type: 'string',
+          description: 'Candidate ID (required)',
+          required: true,
+        },
+        applicationId: {
+          type: 'string',
+          description: 'Application ID',
+          required: false,
+        },
+        jobId: {
+          type: 'string',
+          description: 'Job ID',
+          required: false,
+        },
+        type: {
+          type: 'string',
+          description: 'Interview type (required)',
+          required: true,
+          enum: ['phone_screen', 'technical', 'behavioral', 'hiring_manager', 'culture_fit', 'panel', 'debrief', 'other'],
+        },
+        title: {
+          type: 'string',
+          description: 'Note title (required)',
+          required: true,
+        },
+        interviewers: {
+          type: 'array',
+          description: 'List of interviewer names',
+          required: false,
+          items: { type: 'string', description: 'Interviewer name' },
+        },
+        interviewDate: {
+          type: 'string',
+          description: 'Interview date (ISO 8601)',
+          required: false,
+        },
+        duration: {
+          type: 'number',
+          description: 'Duration in minutes',
+          required: false,
+        },
+        summary: {
+          type: 'string',
+          description: 'Interview summary',
+          required: false,
+        },
+        transcript: {
+          type: 'string',
+          description: 'Full interview transcript',
+          required: false,
+        },
+        rating: {
+          type: 'number',
+          description: 'Rating (1-5)',
+          required: false,
+        },
+        recommendation: {
+          type: 'string',
+          description: 'Hiring recommendation',
+          required: false,
+          enum: ['strong_hire', 'hire', 'no_hire', 'strong_no_hire'],
+        },
+        highlights: {
+          type: 'array',
+          description: 'Key positive points',
+          required: false,
+          items: { type: 'string', description: 'Highlight' },
+        },
+        concerns: {
+          type: 'array',
+          description: 'Concerns or red flags',
+          required: false,
+          items: { type: 'string', description: 'Concern' },
+        },
+        source: {
+          type: 'string',
+          description: 'Source of the transcript',
+          required: false,
+          enum: ['manual', 'brighthire', 'metaview', 'otter', 'fireflies', 'zoom', 'google_meet', 'teams'],
+        },
+      },
+      responseHints: ['data'],
+    },
+    {
+      id: 'update_interview_note',
+      method: 'PUT',
+      path: '/api/interview-notes/{id}',
+      access: 'write',
+      description: 'Update an existing interview note',
+      params: {
+        id: {
+          type: 'string',
+          description: 'Interview note ID',
+          required: true,
+        },
+      },
+      body: {
+        title: {
+          type: 'string',
+          description: 'Note title',
+          required: false,
+        },
+        summary: {
+          type: 'string',
+          description: 'Interview summary',
+          required: false,
+        },
+        transcript: {
+          type: 'string',
+          description: 'Full interview transcript',
+          required: false,
+        },
+        rating: {
+          type: 'number',
+          description: 'Rating (1-5)',
+          required: false,
+        },
+        recommendation: {
+          type: 'string',
+          description: 'Hiring recommendation',
+          required: false,
+          enum: ['strong_hire', 'hire', 'no_hire', 'strong_no_hire'],
+        },
+        highlights: {
+          type: 'array',
+          description: 'Key positive points',
+          required: false,
+          items: { type: 'string', description: 'Highlight' },
+        },
+        concerns: {
+          type: 'array',
+          description: 'Concerns or red flags',
+          required: false,
+          items: { type: 'string', description: 'Concern' },
+        },
+      },
+      responseHints: ['data'],
+    },
   ],
 
   blocklist: [],
