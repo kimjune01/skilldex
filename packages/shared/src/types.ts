@@ -302,6 +302,57 @@ export interface StageTransition {
   movedBy: string;
 }
 
+// ============ Interview Notes ============
+
+export interface InterviewNote {
+  id: string;
+  candidateId: string;
+  applicationId?: string;
+  jobId?: string;
+  type: InterviewNoteType;
+  title: string;
+  interviewers: string[];
+  interviewDate: string;
+  duration?: number; // minutes
+  summary?: string;
+  transcript?: string;
+  rating?: InterviewRating;
+  recommendation?: InterviewRecommendation;
+  highlights?: string[];
+  concerns?: string[];
+  source?: InterviewNoteSource;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type InterviewNoteType =
+  | 'phone_screen'
+  | 'technical'
+  | 'behavioral'
+  | 'hiring_manager'
+  | 'culture_fit'
+  | 'panel'
+  | 'debrief'
+  | 'other';
+
+export type InterviewRating = 1 | 2 | 3 | 4 | 5;
+
+export type InterviewRecommendation =
+  | 'strong_hire'
+  | 'hire'
+  | 'no_hire'
+  | 'strong_no_hire';
+
+export type InterviewNoteSource =
+  | 'manual'
+  | 'brighthire'
+  | 'metaview'
+  | 'otter'
+  | 'fireflies'
+  | 'zoom'
+  | 'google_meet'
+  | 'teams';
+
 // ============ Pagination ============
 
 export interface PaginatedResponse<T> {
