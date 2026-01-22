@@ -17,6 +17,7 @@ interface MarketingNavProps {
 const defaultLinks: NavLink[] = [
   { to: '/for-recruiters', label: 'For Recruiters' },
   { to: '/for-it', label: 'For IT' },
+  { to: '/pricing', label: 'Pricing' },
 ];
 
 export function MarketingNav({ links = defaultLinks }: MarketingNavProps) {

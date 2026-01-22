@@ -16,18 +16,18 @@ export function MarketingFooter() {
             <span className="text-lg font-black text-white">SKILLOMATIC</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-[hsl(220_15%_60%)]">
+            <Link to="/pricing" className="hover:text-white transition-colors">
+              Pricing
+            </Link>
             <Link to="/for-it" className="hover:text-white transition-colors">
               Security
             </Link>
             <Link to="/privacy" className="hover:text-white transition-colors">
               Privacy
             </Link>
-            <a href="#" className="hover:text-white transition-colors">
+            <Link to="/terms" className="hover:text-white transition-colors">
               Terms
-            </a>
-            <a href="#" className="hover:text-white transition-colors">
-              Docs
-            </a>
+            </Link>
           </div>
           <div className="text-sm text-[hsl(220_15%_50%)]">
             © 2025 Skillomatic. All rights reserved.

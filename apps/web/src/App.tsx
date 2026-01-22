@@ -52,6 +52,7 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import ForIT from './pages/ForIT';
 import ForRecruiters from './pages/ForRecruiters';
+import Pricing from './pages/Pricing';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAuth();
@@ -230,6 +231,7 @@ export default function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/for-it" element={<ForIT />} />
         <Route path="/for-recruiters" element={<ForRecruiters />} />
+        <Route path="/pricing" element={<Pricing />} />
       </Routes>
     </DemoProvider>
   );

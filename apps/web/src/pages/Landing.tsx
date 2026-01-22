@@ -142,10 +142,6 @@ export default function Landing() {
                   </div>
                 </div>
 
-                {/* Floating badges */}
-                <div className="absolute -top-4 -right-4 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-float">
-                  Free Trial
-                </div>
               </div>
             </div>
           </div>

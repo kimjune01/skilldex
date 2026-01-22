@@ -22,60 +22,62 @@ import {
   FileText,
   Send,
   UserPlus,
-  Filter,
   RefreshCw,
-  Target,
   TrendingUp,
   Play,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
+import PlanetaryLogos from '@/components/PlanetaryLogos';
 
 const workflows = [
   {
     id: 'linkedin-sourcing',
     title: 'LinkedIn Sourcing Pipeline',
-    description: 'From job description to outreach in one conversation',
+    description: 'One prompt triggers the entire workflow',
+    prompt: '"Find senior backend engineers in NYC, enrich their profiles, draft personalized outreach, and add them to Greenhouse"',
     icon: Linkedin,
     color: 'bg-[#0A66C2]',
     steps: [
-      { action: 'Input JD', detail: '"Here\'s the job description for our open role"' },
-      { action: 'Search', detail: 'AI extracts criteria and finds matching profiles' },
-      { action: 'Review', detail: '"Show me the top 10 with relevant experience"' },
-      { action: 'Outreach', detail: '"Draft personalized messages referencing the JD"' },
-      { action: 'Track', detail: '"Add them to my Greenhouse pipeline"' },
+      { action: 'Parse JD', detail: 'Extracts criteria from job description', auto: true },
+      { action: 'Search', detail: 'Finds matching LinkedIn profiles', auto: true },
+      { action: 'Enrich', detail: 'Pulls work history, skills, contact info', auto: true },
+      { action: 'Draft', detail: 'Writes personalized messages for each', auto: true },
+      { action: 'Sync', detail: 'Adds candidates to your ATS pipeline', auto: true },
     ],
-    timeSaved: '4 hours → 10 minutes',
+    timeSaved: '45 min → 10 min',
   },
   {
     id: 'interview-scheduling',
     title: 'Interview Coordination',
-    description: 'From candidate response to booked interview',
+    description: 'One prompt handles the entire scheduling flow',
+    prompt: '"Schedule onsite interviews for all candidates who passed phone screen this week"',
     icon: Calendar,
     color: 'bg-purple-500',
     steps: [
-      { action: 'Check', detail: '"What candidates responded to my outreach?"' },
-      { action: 'Availability', detail: '"Find times when Sarah and Mike can both interview"' },
-      { action: 'Propose', detail: '"Send Alex three time options for next week"' },
-      { action: 'Confirm', detail: '"Book the Tuesday 2pm slot and send calendar invites"' },
-      { action: 'Prep', detail: '"Create an interview prep doc with their background"' },
+      { action: 'Identify', detail: 'Finds candidates ready for onsite', auto: true },
+      { action: 'Check', detail: 'Queries interviewer calendars', auto: true },
+      { action: 'Match', detail: 'Finds overlapping availability', auto: true },
+      { action: 'Send', detail: 'Emails candidates with time options', auto: true },
+      { action: 'Book', detail: 'Confirms and creates calendar events', auto: true },
     ],
-    timeSaved: '45 minutes → 2 minutes',
+    timeSaved: '15 min → 1 min',
   },
   {
     id: 'pipeline-management',
     title: 'Pipeline Review & Updates',
-    description: 'Stay on top of every candidate',
+    description: 'One prompt to clean up your entire pipeline',
+    prompt: '"Follow up with all stale candidates, update stages for completed interviews, and send me a weekly summary"',
     icon: Users,
     color: 'bg-emerald-500',
     steps: [
-      { action: 'Status', detail: '"Show me all candidates stuck in screening for 5+ days"' },
-      { action: 'Follow-up', detail: '"Draft follow-up emails for candidates awaiting feedback"' },
-      { action: 'Update', detail: '"Move everyone who completed onsite to offer stage"' },
-      { action: 'Report', detail: '"What\'s my pipeline velocity this month?"' },
-      { action: 'Alert', detail: '"Notify me when any candidate hasn\'t been touched in 3 days"' },
+      { action: 'Scan', detail: 'Identifies stale candidates', auto: true },
+      { action: 'Draft', detail: 'Creates follow-up emails', auto: true },
+      { action: 'Update', detail: 'Moves candidates to correct stages', auto: true },
+      { action: 'Analyze', detail: 'Calculates pipeline metrics', auto: true },
+      { action: 'Report', detail: 'Generates summary with insights', auto: true },
     ],
-    timeSaved: '1 hour → 5 minutes',
+    timeSaved: '20 min → 2 min',
   },
 ];
 
@@ -163,7 +165,7 @@ const conversationExample = [
 export default function ForRecruiters() {
   return (
     <div className="min-h-screen bg-background">
-      <MarketingNav links={[{ to: '/for-it', label: 'For IT' }]} />
+      <MarketingNav />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
@@ -324,11 +326,16 @@ export default function ForRecruiters() {
       <section id="workflows" className="py-20 px-6 bg-[hsl(220_25%_10%)]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
+            <Badge className="mb-4 bg-cyan-500/10 text-cyan-400 border-cyan-500/20 font-bold">
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Automatic Tool Chaining
+            </Badge>
             <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-              End-to-End Workflows
+              One Prompt. Five Tools. Zero Babysitting.
             </h2>
             <p className="text-lg text-[hsl(220_15%_60%)] max-w-2xl mx-auto">
-              Complete recruiting workflows that used to take hours, now done in minutes
+              Unlike basic chatbots, Skillomatic automatically chains multiple tools together.
+              Give it a goal—it figures out the steps.
             </p>
           </div>
 
@@ -341,46 +348,48 @@ export default function ForRecruiters() {
                   className="robot-display rounded-2xl p-6 stagger-fade-in"
                   style={{ animationDelay: `${workflowIndex * 150}ms` }}
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-                    {/* Header */}
-                    <div className="lg:w-64 flex-shrink-0">
-                      <div className={`h-14 w-14 rounded-xl ${workflow.color} flex items-center justify-center mb-3`}>
-                        <Icon className="h-7 w-7 text-white" />
+                  <div className="flex flex-col gap-6">
+                    {/* Header with prompt */}
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                      <div className={`h-12 w-12 rounded-xl ${workflow.color} flex items-center justify-center flex-shrink-0`}>
+                        <Icon className="h-6 w-6 text-white" />
                       </div>
-                      <h3 className="text-xl font-black text-white mb-1">
-                        {workflow.title}
-                      </h3>
-                      <p className="text-[hsl(220_15%_55%)] text-sm mb-3">
-                        {workflow.description}
-                      </p>
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-sm font-bold">
-                        <Clock className="h-4 w-4" />
-                        {workflow.timeSaved}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-black text-white">
+                            {workflow.title}
+                          </h3>
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-bold">
+                            <Clock className="h-3 w-3" />
+                            {workflow.timeSaved}
+                          </div>
+                        </div>
+                        <div className="bg-[hsl(220_20%_15%)] rounded-lg px-4 py-3 border border-cyan-500/20">
+                          <div className="text-xs text-cyan-400/60 mb-1 font-mono">YOU TYPE:</div>
+                          <div className="text-cyan-400 text-sm font-medium">{workflow.prompt}</div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Steps */}
-                    <div className="flex-1 grid sm:grid-cols-5 gap-3">
-                      {workflow.steps.map((step, stepIndex) => (
-                        <div key={stepIndex} className="relative">
-                          <div className="bg-[hsl(220_20%_18%)] rounded-xl p-4 h-full">
-                            <div className="text-xs font-mono text-cyan-400/60 mb-2">
-                              {String(stepIndex + 1).padStart(2, '0')}
+                    {/* Auto-chained steps */}
+                    <div>
+                      <div className="text-xs text-[hsl(220_15%_50%)] mb-3 flex items-center gap-2">
+                        <RefreshCw className="h-3 w-3 text-cyan-400" />
+                        <span>SKILLOMATIC AUTOMATICALLY CHAINS:</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {workflow.steps.map((step, stepIndex) => (
+                          <div key={stepIndex} className="flex items-center gap-2">
+                            <div className="bg-[hsl(220_20%_18%)] rounded-lg px-3 py-2 border border-[hsl(220_20%_25%)]">
+                              <div className="text-white font-semibold text-sm">{step.action}</div>
+                              <div className="text-[hsl(220_15%_45%)] text-xs">{step.detail}</div>
                             </div>
-                            <div className="text-white font-bold text-sm mb-1">
-                              {step.action}
-                            </div>
-                            <div className="text-[hsl(220_15%_50%)] text-xs">
-                              {step.detail}
-                            </div>
+                            {stepIndex < workflow.steps.length - 1 && (
+                              <ArrowRight className="h-4 w-4 text-cyan-400/40 flex-shrink-0" />
+                            )}
                           </div>
-                          {stepIndex < workflow.steps.length - 1 && (
-                            <div className="hidden sm:block absolute top-1/2 -right-1.5 transform -translate-y-1/2 z-10">
-                              <ArrowRight className="h-3 w-3 text-cyan-400/30" />
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -438,34 +447,193 @@ export default function ForRecruiters() {
         </div>
       </section>
 
-      {/* Integration Logos */}
-      <section className="py-16 px-6 bg-[hsl(220_20%_97%)]">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-xl font-black text-[hsl(220_30%_15%)] mb-8">
-            Works With Your Stack
-          </h2>
-          <div className="flex flex-wrap items-center justify-center gap-8">
-            {[
-              { name: 'LinkedIn', icon: Linkedin, color: 'text-[#0A66C2]' },
-              { name: 'Gmail', icon: Mail, color: 'text-red-500' },
-              { name: 'Calendar', icon: Calendar, color: 'text-blue-500' },
-              { name: 'Greenhouse', icon: Users, color: 'text-emerald-500' },
-              { name: 'Lever', icon: Filter, color: 'text-purple-500' },
-              { name: 'Ashby', icon: Target, color: 'text-orange-500' },
-            ].map((integration) => {
-              const Icon = integration.icon;
-              return (
-                <div key={integration.name} className="flex flex-col items-center gap-2">
-                  <div className="h-14 w-14 rounded-xl bg-white border-2 border-[hsl(220_15%_90%)] flex items-center justify-center">
-                    <Icon className={`h-7 w-7 ${integration.color}`} />
-                  </div>
-                  <span className="text-xs font-bold text-[hsl(220_15%_50%)]">
-                    {integration.name}
-                  </span>
-                </div>
-              );
-            })}
+      {/* Integrations Section */}
+      <section className="py-20 px-6 bg-[hsl(220_20%_97%)]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
+              <Zap className="h-3 w-3 mr-1" />
+              Basically All the Integrations
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
+              Connects to Every Tool You Use
+            </h2>
+            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
+              All the recruiting tools you already rely on, unified in one intelligent interface.
+              No switching tabs. No copy-pasting. Just ask and it's done.
+            </p>
           </div>
+
+          {/* Integration Categories */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {/* ATS Systems */}
+            <div className="card-robot rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-lg bg-emerald-500 flex items-center justify-center">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="font-black text-[hsl(220_30%_20%)]">ATS Systems</h3>
+              </div>
+              <ul className="space-y-2 text-sm text-[hsl(220_15%_45%)]">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Greenhouse
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Lever
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Ashby
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Workday
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  iCIMS
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Jobvite
+                </li>
+              </ul>
+            </div>
+
+            {/* Sourcing */}
+            <div className="card-robot rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-lg bg-[#0A66C2] flex items-center justify-center">
+                  <Search className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="font-black text-[hsl(220_30%_20%)]">Sourcing</h3>
+              </div>
+              <ul className="space-y-2 text-sm text-[hsl(220_15%_45%)]">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  LinkedIn Recruiter
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  LinkedIn Sales Navigator
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  GitHub
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Stack Overflow
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  AngelList
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Wellfound
+                </li>
+              </ul>
+            </div>
+
+            {/* Communication */}
+            <div className="card-robot rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-lg bg-red-500 flex items-center justify-center">
+                  <Mail className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="font-black text-[hsl(220_30%_20%)]">Communication</h3>
+              </div>
+              <ul className="space-y-2 text-sm text-[hsl(220_15%_45%)]">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Gmail / Google Workspace
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Microsoft Outlook
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Slack
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Microsoft Teams
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Zoom
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Google Meet
+                </li>
+              </ul>
+            </div>
+
+            {/* Scheduling */}
+            <div className="card-robot rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-lg bg-purple-500 flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="font-black text-[hsl(220_30%_20%)]">Scheduling</h3>
+              </div>
+              <ul className="space-y-2 text-sm text-[hsl(220_15%_45%)]">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Google Calendar
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Microsoft Calendar
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Calendly
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  GoodTime
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  ModernLoop
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  Prelude
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Planetary Logos Animation */}
+          <div className="robot-panel rounded-2xl p-4 md:p-8 relative overflow-hidden">
+            <div className="absolute top-4 left-4 screw" />
+            <div className="absolute top-4 right-4 screw" />
+            <div className="absolute bottom-4 left-4 screw" />
+            <div className="absolute bottom-4 right-4 screw" />
+
+            <div className="text-center mb-4">
+              <h3 className="text-2xl font-black text-[hsl(220_30%_20%)] mb-2">
+                All Your Tools, One Conversation
+              </h3>
+              <p className="text-[hsl(220_15%_45%)] max-w-lg mx-auto">
+                AI providers, ATS systems, calendars, and browsers—all connected seamlessly
+              </p>
+            </div>
+
+            <PlanetaryLogos />
+          </div>
+
+          {/* Bottom note */}
+          <p className="text-center text-sm text-[hsl(220_15%_50%)] mt-6">
+            Don't see your tool? <a href="mailto:email@skillomatic.technology?subject=Integration%20Request" className="text-primary font-bold hover:underline">Request an integration</a> — we add new ones weekly.
+          </p>
         </div>
       </section>
 

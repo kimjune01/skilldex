@@ -134,7 +134,7 @@ const antiPatterns = [
 export default function ForIT() {
   return (
     <div className="min-h-screen bg-background">
-      <MarketingNav links={[{ to: '/for-recruiters', label: 'For Recruiters' }]} />
+      <MarketingNav />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
