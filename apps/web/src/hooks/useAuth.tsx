@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   type ReactNode,
 } from 'react';
 import type { UserPublic } from '@skillomatic/shared';
@@ -19,6 +20,8 @@ interface AuthContextType {
   isSuperAdmin: boolean; // Super admin only
   organizationId: string | undefined;
   organizationName: string | undefined;
+  authError: string | null;
+  clearAuthError: () => void;
   login: (email: string, password: string) => Promise<UserPublic>;
   loginWithToken: (token: string) => Promise<UserPublic>;
   logout: () => Promise<void>;
@@ -29,6 +32,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserPublic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const clearAuthError = useCallback(() => setAuthError(null), []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -36,8 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       auth
         .me()
         .then(setUser)
-        .catch(() => {
+        .catch((err) => {
           localStorage.removeItem('token');
+          // Set error message for display - session expired or invalid token
+          const message = err instanceof Error ? err.message : 'Session expired';
+          setAuthError(message === 'Invalid or expired token' ? 'Your session has expired. Please log in again.' : message);
         })
         .finally(() => setIsLoading(false));
     } else {
@@ -78,6 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSuperAdmin: !!user?.isSuperAdmin,
         organizationId: user?.organizationId,
         organizationName: user?.organizationName,
+        authError,
+        clearAuthError,
         login,
         loginWithToken,
         logout,

@@ -30,6 +30,25 @@ let currentStatus = null;
 function updateUI(status) {
   currentStatus = status;
 
+  // Get or create error display element
+  let errorDisplay = document.getElementById('errorDisplay');
+  if (!errorDisplay) {
+    errorDisplay = document.createElement('div');
+    errorDisplay.id = 'errorDisplay';
+    errorDisplay.className = 'error-banner';
+    errorDisplay.style.cssText = 'display: none; background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; line-height: 1.4;';
+    // Insert at top of body
+    document.body.insertBefore(errorDisplay, document.body.firstChild);
+  }
+
+  // Show error if present
+  if (status.lastError) {
+    errorDisplay.textContent = status.lastError;
+    errorDisplay.style.display = 'block';
+  } else {
+    errorDisplay.style.display = 'none';
+  }
+
   if (status.connected && status.apiKey) {
     // Show connected view
     connectedView.style.display = 'block';
@@ -56,6 +75,14 @@ function updateUI(status) {
       connectedText.textContent = 'Connected';
       processingInfo.style.display = 'none';
     }
+  } else if (status.connecting) {
+    // Show connecting state
+    connectedView.style.display = 'none';
+    configView.style.display = 'block';
+
+    statusDot.className = 'status-dot connecting';
+    statusText.textContent = 'Connecting...';
+    apiKeyStatus.textContent = status.apiKey || 'Not configured';
   } else {
     // Show config view
     connectedView.style.display = 'none';
@@ -64,7 +91,7 @@ function updateUI(status) {
     // Update config view status
     if (status.apiKey) {
       statusDot.className = 'status-dot inactive';
-      statusText.textContent = 'Disconnected';
+      statusText.textContent = status.lastError ? 'Error' : 'Disconnected';
       apiKeyStatus.textContent = status.apiKey;
     } else {
       statusDot.className = 'status-dot inactive';

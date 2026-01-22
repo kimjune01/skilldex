@@ -15,6 +15,9 @@ let processingTask = null;
 let pingIntervalId = null;
 let reconnectTimeoutId = null;
 let isConnecting = false;
+let lastError = null; // Track last connection error for popup display
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 // ============ Storage ============
 
@@ -52,6 +55,8 @@ function connect() {
 
     ws.onopen = () => {
       isConnecting = false;
+      lastError = null;
+      reconnectAttempts = 0;
       console.log('[WS] Connected');
       startPingInterval();
     };
@@ -76,13 +81,39 @@ function connect() {
     ws.onclose = (event) => {
       isConnecting = false;
       console.log('[WS] Closed:', event.code, event.reason);
+
+      // Map close codes to user-friendly error messages
+      if (event.code === 4001) {
+        lastError = 'Invalid or expired API key. Please check your API key in the extension settings.';
+      } else if (event.code === 1006) {
+        lastError = 'Connection lost unexpectedly. Check your network connection.';
+      } else if (event.code === 1001) {
+        lastError = 'Server is shutting down. Will reconnect automatically.';
+      } else if (event.code === 1008) {
+        lastError = 'Policy violation: ' + (event.reason || 'Connection rejected by server.');
+      } else if (event.code === 1011) {
+        lastError = 'Server error: ' + (event.reason || 'Unexpected server condition.');
+      } else if (event.reason) {
+        lastError = event.reason;
+      } else if (event.code !== 1000) {
+        lastError = `Connection closed (code: ${event.code}). Will retry...`;
+      }
+
       cleanup();
-      scheduleReconnect();
+      reconnectAttempts++;
+
+      if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+        scheduleReconnect();
+      } else {
+        lastError = 'Max reconnection attempts reached. Please reconnect manually.';
+        console.error('[WS] Max reconnect attempts reached');
+      }
     };
 
     ws.onerror = (event) => {
       isConnecting = false;
       console.error('[WS] Error:', event);
+      lastError = 'WebSocket connection error. Check if the API server is running.';
       cleanup();
     };
   } catch (err) {
@@ -522,15 +553,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GET_STATUS') {
     sendResponse({
       connected: ws && ws.readyState === WebSocket.OPEN,
+      connecting: isConnecting,
       apiKey: apiKey ? `${apiKey.slice(0, 10)}...` : null,
       apiUrl,
       processingTask: processingTask ? { id: processingTask.id, url: processingTask.url } : null,
+      lastError,
+      reconnectAttempts,
     });
     return true;
   }
 
   if (message.type === 'SET_CONFIG') {
     saveConfig(message.apiKey, message.apiUrl).then(() => {
+      // Reset error state and reconnect attempts
+      lastError = null;
+      reconnectAttempts = 0;
       // Disconnect existing connection and reconnect with new config
       disconnect();
       if (message.apiKey) {
@@ -538,6 +575,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       sendResponse({ success: true });
     });
+    return true;
+  }
+
+  if (message.type === 'CLEAR_ERROR') {
+    lastError = null;
+    sendResponse({ success: true });
     return true;
   }
 

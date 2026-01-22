@@ -66,9 +66,29 @@ async function main(): Promise<void> {
     const config = await client.getCapabilities();
     capabilities = config.profile;
     log.info(`Capabilities: ATS=${capabilities.hasATS}, Email=${capabilities.hasEmail}, Calendar=${capabilities.hasCalendar}`);
+
+    // Warn about missing capabilities that limit functionality
+    const warnings: string[] = [];
+    if (!capabilities.hasATS) {
+      warnings.push('No ATS connected - ATS tools will not be available');
+    }
+    if (!capabilities.hasEmail) {
+      warnings.push('No email integration - email tools will not be available');
+    }
+    if (!capabilities.hasCalendar) {
+      warnings.push('No calendar integration - calendar tools will not be available');
+    }
+    if (warnings.length > 0) {
+      log.info('');
+      log.info('=== Missing Integrations ===');
+      warnings.forEach((w) => log.info(`  - ${w}`));
+      log.info('Connect integrations at your Skillomatic dashboard to enable more tools.');
+      log.info('');
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     log.error(`Failed to fetch capabilities: ${message}`);
+    log.error('Some tools may be unavailable. Check your network connection and API key.');
     // Continue with empty capabilities
     capabilities = {
       hasLLM: false,

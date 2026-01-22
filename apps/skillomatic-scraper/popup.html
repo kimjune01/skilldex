@@ -91,6 +91,15 @@
       animation: pulse 1s infinite;
     }
 
+    .status-dot.connecting {
+      background: #3b82f6;
+      animation: pulse 0.5s infinite;
+    }
+
+    .status-dot.error {
+      background: #ef4444;
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }

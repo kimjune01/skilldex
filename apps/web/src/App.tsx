@@ -18,13 +18,17 @@
  *
  * Context providers:
  * - DemoProvider: Demo mode toggle for mock data
+ * - ToastProvider: Toast notifications for errors and success messages
  *
  * @see docs/RECRUITER_GUIDE.md for user documentation
  * @see docs/ADMIN_GUIDE.md for admin documentation
  */
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { DemoProvider } from './hooks/useDemo';
+import { ToastProvider, useToast } from './components/ui/toast';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -90,6 +94,21 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Component to display auth errors as toast notifications
+function AuthErrorDisplay() {
+  const { authError, clearAuthError } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (authError) {
+      toast(authError, 'error', 8000);
+      clearAuthError();
+    }
+  }, [authError, clearAuthError, toast]);
+
+  return null;
+}
+
 function HomePage() {
   const { isAuthenticated, isOnboarded, isLoading } = useAuth();
 
@@ -129,10 +148,13 @@ function AuthenticatedRoutes() {
 
 export default function App() {
   return (
-    <DemoProvider>
-      <Routes>
-        {/* Home - Landing page or redirect based on auth/onboarding */}
-        <Route path="/" element={<HomePage />} />
+    <ErrorBoundary>
+      <DemoProvider>
+        <ToastProvider>
+          <AuthErrorDisplay />
+          <Routes>
+            {/* Home - Landing page or redirect based on auth/onboarding */}
+            <Route path="/" element={<HomePage />} />
 
         {/* Authenticated routes with Layout */}
         <Route element={<AuthenticatedRoutes />}>
@@ -232,7 +254,9 @@ export default function App() {
         <Route path="/for-it" element={<ForIT />} />
         <Route path="/for-recruiters" element={<ForRecruiters />} />
         <Route path="/pricing" element={<Pricing />} />
-      </Routes>
-    </DemoProvider>
+          </Routes>
+        </ToastProvider>
+      </DemoProvider>
+    </ErrorBoundary>
   );
 }
