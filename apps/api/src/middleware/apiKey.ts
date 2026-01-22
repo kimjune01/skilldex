@@ -56,12 +56,14 @@ export const apiKeyAuth = createMiddleware(async (c, next) => {
   const apiKey = row.api_keys;
   const user = row.users;
 
-  // Update last used timestamp (fire and forget)
+  // Update last used timestamp (fire and forget, non-critical)
   db.update(apiKeys)
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeys.id, apiKey.id))
     .execute()
-    .catch(console.error);
+    .catch((err) => {
+      console.error(`[ApiKey] Failed to update lastUsedAt for key ${apiKey.id}:`, err);
+    });
 
   c.set('apiKeyUser', {
     id: user.id,

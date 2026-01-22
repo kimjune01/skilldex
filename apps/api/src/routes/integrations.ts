@@ -596,9 +596,15 @@ integrationsRoutes.get('/status/:provider', async (c) => {
           },
         });
       }
-    } catch {
+    } catch (err) {
       // Nango check failed, but don't change status yet
       // Could be a temporary network issue
+      log.warn('nango_connection_check_failed', {
+        integrationId: int.id,
+        userId: user.sub,
+        provider: int.provider,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
     }
   }
 

@@ -93,10 +93,17 @@ export function createWsScrapeHandler() {
                     })
                     .where(eq(users.id, authenticatedUserId))
                     .execute()
-                    .catch(console.error);
+                    .then(() => {
+                      console.log(`[WS] Onboarding advanced to EXTENSION_INSTALLED for user ${authenticatedUserId}`);
+                    })
+                    .catch((err) => {
+                      console.error(`[WS] Failed to advance onboarding for user ${authenticatedUserId}:`, err);
+                    });
                 }
               })
-              .catch(console.error);
+              .catch((err) => {
+                console.error(`[WS] Failed to fetch org ${authenticatedUserOrgId} for onboarding check:`, err);
+              });
           }
         } else {
           addConnection(authenticatedUserId, ws);
