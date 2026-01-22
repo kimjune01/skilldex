@@ -10,8 +10,6 @@ import type {
   SkillProposalPublic,
   SkillProposalCreateRequest,
   SkillProposalReviewRequest,
-  ChatRequest,
-  ChatEvent,
   ScrapeTaskPublic,
   CreateScrapeTaskResponse,
   OrganizationPublic,
@@ -311,93 +309,6 @@ export const proposals = {
     request<SkillProposalPublic>(`/proposals/${id}/review`, {
       method: 'POST',
       body: JSON.stringify(body),
-    }),
-};
-
-// Chat
-export const chat = {
-  /**
-   * Stream chat responses using SSE
-   * @param messages - Chat history
-   * @param onEvent - Callback for each event
-   * @param onError - Callback for errors
-   * @returns AbortController to cancel the stream
-   */
-  stream: (
-    messages: ChatRequest['messages'],
-    onEvent: (event: ChatEvent) => void,
-    onError: (error: Error) => void
-  ): AbortController => {
-    const controller = new AbortController();
-    const token = localStorage.getItem('token');
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    fetch(`${API_BASE}/chat`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ messages }),
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({ error: { message: 'Request failed' } }));
-          throw new Error(data.error?.message || `Request failed (${response.status})`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('No response body');
-        }
-
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data: ')) continue;
-
-            try {
-              const event = JSON.parse(trimmed.slice(6)) as ChatEvent;
-              onEvent(event);
-            } catch {
-              // Skip malformed lines
-            }
-          }
-        }
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          onError(err);
-        }
-      });
-
-    return controller;
-  },
-
-  executeSkill: (skillSlug: string, params?: Record<string, unknown>) =>
-    request<{
-      type: 'instructions' | 'api_ready';
-      skill: SkillPublic;
-      message: string;
-      instructions?: string;
-      params?: Record<string, unknown>;
-    }>('/chat/execute-skill', {
-      method: 'POST',
-      body: JSON.stringify({ skillSlug, params }),
     }),
 };
 

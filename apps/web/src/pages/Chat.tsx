@@ -1,8 +1,8 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { MessageList, ChatInput } from '@/components/chat';
-import { chat, skills } from '@/lib/api';
+import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Zap, Server, Loader2, Download } from 'lucide-react';
+import { AlertCircle, Loader2, Download, Wrench, ChevronRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,363 +11,12 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import type { ChatMessage, ChatEvent, SkillPublic } from '@skillomatic/shared';
+import type { SkillPublic } from '@skillomatic/shared';
 import { useClientChat } from '@/hooks/useClientChat';
 import { executeAction, formatActionResult, type ActionType } from '@/lib/action-executor';
 import { useAuth } from '@/hooks/useAuth';
 
-type ChatMode = 'server' | 'ephemeral';
-
 export default function Chat() {
-  const [chatMode, setChatMode] = useState<ChatMode>('server');
-  const [ephemeralAvailable, setEphemeralAvailable] = useState(false);
-  const [checkingEphemeral, setCheckingEphemeral] = useState(true);
-
-  // Check if ephemeral mode is available (org has LLM config)
-  useEffect(() => {
-    async function checkEphemeralMode() {
-      setCheckingEphemeral(true);
-      try {
-        const config = await skills.getConfig();
-        setEphemeralAvailable(config.profile.hasLLM);
-      } catch {
-        setEphemeralAvailable(false);
-      } finally {
-        setCheckingEphemeral(false);
-      }
-    }
-    checkEphemeralMode();
-  }, []);
-
-  // Render based on mode
-  if (chatMode === 'ephemeral' && ephemeralAvailable) {
-    return (
-      <EphemeralChat
-        onSwitchMode={() => setChatMode('server')}
-        checkingEphemeral={checkingEphemeral}
-      />
-    );
-  }
-
-  return (
-    <ServerChat
-      ephemeralAvailable={ephemeralAvailable}
-      checkingEphemeral={checkingEphemeral}
-      onSwitchMode={() => setChatMode('ephemeral')}
-    />
-  );
-}
-
-/**
- * Server-side chat (original implementation)
- */
-function ServerChat({
-  ephemeralAvailable,
-  checkingEphemeral,
-  onSwitchMode,
-}: {
-  ephemeralAvailable: boolean;
-  checkingEphemeral: boolean;
-  onSwitchMode: () => void;
-}) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [instructionsDialog, setInstructionsDialog] = useState<{
-    open: boolean;
-    skill: SkillPublic | null;
-    instructions: string;
-  }>({ open: false, skill: null, instructions: '' });
-
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  const handleSend = useCallback(
-    (content: string) => {
-      setError(null);
-
-      // Add user message
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content,
-        timestamp: Date.now(),
-      };
-
-      setMessages((prev) => [...prev, userMessage]);
-      setIsStreaming(true);
-
-      // Create placeholder for assistant message
-      const assistantId = `assistant-${Date.now()}`;
-      const assistantMessage: ChatMessage = {
-        id: assistantId,
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // Build message history for API
-      const messageHistory = [...messages, userMessage].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      // Stream response
-      abortControllerRef.current = chat.stream(
-        messageHistory,
-        (event: ChatEvent) => {
-          switch (event.type) {
-            case 'text':
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId ? { ...m, content: m.content + event.content } : m
-                )
-              );
-              break;
-
-            case 'skill_suggestion':
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? {
-                        ...m,
-                        skillSuggestion: {
-                          skill: event.skill,
-                          executionType: event.executionType,
-                          status: 'pending',
-                        },
-                      }
-                    : m
-                )
-              );
-              break;
-
-            case 'action_result':
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? {
-                        ...m,
-                        actionResult: {
-                          action: event.action,
-                          result: event.result,
-                        },
-                      }
-                    : m
-                )
-              );
-              break;
-
-            case 'error':
-              setError(event.message);
-              setIsStreaming(false);
-              break;
-
-            case 'done':
-              setIsStreaming(false);
-              break;
-          }
-        },
-        (err) => {
-          setError(err.message);
-          setIsStreaming(false);
-        }
-      );
-    },
-    [messages]
-  );
-
-  const handleRunSkill = useCallback(async (skillSlug: string) => {
-    // Find the message with this skill suggestion
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.skillSuggestion?.skill.slug === skillSlug
-          ? {
-              ...m,
-              skillSuggestion: { ...m.skillSuggestion, status: 'executing' },
-            }
-          : m
-      )
-    );
-
-    try {
-      const result = await chat.executeSkill(skillSlug);
-
-      if (result.type === 'instructions') {
-        // Show instructions dialog for Claude Desktop skills
-        setInstructionsDialog({
-          open: true,
-          skill: result.skill,
-          instructions: result.instructions || '',
-        });
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.skillSuggestion?.skill.slug === skillSlug
-              ? {
-                  ...m,
-                  skillSuggestion: { ...m.skillSuggestion, status: 'completed' },
-                }
-              : m
-          )
-        );
-      } else {
-        // API skill executed
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.skillSuggestion?.skill.slug === skillSlug
-              ? {
-                  ...m,
-                  skillSuggestion: {
-                    ...m.skillSuggestion,
-                    status: 'completed',
-                    result: result,
-                  },
-                }
-              : m
-          )
-        );
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to execute skill';
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.skillSuggestion?.skill.slug === skillSlug
-            ? {
-                ...m,
-                skillSuggestion: {
-                  ...m.skillSuggestion,
-                  status: 'error',
-                  result: message,
-                },
-              }
-            : m
-        )
-      );
-    }
-  }, []);
-
-  const handleShowInstructions = useCallback(async (skillSlug: string) => {
-    try {
-      const result = await chat.executeSkill(skillSlug);
-      if (result.type === 'instructions') {
-        setInstructionsDialog({
-          open: true,
-          skill: result.skill,
-          instructions: result.instructions || '',
-        });
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load instructions';
-      setError(message);
-    }
-  }, []);
-
-  const handleDownloadChat = useCallback(() => {
-    if (messages.length === 0) return;
-
-    const lines = messages.map((m) => {
-      const timestamp = new Date(m.timestamp).toLocaleString();
-      const role = m.role === 'user' ? 'You' : 'Assistant';
-      return `[${timestamp}] ${role}:\n${m.content}\n`;
-    });
-
-    const content = lines.join('\n---\n\n');
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `chat-${new Date().toISOString().slice(0, 10)}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [messages]);
-
-  return (
-    <div className="flex flex-col h-[calc(100vh-2rem)]">
-      {/* Header */}
-      <div className="px-4 py-3 border-b flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Chat</h1>
-          <p className="text-sm text-muted-foreground">
-            Ask about recruiting tasks and discover skills
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDownloadChat}
-            disabled={messages.length === 0}
-            title="Download chat"
-          >
-            <Download className="h-4 w-4" />
-          </Button>
-          <ChatModeToggle
-            mode="server"
-            ephemeralAvailable={ephemeralAvailable}
-            checkingEphemeral={checkingEphemeral}
-            onToggle={onSwitchMode}
-          />
-        </div>
-      </div>
-
-      {/* Error alert */}
-      {error && (
-        <div className="px-4 pt-4">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
-      )}
-
-      {/* Messages */}
-      <MessageList
-        messages={messages}
-        onRunSkill={handleRunSkill}
-        onShowInstructions={handleShowInstructions}
-        onSuggestionClick={handleSend}
-      />
-
-      {/* Input */}
-      <ChatInput onSend={handleSend} disabled={isStreaming} />
-
-      {/* Instructions Dialog */}
-      <Dialog
-        open={instructionsDialog.open}
-        onOpenChange={(open) => setInstructionsDialog((prev) => ({ ...prev, open }))}
-      >
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{instructionsDialog.skill?.name} - Instructions</DialogTitle>
-            <DialogDescription>
-              This skill requires Claude Desktop. Follow these instructions:
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <pre className="text-sm bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre-wrap">
-              {instructionsDialog.instructions}
-            </pre>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-/**
- * Client-side ephemeral chat (no PII through server)
- */
-function EphemeralChat({
-  onSwitchMode,
-  checkingEphemeral,
-}: {
-  onSwitchMode: () => void;
-  checkingEphemeral: boolean;
-}) {
   const { user, organizationId } = useAuth();
 
   const [instructionsDialog, setInstructionsDialog] = useState<{
@@ -375,6 +24,7 @@ function EphemeralChat({
     skill: SkillPublic | null;
     instructions: string;
   }>({ open: false, skill: null, instructions: '' });
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
 
   // Action handler for client-side execution
   const handleActionRequest = useCallback(
@@ -439,7 +89,21 @@ function EphemeralChat({
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="mt-4 text-muted-foreground">Initializing ephemeral chat...</p>
+        <p className="mt-4 text-muted-foreground">Initializing chat...</p>
+      </div>
+    );
+  }
+
+  // Show setup message if no LLM configured
+  if (!llmConfig) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center p-8">
+        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+        <h2 className="text-lg font-semibold mb-2">LLM Not Configured</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          Chat requires an LLM API key. Please configure your organization's LLM settings in the
+          admin panel.
+        </p>
       </div>
     );
   }
@@ -449,15 +113,9 @@ function EphemeralChat({
       {/* Header */}
       <div className="px-4 py-3 border-b flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold">Chat</h1>
-            <Badge variant="secondary" className="text-xs">
-              <Zap className="h-3 w-3 mr-1" />
-              Ephemeral
-            </Badge>
-          </div>
+          <h1 className="text-lg font-semibold">Chat</h1>
           <p className="text-sm text-muted-foreground">
-            Direct LLM connection - no PII through server
+            Ask about recruiting tasks and discover skills
             {llmConfig && (
               <span className="ml-2 text-xs">
                 ({llmConfig.provider}/{llmConfig.model.split('-').slice(0, 2).join('-')})
@@ -469,18 +127,20 @@ function EphemeralChat({
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setToolsPanelOpen(true)}
+            title="View tools & skills"
+          >
+            <Wrench className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleDownloadChat}
             disabled={messages.length === 0}
             title="Download chat"
           >
             <Download className="h-4 w-4" />
           </Button>
-          <ChatModeToggle
-            mode="ephemeral"
-            ephemeralAvailable={true}
-            checkingEphemeral={checkingEphemeral}
-            onToggle={onSwitchMode}
-          />
         </div>
       </div>
 
@@ -517,10 +177,8 @@ function EphemeralChat({
       >
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{instructionsDialog.skill?.name} - Rendered Instructions</DialogTitle>
-            <DialogDescription>
-              Skill instructions with your credentials embedded (ephemeral mode)
-            </DialogDescription>
+            <DialogTitle>{instructionsDialog.skill?.name} - Instructions</DialogTitle>
+            <DialogDescription>Follow these instructions to complete the task</DialogDescription>
           </DialogHeader>
           <div className="mt-4">
             <pre className="text-sm bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre-wrap">
@@ -529,59 +187,109 @@ function EphemeralChat({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Tools & Skills Panel */}
+      <ToolsSkillsPanel open={toolsPanelOpen} onOpenChange={setToolsPanelOpen} />
     </div>
   );
 }
 
 /**
- * Toggle between server and ephemeral chat modes
+ * Tools & Skills Panel - shows available capabilities
  */
-function ChatModeToggle({
-  mode,
-  ephemeralAvailable,
-  checkingEphemeral,
-  onToggle,
+function ToolsSkillsPanel({
+  open,
+  onOpenChange,
 }: {
-  mode: ChatMode;
-  ephemeralAvailable: boolean;
-  checkingEphemeral: boolean;
-  onToggle: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  if (checkingEphemeral) {
-    return (
-      <Badge variant="outline" className="text-xs">
-        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-        Checking...
-      </Badge>
-    );
-  }
+  const [skillsList, setSkillsList] = useState<SkillPublic[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'skills' | 'tools'>('skills');
+
+  useEffect(() => {
+    if (open) {
+      setLoading(true);
+      skills
+        .list()
+        .then((data) => setSkillsList(data))
+        .catch(() => setSkillsList([]))
+        .finally(() => setLoading(false));
+    }
+  }, [open]);
+
+  const actions = [
+    { name: 'search_candidates', description: 'Search ATS for candidates' },
+    { name: 'get_candidate', description: 'Get candidate details' },
+    { name: 'create_candidate', description: 'Create a new candidate' },
+    { name: 'update_candidate', description: 'Update candidate info' },
+    { name: 'list_jobs', description: 'List open jobs' },
+    { name: 'get_job', description: 'Get job details' },
+    { name: 'update_application_stage', description: 'Move candidate through pipeline' },
+    { name: 'scrape_url', description: 'Scrape content from a URL' },
+  ];
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onToggle}
-      disabled={!ephemeralAvailable && mode === 'server'}
-      className="gap-2"
-      title={
-        mode === 'server'
-          ? ephemeralAvailable
-            ? 'Switch to ephemeral mode (direct LLM, no PII through server)'
-            : 'Ephemeral mode requires LLM API key configuration'
-          : 'Switch to server mode (chat proxied through Skillomatic)'
-      }
-    >
-      {mode === 'server' ? (
-        <>
-          <Server className="h-4 w-4" />
-          Server
-        </>
-      ) : (
-        <>
-          <Zap className="h-4 w-4" />
-          Ephemeral
-        </>
-      )}
-    </Button>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[70vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Available Capabilities</DialogTitle>
+          <DialogDescription>Tools and skills the assistant can use</DialogDescription>
+        </DialogHeader>
+        <div className="flex gap-2 border-b pb-2">
+          <Button
+            variant={tab === 'skills' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setTab('skills')}
+          >
+            Skills ({skillsList.length})
+          </Button>
+          <Button
+            variant={tab === 'tools' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setTab('tools')}
+          >
+            Tools ({actions.length})
+          </Button>
+        </div>
+        <div className="overflow-y-auto flex-1 -mx-2 px-2">
+          {tab === 'skills' ? (
+            loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : skillsList.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No skills available</p>
+            ) : (
+              <div className="space-y-1">
+                {skillsList.map((skill) => (
+                  <a
+                    key={skill.slug}
+                    href={`/skills/${skill.slug}`}
+                    className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{skill.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{skill.description}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2" />
+                  </a>
+                ))}
+              </div>
+            )
+          ) : (
+            <div className="space-y-1">
+              {actions.map((action) => (
+                <div key={action.name} className="p-2 rounded-md">
+                  <p className="text-sm font-medium font-mono">{action.name}</p>
+                  <p className="text-xs text-muted-foreground">{action.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

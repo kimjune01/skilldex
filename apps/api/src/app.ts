@@ -26,7 +26,6 @@ import { integrationsRoutes } from './routes/integrations.js';
 import { usersRoutes } from './routes/users.js';
 import { analyticsRoutes } from './routes/analytics.js';
 import { proposalsRoutes } from './routes/proposals.js';
-import { chatRoutes } from './routes/chat.js';
 import { settingsRoutes } from './routes/settings.js';
 import { docsRoutes } from './routes/docs.js';
 import { extensionRoutes } from './routes/extension.js';
@@ -91,7 +90,6 @@ app.route('/api/integrations', integrationsRoutes);  // OAuth connections
 app.route('/api/users', usersRoutes);         // User management (admin)
 app.route('/api/analytics', analyticsRoutes); // Usage analytics (admin)
 app.route('/api/proposals', proposalsRoutes); // Skill proposals
-app.route('/api/chat', chatRoutes);           // LLM chat with skill suggestions
 app.route('/api/settings', settingsRoutes);   // System settings (admin)
 app.route('/api/organizations', organizationsRoutes); // Organization management
 app.route('/api/invites', invitesRoutes);     // Organization invites
