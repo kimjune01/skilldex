@@ -323,17 +323,17 @@ export default function ForRecruiters() {
       </section>
 
       {/* End-to-End Workflows */}
-      <section id="workflows" className="py-20 px-6 bg-[hsl(220_25%_10%)]">
+      <section id="workflows" className="py-20 px-6 bg-[hsl(220_20%_97%)]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <Badge className="mb-4 bg-cyan-500/10 text-cyan-400 border-cyan-500/20 font-bold">
+            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
               <RefreshCw className="h-3 w-3 mr-1" />
               Automatic Tool Chaining
             </Badge>
-            <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-              One Prompt. Five Tools. Zero Babysitting.
+            <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
+              One Prompt. Any Tools. Zero Babysitting.
             </h2>
-            <p className="text-lg text-[hsl(220_15%_60%)] max-w-2xl mx-auto">
+            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
               Unlike basic chatbots, Skillomatic automatically chains multiple tools together.
               Give it a goal—it figures out the steps.
             </p>
@@ -345,7 +345,7 @@ export default function ForRecruiters() {
               return (
                 <div
                   key={workflow.id}
-                  className="robot-display rounded-2xl p-6 stagger-fade-in"
+                  className="card-robot rounded-2xl p-6 stagger-fade-in"
                   style={{ animationDelay: `${workflowIndex * 150}ms` }}
                 >
                   <div className="flex flex-col gap-6">
@@ -356,17 +356,17 @@ export default function ForRecruiters() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-black text-white">
+                          <h3 className="text-lg font-black text-[hsl(220_30%_20%)]">
                             {workflow.title}
                           </h3>
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-bold">
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 text-xs font-bold">
                             <Clock className="h-3 w-3" />
                             {workflow.timeSaved}
                           </div>
                         </div>
-                        <div className="bg-[hsl(220_20%_15%)] rounded-lg px-4 py-3 border border-cyan-500/20">
-                          <div className="text-xs text-cyan-400/60 mb-1 font-mono">YOU TYPE:</div>
-                          <div className="text-cyan-400 text-sm font-medium">{workflow.prompt}</div>
+                        <div className="bg-primary/5 rounded-lg px-4 py-3 border border-primary/20">
+                          <div className="text-xs text-primary/60 mb-1 font-mono">YOU TYPE:</div>
+                          <div className="text-[hsl(220_30%_25%)] text-sm font-medium">{workflow.prompt}</div>
                         </div>
                       </div>
                     </div>
@@ -374,18 +374,18 @@ export default function ForRecruiters() {
                     {/* Auto-chained steps */}
                     <div>
                       <div className="text-xs text-[hsl(220_15%_50%)] mb-3 flex items-center gap-2">
-                        <RefreshCw className="h-3 w-3 text-cyan-400" />
+                        <RefreshCw className="h-3 w-3 text-primary" />
                         <span>SKILLOMATIC AUTOMATICALLY CHAINS:</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {workflow.steps.map((step, stepIndex) => (
                           <div key={stepIndex} className="flex items-center gap-2">
-                            <div className="bg-[hsl(220_20%_18%)] rounded-lg px-3 py-2 border border-[hsl(220_20%_25%)]">
-                              <div className="text-white font-semibold text-sm">{step.action}</div>
-                              <div className="text-[hsl(220_15%_45%)] text-xs">{step.detail}</div>
+                            <div className="bg-[hsl(220_20%_96%)] rounded-lg px-3 py-2 border border-[hsl(220_20%_88%)]">
+                              <div className="text-[hsl(220_30%_20%)] font-semibold text-sm">{step.action}</div>
+                              <div className="text-[hsl(220_15%_50%)] text-xs">{step.detail}</div>
                             </div>
                             {stepIndex < workflow.steps.length - 1 && (
-                              <ArrowRight className="h-4 w-4 text-cyan-400/40 flex-shrink-0" />
+                              <ArrowRight className="h-4 w-4 text-primary/40 flex-shrink-0" />
                             )}
                           </div>
                         ))}
@@ -623,17 +623,13 @@ export default function ForRecruiters() {
                 All Your Tools, One Conversation
               </h3>
               <p className="text-[hsl(220_15%_45%)] max-w-lg mx-auto">
-                AI providers, ATS systems, calendars, and browsers—all connected seamlessly
+                All connected seamlessly
               </p>
             </div>
 
             <PlanetaryLogos />
           </div>
 
-          {/* Bottom note */}
-          <p className="text-center text-sm text-[hsl(220_15%_50%)] mt-6">
-            Don't see your tool? <a href="mailto:email@skillomatic.technology?subject=Integration%20Request" className="text-primary font-bold hover:underline">Request an integration</a> — we add new ones weekly.
-          </p>
         </div>
       </section>
 
