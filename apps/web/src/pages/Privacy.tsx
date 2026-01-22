@@ -71,7 +71,7 @@ export default function Privacy() {
             <li>All data is encrypted in transit (TLS/HTTPS)</li>
             <li>Passwords are hashed using industry-standard algorithms</li>
             <li>API keys are generated using cryptographically secure methods</li>
-            <li>Database hosted on secure, SOC 2 compliant infrastructure</li>
+            <li>Database hosted on secure cloud infrastructure (AWS)</li>
           </ul>
 
           <h2>Data Sharing</h2>

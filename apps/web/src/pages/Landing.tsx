@@ -33,7 +33,7 @@ const features = [
   {
     icon: Shield,
     title: 'Enterprise Security',
-    description: 'SOC 2 compliant. Your credentials stay secure. Full control over your data and integrations.',
+    description: 'Your credentials stay secure. Full control over your data and integrations.',
     color: 'text-amber-500',
     bgColor: 'bg-amber-500',
   },
