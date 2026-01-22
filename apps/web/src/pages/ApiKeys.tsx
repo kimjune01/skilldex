@@ -14,7 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Copy, AlertCircle, CheckCircle2, RefreshCw, Monitor } from 'lucide-react';
+import { Copy, AlertCircle, CheckCircle2, RefreshCw, Monitor, ChevronDown } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 export default function ApiKeys() {
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
@@ -91,6 +96,52 @@ export default function ApiKeys() {
 
   const activeKey = keys[0]; // We only show one key now
 
+  const [expandedApp, setExpandedApp] = useState<string | null>('claude');
+
+  const mcpApps = [
+    {
+      id: 'claude',
+      name: 'Claude Desktop',
+      configPath: {
+        mac: '~/Library/Application Support/Claude/claude_desktop_config.json',
+        windows: '%APPDATA%\\Claude\\claude_desktop_config.json',
+      },
+    },
+    {
+      id: 'cursor',
+      name: 'Cursor',
+      configPath: {
+        mac: '~/.cursor/mcp.json',
+        windows: '%USERPROFILE%\\.cursor\\mcp.json',
+      },
+    },
+    {
+      id: 'windsurf',
+      name: 'Windsurf',
+      configPath: {
+        mac: '~/.codeium/windsurf/mcp_config.json',
+        windows: '%USERPROFILE%\\.codeium\\windsurf\\mcp_config.json',
+      },
+    },
+    {
+      id: 'vscode',
+      name: 'VS Code (Copilot)',
+      configPath: {
+        mac: '~/Library/Application Support/Code/User/mcp.json',
+        windows: '%APPDATA%\\Code\\User\\mcp.json',
+      },
+    },
+    {
+      id: 'cline',
+      name: 'Cline (VS Code)',
+      configPath: {
+        mac: 'Via Cline extension settings',
+        windows: 'Via Cline extension settings',
+      },
+      note: 'Open Cline sidebar → MCP Servers → Configure → Advanced MCP Settings',
+    },
+  ];
+
   const getMcpConfig = (key: string) => JSON.stringify({
     mcpServers: {
       skillomatic: {
@@ -100,6 +151,17 @@ export default function ApiKeys() {
           SKILLOMATIC_API_KEY: key,
           SKILLOMATIC_API_URL: window.location.origin
         }
+      }
+    }
+  }, null, 2);
+
+  const getMcpServerOnly = (key: string) => JSON.stringify({
+    skillomatic: {
+      command: "npx",
+      args: ["@skillomatic/mcp"],
+      env: {
+        SKILLOMATIC_API_KEY: key,
+        SKILLOMATIC_API_URL: window.location.origin
       }
     }
   }, null, 2);
@@ -160,22 +222,47 @@ export default function ApiKeys() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Step 1: Install */}
+            {/* Step 1: Choose your app */}
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
                   1
                 </div>
-                <span className="font-medium">Find your config file</span>
+                <span className="font-medium">Choose your chat app</span>
               </div>
               <div className="ml-8 space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Monitor className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Claude Desktop:</span>
-                  <code className="bg-muted px-2 py-0.5 rounded text-xs">
-                    ~/Library/Application Support/Claude/claude_desktop_config.json
-                  </code>
-                </div>
+                {mcpApps.map((app) => (
+                  <Collapsible
+                    key={app.id}
+                    open={expandedApp === app.id}
+                    onOpenChange={(open) => setExpandedApp(open ? app.id : null)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <button className="flex items-center justify-between w-full p-3 text-left bg-muted/50 hover:bg-muted rounded-lg transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Monitor className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">{app.name}</span>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedApp === app.id ? 'rotate-180' : ''}`} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                      <div className="text-xs space-y-1">
+                        <div className="flex items-start gap-2">
+                          <span className="text-muted-foreground min-w-[50px]">macOS:</span>
+                          <code className="bg-muted px-2 py-0.5 rounded break-all">{app.configPath.mac}</code>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-muted-foreground min-w-[50px]">Windows:</span>
+                          <code className="bg-muted px-2 py-0.5 rounded break-all">{app.configPath.windows}</code>
+                        </div>
+                        {app.note && (
+                          <p className="text-muted-foreground italic mt-1">{app.note}</p>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
               </div>
             </div>
 
@@ -187,20 +274,51 @@ export default function ApiKeys() {
                 </div>
                 <span className="font-medium">Add this configuration</span>
               </div>
-              <div className="ml-8">
-                <div className="relative">
-                  <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
+              <div className="ml-8 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {expandedApp === 'cline'
+                    ? 'Add this server entry to your existing MCP servers:'
+                    : 'If the file is empty or doesn\'t exist, use the full config. Otherwise, add just the server entry to your existing mcpServers object.'}
+                </p>
+
+                {expandedApp !== 'cline' && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Full config (for new files):</p>
+                    <div className="relative">
+                      <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
 {getMcpConfig(activeKey.key)}
-                  </pre>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="absolute top-2 right-2"
-                    onClick={() => copyToClipboard(getMcpConfig(activeKey.key), 'config')}
-                  >
-                    <Copy className="h-3 w-3 mr-1" />
-                    {copied === 'config' ? 'Copied!' : 'Copy'}
-                  </Button>
+                      </pre>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="absolute top-2 right-2"
+                        onClick={() => copyToClipboard(getMcpConfig(activeKey.key), 'config-full')}
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        {copied === 'config-full' ? 'Copied!' : 'Copy'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {expandedApp === 'cline' ? 'Server entry:' : 'Server entry only (for existing files):'}
+                  </p>
+                  <div className="relative">
+                    <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
+{getMcpServerOnly(activeKey.key)}
+                    </pre>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="absolute top-2 right-2"
+                      onClick={() => copyToClipboard(getMcpServerOnly(activeKey.key), 'config-server')}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      {copied === 'config-server' ? 'Copied!' : 'Copy'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
