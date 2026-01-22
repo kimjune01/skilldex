@@ -220,8 +220,11 @@ function getUserAccessLevel(integration: { metadata: string | null }): AccessLev
   }
 }
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 /**
  * Map provider to category
+ * Note: mock-ats is only recognized in development mode
  */
 export function providerToCategory(provider: string): IntegrationCategory | null {
   switch (provider) {
@@ -231,8 +234,10 @@ export function providerToCategory(provider: string): IntegrationCategory | null
     case 'ashby':
     case 'workable':
     case 'zoho-recruit':
-    case 'mock-ats':
       return 'ats';
+    case 'mock-ats':
+      // Only allow mock-ats in development
+      return isDev ? 'ats' : null;
     case 'email':
     case 'gmail':
     case 'outlook':

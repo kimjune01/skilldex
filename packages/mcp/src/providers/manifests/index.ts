@@ -9,13 +9,17 @@ import { greenhouseManifest } from './greenhouse.js';
 import { zohoRecruitManifest } from './zoho-recruit.js';
 import { mockAtsManifest } from './mock-ats.js';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 /**
  * All available provider manifests keyed by provider ID
+ * Note: mock-ats is only available in development mode
  */
 export const manifests: Record<string, ProviderManifest> = {
   greenhouse: greenhouseManifest,
   'zoho-recruit': zohoRecruitManifest,
-  'mock-ats': mockAtsManifest,
+  // Only include mock-ats in development
+  ...(isDev ? { 'mock-ats': mockAtsManifest } : {}),
 };
 
 /**

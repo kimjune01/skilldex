@@ -537,8 +537,11 @@ v1AtsRoutes.post('/applications/:id/stage', async (c) => {
 
 // ============ Dynamic Tool Proxy ============
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 /**
  * Provider-specific base URLs and auth configuration
+ * Note: mock-ats is only available in development mode
  */
 const PROVIDER_CONFIG: Record<string, {
   getBaseUrl: (region?: string) => string;
@@ -568,13 +571,16 @@ const PROVIDER_CONFIG: Record<string, {
     }),
     requiresNango: true,
   },
-  'mock-ats': {
-    getBaseUrl: () => process.env.MOCK_ATS_URL || 'http://localhost:3001',
-    getAuthHeader: (token) => ({
-      'Authorization': `Bearer ${token}`,
-    }),
-    requiresNango: false,
-  },
+  // Only include mock-ats in development
+  ...(isDev ? {
+    'mock-ats': {
+      getBaseUrl: () => process.env.MOCK_ATS_URL || 'http://localhost:3001',
+      getAuthHeader: (token: string) => ({
+        'Authorization': `Bearer ${token}`,
+      }),
+      requiresNango: false,
+    },
+  } : {}),
 };
 
 /**
@@ -674,7 +680,8 @@ v1AtsRoutes.post('/proxy', async (c) => {
   }
 
   // Get the user's ATS integration - look for specific provider or any ATS provider
-  const atsProviders = [provider, 'ats', 'mock-ats', 'greenhouse', 'zoho-recruit'];
+  // Note: mock-ats is only included in development mode
+  const atsProviders = [provider, 'ats', 'greenhouse', 'zoho-recruit', ...(isDev ? ['mock-ats'] : [])];
   const [atsIntegration] = await db
     .select()
     .from(integrations)

@@ -89,14 +89,17 @@ export interface CapabilityCheckResult {
   missing: string[];
 }
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 // ATS provider base URLs
+// Note: mock-ats is only available in development mode
 const ATS_BASE_URLS: Record<string, string> = {
   greenhouse: 'https://harvest.greenhouse.io/v1',
   lever: 'https://api.lever.co/v1',
   ashby: 'https://api.ashbyhq.com',
   workable: 'https://www.workable.com/spi/v3',
   'zoho-recruit': 'https://recruit.zoho.com/recruit/v2',
-  'mock-ats': process.env.MOCK_ATS_URL || 'http://localhost:3001',
+  ...(isDev ? { 'mock-ats': process.env.MOCK_ATS_URL || 'http://localhost:3001' } : {}),
 };
 
 // LLM model defaults per provider
@@ -180,8 +183,8 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
     const metadata = integration.metadata ? JSON.parse(integration.metadata) : {};
     const atsProvider = metadata.subProvider || integration.provider;
 
-    // Special handling for mock-ats (no OAuth needed)
-    if (category === 'ats' && (integration.provider === 'mock-ats' || atsProvider === 'mock-ats')) {
+    // Special handling for mock-ats (no OAuth needed) - only in development
+    if (isDev && category === 'ats' && (integration.provider === 'mock-ats' || atsProvider === 'mock-ats')) {
       profile.ats = {
         provider: 'mock-ats',
         token: 'mock-token', // Mock ATS doesn't require auth
