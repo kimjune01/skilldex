@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { skills } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
-import type { SkillPublic, SkillCategory } from '@skillomatic/shared';
+import type { SkillPublic, SkillCategory, SkillAccessInfo } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,12 @@ import {
   Pencil,
   X,
   Save,
+  Info,
+  Lock,
+  Unlock,
+  Ban,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 
@@ -44,9 +50,11 @@ export default function SkillDetail() {
   const isAdmin = user?.isAdmin || false;
 
   const [skill, setSkill] = useState<SkillPublic | null>(null);
+  const [accessInfo, setAccessInfo] = useState<SkillAccessInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [showAccessDebug, setShowAccessDebug] = useState(false);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -67,10 +75,16 @@ export default function SkillDetail() {
     setIsLoading(true);
     setError('');
 
-    skills
-      .get(slug)
-      .then((data) => {
-        if (!cancelled) setSkill(data);
+    // Fetch both skill and access info in parallel
+    Promise.all([
+      skills.get(slug),
+      skills.getAccessInfo(slug).catch(() => null), // Don't fail if access info unavailable
+    ])
+      .then(([skillData, accessData]) => {
+        if (!cancelled) {
+          setSkill(skillData);
+          setAccessInfo(accessData);
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load skill');
@@ -349,6 +363,165 @@ export default function SkillDetail() {
           </div>
 
           <Separator />
+
+          {/* Access Permissions Debug Section */}
+          {accessInfo && (
+            <>
+              <div>
+                <button
+                  onClick={() => setShowAccessDebug(!showAccessDebug)}
+                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                >
+                  <Info className="h-4 w-4" />
+                  Access Permissions
+                  <Badge
+                    variant={
+                      accessInfo.status === 'available'
+                        ? 'default'
+                        : accessInfo.status === 'limited'
+                        ? 'secondary'
+                        : 'destructive'
+                    }
+                    className="ml-2"
+                  >
+                    {accessInfo.status === 'available' && <Unlock className="h-3 w-3 mr-1" />}
+                    {accessInfo.status === 'limited' && <Lock className="h-3 w-3 mr-1" />}
+                    {accessInfo.status === 'disabled' && <Ban className="h-3 w-3 mr-1" />}
+                    {accessInfo.status}
+                  </Badge>
+                  <span className="ml-auto">
+                    {showAccessDebug ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </span>
+                </button>
+
+                {showAccessDebug && (
+                  <div className="mt-4 space-y-4 p-4 bg-muted/30 rounded-lg text-sm">
+                    {/* Status Summary */}
+                    {accessInfo.status === 'available' && (
+                      <Alert className="bg-green-50 border-green-200">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-green-800">
+                          This skill is fully available. All requirements are met.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {accessInfo.status === 'limited' && (
+                      <Alert className="bg-yellow-50 border-yellow-200">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <AlertDescription className="text-yellow-800">
+                          <div className="font-medium mb-1">This skill has limited functionality:</div>
+                          <ul className="list-disc list-inside space-y-1">
+                            {accessInfo.limitations?.map((limitation, i) => (
+                              <li key={i}>{limitation}</li>
+                            ))}
+                          </ul>
+                          {accessInfo.guidance && (
+                            <p className="mt-2 font-medium">{accessInfo.guidance}</p>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {accessInfo.status === 'disabled' && (
+                      <Alert variant="destructive">
+                        <Ban className="h-4 w-4" />
+                        <AlertDescription>
+                          This skill has been disabled by your organization admin.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Requirements Table */}
+                    {accessInfo.requirements && Object.keys(accessInfo.requirements).length > 0 && (
+                      <div>
+                        <div className="font-medium mb-2">Skill Requirements</div>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-2 font-medium">Integration</th>
+                              <th className="text-left py-2 font-medium">Required</th>
+                              <th className="text-left py-2 font-medium">Your Access</th>
+                              <th className="text-left py-2 font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(['ats', 'email', 'calendar'] as const).map((category) => {
+                              const required = accessInfo.requirements?.[category];
+                              const effective = accessInfo.effectiveAccess?.[category];
+                              if (!required) return null;
+
+                              const meetsRequirement =
+                                required === 'read-only'
+                                  ? effective === 'read-only' || effective === 'read-write'
+                                  : effective === 'read-write';
+
+                              return (
+                                <tr key={category} className="border-b">
+                                  <td className="py-2 capitalize">{category}</td>
+                                  <td className="py-2">
+                                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
+                                      {required}
+                                    </code>
+                                  </td>
+                                  <td className="py-2">
+                                    <code className={`px-1.5 py-0.5 rounded text-xs ${
+                                      effective === 'none' || effective === 'disabled'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-muted'
+                                    }`}>
+                                      {effective}
+                                    </code>
+                                  </td>
+                                  <td className="py-2">
+                                    {meetsRequirement ? (
+                                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Org Permissions */}
+                    {accessInfo.orgPermissions && (
+                      <div>
+                        <div className="font-medium mb-2">Organization Settings</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['ats', 'email', 'calendar'] as const).map((category) => (
+                            <div key={category} className="flex items-center gap-2">
+                              <span className="capitalize">{category}:</span>
+                              <code className={`px-1.5 py-0.5 rounded text-xs ${
+                                accessInfo.orgPermissions?.[category] === 'disabled'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-muted'
+                              }`}>
+                                {accessInfo.orgPermissions?.[category]}
+                              </code>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Debug Info */}
+                    {accessInfo.disabledByAdmin && (
+                      <div className="text-muted-foreground">
+                        <span className="font-medium">Note:</span> This skill is in the organization's disabled skills list.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+            </>
+          )}
 
           {isEditing ? (
             <div className="flex items-center gap-3">

@@ -3,13 +3,19 @@ import { db } from '@skillomatic/db';
 import { skills } from '@skillomatic/db/schema';
 import { eq, or } from 'drizzle-orm';
 import { combinedAuth } from '../middleware/combinedAuth.js';
-import type { SkillPublic } from '@skillomatic/shared';
+import type { SkillPublic, SkillAccessInfo } from '@skillomatic/shared';
 import {
   buildCapabilityProfile,
   checkCapabilityRequirements,
   renderSkillInstructions,
   buildConfigSkill,
 } from '../lib/skill-renderer.js';
+import {
+  getOrgIntegrationPermissions,
+  getOrgDisabledSkills,
+  getEffectiveAccessForUser,
+} from '../lib/integration-permissions.js';
+import { getSkillStatus } from '../lib/skill-access.js';
 
 export const skillsRoutes = new Hono();
 
@@ -124,12 +130,14 @@ function toSkillPublic(skill: typeof skills.$inferSelect): SkillPublic {
 
 // GET /api/skills - List skills available to the authenticated user
 // Returns: global skills + skills for user's organization (if any)
+// Query params:
+//   - includeAccess=true: include access status for each skill
 skillsRoutes.get('/', async (c) => {
   const user = c.get('user');
   const organizationId = user.organizationId;
+  const includeAccess = c.req.query('includeAccess') === 'true';
 
   // Build filter: global skills OR skills for user's organization
-  // Also filter out disabled skills for non-admins
   let allSkills;
 
   if (organizationId) {
@@ -151,14 +159,71 @@ skillsRoutes.get('/', async (c) => {
       .where(eq(skills.isGlobal, true));
   }
 
-  // Non-admins only see enabled skills
+  // Get access info if requested and user has org context
+  let disabledSkills: string[] = [];
+  let effectiveAccess: Awaited<ReturnType<typeof getEffectiveAccessForUser>> | null = null;
+
+  if (includeAccess && organizationId) {
+    disabledSkills = await getOrgDisabledSkills(organizationId);
+    effectiveAccess = await getEffectiveAccessForUser(user.sub, organizationId);
+  }
+
+  // Build public skills with access info
+  const publicSkills = allSkills.map((skill) => {
+    const base = toSkillPublic(skill);
+
+    // Add access info if requested
+    if (includeAccess && effectiveAccess) {
+      // Parse requirements from requiredIntegrations
+      const requirements: Record<string, string> = {};
+      if (skill.requiredIntegrations) {
+        try {
+          const integrations = JSON.parse(skill.requiredIntegrations);
+          for (const int of integrations) {
+            if (['greenhouse', 'lever', 'ashby', 'workable', 'ats'].includes(int)) {
+              requirements.ats = requirements.ats || 'read-only';
+            }
+            if (['gmail', 'outlook', 'email'].includes(int)) {
+              requirements.email = requirements.email || 'read-only';
+            }
+            if (['google-calendar', 'outlook-calendar', 'calendly', 'calendar'].includes(int)) {
+              requirements.calendar = requirements.calendar || 'read-only';
+            }
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      const skillStatus = getSkillStatus(
+        skill.slug,
+        Object.keys(requirements).length > 0 ? requirements : null,
+        effectiveAccess,
+        disabledSkills,
+        user.isAdmin || false
+      );
+
+      return {
+        ...base,
+        accessInfo: {
+          status: skillStatus.status,
+          limitations: skillStatus.limitations,
+          guidance: skillStatus.guidance,
+          disabledByAdmin: disabledSkills.includes(skill.slug),
+        },
+      };
+    }
+
+    return base;
+  });
+
+  // Filter: Admins see all skills. Non-admins see enabled skills OR skills with access info
+  // (so they can see limited skills as dimmed instead of hidden)
   const filteredSkills = user.isAdmin
-    ? allSkills
-    : allSkills.filter(s => s.isEnabled);
+    ? publicSkills
+    : publicSkills.filter(s => s.isEnabled || (s.accessInfo && s.accessInfo.status !== 'disabled'));
 
-  const publicSkills = filteredSkills.map(toSkillPublic);
-
-  return c.json({ data: publicSkills });
+  return c.json({ data: filteredSkills });
 });
 
 // GET /api/skills/config - Get config skill (ephemeral architecture)
@@ -353,5 +418,90 @@ skillsRoutes.put('/:slug', async (c) => {
     .returning();
 
   return c.json({ data: toSkillPublic(updatedSkill) });
+});
+
+// GET /api/skills/:slug/access - Get skill access info (debug view)
+// Returns detailed information about why a skill is available, limited, or disabled
+skillsRoutes.get('/:slug/access', combinedAuth, async (c) => {
+  const slug = c.req.param('slug');
+  const user = c.get('user');
+
+  const [skill] = await db
+    .select()
+    .from(skills)
+    .where(eq(skills.slug, slug))
+    .limit(1);
+
+  if (!skill) {
+    return c.json({ error: { message: 'Skill not found' } }, 404);
+  }
+
+  // Check basic access
+  if (!canAccessSkill(skill, user)) {
+    return c.json({ error: { message: 'Skill not found' } }, 404);
+  }
+
+  // Need org context for permissions
+  if (!user.organizationId) {
+    return c.json({ error: { message: 'Organization context required' } }, 400);
+  }
+
+  // Get org permissions and disabled skills
+  const orgPermissions = await getOrgIntegrationPermissions(user.organizationId);
+  const disabledSkills = await getOrgDisabledSkills(user.organizationId);
+  const effectiveAccess = await getEffectiveAccessForUser(user.sub, user.organizationId);
+
+  // Parse skill requirements from frontmatter stored in instructions
+  // For now, we'll use requiredIntegrations as a proxy for requirements
+  // In a full implementation, this would parse the SKILL.md frontmatter
+  const requirements: Record<string, string> = {};
+  if (skill.requiredIntegrations) {
+    try {
+      const integrations = JSON.parse(skill.requiredIntegrations);
+      for (const int of integrations) {
+        // Map integration names to categories
+        if (['greenhouse', 'lever', 'ashby', 'workable', 'ats'].includes(int)) {
+          requirements.ats = requirements.ats || 'read-only';
+        }
+        if (['gmail', 'outlook', 'email'].includes(int)) {
+          requirements.email = requirements.email || 'read-only';
+        }
+        if (['google-calendar', 'outlook-calendar', 'calendly', 'calendar'].includes(int)) {
+          requirements.calendar = requirements.calendar || 'read-only';
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  // Get skill status
+  const skillStatus = getSkillStatus(
+    skill.slug,
+    Object.keys(requirements).length > 0 ? requirements : null,
+    effectiveAccess,
+    disabledSkills,
+    user.isAdmin || false
+  );
+
+  const accessInfo: SkillAccessInfo = {
+    status: skillStatus.status,
+    limitations: skillStatus.limitations,
+    guidance: skillStatus.guidance,
+    requirements: Object.keys(requirements).length > 0 ? requirements as SkillAccessInfo['requirements'] : undefined,
+    effectiveAccess: {
+      ats: effectiveAccess.ats,
+      email: effectiveAccess.email,
+      calendar: effectiveAccess.calendar,
+    },
+    orgPermissions: {
+      ats: orgPermissions.ats,
+      email: orgPermissions.email,
+      calendar: orgPermissions.calendar,
+    },
+    disabledByAdmin: disabledSkills.includes(skill.slug),
+  };
+
+  return c.json({ data: accessInfo });
 });
 

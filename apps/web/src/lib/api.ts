@@ -3,6 +3,7 @@ import type {
   LoginResponse,
   UserPublic,
   SkillPublic,
+  SkillAccessInfo,
   ApiKeyPublic,
   ApiKeyCreateResponse,
   IntegrationPublic,
@@ -96,7 +97,8 @@ export const auth = {
 
 // Skills
 export const skills = {
-  list: () => request<SkillPublic[]>('/skills'),
+  list: (options?: { includeAccess?: boolean }) =>
+    request<SkillPublic[]>(`/skills${options?.includeAccess ? '?includeAccess=true' : ''}`),
 
   get: (slug: string) => request<SkillPublic>(`/skills/${slug}`),
 
@@ -150,6 +152,9 @@ export const skills = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  // Get skill access info (permissions debug view)
+  getAccessInfo: (slug: string) => request<SkillAccessInfo>(`/skills/${slug}/access`),
 };
 
 // API Keys

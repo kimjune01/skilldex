@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { skills, proposals } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
-import type { SkillPublic, SkillCategory, SkillProposalPublic } from '@skillomatic/shared';
+import type { SkillPublic, SkillCategory, SkillProposalPublic, SkillAccessStatus } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,8 @@ import {
   Edit,
   Zap,
   Plug,
+  Lock,
+  Ban,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -60,7 +62,7 @@ export default function Skills() {
 
   useEffect(() => {
     skills
-      .list()
+      .list({ includeAccess: true })
       .then(setSkillList)
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load skills');
@@ -309,50 +311,85 @@ export default function Skills() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filteredSkills.map((skill) => (
-                    <tr
-                      key={skill.id}
-                      className={`cursor-pointer ${!skill.isEnabled ? 'bg-muted/30' : 'hover:bg-muted/50'}`}
-                      onClick={() => navigate(`/skills/${skill.slug}`)}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <Zap className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <div className="font-medium">{skill.name}</div>
-                            <div className="text-sm text-muted-foreground">{skill.description}</div>
+                  {filteredSkills.map((skill) => {
+                    const accessStatus = skill.accessInfo?.status;
+                    const isLimited = accessStatus === 'limited';
+                    const isDisabled = accessStatus === 'disabled' || !skill.isEnabled;
+
+                    return (
+                      <tr
+                        key={skill.id}
+                        className={`cursor-pointer ${
+                          isDisabled
+                            ? 'bg-muted/30 opacity-50'
+                            : isLimited
+                            ? 'bg-yellow-50/50 hover:bg-yellow-50'
+                            : 'hover:bg-muted/50'
+                        }`}
+                        onClick={() => navigate(`/skills/${skill.slug}`)}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {isDisabled ? (
+                              <Ban className="h-4 w-4 text-muted-foreground" />
+                            ) : isLimited ? (
+                              <Lock className="h-4 w-4 text-yellow-600" />
+                            ) : (
+                              <Zap className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <div>
+                              <div className={`font-medium ${isDisabled ? 'text-muted-foreground' : ''}`}>
+                                {skill.name}
+                                {isLimited && (
+                                  <Badge variant="outline" className="ml-2 text-xs text-yellow-700 border-yellow-300">
+                                    Limited
+                                  </Badge>
+                                )}
+                                {isDisabled && (
+                                  <Badge variant="outline" className="ml-2 text-xs">
+                                    Disabled
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground">{skill.description}</div>
+                              {isLimited && skill.accessInfo?.limitations && (
+                                <div className="text-xs text-yellow-700 mt-1">
+                                  {skill.accessInfo.limitations[0]}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={getCategoryBadgeVariant(skill.category)}>
-                          {skill.category}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {skill.requiredIntegrations.length > 0 ? (
-                            skill.requiredIntegrations.map((int) => (
-                              <Badge key={int} variant="secondary" className="gap-1">
-                                <Plug className="h-3 w-3" />
-                                {int}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-sm text-muted-foreground">None</span>
-                          )}
-                        </div>
-                      </td>
-                      {isAdmin && (
-                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <Switch
-                            checked={skill.isEnabled}
-                            onCheckedChange={() => handleToggleEnabled(skill)}
-                          />
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={getCategoryBadgeVariant(skill.category)}>
+                            {skill.category}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {skill.requiredIntegrations.length > 0 ? (
+                              skill.requiredIntegrations.map((int) => (
+                                <Badge key={int} variant="secondary" className="gap-1">
+                                  <Plug className="h-3 w-3" />
+                                  {int}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-sm text-muted-foreground">None</span>
+                            )}
+                          </div>
+                        </td>
+                        {isAdmin && (
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              checked={skill.isEnabled}
+                              onCheckedChange={() => handleToggleEnabled(skill)}
+                            />
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {filteredSkills.length === 0 && (

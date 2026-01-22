@@ -139,6 +139,35 @@ export interface ApiKeyCreateResponse {
 
 // ============ Skill Types ============
 
+/** Skill access status */
+export type SkillAccessStatus = 'available' | 'limited' | 'disabled';
+
+/** Access level for an integration category */
+export type SkillAccessLevel = 'read-write' | 'read-only' | 'disabled' | 'none';
+
+/** Skill access debug info */
+export interface SkillAccessInfo {
+  status: SkillAccessStatus;
+  limitations?: string[];
+  guidance?: string;
+  requirements?: {
+    ats?: SkillAccessLevel;
+    email?: SkillAccessLevel;
+    calendar?: SkillAccessLevel;
+  };
+  effectiveAccess?: {
+    ats: SkillAccessLevel;
+    email: SkillAccessLevel;
+    calendar: SkillAccessLevel;
+  };
+  orgPermissions?: {
+    ats: SkillAccessLevel;
+    email: SkillAccessLevel;
+    calendar: SkillAccessLevel;
+  };
+  disabledByAdmin?: boolean;
+}
+
 export interface SkillPublic {
   id: string;
   slug: string;
@@ -151,6 +180,8 @@ export interface SkillPublic {
   intent: string;
   capabilities: string[];
   isEnabled: boolean;
+  /** Access status info (included when requested) */
+  accessInfo?: SkillAccessInfo;
 }
 
 export type SkillCategory = 'sourcing' | 'ats' | 'communication' | 'scheduling' | 'productivity' | 'system';
