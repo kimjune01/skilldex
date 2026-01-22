@@ -12,14 +12,11 @@
   },
   "scripts": {
     "push": "drizzle-kit push",
-    "migrate": "tsx src/migrate.ts",
-    "migrate:prod": "tsx src/migrate-prod.ts",
+    "push:prod": "drizzle-kit push",
     "generate": "drizzle-kit generate",
     "studio": "drizzle-kit studio",
     "seed": "tsx seed/index.ts",
     "seed:prod": "tsx src/seed-prod.ts",
-    "setup": "tsx src/migrate.ts && tsx seed/index.ts",
-    "setup:prod": "tsx src/migrate-prod.ts && tsx src/seed-prod.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

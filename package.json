@@ -15,11 +15,13 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "db:push": "pnpm --filter @skillomatic/db push",
+    "db:push:prod": "pnpm --filter @skillomatic/db push:prod",
     "db:migrate": "pnpm --filter @skillomatic/db migrate",
     "db:seed": "pnpm --filter @skillomatic/db seed",
     "sst:dev": "sst dev",
     "sst:deploy": "sst deploy --stage production",
-    "sst:remove": "sst remove"
+    "sst:remove": "sst remove",
+    "deploy": "pnpm db:push:prod && pnpm sst:deploy"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
