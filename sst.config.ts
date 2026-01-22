@@ -29,10 +29,11 @@ export default $config({
     const googleClientSecret = new sst.Secret("GoogleClientSecret");
 
     // Email - AWS SES for transactional emails
-    const email = new sst.aws.Email("Email", {
-      sender: domain,
-      dmarc: "v=DMARC1; p=quarantine;",
-    });
+    // TODO: Re-enable once SES domain verification completes
+    // const email = new sst.aws.Email("Email", {
+    //   sender: domain,
+    //   dmarc: "v=DMARC1; p=quarantine;",
+    // });
 
     // API subdomain
     const apiDomain = `api.${domain}`;
@@ -49,15 +50,15 @@ export default $config({
             ? [`https://${domain}`, "http://localhost:5173", "http://localhost:4173"]
             : ["*"],
           allowCredentials: true,
-          allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-          allowHeaders: ["Content-Type", "Authorization"],
+          allowMethods: ["*"],
+          allowHeaders: ["*"],
         },
       },
       nodejs: {
         // Install native deps for Lambda (Linux x64)
         install: ["@libsql/linux-x64-gnu", "@libsql/client", "better-sqlite3"],
       },
-      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey, googleClientId, googleClientSecret, email],
+      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey, googleClientId, googleClientSecret],
       environment: {
         NODE_ENV: "production",
         NANGO_HOST: "https://api.nango.dev",
