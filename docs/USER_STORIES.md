@@ -149,26 +149,6 @@ Each story follows the format: *As a [persona], I want to [action], so that [ben
 
 ---
 
-### Story 2.4: Download Sync Skill and Sync All Skills
-**Persona:** Recruiter
-**Phase:** Setup
-
-> As a recruiter, I want to download a single "sync" skill that fetches all my available skills, so that I can easily keep my skills up to date.
-
-**Acceptance Criteria:**
-- [ ] Dashboard shows a single "Download Sync Skill" button
-- [ ] Sync skill file includes instructions for placement (`~/.claude/commands/skillomatic/`)
-- [ ] When executed, sync skill uses `SKILLOMATIC_API_KEY` to authenticate
-- [ ] Sync skill calls API to fetch all skills available to user's role(s)
-- [ ] Sync skill writes/updates skill files to `~/.claude/commands/skillomatic/`
-- [ ] Sync skill removes skills that user no longer has access to
-
-**Notes:** Only one download required. Running `/skillomatic-sync` in Claude Desktop keeps all skills current with the server.
-
-**Status:** ✅ Approved
-
----
-
 ## Section 3: Recruiter Operation Stories
 
 ### Story 3.1: Search Candidates in ATS

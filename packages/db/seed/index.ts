@@ -259,7 +259,6 @@ async function seed() {
     emailDraft: 'skill-email-draft',
     interviewScheduler: 'skill-interview-scheduler',
     meetingNotes: 'skill-meeting-notes',
-    skillomaticSync: 'skill-skillomatic-sync',
     proposeNewSkill: 'skill-propose-new-skill',
     candidatePipelineBuilder: 'skill-candidate-pipeline-builder',
     dailyReport: 'skill-daily-report',
@@ -308,7 +307,6 @@ async function seed() {
   // Note: All these skills are global (isGlobal: true, organizationId: null)
   // Organization-specific skills would have isGlobal: false and organizationId set
   const skillData = [
-    buildSkill(skillIds.skillomaticSync, 'skillomatic-sync', 'Skillomatic Sync', 'Sync all available skills from Skillomatic server to your local Claude Desktop', 'system', [], ['skills:read']),
     buildSkill(skillIds.proposeNewSkill, 'propose-new-skill', 'Propose New Skill', 'Submit a proposal for a new skill to be added to Skillomatic', 'system', [], ['proposals:write']),
     buildSkill(skillIds.linkedinLookup, 'linkedin-lookup', 'LinkedIn Profile Lookup', 'Find candidate profiles on LinkedIn that match a job description using browser automation', 'sourcing', [], ['candidates:read']),
     buildSkill(skillIds.atsCandidateSearch, 'ats-candidate-search', 'ATS Candidate Search', 'Search for candidates in your Applicant Tracking System', 'ats', ['ats'], ['candidates:read']),
@@ -351,11 +349,8 @@ async function seed() {
 
   const roleSkillAssignments = [
     // System skills available to everyone
-    { roleId: adminRoleId, skillId: skillIds.skillomaticSync },
     { roleId: adminRoleId, skillId: skillIds.proposeNewSkill },
-    { roleId: recruiterRoleId, skillId: skillIds.skillomaticSync },
     { roleId: recruiterRoleId, skillId: skillIds.proposeNewSkill },
-    { roleId: viewerRoleId, skillId: skillIds.skillomaticSync },
     { roleId: viewerRoleId, skillId: skillIds.proposeNewSkill },
 
     // Admin gets all skills
