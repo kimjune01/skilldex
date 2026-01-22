@@ -1,29 +1,25 @@
----
-name: prod-debugger
-description: Fetch recent production errors, investigate root causes in the codebase, and propose fixes.
-intent: Debug production errors and propose fixes
-capabilities:
-  - Fetch recent errors from production database
-  - Investigate error causes in codebase
-  - Propose code fixes
-requires:
-  database: super-admin
-allowed-tools:
-  - Bash
-  - Read
-  - Grep
-  - Glob
-  - Edit
----
+Fetch recent production errors, investigate root causes in the codebase, and propose fixes.
 
-# Production Debugger
-
-You are a production debugger that fetches recent errors from the Skillomatic database, investigates their root causes in the codebase, and proposes fixes.
+You are a production debugger. Your job is to:
+1. Fetch recent errors from the Skillomatic database
+2. Investigate error causes in the codebase
+3. Propose code fixes
 
 ## Prerequisites
 
 - You need a Skillomatic API key with super admin privileges set as `SKILLOMATIC_API_KEY`
 - The API must be accessible (prod or local)
+
+## Setup
+
+The API key is set in `.env` as `SKILLOMATIC_API_KEY`. It's created by the seed scripts:
+- Production: `pnpm --filter @skillomatic/db seed:prod`
+- Local: `pnpm --filter @skillomatic/db seed` (then add the key to local DB)
+
+For local development, add the prod debug key to local DB:
+```bash
+sqlite3 packages/db/data/skillomatic.db "INSERT OR REPLACE INTO api_keys (id, user_id, organization_id, key, name, created_at) VALUES ('apikey-super-admin', 'user-super-admin', 'org-default', 'sk_live_prod_super_admin_debug_key_2024', 'Production Debug Key', unixepoch())"
+```
 
 ## API Endpoints
 
@@ -241,3 +237,47 @@ Add token refresh before expiry in Nango webhook handler.
 If you get a 403 error, your API key doesn't have super admin privileges. Only super admins can query the database directly.
 
 If you get a 400 error with "Only SELECT queries allowed", you're trying to run a write query. The database endpoint is read-only for safety.
+
+## Checking Lambda/CloudWatch Logs
+
+For errors not captured in the database (e.g., Lambda cold start failures), check CloudWatch logs directly:
+
+```bash
+# Set AWS credentials (from .env or your AWS config)
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_REGION=us-west-2
+
+# List Lambda log groups
+aws logs describe-log-groups --log-group-name-prefix /aws/lambda/skillomatic --query 'logGroups[*].logGroupName'
+
+# Tail recent logs (last 1 day)
+aws logs tail /aws/lambda/skillomatic-production-ApiFunction-nnchswnb --since 1d
+
+# Search for specific errors
+aws logs filter-log-events \
+  --log-group-name /aws/lambda/skillomatic-production-ApiFunction-nnchswnb \
+  --filter-pattern "ERROR" \
+  --start-time $(date -v-1d +%s000)
+```
+
+### Common Lambda Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Cannot find module '@libsql/linux-x64-gnu'` | Native module not bundled for Lambda | Add to `nodejs.install` in sst.config.ts |
+| `ENOENT: mkdir './data'` | Falling back to local SQLite instead of Turso | Check `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` env vars in Lambda |
+| `Connected to Turso database` + 200 | Success | No action needed |
+
+### SST Secrets for Turso
+
+Ensure these SST secrets are set for production:
+
+```bash
+# Set Turso secrets
+pnpm sst secret set TursoDatabaseUrl libsql://skillomatic-xxx.turso.io --stage production
+pnpm sst secret set TursoAuthToken your_turso_token --stage production
+
+# Verify secrets are set
+pnpm sst secret list --stage production
+```

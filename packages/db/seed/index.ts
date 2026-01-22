@@ -263,7 +263,6 @@ async function seed() {
     proposeNewSkill: 'skill-propose-new-skill',
     candidatePipelineBuilder: 'skill-candidate-pipeline-builder',
     dailyReport: 'skill-daily-report',
-    prodDebugger: 'skill-prod-debugger',
   };
 
   // Helper to build skill with frontmatter from SKILL.md
@@ -319,7 +318,6 @@ async function seed() {
     buildSkill(skillIds.meetingNotes, 'meeting-notes', 'Meeting Notes Sync', 'Sync meeting notes from recording apps to ATS', 'productivity', ['granola'], ['meetings:read', 'candidates:write'], false),
     buildSkill(skillIds.candidatePipelineBuilder, 'candidate-pipeline-builder', 'Candidate Pipeline Builder', 'End-to-end candidate sourcing: search LinkedIn profiles, add to ATS, generate personalized outreach emails, and log activity.', 'sourcing', ['ats', 'email'], ['candidates:read', 'candidates:write', 'email:draft']),
     buildSkill(skillIds.dailyReport, 'daily-report', 'Daily Recruiting Report', 'Generate a summary report of recruiting activity from the ATS for standups, syncs, or tracking progress.', 'productivity', ['ats'], ['candidates:read', 'applications:read', 'jobs:read']),
-    buildSkill(skillIds.prodDebugger, 'prod-debugger', 'Production Debugger', 'Fetch recent production errors, investigate root causes in the codebase, and propose fixes.', 'system', [], ['database:read']),
   ];
 
   for (const skill of skillData) {

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { skills, proposals } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
-import type { SkillPublic, SkillCategory, SkillProposalPublic, SkillAccessStatus } from '@skillomatic/shared';
+import type { SkillPublic, SkillCategory, SkillProposalPublic } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

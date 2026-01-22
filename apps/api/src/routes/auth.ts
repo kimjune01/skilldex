@@ -14,6 +14,49 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 
+/**
+ * Extract email domain from an email address
+ */
+function getEmailDomain(email: string): string {
+  return email.split('@')[1]?.toLowerCase() ?? '';
+}
+
+/**
+ * Find an organization that allows the given email domain
+ * Returns null if no matching org found
+ */
+async function findOrgByEmailDomain(email: string): Promise<{ id: string; name: string } | null> {
+  const domain = getEmailDomain(email);
+  if (!domain) return null;
+
+  // Get all orgs - we'll filter by allowedDomains in JS
+  // (drizzle-orm doesn't have a clean IS NOT NULL for this case)
+  const orgsWithDomains = await db
+    .select()
+    .from(organizations);
+
+  for (const org of orgsWithDomains) {
+    if (!org.allowedDomains) continue;
+
+    try {
+      const domains = JSON.parse(org.allowedDomains) as string[];
+      if (Array.isArray(domains)) {
+        // Check if the email domain matches any allowed domain (case-insensitive)
+        const normalizedDomains = domains.map(d => d.toLowerCase().trim());
+        if (normalizedDomains.includes(domain)) {
+          console.log(`[Auth] Domain match: ${email} -> org ${org.name} (${org.id})`);
+          return { id: org.id, name: org.name };
+        }
+      }
+    } catch {
+      // Invalid JSON in allowedDomains, skip this org
+      console.warn(`[Auth] Invalid allowedDomains JSON for org ${org.id}`);
+    }
+  }
+
+  return null;
+}
+
 export const authRoutes = new Hono();
 
 // POST /api/auth/login
@@ -227,6 +270,9 @@ authRoutes.get('/google/callback', async (c) => {
     let dbUser = user[0];
 
     if (!dbUser) {
+      // Check for domain-based org assignment
+      const matchedOrg = await findOrgByEmailDomain(googleUser.email);
+
       // Create new user
       const newUserId = randomUUID();
       await db.insert(users).values({
@@ -237,8 +283,13 @@ authRoutes.get('/google/callback', async (c) => {
         passwordHash: '', // No password for OAuth users
         isAdmin: false,
         isSuperAdmin: false,
+        organizationId: matchedOrg?.id ?? null, // Auto-assign to org if domain matches
         onboardingStep: 0,
       });
+
+      if (matchedOrg) {
+        console.log(`[Auth] New user ${googleUser.email} auto-assigned to org ${matchedOrg.name}`);
+      }
 
       const [newUser] = await db
         .select()

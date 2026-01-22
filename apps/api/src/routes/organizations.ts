@@ -345,6 +345,249 @@ organizationsRoutes.put('/:id', jwtAuth, async (c) => {
   return c.json({ data: publicOrg });
 });
 
+// GET /api/organizations/:id/domains - Get allowed domains for an org
+organizationsRoutes.get('/:id/domains', jwtAuth, async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('user');
+
+  // Allow super admin or org admin of the org
+  const isOrgAdmin = user.isAdmin && user.organizationId === id;
+  if (!user.isSuperAdmin && !isOrgAdmin) {
+    return c.json({ error: { message: 'Forbidden' } }, 403);
+  }
+
+  const [org] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, id))
+    .limit(1);
+
+  if (!org) {
+    return c.json({ error: { message: 'Organization not found' } }, 404);
+  }
+
+  let domains: string[] = [];
+  if (org.allowedDomains) {
+    try {
+      domains = JSON.parse(org.allowedDomains);
+      if (!Array.isArray(domains)) {
+        domains = [];
+      }
+    } catch {
+      domains = [];
+    }
+  }
+
+  return c.json({ data: { domains } });
+});
+
+// PUT /api/organizations/:id/domains - Update allowed domains for an org
+organizationsRoutes.put('/:id/domains', jwtAuth, async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('user');
+
+  // Allow super admin or org admin of the org
+  const isOrgAdmin = user.isAdmin && user.organizationId === id;
+  if (!user.isSuperAdmin && !isOrgAdmin) {
+    return c.json({ error: { message: 'Forbidden' } }, 403);
+  }
+
+  const [existing] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, id))
+    .limit(1);
+
+  if (!existing) {
+    return c.json({ error: { message: 'Organization not found' } }, 404);
+  }
+
+  const body = await c.req.json<{ domains: string[] }>();
+
+  if (!Array.isArray(body.domains)) {
+    return c.json({ error: { message: 'domains must be an array' } }, 400);
+  }
+
+  // Validate and normalize domains
+  const normalizedDomains: string[] = [];
+  for (const domain of body.domains) {
+    if (typeof domain !== 'string') {
+      return c.json({ error: { message: 'Each domain must be a string' } }, 400);
+    }
+
+    const normalized = domain.toLowerCase().trim();
+
+    // Basic domain validation (no protocol, no path)
+    if (!normalized || normalized.includes('/') || normalized.includes(':')) {
+      return c.json({ error: { message: `Invalid domain format: ${domain}` } }, 400);
+    }
+
+    // Check for duplicates
+    if (!normalizedDomains.includes(normalized)) {
+      normalizedDomains.push(normalized);
+    }
+  }
+
+  // Check if any domain is already used by another org
+  const allOrgs = await db
+    .select()
+    .from(organizations);
+
+  for (const org of allOrgs) {
+    if (org.id === id) continue; // Skip current org
+    if (!org.allowedDomains) continue;
+
+    try {
+      const existingDomains = JSON.parse(org.allowedDomains) as string[];
+      if (Array.isArray(existingDomains)) {
+        const conflict = normalizedDomains.find((d) => existingDomains.includes(d));
+        if (conflict) {
+          return c.json(
+            { error: { message: `Domain "${conflict}" is already assigned to organization "${org.name}"` } },
+            400
+          );
+        }
+      }
+    } catch {
+      // Ignore invalid JSON
+    }
+  }
+
+  const now = new Date();
+
+  await db
+    .update(organizations)
+    .set({
+      allowedDomains: normalizedDomains.length > 0 ? JSON.stringify(normalizedDomains) : null,
+      updatedAt: now,
+    })
+    .where(eq(organizations.id, id));
+
+  console.log(`[Org] Updated allowed domains for org ${existing.name}: ${normalizedDomains.join(', ') || '(none)'}`);
+
+  return c.json({ data: { domains: normalizedDomains } });
+});
+
+// GET /api/organizations/current/domains - Get allowed domains for current user's org
+organizationsRoutes.get('/current/domains', jwtAuth, withOrganization, async (c) => {
+  const org = c.get('organization');
+  const user = c.get('user');
+
+  if (!org) {
+    return c.json({ error: { message: 'No organization assigned' } }, 404);
+  }
+
+  // Only org admins can view domains
+  if (!user.isAdmin && !user.isSuperAdmin) {
+    return c.json({ error: { message: 'Forbidden' } }, 403);
+  }
+
+  const [fullOrg] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, org.id))
+    .limit(1);
+
+  let domains: string[] = [];
+  if (fullOrg.allowedDomains) {
+    try {
+      domains = JSON.parse(fullOrg.allowedDomains);
+      if (!Array.isArray(domains)) {
+        domains = [];
+      }
+    } catch {
+      domains = [];
+    }
+  }
+
+  return c.json({ data: { domains } });
+});
+
+// PUT /api/organizations/current/domains - Update allowed domains for current user's org
+organizationsRoutes.put('/current/domains', jwtAuth, withOrganization, async (c) => {
+  const org = c.get('organization');
+  const user = c.get('user');
+
+  if (!org) {
+    return c.json({ error: { message: 'No organization assigned' } }, 404);
+  }
+
+  // Only org admins can update domains
+  if (!user.isAdmin && !user.isSuperAdmin) {
+    return c.json({ error: { message: 'Forbidden' } }, 403);
+  }
+
+  // Redirect to the :id version
+  const body = await c.req.json<{ domains: string[] }>();
+
+  if (!Array.isArray(body.domains)) {
+    return c.json({ error: { message: 'domains must be an array' } }, 400);
+  }
+
+  // Validate and normalize domains
+  const normalizedDomains: string[] = [];
+  for (const domain of body.domains) {
+    if (typeof domain !== 'string') {
+      return c.json({ error: { message: 'Each domain must be a string' } }, 400);
+    }
+
+    const normalized = domain.toLowerCase().trim();
+
+    if (!normalized || normalized.includes('/') || normalized.includes(':')) {
+      return c.json({ error: { message: `Invalid domain format: ${domain}` } }, 400);
+    }
+
+    if (!normalizedDomains.includes(normalized)) {
+      normalizedDomains.push(normalized);
+    }
+  }
+
+  // Check if any domain is already used by another org
+  const allOrgsForCheck = await db
+    .select()
+    .from(organizations);
+
+  for (const otherOrg of allOrgsForCheck) {
+    if (otherOrg.id === org.id) continue;
+    if (!otherOrg.allowedDomains) continue;
+
+    try {
+      const existingDomains = JSON.parse(otherOrg.allowedDomains) as string[];
+      if (Array.isArray(existingDomains)) {
+        const conflict = normalizedDomains.find((d) => existingDomains.includes(d));
+        if (conflict) {
+          return c.json(
+            { error: { message: `Domain "${conflict}" is already assigned to organization "${otherOrg.name}"` } },
+            400
+          );
+        }
+      }
+    } catch {
+      // Ignore invalid JSON
+    }
+  }
+
+  const now = new Date();
+
+  await db
+    .update(organizations)
+    .set({
+      allowedDomains: normalizedDomains.length > 0 ? JSON.stringify(normalizedDomains) : null,
+      updatedAt: now,
+    })
+    .where(eq(organizations.id, org.id));
+
+  const [fullOrg] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, org.id))
+    .limit(1);
+
+  console.log(`[Org] Updated allowed domains for org ${fullOrg.name}: ${normalizedDomains.join(', ') || '(none)'}`);
+
+  return c.json({ data: { domains: normalizedDomains } });
+});
+
 // DELETE /api/organizations/:id - Delete organization (super admin only)
 organizationsRoutes.delete('/:id', jwtAuth, superAdminOnly, async (c) => {
   const id = c.req.param('id');

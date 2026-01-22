@@ -178,6 +178,7 @@ CREATE TABLE IF NOT EXISTS organizations (
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   logo_url TEXT,
+  allowed_domains TEXT,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
@@ -231,6 +232,9 @@ CREATE INDEX IF NOT EXISTS idx_skill_usage_logs_organization ON skill_usage_logs
 CREATE INDEX IF NOT EXISTS idx_scrape_tasks_organization ON scrape_tasks(organization_id);
 CREATE INDEX IF NOT EXISTS idx_skill_proposals_organization ON skill_proposals(organization_id);
 CREATE INDEX IF NOT EXISTS idx_skills_organization ON skills(organization_id);
+
+-- Add allowed_domains column to organizations (for domain-based auto-assignment)
+ALTER TABLE organizations ADD COLUMN allowed_domains TEXT;
 `;
 
 export function migrate() {

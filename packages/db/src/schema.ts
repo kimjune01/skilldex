@@ -113,6 +113,11 @@ export const organizations = sqliteTable('organizations', {
   // JSON array: ["skill-slug-1", "skill-slug-2"] or null (all enabled)
   disabledSkills: text('disabled_skills'),
 
+  // Domain-based auto-assignment - users with matching email domains auto-join this org
+  // JSON array: ["acme.com", "acme.io"] or null (invite-only)
+  // When a user signs up with email@acme.com, they're automatically added to this org
+  allowedDomains: text('allowed_domains'),
+
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
