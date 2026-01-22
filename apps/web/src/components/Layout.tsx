@@ -6,15 +6,12 @@
  *
  * Features:
  * - Fixed left sidebar with navigation links
- * - Demo mode toggle for using mock data
  * - Admin section visible only to admin users
  * - User info and logout at bottom
  */
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useDemo } from '../hooks/useDemo';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2 } from 'lucide-react';
 
@@ -48,7 +45,6 @@ export default function Layout() {
   const { user, logout, isAdmin, isSuperAdmin, isOnboarded, organizationName } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isDemoMode, toggleDemoMode } = useDemo();
 
   const handleLogout = async () => {
     await logout();
@@ -84,34 +80,6 @@ export default function Layout() {
               </span>
             </div>
           </Link>
-        </div>
-
-        {/* Demo Mode Toggle - Control Panel Style */}
-        <div className="px-3 py-3 border-b-2 border-[hsl(220_15%_75%)] bg-[hsl(220_15%_92%)]">
-          <div className="robot-display rounded-lg p-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={cn("led-light", isDemoMode ? "led-orange" : "led-cyan")} />
-                <span className={cn(
-                  "text-xs font-bold tracking-wider uppercase",
-                  isDemoMode ? "text-amber-400" : "text-cyan-400"
-                )}>
-                  {isDemoMode ? "Demo Mode" : "Live Mode"}
-                </span>
-              </div>
-              <Switch
-                checked={isDemoMode}
-                onCheckedChange={toggleDemoMode}
-                aria-label="Toggle demo mode"
-                className="data-[state=checked]:bg-amber-500"
-              />
-            </div>
-            {isDemoMode && (
-              <p className="text-[10px] text-amber-400/80 mt-1 font-mono">
-                &gt; SIMULATED DATA ACTIVE
-              </p>
-            )}
-          </div>
         </div>
 
         {/* Navigation - Button Panel */}

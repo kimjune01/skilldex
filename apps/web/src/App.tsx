@@ -17,7 +17,6 @@
  * - /admin/* - Admin-only routes (requires admin role)
  *
  * Context providers:
- * - DemoProvider: Demo mode toggle for mock data
  * - ToastProvider: Toast notifications for errors and success messages
  *
  * @see docs/RECRUITER_GUIDE.md for user documentation
@@ -26,7 +25,6 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import { DemoProvider } from './hooks/useDemo';
 import { ToastProvider, useToast } from './components/ui/toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Layout from './components/Layout';
@@ -149,12 +147,11 @@ function AuthenticatedRoutes() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <DemoProvider>
-        <ToastProvider>
-          <AuthErrorDisplay />
-          <Routes>
-            {/* Home - Landing page or redirect based on auth/onboarding */}
-            <Route path="/" element={<HomePage />} />
+      <ToastProvider>
+        <AuthErrorDisplay />
+        <Routes>
+          {/* Home - Landing page or redirect based on auth/onboarding */}
+          <Route path="/" element={<HomePage />} />
 
         {/* Authenticated routes with Layout */}
         <Route element={<AuthenticatedRoutes />}>
@@ -254,9 +251,8 @@ export default function App() {
         <Route path="/for-it" element={<ForIT />} />
         <Route path="/for-recruiters" element={<ForRecruiters />} />
         <Route path="/pricing" element={<Pricing />} />
-          </Routes>
-        </ToastProvider>
-      </DemoProvider>
+        </Routes>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

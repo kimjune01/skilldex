@@ -20,7 +20,6 @@ import type {
 } from '@skillomatic/shared';
 import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import type { RenderedSkill, ConfigSkill } from './skills-client';
-import { isDemoModeEnabled } from '../hooks/useDemo';
 
 // In production, VITE_API_URL points to the Lambda function URL
 // In development, we use '/api' which Vite proxies to localhost:3000
@@ -41,11 +40,6 @@ async function request<T>(
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  // Add demo mode header if enabled
-  if (isDemoModeEnabled()) {
-    headers['X-Demo-Mode'] = 'true';
   }
 
   const controller = new AbortController();
@@ -342,9 +336,6 @@ export const chat = {
     };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-    }
-    if (isDemoModeEnabled()) {
-      headers['X-Demo-Mode'] = 'true';
     }
 
     fetch(`${API_BASE}/chat`, {
