@@ -237,6 +237,10 @@ export function providerToCategory(provider: string): IntegrationCategory | null
       return 'ats';
     case 'mock-ats':
       // Only allow mock-ats in development
+      if (!isDev) {
+        // This indicates a configuration error - mock-ats should not exist in prod DB
+        log.warn('mock_ats_in_production', { provider });
+      }
       return isDev ? 'ats' : null;
     case 'email':
     case 'gmail':
@@ -248,6 +252,10 @@ export function providerToCategory(provider: string): IntegrationCategory | null
     case 'calendly':
       return 'calendar';
     default:
+      // Unknown provider - could indicate data migration issue or new provider
+      if (provider) {
+        log.warn('unknown_provider', { provider });
+      }
       return null;
   }
 }

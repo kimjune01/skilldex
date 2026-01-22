@@ -19,6 +19,22 @@ import {
   canWrite,
 } from '../../lib/integration-permissions.js';
 
+/**
+ * Structured telemetry logging for ATS operations.
+ * Uses JSON for structured data, compatible with log aggregation services.
+ */
+const telemetry = {
+  info: (event: string, data?: Record<string, unknown>) =>
+    console.log(`[ATS] ${event}`, data ? JSON.stringify(data) : ''),
+  warn: (event: string, data?: Record<string, unknown>) =>
+    console.warn(`[ATS] ${event}`, data ? JSON.stringify(data) : ''),
+  error: (event: string, data?: Record<string, unknown>) =>
+    console.error(`[ATS] ${event}`, data ? JSON.stringify(data) : ''),
+  /** Log events that should never happen in normal operation */
+  unreachable: (event: string, data?: Record<string, unknown>) =>
+    console.error(`[ATS] UNREACHABLE: ${event}`, data ? JSON.stringify(data) : ''),
+};
+
 export const v1AtsRoutes = new Hono();
 
 // All routes require API key auth
@@ -640,6 +656,7 @@ v1AtsRoutes.post('/proxy', async (c) => {
   try {
     requestBody = await c.req.json();
   } catch {
+    telemetry.warn('proxy_invalid_json', { userId: user.id });
     return c.json({ error: { message: 'Invalid JSON body' } }, 400);
   }
 
@@ -647,22 +664,29 @@ v1AtsRoutes.post('/proxy', async (c) => {
 
   // Validate required fields
   if (!provider || !method || !path) {
+    telemetry.warn('proxy_missing_fields', { userId: user.id, provider, method, path });
     return c.json({ error: { message: 'Missing required fields: provider, method, path' } }, 400);
   }
 
   // Check if provider is supported
   const providerConfig = PROVIDER_CONFIG[provider];
   if (!providerConfig) {
+    // This could indicate a client bug or attempt to use unsupported provider
+    telemetry.warn('proxy_unsupported_provider', { userId: user.id, provider, isDev });
     return c.json({ error: { message: `Unsupported provider: ${provider}` } }, 400);
   }
 
   // Check if path is blocklisted
   if (isPathBlocklisted(provider, path)) {
+    // Security: log attempts to access blocklisted paths
+    telemetry.warn('proxy_blocklisted_path', { userId: user.id, provider, path });
     return c.json({ error: { message: 'Access to this endpoint is not allowed' } }, 403);
   }
 
   // Check user's effective access level
   if (!user.organizationId) {
+    // This should rarely happen - users should always have an org
+    telemetry.warn('proxy_no_org', { userId: user.id });
     return c.json({ error: { message: 'User must belong to an organization' } }, 403);
   }
 
@@ -671,11 +695,13 @@ v1AtsRoutes.post('/proxy', async (c) => {
 
   // Check if user has any ATS access
   if (!canRead(atsAccess)) {
+    telemetry.info('proxy_access_denied', { userId: user.id, atsAccess, reason: 'no_read' });
     return c.json({ error: { message: 'ATS access is disabled or not connected' } }, 403);
   }
 
   // Check write access for mutating operations
   if (requiresWriteAccess(method) && !canWrite(atsAccess)) {
+    telemetry.info('proxy_access_denied', { userId: user.id, atsAccess, method, reason: 'no_write' });
     return c.json({ error: { message: 'You have read-only access to the ATS' } }, 403);
   }
 
@@ -697,11 +723,22 @@ v1AtsRoutes.post('/proxy', async (c) => {
     .limit(1);
 
   if (!atsIntegration) {
+    telemetry.info('proxy_no_integration', { userId: user.id, orgId: user.organizationId, provider });
     return c.json({ error: { message: 'No ATS integration connected' } }, 400);
   }
 
   const int = atsIntegration;
-  const metadata = int.metadata ? JSON.parse(int.metadata) : {};
+  let metadata: Record<string, unknown> = {};
+  try {
+    metadata = int.metadata ? JSON.parse(int.metadata) : {};
+  } catch {
+    // Should never happen - metadata should always be valid JSON
+    telemetry.unreachable('proxy_invalid_metadata', {
+      integrationId: int.id,
+      provider: int.provider,
+      metadata: int.metadata?.slice(0, 100), // Truncate for safety
+    });
+  }
 
   // Get access token - mock-ats doesn't need Nango
   let accessToken: string;
@@ -710,23 +747,43 @@ v1AtsRoutes.post('/proxy', async (c) => {
   if (providerConfig.requiresNango !== false) {
     // OAuth providers: get token from Nango
     if (!int.nangoConnectionId) {
+      // This is a configuration error - OAuth provider without Nango connection
+      telemetry.error('proxy_missing_nango_connection', {
+        integrationId: int.id,
+        provider: int.provider,
+        userId: user.id,
+      });
       return c.json({ error: { message: 'ATS integration not properly configured' } }, 400);
     }
 
     try {
       const nango = getNangoClient();
-      const providerKey = metadata.subProvider || provider;
+      const providerKey = (metadata.subProvider as string) || provider;
       const providerConfigKey = PROVIDER_CONFIG_KEYS[providerKey] || providerKey;
 
       const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
       accessToken = token.access_token;
-      region = metadata.zohoRegion || metadata.region;
+      region = (metadata.zohoRegion as string) || (metadata.region as string);
     } catch (error) {
-      console.error('Failed to get OAuth token:', error);
+      telemetry.error('proxy_nango_token_failed', {
+        integrationId: int.id,
+        provider: int.provider,
+        userId: user.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return c.json({ error: { message: 'Failed to authenticate with ATS provider' } }, 502);
     }
   } else {
     // Mock ATS or other non-OAuth providers: use mock token
+    // This should only happen in development
+    if (!isDev) {
+      telemetry.unreachable('proxy_non_oauth_in_prod', {
+        provider,
+        integrationId: int.id,
+        userId: user.id,
+      });
+      return c.json({ error: { message: 'Provider not available' } }, 400);
+    }
     accessToken = 'mock-token';
     region = undefined;
   }
@@ -778,14 +835,24 @@ v1AtsRoutes.post('/proxy', async (c) => {
       responseData = await response.text();
     }
 
+    const durationMs = Date.now() - startTime;
+
     // Log usage
     const skillSlug = 'ats-proxy';
     const status = response.ok ? 'success' : 'error';
     const errorCode = response.ok ? undefined : classifyAtsError(new Error(`HTTP ${response.status}`));
-    logUsage(user.id, user.apiKeyId, skillSlug, status, Date.now() - startTime, errorCode);
+    logUsage(user.id, user.apiKeyId, skillSlug, status, durationMs, errorCode);
 
     // Return error responses with proper status
     if (!response.ok) {
+      telemetry.warn('proxy_provider_error', {
+        provider,
+        method,
+        path,
+        status: response.status,
+        durationMs,
+        userId: user.id,
+      });
       return c.json({
         error: {
           message: `Provider returned ${response.status}`,
@@ -795,6 +862,15 @@ v1AtsRoutes.post('/proxy', async (c) => {
       }, response.status as 400 | 401 | 403 | 404 | 500 | 502);
     }
 
+    // Log successful proxy calls for metrics
+    telemetry.info('proxy_success', {
+      provider,
+      method,
+      path,
+      durationMs,
+      userId: user.id,
+    });
+
     // Return successful response
     return c.json({
       data: responseData,
@@ -802,13 +878,24 @@ v1AtsRoutes.post('/proxy', async (c) => {
         provider,
         method,
         path,
-        durationMs: Date.now() - startTime,
+        durationMs,
       },
     });
   } catch (error) {
-    console.error('ATS proxy error:', error);
+    const durationMs = Date.now() - startTime;
     const errorCode = classifyAtsError(error);
-    logUsage(user.id, user.apiKeyId, 'ats-proxy', 'error', Date.now() - startTime, errorCode);
+
+    telemetry.error('proxy_network_error', {
+      provider,
+      method,
+      path,
+      durationMs,
+      userId: user.id,
+      errorCode,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+
+    logUsage(user.id, user.apiKeyId, 'ats-proxy', 'error', durationMs, errorCode);
 
     return c.json({
       error: {

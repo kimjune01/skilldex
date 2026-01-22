@@ -10,6 +10,7 @@ import type { SkillomaticClient } from '../api-client.js';
 import type { GeneratedTool } from './generator.js';
 import { interpolatePath, categorizeParams } from './generator.js';
 import { getManifest } from './manifests/index.js';
+import { log } from '../logger.js';
 
 /**
  * Proxy request payload sent to Skillomatic API
@@ -36,9 +37,16 @@ export function registerGeneratedTools(
   for (const tool of tools) {
     // MCP server.tool signature: (name, description, schema, handler)
     server.tool(tool.name, tool.description, tool.inputSchema, async (args) => {
+      const startTime = Date.now();
+
       try {
         const manifest = getManifest(tool.meta.provider);
         if (!manifest) {
+          // This should never happen - tool was generated from a manifest that no longer exists
+          log.unreachable('tool_manifest_missing', {
+            toolName: tool.name,
+            provider: tool.meta.provider,
+          });
           return {
             content: [{ type: 'text' as const, text: `Unknown provider: ${tool.meta.provider}` }],
             isError: true,
@@ -49,6 +57,12 @@ export function registerGeneratedTools(
         const operationId = tool.name.replace(`${tool.meta.provider.replace(/-/g, '_')}_`, '');
         const operation = manifest.operations.find((op) => op.id === operationId);
         if (!operation) {
+          // This should never happen - tool was generated from an operation that no longer exists
+          log.unreachable('tool_operation_missing', {
+            toolName: tool.name,
+            provider: tool.meta.provider,
+            operationId,
+          });
           return {
             content: [{ type: 'text' as const, text: `Unknown operation: ${operationId}` }],
             isError: true,
@@ -89,6 +103,14 @@ export function registerGeneratedTools(
           headers: Object.keys(headers).length > 0 ? headers : undefined,
         });
 
+        const durationMs = Date.now() - startTime;
+        log.debug(`Tool ${tool.name} completed`, {
+          provider: tool.meta.provider,
+          method: tool.meta.method,
+          path,
+          durationMs,
+        });
+
         return {
           content: [
             {
@@ -98,7 +120,16 @@ export function registerGeneratedTools(
           ],
         };
       } catch (error) {
+        const durationMs = Date.now() - startTime;
         const message = error instanceof Error ? error.message : 'Unknown error';
+
+        log.error(`Tool ${tool.name} failed`, {
+          provider: tool.meta.provider,
+          method: tool.meta.method,
+          error: message,
+          durationMs,
+        });
+
         return {
           content: [
             {

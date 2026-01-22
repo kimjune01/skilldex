@@ -40,6 +40,20 @@ import {
 } from './integration-permissions.js';
 
 /**
+ * Structured telemetry for skill rendering operations.
+ */
+const telemetry = {
+  info: (event: string, data?: Record<string, unknown>) =>
+    console.log(`[SkillRenderer] ${event}`, data ? JSON.stringify(data) : ''),
+  warn: (event: string, data?: Record<string, unknown>) =>
+    console.warn(`[SkillRenderer] ${event}`, data ? JSON.stringify(data) : ''),
+  error: (event: string, data?: Record<string, unknown>) =>
+    console.error(`[SkillRenderer] ${event}`, data ? JSON.stringify(data) : ''),
+  unreachable: (event: string, data?: Record<string, unknown>) =>
+    console.error(`[SkillRenderer] UNREACHABLE: ${event}`, data ? JSON.stringify(data) : ''),
+};
+
+/**
  * Capability profile - what a user has access to
  */
 export interface CapabilityProfile {
@@ -178,10 +192,28 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
       .where(eq(integrations.id, integrationInfo.id))
       .limit(1);
 
-    if (!integration) continue;
+    if (!integration) {
+      // Integration was in category list but not found - data inconsistency
+      telemetry.warn('integration_not_found', {
+        integrationId: integrationInfo.id,
+        category,
+        userId,
+      });
+      continue;
+    }
 
-    const metadata = integration.metadata ? JSON.parse(integration.metadata) : {};
-    const atsProvider = metadata.subProvider || integration.provider;
+    let metadata: Record<string, unknown> = {};
+    try {
+      metadata = integration.metadata ? JSON.parse(integration.metadata) : {};
+    } catch {
+      // Invalid JSON in metadata - should never happen
+      telemetry.unreachable('invalid_integration_metadata', {
+        integrationId: integration.id,
+        provider: integration.provider,
+        userId,
+      });
+    }
+    const atsProvider = (metadata.subProvider as string) || integration.provider;
 
     // Special handling for mock-ats (no OAuth needed) - only in development
     if (isDev && category === 'ats' && (integration.provider === 'mock-ats' || atsProvider === 'mock-ats')) {
@@ -193,8 +225,25 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
       continue;
     }
 
+    // In production, mock-ats should not exist
+    if (!isDev && (integration.provider === 'mock-ats' || atsProvider === 'mock-ats')) {
+      telemetry.unreachable('mock_ats_in_production', {
+        integrationId: integration.id,
+        userId,
+      });
+      continue;
+    }
+
     // Skip OAuth-based integrations without Nango connection
-    if (!integration.nangoConnectionId) continue;
+    if (!integration.nangoConnectionId) {
+      telemetry.warn('integration_missing_nango', {
+        integrationId: integration.id,
+        provider: integration.provider,
+        category,
+        userId,
+      });
+      continue;
+    }
 
     const providerConfigKey = PROVIDER_CONFIG_KEYS[integration.provider] || integration.provider;
 
@@ -236,10 +285,25 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
           };
           break;
         }
+
+        default: {
+          // Unknown category - should never happen if categories are properly defined
+          telemetry.unreachable('unknown_category_in_switch', {
+            category,
+            integrationId: integration.id,
+            userId,
+          });
+        }
       }
     } catch (error) {
-      // Log but continue - missing tokens shouldn't block other capabilities
-      console.warn(`Failed to fetch token for ${integration.provider}:`, error);
+      // Log token fetch failures - these may indicate expired OAuth connections
+      telemetry.warn('nango_token_fetch_failed', {
+        integrationId: integration.id,
+        provider: integration.provider,
+        category,
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 
