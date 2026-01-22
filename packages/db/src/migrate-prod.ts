@@ -39,10 +39,14 @@ const migrations = [
     desktop_enabled integer DEFAULT 1 NOT NULL,
     integration_permissions text,
     disabled_skills text,
+    allowed_domains text,
     created_at integer NOT NULL DEFAULT (unixepoch()),
     updated_at integer NOT NULL DEFAULT (unixepoch())
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS organizations_slug_unique ON organizations (slug)`,
+
+  // Add allowed_domains column if it doesn't exist (for existing databases)
+  `ALTER TABLE organizations ADD COLUMN allowed_domains text`,
 
   // 2. Users
   `CREATE TABLE IF NOT EXISTS users (
