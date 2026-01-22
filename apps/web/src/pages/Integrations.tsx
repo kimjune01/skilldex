@@ -208,12 +208,18 @@ export default function Integrations() {
     setError('');
 
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('token');
+
       // Special handling for Gmail - use direct OAuth instead of Nango
       if (provider === 'email' && (subProvider === 'google-mail' || subProvider === 'gmail')) {
-        // Redirect to our Gmail OAuth endpoint with token
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        const token = localStorage.getItem('token');
         window.location.href = `${apiUrl}/integrations/gmail/connect?token=${encodeURIComponent(token || '')}`;
+        return;
+      }
+
+      // Special handling for Google Calendar - use direct OAuth instead of Nango
+      if (provider === 'calendar' && subProvider === 'google-calendar') {
+        window.location.href = `${apiUrl}/integrations/google-calendar/connect?token=${encodeURIComponent(token || '')}`;
         return;
       }
 

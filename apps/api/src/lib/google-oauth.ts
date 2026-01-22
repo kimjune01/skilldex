@@ -1,0 +1,406 @@
+import { Hono, type Context } from 'hono';
+import type { BlankEnv, BlankInput } from 'hono/types';
+import { db } from '@skillomatic/db';
+import { integrations, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
+import { verifyToken } from './jwt.js';
+import { SignJWT, jwtVerify } from 'jose';
+
+// Google OAuth constants
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+
+// Gmail-specific scopes (domain verified in Google Search Console)
+const GMAIL_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/gmail.compose',
+  'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ');
+
+// Google Calendar scopes
+const GOOGLE_CALENDAR_SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ');
+
+/** Structured logging for Google OAuth events */
+const log = {
+  info: (event: string, data?: Record<string, unknown>) =>
+    console.log(`[GoogleOAuth] ${event}`, data ? JSON.stringify(data) : ''),
+  warn: (event: string, data?: Record<string, unknown>) =>
+    console.warn(`[GoogleOAuth] ${event}`, data ? JSON.stringify(data) : ''),
+};
+
+// Helper to determine URLs from request
+function getUrlsFromRequest(c: Context) {
+  const host = c.req.header('host') || 'localhost:3000';
+  const protocol = host.includes('localhost') ? 'http' : 'https';
+  const baseUrl = `${protocol}://${host}`;
+  const webUrl = host.includes('localhost')
+    ? baseUrl.replace(':3000', ':5173')
+    : baseUrl.replace('api.', '');
+  return { host, protocol, baseUrl, webUrl };
+}
+
+// Google OAuth configuration for different services
+export type GoogleService = 'gmail' | 'google-calendar';
+
+const GOOGLE_SERVICE_CONFIG: Record<GoogleService, {
+  scopes: string;
+  provider: string;
+  stateType: string;
+  emailField: string;
+  displayName: string;
+}> = {
+  gmail: {
+    scopes: GMAIL_SCOPES,
+    provider: 'email',
+    stateType: 'gmail_oauth',
+    emailField: 'gmailEmail',
+    displayName: 'Gmail',
+  },
+  'google-calendar': {
+    scopes: GOOGLE_CALENDAR_SCOPES,
+    provider: 'calendar',
+    stateType: 'google_calendar_oauth',
+    emailField: 'calendarEmail',
+    displayName: 'Google Calendar',
+  },
+};
+
+// Generic Google OAuth connect handler
+async function handleGoogleOAuthConnect(
+  c: Context<BlankEnv, string, BlankInput>,
+  service: GoogleService
+) {
+  const config = GOOGLE_SERVICE_CONFIG[service];
+
+  // Get token from query param or header
+  const queryToken = c.req.query('token');
+  const authHeader = c.req.header('Authorization');
+  const token = queryToken || authHeader?.replace('Bearer ', '');
+
+  if (!token) {
+    return c.json({ error: { message: 'Missing authentication token' } }, 401);
+  }
+
+  // Verify JWT using existing verifyToken function
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return c.json({ error: { message: 'Invalid or expired token' } }, 401);
+  }
+
+  if (!GOOGLE_CLIENT_ID) {
+    return c.json({ error: { message: 'Google OAuth not configured' } }, 500);
+  }
+
+  // Determine the redirect URI based on the request origin
+  const { baseUrl } = getUrlsFromRequest(c);
+  const redirectUri = `${baseUrl}/integrations/${service}/callback`;
+
+  // Create a state token that includes the user ID (for callback verification)
+  const stateSecret = new TextEncoder().encode(JWT_SECRET);
+  const state = await new SignJWT({ sub: payload.sub, type: config.stateType })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('10m')
+    .sign(stateSecret);
+
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: config.scopes,
+    access_type: 'offline',
+    prompt: 'consent',
+    state,
+  });
+
+  return c.redirect(`${GOOGLE_AUTH_URL}?${params.toString()}`);
+}
+
+// Generic Google OAuth callback handler
+async function handleGoogleOAuthCallback(
+  c: Context<BlankEnv, string, BlankInput>,
+  service: GoogleService
+) {
+  const config = GOOGLE_SERVICE_CONFIG[service];
+  const code = c.req.query('code');
+  const error = c.req.query('error');
+  const state = c.req.query('state');
+
+  const { baseUrl, webUrl } = getUrlsFromRequest(c);
+  const redirectUri = `${baseUrl}/integrations/${service}/callback`;
+
+  if (error) {
+    log.warn(`${service}_oauth_error`, { error });
+    return c.redirect(`${webUrl}/integrations?error=${encodeURIComponent(error)}`);
+  }
+
+  if (!code || !state) {
+    return c.redirect(`${webUrl}/integrations?error=missing_code_or_state`);
+  }
+
+  // Verify state token to get user ID
+  let userId: string;
+  try {
+    const stateSecret = new TextEncoder().encode(JWT_SECRET);
+    const { payload } = await jwtVerify(state, stateSecret);
+    if (payload.type !== config.stateType) {
+      throw new Error('Invalid state token type');
+    }
+    userId = payload.sub as string;
+  } catch (err) {
+    log.warn(`${service}_oauth_invalid_state`, { error: err instanceof Error ? err.message : 'Unknown' });
+    return c.redirect(`${webUrl}/integrations?error=invalid_state`);
+  }
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    return c.redirect(`${webUrl}/integrations?error=oauth_not_configured`);
+  }
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error(`${config.displayName} token exchange failed:`, errorText);
+      return c.redirect(`${webUrl}/integrations?error=token_exchange_failed`);
+    }
+
+    const tokens = await tokenResponse.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+      token_type: string;
+    };
+
+    // Get user info to verify email
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+
+    let userEmail = '';
+    if (userInfoResponse.ok) {
+      const userInfo = await userInfoResponse.json() as { email: string };
+      userEmail = userInfo.email;
+    }
+
+    // Store tokens in integration record
+    const existingIntegration = await db
+      .select()
+      .from(integrations)
+      .where(and(eq(integrations.userId, userId), eq(integrations.provider, config.provider)))
+      .limit(1);
+
+    // Get user's organization ID
+    const [dbUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const metadata: Record<string, unknown> = {
+      accessLevel: 'read-write',
+      subProvider: service,
+      [config.emailField]: userEmail,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt: tokens.expires_in
+        ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+        : undefined,
+    };
+
+    if (existingIntegration.length === 0) {
+      await db.insert(integrations).values({
+        id: randomUUID(),
+        userId,
+        organizationId: dbUser?.organizationId ?? null,
+        provider: config.provider,
+        status: 'connected',
+        metadata: JSON.stringify(metadata),
+        lastSyncAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    } else {
+      await db
+        .update(integrations)
+        .set({
+          status: 'connected',
+          metadata: JSON.stringify(metadata),
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(integrations.id, existingIntegration[0].id));
+    }
+
+    log.info(`${service}_connected`, { userId, email: userEmail });
+
+    // Advance onboarding if needed
+    if (dbUser && dbUser.onboardingStep < ONBOARDING_STEPS.ATS_CONNECTED) {
+      await db
+        .update(users)
+        .set({
+          onboardingStep: ONBOARDING_STEPS.ATS_CONNECTED,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+    }
+
+    return c.redirect(`${webUrl}/integrations?success=${encodeURIComponent(config.displayName + ' connected successfully')}`);
+  } catch (err) {
+    console.error(`${config.displayName} OAuth error:`, err);
+    return c.redirect(`${webUrl}/integrations?error=oauth_failed`);
+  }
+}
+
+// Generic token endpoint for Google OAuth services
+async function handleGoogleTokenRequest(
+  c: Context<BlankEnv, string, BlankInput> & { get: (key: 'user') => { sub: string; email: string; organizationId: string | null } },
+  service: GoogleService
+) {
+  const config = GOOGLE_SERVICE_CONFIG[service];
+  const user = c.get('user');
+
+  const integration = await db
+    .select()
+    .from(integrations)
+    .where(and(eq(integrations.userId, user.sub), eq(integrations.provider, config.provider)))
+    .limit(1);
+
+  if (integration.length === 0) {
+    return c.json({ error: { message: `${config.displayName} not connected` } }, 404);
+  }
+
+  const int = integration[0];
+  if (int.status !== 'connected') {
+    return c.json({ error: { message: `${config.displayName} integration is not connected` } }, 400);
+  }
+
+  let metadata: Record<string, unknown> = {};
+  try {
+    metadata = JSON.parse(int.metadata || '{}');
+  } catch {
+    return c.json({ error: { message: 'Invalid integration metadata' } }, 500);
+  }
+
+  // Check if token is expired and refresh if needed
+  const expiresAt = metadata.expiresAt as string | undefined;
+  const refreshToken = metadata.refreshToken as string | undefined;
+  let accessToken = metadata.accessToken as string | undefined;
+
+  if (expiresAt && new Date(expiresAt) < new Date() && refreshToken) {
+    // Token expired, refresh it
+    try {
+      const refreshResponse = await fetch(GOOGLE_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: GOOGLE_CLIENT_ID!,
+          client_secret: GOOGLE_CLIENT_SECRET!,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      if (refreshResponse.ok) {
+        const newTokens = await refreshResponse.json() as {
+          access_token: string;
+          expires_in?: number;
+        };
+        accessToken = newTokens.access_token;
+
+        // Update stored token
+        metadata.accessToken = accessToken;
+        metadata.expiresAt = newTokens.expires_in
+          ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
+          : undefined;
+
+        await db
+          .update(integrations)
+          .set({
+            metadata: JSON.stringify(metadata),
+            lastSyncAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(integrations.id, int.id));
+
+        log.info(`${service}_token_refreshed`, { userId: user.sub });
+      } else {
+        // Refresh failed - mark integration as error
+        await db
+          .update(integrations)
+          .set({ status: 'error', updatedAt: new Date() })
+          .where(eq(integrations.id, int.id));
+
+        return c.json({ error: { message: `Failed to refresh token - please reconnect ${config.displayName}` } }, 401);
+      }
+    } catch (err) {
+      console.error(`${config.displayName} token refresh failed:`, err);
+      return c.json({ error: { message: 'Token refresh failed' } }, 500);
+    }
+  }
+
+  if (!accessToken) {
+    return c.json({ error: { message: 'No access token available' } }, 500);
+  }
+
+  return c.json({
+    data: {
+      accessToken,
+      tokenType: 'Bearer',
+      email: metadata[config.emailField],
+    },
+  });
+}
+
+/**
+ * Create Google OAuth routes for a Hono app.
+ * These routes handle OAuth connect, callback, and token refresh for Gmail and Google Calendar.
+ *
+ * IMPORTANT: These routes must be registered BEFORE JWT auth middleware.
+ */
+export function createGoogleOAuthRoutes() {
+  const routes = new Hono();
+
+  // Connect routes (no auth middleware - uses token from query param)
+  routes.get('/gmail/connect', (c) => handleGoogleOAuthConnect(c, 'gmail'));
+  routes.get('/google-calendar/connect', (c) => handleGoogleOAuthConnect(c, 'google-calendar'));
+
+  // Callback routes (no auth middleware - uses state token)
+  routes.get('/gmail/callback', (c) => handleGoogleOAuthCallback(c, 'gmail'));
+  routes.get('/google-calendar/callback', (c) => handleGoogleOAuthCallback(c, 'google-calendar'));
+
+  return routes;
+}
+
+/**
+ * Create Google OAuth token routes for a Hono app.
+ * These routes require JWT auth middleware to be applied.
+ */
+export function createGoogleOAuthTokenRoutes() {
+  const routes = new Hono();
+
+  routes.get('/gmail/token', (c) => handleGoogleTokenRequest(c, 'gmail'));
+  routes.get('/google-calendar/token', (c) => handleGoogleTokenRequest(c, 'google-calendar'));
+
+  return routes;
+}
