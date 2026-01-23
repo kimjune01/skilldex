@@ -12,7 +12,7 @@ import { MarketingNav, MarketingFooter } from '@/components/marketing';
 const vendingItems = [
   {
     id: 'data',
-    label: 'LIVE DATA',
+    label: 'YOUR OWN LIVE DATA',
     description: 'Connected to your ATS, LinkedIn, and email in real-time. No stale training data.',
     icon: Database,
     color: 'cyan',
@@ -22,7 +22,7 @@ const vendingItems = [
   },
   {
     id: 'precision',
-    label: 'PRECISION',
+    label: 'UNPARALLELED PRECISION',
     description: 'Every action executed exactly as requested. No retries. No corrections needed.',
     icon: Target,
     color: 'green',
@@ -32,7 +32,7 @@ const vendingItems = [
   },
   {
     id: 'truth',
-    label: 'GROUNDED',
+    label: 'TOTALLY GROUNDED',
     description: 'Every fact verified against your real systems. Zero hallucinations.',
     icon: CheckCircle,
     color: 'amber',
@@ -42,7 +42,7 @@ const vendingItems = [
   },
   {
     id: 'control',
-    label: 'CONTROL',
+    label: 'ABSOLUTE CONTROL',
     description: 'AI suggests, you decide. Review and approve every action before it happens.',
     icon: Shield,
     color: 'purple',
@@ -66,6 +66,9 @@ function DifferentiatorSection() {
   };
 
   const allDiscovered = discovered.size === 4;
+
+  // Find the first undiscovered card to entice the user
+  const nextToDiscover = vendingItems.find(item => !discovered.has(item.id))?.id;
 
   return (
     <section className="py-24 px-6 bg-[hsl(220_25%_12%)]">
@@ -159,10 +162,10 @@ function DifferentiatorSection() {
                         <Icon className={`h-10 w-10 ${colorStyles.accent}`} />
                       </div>
 
-                      {/* Corner LED - only blinks when this card is flipped */}
+                      {/* Corner LED - blinks to entice user to click next undiscovered card */}
                       <div
                         className={`absolute top-3 left-3 led-light ${item.led}`}
-                        style={{ width: 10, height: 10, animation: isFlipped ? undefined : 'none' }}
+                        style={{ width: 10, height: 10, animation: item.id === nextToDiscover ? undefined : 'none' }}
                       />
                     </div>
 
@@ -174,10 +177,10 @@ function DifferentiatorSection() {
                         transform: `rotate${item.flipAxis.replace('-', '')}(180deg)`,
                       }}
                     >
-                      {/* Corner LED - only blinks when this card is flipped */}
+                      {/* Corner LED - blinks to entice user to click next undiscovered card */}
                       <div
                         className={`absolute top-3 left-3 led-light ${item.led}`}
-                        style={{ width: 10, height: 10, animation: isFlipped ? undefined : 'none' }}
+                        style={{ width: 10, height: 10, animation: item.id === nextToDiscover ? undefined : 'none' }}
                       />
 
                       {/* Content centered */}
