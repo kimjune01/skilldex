@@ -177,14 +177,9 @@ export default function Chat() {
       {/* Header */}
       <div className="px-4 py-3 border-b flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Chat</h1>
+          <h1 className="text-lg font-semibold">Web Chat</h1>
           <p className="text-sm text-muted-foreground">
-            Ask about recruiting tasks and discover skills
-            {llmConfig && (
-              <span className="ml-2 text-xs">
-                ({llmConfig.provider}/{llmConfig.model.split('-').slice(0, 2).join('-')})
-              </span>
-            )}
+            For a better experience, try <a href="/desktop-chat" className="text-primary hover:underline">Desktop Chat</a>.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -230,6 +225,7 @@ export default function Chat() {
         onShowInstructions={handleShowInstructions}
         onSuggestionClick={send}
         onRefreshAction={handleRefreshAction}
+        llmLabel={llmConfig ? `${llmConfig.provider}/${llmConfig.model}` : undefined}
       />
 
       {/* Input */}

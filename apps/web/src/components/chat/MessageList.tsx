@@ -8,6 +8,7 @@ interface MessageListProps {
   onShowInstructions?: (skillSlug: string) => void;
   onSuggestionClick?: (suggestion: string) => void;
   onRefreshAction?: (action: string, params: Record<string, unknown>) => void;
+  llmLabel?: string;
 }
 
 const SUGGESTIONS = [
@@ -34,6 +35,7 @@ export function MessageList({
   onShowInstructions,
   onSuggestionClick,
   onRefreshAction,
+  llmLabel,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +50,7 @@ export function MessageList({
         <div className="text-center space-y-4">
           <div className="space-y-2">
             <p className="text-lg font-medium">Welcome to Skillomatic Chat</p>
-            <p className="text-sm">Ask me about recruiting tasks or available skills</p>
+            {llmLabel && <p className="text-xs">{llmLabel}</p>}
           </div>
           <div className="flex flex-col gap-3 mt-6 max-w-md mx-auto">
             {SUGGESTIONS.map((suggestion, i) => (

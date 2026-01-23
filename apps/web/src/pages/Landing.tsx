@@ -4,7 +4,7 @@
  * Public landing page for Skillomatic with robot vending machine theme.
  * Shows features, pricing, and call-to-action for login/signup.
  */
-import { Zap, Plug, MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Monitor } from 'lucide-react';
+import { Zap, Plug, MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Monitor, Database, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
 
@@ -148,43 +148,102 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-20 px-6 bg-[hsl(220_20%_97%)]">
+      {/* Bold Differentiator Section */}
+      <section className="py-24 px-6 bg-[hsl(220_25%_12%)]">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
-              Everything You Need to Recruit Smarter
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-6">
+              AI That{' '}
+              <span className="bg-gradient-to-r from-cyan-400 to-primary bg-clip-text text-transparent">
+                Actually Works
+              </span>
             </h2>
-            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
-              Pre-built skills that integrate with your existing tools. No coding required.
+            <p className="text-xl text-white/70 max-w-3xl mx-auto">
+              Not demos. Not promises. Real recruiting workflows that execute flawlessly—powered by the next generation of AI models.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <div
-                  key={feature.title}
-                  className="card-robot rounded-2xl p-6 stagger-fade-in"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`h-12 w-12 rounded-xl ${feature.bgColor} flex items-center justify-center flex-shrink-0`}>
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-[hsl(220_30%_20%)] mb-2">
-                        {feature.title}
-                      </h3>
-                      <p className="text-[hsl(220_15%_45%)]">
-                        {feature.description}
-                      </p>
-                    </div>
-                  </div>
+          {/* Four Promise Cards */}
+          <div className="grid md:grid-cols-2 gap-6 mb-16">
+            {/* Promise 1: Real Data */}
+            <div className="robot-display rounded-2xl p-8 stagger-fade-in">
+              <div className="flex items-start gap-4">
+                <div className="h-14 w-14 rounded-xl bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                  <Database className="h-7 w-7 text-cyan-400" />
                 </div>
-              );
-            })}
+                <div>
+                  <h3 className="text-2xl font-black text-white mb-3">
+                    Your Data. Live.
+                  </h3>
+                  <p className="text-white/70 text-lg">
+                    Connected to your ATS, LinkedIn, and email in real-time. Every action pulls from your actual systems—not stale training data from years ago.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Promise 2: Precision */}
+            <div className="robot-display rounded-2xl p-8 stagger-fade-in" style={{ animationDelay: '100ms' }}>
+              <div className="flex items-start gap-4">
+                <div className="h-14 w-14 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                  <Target className="h-7 w-7 text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white mb-3">
+                    Precision You Can Trust
+                  </h3>
+                  <p className="text-white/70 text-lg">
+                    Every search, every sync, every email—executed exactly as requested. No "let me try again." No corrections needed.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Promise 3: No Hallucinations */}
+            <div className="robot-display rounded-2xl p-8 stagger-fade-in" style={{ animationDelay: '200ms' }}>
+              <div className="flex items-start gap-4">
+                <div className="h-14 w-14 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="h-7 w-7 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white mb-3">
+                    Zero Hallucinations
+                  </h3>
+                  <p className="text-white/70 text-lg">
+                    AI that makes things up? Not here. Every candidate, every company, every fact is grounded in real data from your connected systems.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Promise 4: Human in Control */}
+            <div className="robot-display rounded-2xl p-8 stagger-fade-in" style={{ animationDelay: '300ms' }}>
+              <div className="flex items-start gap-4">
+                <div className="h-14 w-14 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                  <Shield className="h-7 w-7 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white mb-3">
+                    You Stay in Control
+                  </h3>
+                  <p className="text-white/70 text-lg">
+                    AI suggests, you decide. Review every action before it happens. Approve emails before they send. Your judgment, amplified.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contrast Statement */}
+          <div className="text-center">
+            <p className="text-xl text-white/80 max-w-3xl mx-auto mb-6">
+              Other AI tools lock you into their platform for one workflow.
+            </p>
+            <p className="text-2xl font-black text-white max-w-3xl mx-auto">
+              Skillomatic connects to{' '}
+              <span className="text-cyan-400">everything</span>, works with{' '}
+              <span className="text-primary">any AI</span>, and grows with you.
+            </p>
           </div>
         </div>
       </section>

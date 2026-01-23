@@ -156,17 +156,6 @@ export default function ApiKeys() {
     }
   }, null, 2);
 
-  const getMcpServerOnly = (key: string) => JSON.stringify({
-    skillomatic: {
-      command: "npx",
-      args: ["@skillomatic/mcp"],
-      env: {
-        SKILLOMATIC_API_KEY: key,
-        SKILLOMATIC_API_URL: apiUrl
-      }
-    }
-  }, null, 2);
-
   if (isLoading || isCreating) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -222,7 +211,7 @@ export default function ApiKeys() {
                 <div className="flex items-start gap-2">
                   <Sparkles className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium">Works With Everything</p>
+                    <p className="text-sm font-medium">Works with resumes and PDFs</p>
                     <p className="text-xs text-muted-foreground">Analyze resumes, scrape LinkedIn, draft emails—all in one flow</p>
                   </div>
                 </div>
@@ -326,12 +315,11 @@ export default function ApiKeys() {
                 <p className="text-sm text-muted-foreground">
                   {expandedApp === 'cline'
                     ? 'Add this server entry to your existing MCP servers:'
-                    : 'If the file is empty or doesn\'t exist, use the full config. Otherwise, add just the server entry to your existing mcpServers object.'}
+                    : <>Copy this to your config file. <a href="https://modelcontextprotocol.io/docs/develop/connect-local-servers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">See setup guide →</a></>}
                 </p>
 
                 {expandedApp !== 'cline' && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Full config (for new files):</p>
                     <div className="relative">
                       <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
 {getMcpConfig(activeKey.key)}
@@ -349,25 +337,6 @@ export default function ApiKeys() {
                   </div>
                 )}
 
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {expandedApp === 'cline' ? 'Server entry:' : 'Server entry only (for existing files):'}
-                  </p>
-                  <div className="relative">
-                    <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
-{getMcpServerOnly(activeKey.key)}
-                    </pre>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="absolute top-2 right-2"
-                      onClick={() => copyToClipboard(getMcpServerOnly(activeKey.key), 'config-server')}
-                    >
-                      <Copy className="h-3 w-3 mr-1" />
-                      {copied === 'config-server' ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                </div>
               </div>
             </div>
 
