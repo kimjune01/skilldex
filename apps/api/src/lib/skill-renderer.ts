@@ -246,7 +246,9 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
       continue;
     }
 
-    const providerConfigKey = PROVIDER_CONFIG_KEYS[integration.provider] || integration.provider;
+    // Use subProvider if available (e.g., 'calendly' for calendar, 'gmail' for email)
+    const actualProvider = (metadata.subProvider as string) || integration.provider;
+    const providerConfigKey = PROVIDER_CONFIG_KEYS[actualProvider] || actualProvider;
 
     try {
       // Fetch fresh token from Nango
