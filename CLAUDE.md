@@ -48,6 +48,18 @@ pnpm typecheck    # Run TypeScript check
 - RBAC enforcement (tables ready, not enforced)
 - Admin query skills
 
+## Critical Guardrails
+
+| Don't | Do Instead |
+|-------|------------|
+| Log `error.message` to DB | Use `ErrorCode` enum (PII risk) |
+| Store LLM conversations server-side | Client-side only (ephemeral architecture) |
+| Cache ATS response bodies | Stateless proxy, log only metadata |
+| Use `apiKeyAuth` on `/v1/*` routes | Use `combinedAuth` (supports JWT + API key) |
+| Add ATS endpoints as new routes | Add to provider manifest in `packages/mcp/` |
+
+See `docs/BEST_PRACTICES.md` for full context.
+
 ## Testing
 
 Always verify changes work before completing:
