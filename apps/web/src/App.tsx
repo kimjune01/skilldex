@@ -55,6 +55,11 @@ import Terms from './pages/Terms';
 import ForIT from './pages/ForIT';
 import ForRecruiters from './pages/ForRecruiters';
 import Pricing from './pages/Pricing';
+import HowItWorks from './pages/HowItWorks';
+import LinkedInAutomation from './pages/LinkedInAutomation';
+import IntegrationsLanding from './pages/Integrations-landing';
+import Security from './pages/Security';
+import FAQ from './pages/FAQ';
 import NotFound from './pages/NotFound';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -252,6 +257,11 @@ export default function App() {
         <Route path="/for-it" element={<ForIT />} />
         <Route path="/for-recruiters" element={<ForRecruiters />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/linkedin-automation" element={<LinkedInAutomation />} />
+        <Route path="/supported-integrations" element={<IntegrationsLanding />} />
+        <Route path="/security" element={<Security />} />
+        <Route path="/faq" element={<FAQ />} />
 
         {/* 404 catch-all */}
         <Route path="*" element={<NotFound />} />

@@ -31,6 +31,7 @@ import {
   KeyRound,
   Wrench,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
 import PlanetaryLogos from '@/components/PlanetaryLogos';
@@ -198,12 +199,12 @@ export default function ForRecruiters() {
                 <Play className="h-5 w-5" />
                 Request Demo Video
               </a>
-              <a
-                href="#workflows"
+              <Link
+                to="/how-it-works"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[hsl(220_15%_92%)] border-2 border-[hsl(220_15%_82%)] text-[hsl(220_20%_35%)] font-bold tracking-wide text-lg hover:bg-[hsl(220_15%_88%)] transition-colors"
               >
-                See Workflows
-              </a>
+                How It Works
+              </Link>
             </div>
           </div>
         </div>
@@ -294,9 +295,16 @@ export default function ForRecruiters() {
             <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
               Everything You Do on LinkedIn, Automated
             </h2>
-            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
+            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto mb-4">
               Our browser extension works with your LinkedIn session. No API limits, no fake accounts.
             </p>
+            <Link
+              to="/linkedin-automation"
+              className="text-sm text-[#0A66C2] font-bold hover:underline inline-flex items-center gap-1"
+            >
+              Learn more about LinkedIn automation
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -463,10 +471,17 @@ export default function ForRecruiters() {
             <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
               You Control What the AI Can Do
             </h2>
-            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
+            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto mb-4">
               Not ready to let AI take action? Start with read-only access.
               Every integration uses scoped permissions—you decide exactly what Skillomatic can see and do.
             </p>
+            <Link
+              to="/security"
+              className="text-sm text-emerald-600 font-bold hover:underline inline-flex items-center gap-1"
+            >
+              Learn more about security & privacy
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-12">
@@ -647,10 +662,17 @@ export default function ForRecruiters() {
             <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
               Connects to Every Tool You Use
             </h2>
-            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
+            <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto mb-4">
               All the recruiting tools you already rely on, unified in one intelligent interface.
               No switching tabs. No copy-pasting. Just ask and it's done.
             </p>
+            <Link
+              to="/supported-integrations"
+              className="text-sm text-primary font-bold hover:underline inline-flex items-center gap-1"
+            >
+              See all supported integrations
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
           {/* Integration Categories */}
@@ -881,6 +903,12 @@ export default function ForRecruiters() {
               Join the Beta
             </a>
           </div>
+          <p className="mt-6 text-white/60 text-sm">
+            Have questions?{' '}
+            <Link to="/faq" className="text-white hover:underline font-semibold">
+              Check out our FAQ
+            </Link>
+          </p>
         </div>
       </section>
 
