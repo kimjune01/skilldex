@@ -31,6 +31,7 @@ import {
   RefreshCcw,
   Wrench,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
 
@@ -201,12 +202,12 @@ export default function ForIT() {
                 Request Audit
                 <ArrowRight className="h-5 w-5" />
               </a>
-              <a
-                href="#architecture"
+              <Link
+                to="/architecture"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[hsl(220_15%_92%)] border-2 border-[hsl(220_15%_82%)] text-[hsl(220_20%_35%)] font-bold tracking-wide text-lg hover:bg-[hsl(220_15%_88%)] transition-colors"
               >
                 View Architecture
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -252,11 +253,20 @@ export default function ForIT() {
           </div>
 
           <div className="text-center">
-            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-xl bg-white border-2 border-emerald-500/20 shadow-sm">
-              <CheckCircle className="h-6 w-6 text-emerald-500" />
-              <span className="text-[hsl(220_30%_20%)] font-semibold">
-                Or use Skillomatic: one dashboard, one config, managed for you.
-              </span>
+            <div className="inline-flex flex-col sm:flex-row items-center gap-3 px-6 py-4 rounded-xl bg-white border-2 border-emerald-500/20 shadow-sm">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-6 w-6 text-emerald-500" />
+                <span className="text-[hsl(220_30%_20%)] font-semibold">
+                  Or use Skillomatic: one dashboard, one config, managed for you.
+                </span>
+              </div>
+              <Link
+                to="/deployment"
+                className="text-sm text-primary font-bold hover:underline inline-flex items-center gap-1"
+              >
+                See deployment guide
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </div>
@@ -379,11 +389,20 @@ export default function ForIT() {
           </div>
 
           <div className="mt-12 text-center">
-            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-4">
               <CloudOff className="h-5 w-5 text-emerald-400" />
               <span className="text-emerald-400 font-semibold">
                 No candidate data stored. No chat logs retained. No sync database.
               </span>
+            </div>
+            <div>
+              <Link
+                to="/architecture"
+                className="text-sm text-cyan-400 font-bold hover:underline inline-flex items-center gap-1"
+              >
+                Deep dive into the architecture
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </div>
@@ -441,9 +460,16 @@ export default function ForIT() {
             <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
               Common Questions
             </h2>
-            <p className="text-lg text-[hsl(220_15%_45%)]">
+            <p className="text-lg text-[hsl(220_15%_45%)] mb-4">
               What you might want to know before adopting Skillomatic
             </p>
+            <Link
+              to="/it-faq"
+              className="text-sm text-primary font-bold hover:underline inline-flex items-center gap-1"
+            >
+              View full IT FAQ
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
           <div className="space-y-4">

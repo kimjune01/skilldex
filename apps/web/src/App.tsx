@@ -60,6 +60,9 @@ import LinkedInAutomation from './pages/LinkedInAutomation';
 import IntegrationsLanding from './pages/Integrations-landing';
 import Security from './pages/Security';
 import FAQ from './pages/FAQ';
+import Architecture from './pages/Architecture';
+import Deployment from './pages/Deployment';
+import ITFaq from './pages/ITFaq';
 import NotFound from './pages/NotFound';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -262,6 +265,9 @@ export default function App() {
         <Route path="/supported-integrations" element={<IntegrationsLanding />} />
         <Route path="/security" element={<Security />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/architecture" element={<Architecture />} />
+        <Route path="/deployment" element={<Deployment />} />
+        <Route path="/it-faq" element={<ITFaq />} />
 
         {/* 404 catch-all */}
         <Route path="*" element={<NotFound />} />
