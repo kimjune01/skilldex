@@ -14,11 +14,6 @@ declare module "sst" {
       "type": "sst.aws.Router"
       "url": string
     }
-    "Email": {
-      "configSet": string
-      "sender": string
-      "type": "sst.aws.Email"
-    }
     "GoogleClientId": {
       "type": "sst.sst.Secret"
       "value": string
