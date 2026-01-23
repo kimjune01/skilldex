@@ -45,14 +45,39 @@ export class SkillomaticClient {
     const url = `${this.baseUrl}${path}`;
     log.debug(`API request: ${options.method || 'GET'} ${path}`);
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
+    } catch (error) {
+      // Network-level errors (connection refused, DNS failure, etc.)
+      const cause = error instanceof Error ? error.message : String(error);
+      if (cause.includes('fetch failed') || cause.includes('ECONNREFUSED')) {
+        throw new Error(
+          `Cannot connect to Skillomatic API at ${this.baseUrl}. ` +
+          `Is the server running? (${cause})`
+        );
+      }
+      if (cause.includes('ENOTFOUND') || cause.includes('getaddrinfo')) {
+        throw new Error(
+          `Cannot resolve hostname for ${this.baseUrl}. ` +
+          `Check SKILLOMATIC_API_URL is correct. (${cause})`
+        );
+      }
+      if (cause.includes('ETIMEDOUT') || cause.includes('timeout')) {
+        throw new Error(
+          `Connection to ${this.baseUrl} timed out. ` +
+          `The server may be overloaded or unreachable. (${cause})`
+        );
+      }
+      throw new Error(`Network error connecting to ${this.baseUrl}: ${cause}`);
+    }
 
     if (!response.ok) {
       const errorBody = await response.text();

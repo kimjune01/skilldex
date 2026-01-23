@@ -55,7 +55,13 @@ async function main(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     log.error(`Authentication failed: ${message}`);
-    log.error('Please check your SKILLOMATIC_API_KEY is valid and not revoked.');
+    if (message.includes('Cannot connect')) {
+      log.error(`Start the API server with: pnpm dev`);
+    } else if (message.includes('Cannot resolve')) {
+      log.error(`Check SKILLOMATIC_API_URL is correct`);
+    } else {
+      log.error(`Check your API key is valid and not revoked`);
+    }
     process.exit(1);
   }
 
@@ -87,7 +93,6 @@ async function main(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     log.error(`Failed to fetch capabilities: ${message}`);
-    log.error('Some tools may be unavailable. Check your network connection and API key.');
     // Continue with empty capabilities
     capabilities = {
       hasLLM: false,
