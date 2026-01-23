@@ -88,13 +88,16 @@ ssh -R 80:localhost:3000 localhost.run
 ### Flow
 Login Page → Click "Sign in with Google" → Google Auth → Callback → Dashboard
 
+**Alternative for local development**: Use the dev demo account instead of full OAuth flow. Navigate to `/login` and use the demo login option, or test OAuth on production where it's already configured.
+
 ### Test Steps
 
 | Step | Action | Expected | Error Indicator |
 |------|--------|----------|-----------------|
 | 1.1 | Navigate to `/login` | Login page loads with Google button | **Page doesn't load**: Check web server is running on port 5173 |
-| 1.2 | Click "Sign in with Google" | Redirect to Google OAuth | **500 error / JSON response**: `GOOGLE_CLIENT_ID` not configured in API environment |
-| 1.3 | Complete Google sign-in | Redirect back to app | **"redirect_uri_mismatch"**: Google Cloud Console redirect URI doesn't match `${API_URL}/api/auth/google/callback` |
+| 1.2a | **Option A**: Click "Sign in with Google" | Redirect to Google OAuth | **500 error / JSON response**: `GOOGLE_CLIENT_ID` not configured in API environment |
+| 1.2b | **Option B (Local dev)**: Use dev demo account | Logged in directly | Demo account should work without OAuth setup |
+| 1.3 | Complete Google sign-in (if using OAuth) | Redirect back to app | **"redirect_uri_mismatch"**: Google Cloud Console redirect URI doesn't match `${API_URL}/api/auth/google/callback` |
 | 1.4 | Token exchange | Auto-redirected to app | **"token_exchange_failed"**: `GOOGLE_CLIENT_SECRET` invalid or Google API down |
 | 1.5 | User info fetch | - | **"userinfo_failed"**: Google userinfo API unreachable |
 | 1.6 | Final redirect | Redirected to `/overview` (new user) or `/chat` (returning) | **"oauth_failed"**: Database error creating user |

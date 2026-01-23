@@ -12,8 +12,10 @@ import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import { Confetti } from '@/components/ui/confetti';
 import { SkeletonDashboard } from '@/components/ui/skeleton';
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [skillList, setSkillList] = useState<SkillPublic[]>([]);
   const [integrationList, setIntegrationList] = useState<IntegrationPublic[]>([]);
   const [apiKeyList, setApiKeyList] = useState<ApiKeyPublic[]>([]);
@@ -45,6 +47,42 @@ export default function Dashboard() {
       })
       .finally(() => setIsLoading(false));
   }, []);
+
+  // WebSocket connection for real-time onboarding updates
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
+    const wsHost = API_BASE.replace(/^https?:\/\//, '');
+    const wsUrl = `${wsProtocol}://${wsHost}/ws/scrape?token=${token}`;
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'onboarding_updated') {
+          // Refresh onboarding status
+          onboarding.getStatus().then(setOnboardingStatus).catch(console.error);
+          // Also refresh user to update isOnboarded in auth context
+          refreshUser();
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    };
+
+    ws.onerror = () => {
+      // Silently ignore WebSocket errors - not critical for dashboard
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+    };
+  }, [refreshUser]);
 
   const enabledSkills = useMemo(
     () => skillList.filter((s) => s.isEnabled),

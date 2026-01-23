@@ -237,10 +237,20 @@ async function getConfigFromPage() {
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: () => {
+      // First, check for the hidden extension config element (works on any authenticated page)
+      const configElement = document.getElementById('skillomatic-extension-config');
+      if (configElement && configElement.dataset.apiKey && configElement.dataset.apiUrl) {
+        return {
+          apiKey: configElement.dataset.apiKey,
+          apiUrl: configElement.dataset.apiUrl
+        };
+      }
+
+      // Fallback: scan page text for API key (for /keys page or MCP config display)
       const pageText = document.body.innerText;
 
       // Match API key pattern: sk_live_... or sk_test_...
-      const apiKeyMatch = pageText.match(/sk_(live|test)_[a-f0-9]{64}/);
+      const apiKeyMatch = pageText.match(/sk_(live|test)_[a-zA-Z0-9_]+/);
 
       // Get the API URL
       let apiUrl = window.location.origin;
@@ -327,7 +337,8 @@ async function readFromPage() {
     apiUrlInput.value = config.apiUrl;
     apiKeyInput.value = config.apiKey;
 
-    showMessage('Config loaded! Click Save & Connect.', 'success');
+    // Auto-save and connect
+    await saveConfig();
   } catch (err) {
     console.error('Failed to read from page:', err);
     showMessage(err.message || 'Failed to read from page', 'error');

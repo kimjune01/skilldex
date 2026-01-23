@@ -3,8 +3,13 @@ import { db } from '@skillomatic/db';
 import { apiKeys, users } from '@skillomatic/db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 
-const API_KEY_PREFIX = 'sk_live_';
+const API_KEY_PREFIX_LIVE = 'sk_live_';
+const API_KEY_PREFIX_TEST = 'sk_test_';
 const API_KEY_LENGTH = 32; // bytes, results in 64 hex chars
+
+function isValidApiKeyFormat(key: string): boolean {
+  return key.startsWith(API_KEY_PREFIX_LIVE) || key.startsWith(API_KEY_PREFIX_TEST);
+}
 
 export interface ApiKeyUser {
   id: string;
@@ -20,9 +25,10 @@ export interface ApiKeyUser {
  * Generate a new API key
  * Returns the full key to store and display
  */
-export function generateApiKey(): string {
+export function generateApiKey(isTest = false): string {
+  const prefix = isTest ? API_KEY_PREFIX_TEST : API_KEY_PREFIX_LIVE;
   const randomPart = randomBytes(API_KEY_LENGTH).toString('hex');
-  return `${API_KEY_PREFIX}${randomPart}`;
+  return `${prefix}${randomPart}`;
 }
 
 /**
@@ -33,10 +39,11 @@ export function extractApiKey(authHeader: string | undefined): string | null {
   if (!authHeader) return null;
 
   if (authHeader.startsWith('Bearer ')) {
-    return authHeader.slice(7);
+    const key = authHeader.slice(7);
+    return isValidApiKeyFormat(key) ? key : null;
   }
 
-  if (authHeader.startsWith(API_KEY_PREFIX)) {
+  if (isValidApiKeyFormat(authHeader)) {
     return authHeader;
   }
 
@@ -48,7 +55,7 @@ export function extractApiKey(authHeader: string | undefined): string | null {
  * Returns null if key is invalid or revoked
  */
 export async function validateApiKey(key: string): Promise<ApiKeyUser | null> {
-  if (!key || !key.startsWith(API_KEY_PREFIX)) {
+  if (!key || !isValidApiKeyFormat(key)) {
     return null;
   }
 

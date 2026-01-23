@@ -13,6 +13,7 @@ import {
   subscribeToTask,
   unsubscribeFromTask,
   getStats,
+  sendToUser,
 } from '../../lib/scrape-events.js';
 
 /**
@@ -95,6 +96,11 @@ export function createWsScrapeHandler() {
                     .execute()
                     .then(() => {
                       console.log(`[WS] Onboarding advanced to EXTENSION_INSTALLED for user ${authenticatedUserId}`);
+                      // Notify the user's web UI connections to refresh
+                      sendToUser(authenticatedUserId, {
+                        type: 'onboarding_updated',
+                        onboardingStep: ONBOARDING_STEPS.EXTENSION_INSTALLED,
+                      });
                     })
                     .catch((err) => {
                       console.error(`[WS] Failed to advance onboarding for user ${authenticatedUserId}:`, err);

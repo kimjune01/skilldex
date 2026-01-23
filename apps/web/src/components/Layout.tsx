@@ -9,10 +9,12 @@
  * - Admin section visible only to admin users
  * - User info and logout at bottom
  */
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { apiKeys } from '../lib/api';
 import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2 } from 'lucide-react';
 
 // Main navigation - visible to all authenticated users
@@ -45,14 +47,43 @@ export default function Layout() {
   const { user, logout, isAdmin, isSuperAdmin, isOnboarded, organizationName } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [extensionApiKey, setExtensionApiKey] = useState<string | null>(null);
+
+  // Fetch API key for browser extension auto-config
+  useEffect(() => {
+    const fetchApiKey = async () => {
+      try {
+        const keys = await apiKeys.list();
+        if (keys.length > 0) {
+          setExtensionApiKey(keys[0].key);
+        }
+      } catch {
+        // Silently fail - extension config is optional
+      }
+    };
+    fetchApiKey();
+  }, []);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
+  // API URL for the extension (web is 5173, API is 3000 in dev)
+  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Hidden element for browser extension auto-config */}
+      {extensionApiKey && (
+        <div
+          id="skillomatic-extension-config"
+          data-api-url={apiUrl}
+          data-api-key={extensionApiKey}
+          style={{ display: 'none' }}
+          aria-hidden="true"
+        />
+      )}
       {/* Left Sidebar - Robot Vending Machine Panel */}
       <aside className="fixed inset-y-0 left-0 z-50 w-64 robot-panel flex flex-col">
         {/* Corner screws decoration */}
