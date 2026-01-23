@@ -334,6 +334,7 @@ export interface Candidate {
   lastName: string;
   email: string;
   phone?: string;
+  linkedinUrl?: string;
   headline?: string;
   summary?: string;
   location?: CandidateLocation;
