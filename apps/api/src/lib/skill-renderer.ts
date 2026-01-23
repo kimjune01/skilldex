@@ -38,6 +38,7 @@ import {
   type EffectiveAccess,
   type IntegrationCategory,
 } from './integration-permissions.js';
+import { LLM_DEFAULT_MODELS } from '@skillomatic/shared';
 
 /**
  * Structured telemetry for skill rendering operations.
@@ -116,11 +117,11 @@ const ATS_BASE_URLS: Record<string, string> = {
   ...(isDev ? { 'mock-ats': process.env.MOCK_ATS_URL || 'http://localhost:3001' } : {}),
 };
 
-// LLM model defaults per provider
+// LLM model defaults per provider (uses shared constants)
 const LLM_DEFAULTS: Record<string, { model: string }> = {
-  anthropic: { model: 'claude-sonnet-4-20250514' },
-  openai: { model: 'gpt-4o' },
-  groq: { model: 'llama-3.1-8b-instant' },
+  anthropic: { model: LLM_DEFAULT_MODELS.anthropic },
+  openai: { model: LLM_DEFAULT_MODELS.openai },
+  groq: { model: LLM_DEFAULT_MODELS.groq },
 };
 
 /**
@@ -329,7 +330,7 @@ async function getOrgLLMConfig(
     return {
       provider,
       apiKey: org.llmApiKey,
-      model: org.llmModel || LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
+      model: org.llmModel || LLM_DEFAULTS[provider]?.model || LLM_DEFAULT_MODELS.anthropic,
     };
   }
 
@@ -359,7 +360,7 @@ async function getOrgLLMConfig(
       return {
         provider,
         apiKey: envKey,
-        model: LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
+        model: LLM_DEFAULTS[provider]?.model || LLM_DEFAULT_MODELS.anthropic,
       };
     }
 
@@ -373,7 +374,7 @@ async function getOrgLLMConfig(
     return {
       provider,
       apiKey: apiKeySetting.value,
-      model: modelSetting?.value || LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
+      model: modelSetting?.value || LLM_DEFAULTS[provider]?.model || LLM_DEFAULT_MODELS.anthropic,
     };
   }
 
@@ -387,7 +388,7 @@ async function getOrgLLMConfig(
       return {
         provider,
         apiKey: envKey,
-        model: LLM_DEFAULTS[provider]?.model || 'claude-sonnet-4-20250514',
+        model: LLM_DEFAULTS[provider]?.model || LLM_DEFAULT_MODELS.anthropic,
       };
     }
   }
@@ -493,7 +494,7 @@ export function renderSkillInstructions(
     // LLM
     '{{LLM_API_KEY}}': profile.llm?.apiKey || '[LLM_NOT_CONFIGURED]',
     '{{LLM_PROVIDER}}': profile.llm?.provider || 'anthropic',
-    '{{LLM_MODEL}}': profile.llm?.model || 'claude-sonnet-4-20250514',
+    '{{LLM_MODEL}}': profile.llm?.model || LLM_DEFAULT_MODELS.anthropic,
 
     // ATS
     '{{ATS_TOKEN}}': profile.ats?.token || '[ATS_NOT_CONNECTED]',

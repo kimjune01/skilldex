@@ -254,32 +254,88 @@ async function executeGetJob(
 
 /**
  * Execute scrape_url action
- * Creates scrape task and waits for result
+ * Creates scrape task and polls for result
  */
 async function executeScrapeUrl(
   params: { url: string },
   _context: ActionContext
 ): Promise<ActionResult> {
   try {
-    // Create scrape task
-    const task = await serverRequest<{ id: string; status: string }>(
-      '/v1/scrape/tasks',
-      {
-        method: 'POST',
-        body: JSON.stringify({ url: params.url }),
-      }
-    );
+    // Create scrape task (uses JWT auth route, not API key route)
+    const task = await serverRequest<{
+      id: string;
+      status: string;
+      result?: string;
+      cached?: boolean;
+    }>('/scrape/tasks', {
+      method: 'POST',
+      body: JSON.stringify({ url: params.url }),
+    });
 
-    // Poll for result (in ephemeral architecture, this would use IndexedDB cache)
-    // For now, return task creation success
+    // If we got a cached result, return it immediately
+    if (task.status === 'completed' && task.result) {
+      return {
+        success: true,
+        action: 'scrape_url',
+        data: {
+          url: params.url,
+          content: task.result,
+          cached: task.cached ?? false,
+        },
+      };
+    }
+
+    // Poll for result (extension processes the scrape)
+    const taskId = task.id;
+    const maxWaitMs = 120000; // 2 minutes
+    const pollIntervalMs = 2000; // 2 seconds
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitMs) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+
+      const polled = await serverRequest<{
+        id: string;
+        status: string;
+        result?: string;
+        errorMessage?: string;
+        suggestion?: string;
+      }>(`/scrape/tasks/${taskId}`);
+
+      if (polled.status === 'completed' && polled.result) {
+        return {
+          success: true,
+          action: 'scrape_url',
+          data: {
+            url: params.url,
+            content: polled.result,
+            cached: false,
+          },
+        };
+      }
+
+      if (polled.status === 'failed') {
+        return {
+          success: false,
+          action: 'scrape_url',
+          error: polled.errorMessage || 'Scrape failed',
+        };
+      }
+
+      if (polled.status === 'expired') {
+        return {
+          success: false,
+          action: 'scrape_url',
+          error: polled.suggestion || 'Scrape task expired. Is the browser extension running?',
+        };
+      }
+    }
+
+    // Timeout
     return {
-      success: true,
+      success: false,
       action: 'scrape_url',
-      data: {
-        taskId: task.id,
-        status: task.status,
-        message: 'Scrape task created. Extension will process and return results.',
-      },
+      error: 'Scrape timed out. Make sure the Skillomatic browser extension is installed and running.',
     };
   } catch (error) {
     return {

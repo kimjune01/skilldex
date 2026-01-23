@@ -55,6 +55,36 @@ export interface OnboardingStatus {
   nextStepName: string | null;
 }
 
+// ============ LLM Provider Constants ============
+
+export type LLMProvider = 'anthropic' | 'openai' | 'groq';
+
+/**
+ * Default models for each LLM provider.
+ * Single source of truth - import this wherever model defaults are needed.
+ */
+export const LLM_DEFAULT_MODELS: Record<LLMProvider, string> = {
+  anthropic: 'claude-opus-4-5-20251101',
+  openai: 'gpt-5.2',
+  groq: 'llama-3.1-8b-instant',
+} as const;
+
+/**
+ * Available models for each provider (for UI selection)
+ */
+export const LLM_AVAILABLE_MODELS: Record<LLMProvider, readonly string[]> = {
+  anthropic: ['claude-opus-4-5-20251101', 'claude-sonnet-4-5-20241022'],
+  openai: ['gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-4.1', 'gpt-4.1-mini'],
+  groq: ['llama-3.1-8b-instant', 'llama-3.1-70b-versatile', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],
+} as const;
+
+/**
+ * Get the default model for a provider
+ */
+export function getDefaultLLMModel(provider: LLMProvider): string {
+  return LLM_DEFAULT_MODELS[provider] ?? LLM_DEFAULT_MODELS.anthropic;
+}
+
 // ============ API Response Types ============
 
 export interface ApiResponse<T> {

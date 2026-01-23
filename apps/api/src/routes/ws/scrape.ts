@@ -1,8 +1,8 @@
 import type { Context } from 'hono';
 import type { WSEvents } from 'hono/ws';
 import { db } from '@skillomatic/db';
-import { users, organizations, ONBOARDING_STEPS } from '@skillomatic/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, organizations, scrapeTasks, ONBOARDING_STEPS } from '@skillomatic/db/schema';
+import { eq, and, gt } from 'drizzle-orm';
 import { verifyToken } from '../../lib/jwt.js';
 import { validateApiKey } from '../../lib/api-keys.js';
 import {
@@ -79,6 +79,31 @@ export function createWsScrapeHandler() {
            * - User hasn't already passed EXTENSION_INSTALLED step
            * =======================================================================
            */
+          // Push any pending tasks to the newly connected extension
+          db.select()
+            .from(scrapeTasks)
+            .where(
+              and(
+                eq(scrapeTasks.userId, authenticatedUserId),
+                eq(scrapeTasks.status, 'pending'),
+                gt(scrapeTasks.expiresAt, new Date())
+              )
+            )
+            .orderBy(scrapeTasks.createdAt)
+            .limit(1)
+            .then(([pendingTask]) => {
+              if (pendingTask) {
+                console.log(`[WS] Pushing pending task ${pendingTask.id} to extension for user ${authenticatedUserId}`);
+                ws.send(JSON.stringify({
+                  type: 'task_assigned',
+                  task: { id: pendingTask.id, url: pendingTask.url },
+                }));
+              }
+            })
+            .catch((err) => {
+              console.error(`[WS] Failed to fetch pending tasks for user ${authenticatedUserId}:`, err);
+            });
+
           if (authenticatedUserOrgId && authenticatedUserOnboardingStep < ONBOARDING_STEPS.EXTENSION_INSTALLED) {
             // Check if org has desktop enabled before advancing onboarding
             db.select()

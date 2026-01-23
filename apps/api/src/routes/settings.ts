@@ -3,6 +3,7 @@ import { db } from '@skillomatic/db';
 import { systemSettings } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { jwtAuth, adminOnly } from '../middleware/auth.js';
+import { LLM_DEFAULT_MODELS, LLM_AVAILABLE_MODELS } from '@skillomatic/shared';
 
 export const settingsRoutes = new Hono();
 
@@ -10,25 +11,25 @@ export const settingsRoutes = new Hono();
 settingsRoutes.use('*', jwtAuth);
 settingsRoutes.use('*', adminOnly);
 
-// LLM provider configuration
+// LLM provider configuration (uses shared constants for models)
 const LLM_PROVIDERS = {
   groq: {
     key: 'llm.groq_api_key',
     name: 'Groq',
-    models: ['llama-3.1-8b-instant', 'llama-3.1-70b-versatile', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],
-    defaultModel: 'llama-3.1-8b-instant',
+    models: LLM_AVAILABLE_MODELS.groq,
+    defaultModel: LLM_DEFAULT_MODELS.groq,
   },
   anthropic: {
     key: 'llm.anthropic_api_key',
     name: 'Anthropic',
-    models: ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
-    defaultModel: 'claude-sonnet-4-20250514',
+    models: LLM_AVAILABLE_MODELS.anthropic,
+    defaultModel: LLM_DEFAULT_MODELS.anthropic,
   },
   openai: {
     key: 'llm.openai_api_key',
     name: 'OpenAI',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
-    defaultModel: 'gpt-4o',
+    models: LLM_AVAILABLE_MODELS.openai,
+    defaultModel: LLM_DEFAULT_MODELS.openai,
   },
 } as const;
 

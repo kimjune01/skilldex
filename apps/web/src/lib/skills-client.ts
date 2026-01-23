@@ -220,15 +220,19 @@ export async function buildSystemPrompt(): Promise<string> {
 
 ${skillsSection}
 
-## Action Format
+## CRITICAL: Action Execution
 
-When you need to perform an action, output it in this format:
+You CANNOT access external websites, databases, or APIs directly. You MUST use action blocks to perform any operations.
+
+**NEVER hallucinate or make up data.** If you need information from a URL or database, you MUST execute an action first and wait for the result.
+
+When you need to perform an action, output it in this EXACT format:
 
 \`\`\`action
-{"action": "action_name", "param1": "value1", ...}
+{"action": "action_name", "param1": "value1"}
 \`\`\`
 
-The system will execute the action and return the result. You can then continue the conversation based on the result.
+The system will execute the action and return the result. You will then see the actual data and can respond based on it.
 
 ## Available Actions
 
@@ -239,8 +243,26 @@ The system will execute the action and return the result. You can then continue 
 - \`update_candidate\` - Update candidate information
 - \`list_jobs\` - List open jobs
 - \`get_job\` - Get job details
-- \`scrape_url\` - Scrape content from a URL
+- \`scrape_url\` - Scrape content from a URL (LinkedIn profiles, job postings, etc.)
 - \`update_application_stage\` - Move candidate through pipeline
 
-Always explain what you're doing and why before executing actions.`;
+## Example: Scraping a LinkedIn Profile
+
+User: "scrape linkedin https://www.linkedin.com/in/someone"
+
+You should respond with:
+"I'll scrape that LinkedIn profile for you."
+
+\`\`\`action
+{"action": "scrape_url", "url": "https://www.linkedin.com/in/someone"}
+\`\`\`
+
+Then STOP and wait for the result. Do NOT make up profile information.
+
+## Important Rules
+
+1. Always use action blocks - never pretend you already have data
+2. Wait for action results before summarizing information
+3. If an action fails, explain the error to the user
+4. Be concise - let the action results speak for themselves`;
 }

@@ -14,7 +14,10 @@
  * @see docs/EPHEMERAL_ARCHITECTURE.md
  */
 
-export type LLMProvider = 'anthropic' | 'openai' | 'google' | 'groq';
+import { LLM_DEFAULT_MODELS, type LLMProvider as SharedLLMProvider } from '@skillomatic/shared';
+
+// Extended type to include google (not in shared since it's client-only)
+export type LLMProvider = SharedLLMProvider | 'google';
 
 export interface LLMConfig {
   provider: LLMProvider;
@@ -471,15 +474,15 @@ export function parseLLMConfigFromSkill(configInstructions: string): LLMConfig |
 function getDefaultModel(provider: LLMProvider): string {
   switch (provider) {
     case 'anthropic':
-      return 'claude-sonnet-4-20250514';
+      return LLM_DEFAULT_MODELS.anthropic;
     case 'openai':
-      return 'gpt-4o';
+      return LLM_DEFAULT_MODELS.openai;
     case 'google':
       return 'gemini-1.5-flash';
     case 'groq':
-      return 'llama-3.1-8b-instant';
+      return LLM_DEFAULT_MODELS.groq;
     default:
-      return 'claude-sonnet-4-20250514';
+      return LLM_DEFAULT_MODELS.anthropic;
   }
 }
 

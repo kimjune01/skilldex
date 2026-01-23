@@ -5,6 +5,7 @@
 
 import { db } from '@skillomatic/db';
 import { systemSettings } from '@skillomatic/db/schema';
+import { LLM_DEFAULT_MODELS, type LLMProvider } from '@skillomatic/shared';
 
 /** Simple message format for LLM API calls (distinct from ChatMessage in shared types) */
 export interface LLMChatMessage {
@@ -16,27 +17,20 @@ export interface LLMOptions {
   temperature?: number;
   maxTokens?: number;
   model?: string;
-  provider?: 'groq' | 'anthropic' | 'openai';
+  provider?: LLMProvider;
 }
 
 interface ProviderConfig {
   apiKey: string;
   model: string;
-  provider: 'groq' | 'anthropic' | 'openai';
+  provider: LLMProvider;
 }
 
 // Provider endpoints
-const ENDPOINTS = {
+const ENDPOINTS: Record<LLMProvider, string> = {
   groq: 'https://api.groq.com/openai/v1/chat/completions',
   openai: 'https://api.openai.com/v1/chat/completions',
   anthropic: 'https://api.anthropic.com/v1/messages',
-};
-
-// Default models per provider
-const DEFAULT_MODELS = {
-  groq: 'llama-3.1-8b-instant',
-  anthropic: 'claude-sonnet-4-20250514',
-  openai: 'gpt-4o',
 };
 
 /**
@@ -61,7 +55,7 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
     }
     return {
       apiKey,
-      model: options.model || DEFAULT_MODELS[options.provider],
+      model: options.model || LLM_DEFAULT_MODELS[options.provider],
       provider: options.provider,
     };
   }
@@ -73,7 +67,7 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
   if (defaultProvider && providers[defaultProvider]) {
     return {
       apiKey: providers[defaultProvider]!,
-      model: options.model || defaultModel || DEFAULT_MODELS[defaultProvider],
+      model: options.model || defaultModel || LLM_DEFAULT_MODELS[defaultProvider as LLMProvider],
       provider: defaultProvider,
     };
   }
@@ -91,7 +85,7 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
     if (apiKey) {
       return {
         apiKey,
-        model: options.model || DEFAULT_MODELS[provider],
+        model: options.model || LLM_DEFAULT_MODELS[provider],
         provider,
       };
     }
@@ -104,7 +98,7 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
     if (apiKey) {
       return {
         apiKey,
-        model: options.model || DEFAULT_MODELS[provider],
+        model: options.model || LLM_DEFAULT_MODELS[provider],
         provider,
       };
     }
