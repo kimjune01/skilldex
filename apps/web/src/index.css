@@ -361,6 +361,18 @@
   animation: blink-light 2.5s ease-in-out infinite;
 }
 
+.led-light.led-amber {
+  background: radial-gradient(circle at 30% 30%, hsl(45 95% 60%), hsl(38 90% 45%));
+  color: hsl(38 90% 50%);
+  animation: blink-light 2.2s ease-in-out infinite;
+}
+
+.led-light.led-purple {
+  background: radial-gradient(circle at 30% 30%, hsl(270 80% 65%), hsl(270 70% 50%));
+  color: hsl(270 70% 55%);
+  animation: blink-light 2.8s ease-in-out infinite;
+}
+
 /* Coin slot styling */
 .coin-slot {
   width: 40px;

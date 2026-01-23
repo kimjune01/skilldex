@@ -12,41 +12,41 @@ import { MarketingNav, MarketingFooter } from '@/components/marketing';
 const vendingItems = [
   {
     id: 'data',
-    code: 'A1',
     label: 'LIVE DATA',
     description: 'Connected to your ATS, LinkedIn, and email in real-time. No stale training data.',
     icon: Database,
     color: 'cyan',
+    led: 'led-cyan',
     rotation: -0.75,
     flipAxis: 'Y', // left-right
   },
   {
     id: 'precision',
-    code: 'A2',
     label: 'PRECISION',
     description: 'Every action executed exactly as requested. No retries. No corrections needed.',
     icon: Target,
     color: 'green',
+    led: 'led-green',
     rotation: 0.5,
     flipAxis: 'X', // up-down
   },
   {
     id: 'truth',
-    code: 'B1',
     label: 'GROUNDED',
     description: 'Every fact verified against your real systems. Zero hallucinations.',
     icon: CheckCircle,
     color: 'amber',
+    led: 'led-amber',
     rotation: 0.5,
     flipAxis: '-Y', // right-left
   },
   {
     id: 'control',
-    code: 'B2',
     label: 'CONTROL',
     description: 'AI suggests, you decide. Review and approve every action before it happens.',
     icon: Shield,
     color: 'purple',
+    led: 'led-purple',
     rotation: -0.5,
     flipAxis: '-X', // down-up
   },
@@ -56,12 +56,12 @@ function DifferentiatorSection() {
   const [flipped, setFlipped] = useState<string | null>(null);
   const [discovered, setDiscovered] = useState<Set<string>>(new Set());
 
-  const handleFlip = (code: string) => {
-    if (flipped === code) {
+  const handleFlip = (id: string) => {
+    if (flipped === id) {
       setFlipped(null);
     } else {
-      setFlipped(code);
-      setDiscovered(prev => new Set(prev).add(code));
+      setFlipped(id);
+      setDiscovered(prev => new Set(prev).add(id));
     }
   };
 
@@ -83,11 +83,6 @@ function DifferentiatorSection() {
             {/* Scan line effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse pointer-events-none" />
 
-            <div className="flex items-center justify-center gap-3 mb-5">
-              <div className="led-light led-green" />
-              <div className="led-light led-orange" />
-              <div className="led-light led-cyan" />
-            </div>
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-center digital-text tracking-tight">
               <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">Overdelivered,</span>
               <br />
@@ -101,7 +96,7 @@ function DifferentiatorSection() {
           <div className="grid grid-cols-2 gap-5">
             {vendingItems.map((item) => {
               const Icon = item.icon;
-              const isFlipped = flipped === item.code;
+              const isFlipped = flipped === item.id;
               const colorStyles = {
                 cyan: {
                   glow: 'shadow-[0_0_30px_rgba(34,211,238,0.3),inset_0_1px_0_rgba(34,211,238,0.2)]',
@@ -132,7 +127,7 @@ function DifferentiatorSection() {
               return (
                 <div
                   key={item.id}
-                  onClick={() => handleFlip(item.code)}
+                  onClick={() => handleFlip(item.id)}
                   className="cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
                   style={{
                     perspective: '1000px',
@@ -164,13 +159,11 @@ function DifferentiatorSection() {
                         <Icon className={`h-10 w-10 ${colorStyles.accent}`} />
                       </div>
 
-                      {/* Corner codes */}
-                      <div className={`absolute top-3 left-3 text-xs font-bold ${colorStyles.accent}`}>
-                        {item.code}
-                      </div>
-                      <div className={`absolute bottom-3 right-3 text-xs font-bold ${colorStyles.accent} rotate-180`}>
-                        {item.code}
-                      </div>
+                      {/* Corner LED - only blinks when this card is flipped */}
+                      <div
+                        className={`absolute top-3 left-3 led-light ${item.led}`}
+                        style={{ width: 10, height: 10, animation: isFlipped ? undefined : 'none' }}
+                      />
                     </div>
 
                     {/* Back - Card face with content */}
@@ -181,13 +174,11 @@ function DifferentiatorSection() {
                         transform: `rotate${item.flipAxis.replace('-', '')}(180deg)`,
                       }}
                     >
-                      {/* Corner codes */}
-                      <div className={`absolute top-3 left-3 text-xs font-bold ${colorStyles.accent}`}>
-                        {item.code}
-                      </div>
-                      <div className={`absolute bottom-3 right-3 text-xs font-bold ${colorStyles.accent} rotate-180`}>
-                        {item.code}
-                      </div>
+                      {/* Corner LED - only blinks when this card is flipped */}
+                      <div
+                        className={`absolute top-3 left-3 led-light ${item.led}`}
+                        style={{ width: 10, height: 10, animation: isFlipped ? undefined : 'none' }}
+                      />
 
                       {/* Content centered */}
                       <div className="flex-1 flex flex-col justify-center">
