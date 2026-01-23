@@ -87,6 +87,11 @@ export const mockAtsManifest: ProviderManifest = {
           description: 'Phone number',
           required: false,
         },
+        linkedinUrl: {
+          type: 'string',
+          description: 'LinkedIn profile URL (e.g., "https://linkedin.com/in/username")',
+          required: false,
+        },
         headline: {
           type: 'string',
           description: 'Professional headline (e.g., "Senior Software Engineer")',
@@ -151,6 +156,11 @@ export const mockAtsManifest: ProviderManifest = {
           description: 'Phone number',
           required: false,
         },
+        linkedinUrl: {
+          type: 'string',
+          description: 'LinkedIn profile URL',
+          required: false,
+        },
         headline: {
           type: 'string',
           description: 'Professional headline',
@@ -169,6 +179,21 @@ export const mockAtsManifest: ProviderManifest = {
         },
       },
       responseHints: ['data'],
+    },
+    {
+      id: 'delete_candidate',
+      method: 'DELETE',
+      path: '/api/candidates/{id}',
+      access: 'write',
+      description: 'Delete a candidate by ID',
+      params: {
+        id: {
+          type: 'string',
+          description: 'Candidate ID',
+          required: true,
+        },
+      },
+      responseHints: ['data', 'deleted'],
     },
 
     // ============ JOBS ============

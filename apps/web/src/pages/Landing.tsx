@@ -4,7 +4,7 @@
  * Public landing page for Skillomatic with robot vending machine theme.
  * Shows features, pricing, and call-to-action for login/signup.
  */
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Database, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
@@ -54,8 +54,9 @@ function DifferentiatorSection() {
   const [flipped, setFlipped] = useState<string | null>(null);
   const [discovered, setDiscovered] = useState<Set<string>>(new Set());
   const [flipAxisMap, setFlipAxisMap] = useState<Record<string, string>>({});
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const handleFlip = (id: string) => {
+  const handleFlip = (id: string, element: HTMLDivElement | null) => {
     if (flipped === id) {
       setFlipped(null);
     } else {
@@ -64,6 +65,13 @@ function DifferentiatorSection() {
       setFlipAxisMap(prev => ({ ...prev, [id]: randomAxis }));
       setFlipped(id);
       setDiscovered(prev => new Set(prev).add(id));
+
+      // Scroll card into center view on mobile (single column layout)
+      if (element && window.innerWidth < 640) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
     }
   };
 
@@ -73,29 +81,29 @@ function DifferentiatorSection() {
   const nextToDiscover = vendingItems.find(item => !discovered.has(item.id))?.id;
 
   return (
-    <section className="py-24 px-6 bg-[hsl(220_25%_12%)]">
+    <section className="py-16 md:py-24 px-4 md:px-6 bg-[hsl(220_25%_12%)]">
       <div className="max-w-5xl mx-auto">
         {/* Vending Machine */}
-        <div className="robot-panel rounded-3xl p-8 md:p-12 max-w-3xl mx-auto relative">
+        <div className="robot-panel rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-12 max-w-3xl mx-auto relative">
           {/* Corner screws */}
-          <div className="absolute top-5 left-5 screw" />
-          <div className="absolute top-5 right-5 screw" />
-          <div className="absolute bottom-5 left-5 screw" />
-          <div className="absolute bottom-5 right-5 screw" />
+          <div className="absolute top-3 left-3 md:top-5 md:left-5 screw" />
+          <div className="absolute top-3 right-3 md:top-5 md:right-5 screw" />
+          <div className="absolute bottom-3 left-3 md:bottom-5 md:left-5 screw" />
+          <div className="absolute bottom-3 right-3 md:bottom-5 md:right-5 screw" />
 
           {/* Top display with title */}
-          <div className="robot-display rounded-2xl p-8 mb-8 relative overflow-hidden">
+          <div className="robot-display rounded-xl md:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 md:mb-8 relative overflow-hidden">
             {/* Scan line effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse pointer-events-none" />
 
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-center digital-text tracking-tight">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-center digital-text tracking-tight">
               <span className="bg-gradient-to-r from-cyan-400 to-primary bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]">Vibe</span>
               <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"> Recruiting</span>
             </h2>
           </div>
 
-          {/* Product slots - 2x2 grid with flip cards */}
-          <div className="grid grid-cols-2 gap-5">
+          {/* Product slots - 1 column on mobile, 2x2 grid on larger screens */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3 md:gap-5">
             {vendingItems.map((item) => {
               const Icon = item.icon;
               const isFlipped = flipped === item.id;
@@ -134,7 +142,8 @@ function DifferentiatorSection() {
               return (
                 <div
                   key={item.id}
-                  onClick={() => handleFlip(item.id)}
+                  ref={(el) => { cardRefs.current[item.id] = el; }}
+                  onClick={(e) => handleFlip(item.id, e.currentTarget)}
                   className="cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
                   style={{
                     perspective: '1000px',
@@ -142,7 +151,7 @@ function DifferentiatorSection() {
                   }}
                 >
                   <div
-                    className="relative h-56 transition-transform duration-500"
+                    className="relative h-40 sm:h-48 md:h-56 transition-transform duration-500"
                     style={{
                       transformStyle: 'preserve-3d',
                       transform: isFlipped && flipAxisMap[item.id]
@@ -152,30 +161,30 @@ function DifferentiatorSection() {
                   >
                     {/* Front - Card back pattern */}
                     <div
-                      className="absolute inset-0 rounded-xl border-[3px] border-white/20 bg-gradient-to-br from-[hsl(220_30%_25%)] via-[hsl(220_25%_18%)] to-[hsl(220_30%_12%)] p-4 flex flex-col items-center justify-center hover:border-white/40 transition-all duration-200 shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden"
+                      className="absolute inset-0 rounded-lg md:rounded-xl border-2 md:border-[3px] border-white/20 bg-gradient-to-br from-[hsl(220_30%_25%)] via-[hsl(220_25%_18%)] to-[hsl(220_30%_12%)] p-3 md:p-4 flex flex-col items-center justify-center hover:border-white/40 transition-all duration-200 shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden"
                       style={{ backfaceVisibility: 'hidden' }}
                     >
                       {/* Card back pattern */}
-                      <div className="absolute inset-3 rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent" />
+                      <div className="absolute inset-2 md:inset-3 rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent" />
                       <div className="absolute inset-0 opacity-30" style={{
                         backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.03) 8px, rgba(255,255,255,0.03) 16px)`
                       }} />
 
                       {/* Center icon */}
-                      <div className={`relative h-20 w-20 rounded-2xl ${colorStyles.iconBg} flex items-center justify-center shadow-lg border border-white/10`}>
-                        <Icon className={`h-10 w-10 ${colorStyles.accent}`} />
+                      <div className={`relative h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 rounded-xl md:rounded-2xl ${colorStyles.iconBg} flex items-center justify-center shadow-lg border border-white/10`}>
+                        <Icon className={`h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 ${colorStyles.accent}`} />
                       </div>
 
                       {/* Corner LED - blinks to entice user to click next undiscovered card */}
                       <div
-                        className={`absolute top-3 left-3 led-light ${item.led}`}
-                        style={{ width: 10, height: 10, animation: item.id === nextToDiscover ? undefined : 'none' }}
+                        className={`absolute top-2 left-2 md:top-3 md:left-3 led-light ${item.led}`}
+                        style={{ width: 8, height: 8, animation: item.id === nextToDiscover ? undefined : 'none' }}
                       />
                     </div>
 
                     {/* Back - Card face with content */}
                     <div
-                      className={`absolute inset-0 rounded-xl border-[3px] ${colorStyles.border} bg-gradient-to-br from-[hsl(220_25%_22%)] via-[hsl(220_20%_16%)] to-[hsl(220_25%_12%)] ${colorStyles.glow} p-5 flex flex-col shadow-[0_8px_24px_rgba(0,0,0,0.4)]`}
+                      className={`absolute inset-0 rounded-lg md:rounded-xl border-2 md:border-[3px] ${colorStyles.border} bg-gradient-to-br from-[hsl(220_25%_22%)] via-[hsl(220_20%_16%)] to-[hsl(220_25%_12%)] ${colorStyles.glow} p-3 sm:p-4 md:p-5 flex flex-col shadow-[0_8px_24px_rgba(0,0,0,0.4)]`}
                       style={{
                         backfaceVisibility: 'hidden',
                         transform: flipAxisMap[item.id]
@@ -185,16 +194,16 @@ function DifferentiatorSection() {
                     >
                       {/* Corner LED - blinks to entice user to click next undiscovered card */}
                       <div
-                        className={`absolute top-3 left-3 led-light ${item.led}`}
-                        style={{ width: 10, height: 10, animation: item.id === nextToDiscover ? undefined : 'none' }}
+                        className={`absolute top-2 left-2 md:top-3 md:left-3 led-light ${item.led}`}
+                        style={{ width: 8, height: 8, animation: item.id === nextToDiscover ? undefined : 'none' }}
                       />
 
                       {/* Content centered */}
                       <div className="flex-1 flex flex-col justify-center">
-                        <div className={`font-black text-xl ${colorStyles.accent} mb-3 text-center`}>
+                        <div className={`font-black text-sm sm:text-base md:text-xl ${colorStyles.accent} mb-1 sm:mb-2 md:mb-3 text-center leading-tight`}>
                           {item.label}
                         </div>
-                        <div className="text-sm text-white/70 leading-relaxed text-center">
+                        <div className="text-xs sm:text-sm text-white/70 leading-snug sm:leading-relaxed text-center">
                           {item.description}
                         </div>
                       </div>
@@ -206,15 +215,15 @@ function DifferentiatorSection() {
           </div>
 
           {/* Dispenser slot with tagline */}
-          <div className="dispense-slot rounded-xl p-4 mt-6 text-center min-h-[52px]">
+          <div className="dispense-slot rounded-lg md:rounded-xl p-3 md:p-4 mt-4 md:mt-6 text-center min-h-[44px] md:min-h-[52px]">
             {allDiscovered ? (
-              <p className="text-white/50 text-sm font-mono animate-reveal-ltr">
+              <p className="text-white/50 text-xs sm:text-sm font-mono animate-reveal-ltr">
                 Other AI locks you in. We connect to{' '}
                 <span className="text-cyan-400">everything</span> and work with{' '}
                 <span className="text-primary">any AI</span>.
               </p>
             ) : (
-              <p className="text-white/30 text-xs font-mono">
+              <p className="text-white/30 text-[10px] sm:text-xs font-mono">
                 {4 - discovered.size} more to discover
               </p>
             )}
@@ -237,10 +246,15 @@ const setupSteps = [
 function HowItWorksSection() {
   const [currentStep, setCurrentStep] = useState(0);
   const [extraOs, setExtraOs] = useState(0);
+  const buttonContainerRef = useRef<HTMLDivElement>(null);
 
   const handlePress = () => {
     if (currentStep < setupSteps.length) {
       setCurrentStep(prev => prev + 1);
+      // Scroll button into center view after state update
+      setTimeout(() => {
+        buttonContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
     }
   };
 
@@ -281,7 +295,7 @@ function HowItWorksSection() {
         </div>
 
         {/* Single button area */}
-        <div className="flex flex-col items-center mb-10">
+        <div ref={buttonContainerRef} className="flex flex-col items-center mb-10">
           {activeStep && (
             <>
               {/* Fixed-height container for button - prevents layout shift */}
@@ -332,20 +346,22 @@ function HowItWorksSection() {
                 )}
               </div>
 
-              {/* Current step info - scales with button size */}
-              {activeStep.title && (
-                <div
-                  className="mt-6 text-center transition-transform duration-500 origin-top"
-                  style={{ transform: `scale(${0.8 + (activeStep.size / 280) * 0.6})` }}
-                >
-                  <h3 className={`text-xl font-black ${colorStyles[activeStep.color as keyof typeof colorStyles].text}`}>
-                    {activeStep.title}
-                  </h3>
-                  <p className="text-[hsl(220_15%_45%)] mt-1 max-w-md">
-                    {activeStep.description}
-                  </p>
-                </div>
-              )}
+              {/* Current step info - fixed height container to prevent layout shift */}
+              <div className="mt-6 h-[72px] flex items-start justify-center">
+                {activeStep.title && (
+                  <div
+                    className="text-center transition-transform duration-500 origin-top"
+                    style={{ transform: `scale(${0.8 + (activeStep.size / 280) * 0.6})` }}
+                  >
+                    <h3 className={`text-xl font-black ${colorStyles[activeStep.color as keyof typeof colorStyles].text}`}>
+                      {activeStep.title}
+                    </h3>
+                    <p className="text-[hsl(220_15%_45%)] mt-1 max-w-md">
+                      {activeStep.description}
+                    </p>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
