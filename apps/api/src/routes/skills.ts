@@ -478,7 +478,7 @@ skillsRoutes.post('/', async (c) => {
   try {
     slug = await ensureUniqueSlug(baseSlug, user.sub);
   } catch (error) {
-    console.error('Error generating unique slug:', error);
+    console.error('[Skills] Error generating unique slug:', { baseSlug, userId: user.sub, error });
     return c.json({ error: { message: 'Failed to generate skill slug. Please try again.' } }, 500);
   }
 
@@ -518,9 +518,10 @@ skillsRoutes.post('/', async (c) => {
       })
       .returning();
 
+    console.log('[Skills] Skill created:', { slug, skillId: newSkill.id, userId: user.sub, name: parsed.name, visibility });
     return c.json({ data: toSkillPublic(newSkill, { userId: user.sub }) }, 201);
   } catch (error) {
-    console.error('Error creating skill:', error);
+    console.error('[Skills] Error creating skill:', { slug, userId: user.sub, name: parsed.name, error });
     return c.json({ error: { message: 'Failed to create skill. Please try again.' } }, 500);
   }
 });
@@ -601,7 +602,7 @@ skillsRoutes.put('/:slug', async (c) => {
 
     return c.json({ data: toSkillPublic(updatedSkill, { userId: user.sub }) });
   } catch (error) {
-    console.error('Error updating skill:', error);
+    console.error('[Skills] Error updating skill:', { slug, skillId: existingSkill.id, userId: user.sub, error });
     return c.json({ error: { message: 'Failed to update skill. Please try again.' } }, 500);
   }
 });
@@ -732,9 +733,10 @@ skillsRoutes.delete('/:slug', async (c) => {
   // Delete the skill
   try {
     await db.delete(skills).where(eq(skills.id, existingSkill.id));
+    console.log('[Skills] Skill deleted:', { slug, skillId: existingSkill.id, deletedBy: user.sub });
     return c.json({ data: { success: true, message: 'Skill deleted' } });
   } catch (error) {
-    console.error('Error deleting skill:', error);
+    console.error('[Skills] Error deleting skill:', { slug, skillId: existingSkill.id, userId: user.sub, error });
     return c.json({ error: { message: 'Failed to delete skill. Please try again.' } }, 500);
   }
 });
@@ -786,9 +788,10 @@ skillsRoutes.post('/:slug/request-visibility', async (c) => {
       })
       .where(eq(skills.id, existingSkill.id));
 
+    console.log('[Skills] Visibility request submitted:', { slug, skillId: existingSkill.id, requestedBy: user.sub, requestedVisibility: body.visibility });
     return c.json({ data: { message: 'Visibility request submitted for admin approval' } });
   } catch (error) {
-    console.error('Error submitting visibility request:', error);
+    console.error('[Skills] Error submitting visibility request:', { slug, skillId: existingSkill.id, userId: user.sub, error });
     return c.json({ error: { message: 'Failed to submit visibility request. Please try again.' } }, 500);
   }
 });
@@ -837,9 +840,10 @@ skillsRoutes.post('/:slug/approve-visibility', async (c) => {
       .where(eq(skills.id, existingSkill.id))
       .returning();
 
+    console.log('[Skills] Visibility request approved:', { slug, skillId: existingSkill.id, approvedBy: user.sub, newVisibility: existingSkill.pendingVisibility });
     return c.json({ data: toSkillPublic(updatedSkill, { userId: user.sub }) });
   } catch (error) {
-    console.error('Error approving visibility request:', error);
+    console.error('[Skills] Error approving visibility request:', { slug, skillId: existingSkill.id, adminId: user.sub, error });
     return c.json({ error: { message: 'Failed to approve visibility request. Please try again.' } }, 500);
   }
 });
@@ -886,9 +890,10 @@ skillsRoutes.post('/:slug/deny-visibility', async (c) => {
       })
       .where(eq(skills.id, existingSkill.id));
 
+    console.log('[Skills] Visibility request denied:', { slug, skillId: existingSkill.id, deniedBy: user.sub });
     return c.json({ data: { message: 'Visibility request denied' } });
   } catch (error) {
-    console.error('Error denying visibility request:', error);
+    console.error('[Skills] Error denying visibility request:', { slug, skillId: existingSkill.id, adminId: user.sub, error });
     return c.json({ error: { message: 'Failed to deny visibility request. Please try again.' } }, 500);
   }
 });
