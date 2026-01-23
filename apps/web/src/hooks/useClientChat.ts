@@ -122,24 +122,29 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     return results.join('\n\n');
   }, [options]);
 
-  const send = useCallback(async (content: string) => {
+  // Internal send function that handles streaming and action execution
+  const sendInternal = useCallback(async (
+    content: string,
+    isToolResult: boolean = false
+  ): Promise<{ response: string; actions: Array<{ action: string; params: Record<string, unknown> }> }> => {
     if (!llmConfig) {
-      setError('LLM not configured');
-      return;
+      throw new Error('LLM not configured');
     }
 
-    setError(null);
-
-    // Add user message
+    // Add user message (or tool result as user message)
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content,
       timestamp: Date.now(),
+      isToolResult,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setIsStreaming(true);
+    // For tool results, we don't show them as separate messages in UI
+    // They're included in conversation history but displayed with the action
+    if (!isToolResult) {
+      setMessages((prev) => [...prev, userMessage]);
+    }
 
     // Create placeholder for assistant message
     const assistantId = `assistant-${Date.now()}`;
@@ -154,23 +159,36 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
 
     setMessages((prev) => [...prev, assistantMessage]);
 
-    // Build LLM messages array
+    // Build LLM messages array - include action results in history
     const llmMessages: LLMChatMessage[] = [
       { role: 'system', content: systemPrompt },
-      ...messages.map((m) => ({
+    ];
+
+    // Add previous messages, including action results
+    for (const m of messages) {
+      llmMessages.push({
         role: m.role as 'user' | 'assistant',
         content: m.content,
-      })),
-      { role: 'user', content },
-    ];
+      });
+      // If this message had an action result, add it as a user message
+      if (m.actionResult?.result) {
+        llmMessages.push({
+          role: 'user',
+          content: `[Tool Result]\n${m.actionResult.result}`,
+        });
+      }
+    }
+
+    // Add the current message
+    llmMessages.push({ role: 'user', content });
 
     // Create abort controller
     abortControllerRef.current = new AbortController();
 
     let fullResponse = '';
 
-    try {
-      await streamChat(
+    return new Promise((resolve, reject) => {
+      streamChat(
         llmConfig,
         llmMessages,
         {
@@ -184,52 +202,83 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
               )
             );
           },
-          onComplete: async (response) => {
+          onComplete: (response) => {
             fullResponse = response;
-
-            // Check for actions in the response
             const actions = parseActions(response);
-            if (actions.length > 0 && options.onActionRequest) {
-              // Execute actions
-              const actionResults = await executeActions(actions);
-
-              if (actionResults) {
-                // Update message with action results
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantId
-                      ? {
-                          ...m,
-                          actionResult: {
-                            action: actions[0].action,
-                            result: actionResults,
-                          },
-                        }
-                      : m
-                  )
-                );
-              }
-            }
-
-            setIsStreaming(false);
+            resolve({ response, actions });
           },
           onError: (err) => {
-            setError(err.message);
-            setIsStreaming(false);
+            reject(err);
           },
         },
         {
           userContext: options.userContext,
-          abortSignal: abortControllerRef.current.signal,
+          abortSignal: abortControllerRef.current!.signal,
         }
-      );
+      ).catch(reject);
+    });
+  }, [llmConfig, messages, systemPrompt, parseActions, options.userContext]);
+
+  const send = useCallback(async (content: string) => {
+    if (!llmConfig) {
+      setError('LLM not configured');
+      return;
+    }
+
+    setError(null);
+    setIsStreaming(true);
+
+    try {
+      // First turn: send user message
+      let result = await sendInternal(content);
+
+      // Check for actions and execute them
+      while (result.actions.length > 0 && options.onActionRequest) {
+        const actions = result.actions;
+
+        // Execute actions
+        const actionResults = await executeActions(actions);
+
+        if (actionResults) {
+          // Update the last assistant message with action results
+          setMessages((prev) => {
+            // Find last assistant message index (ES2023 findLastIndex not available)
+            let lastAssistantIdx = -1;
+            for (let i = prev.length - 1; i >= 0; i--) {
+              if (prev[i].role === 'assistant') {
+                lastAssistantIdx = i;
+                break;
+              }
+            }
+            if (lastAssistantIdx >= 0) {
+              const updated = [...prev];
+              updated[lastAssistantIdx] = {
+                ...updated[lastAssistantIdx],
+                actionResult: {
+                  action: actions[0].action,
+                  result: actionResults,
+                },
+              };
+              return updated;
+            }
+            return prev;
+          });
+
+          // Send tool results back to LLM for continuation
+          result = await sendInternal(`[Tool Result]\n${actionResults}`, true);
+        } else {
+          break;
+        }
+      }
+
+      setIsStreaming(false);
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
         setError(err.message);
       }
       setIsStreaming(false);
     }
-  }, [llmConfig, messages, systemPrompt, parseActions, executeActions, options]);
+  }, [llmConfig, sendInternal, executeActions, options.onActionRequest]);
 
   const abort = useCallback(() => {
     if (abortControllerRef.current) {

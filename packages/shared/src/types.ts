@@ -501,6 +501,8 @@ export interface ChatMessage {
     result: unknown;
   };
   timestamp: number;
+  /** Internal flag for tool results - not displayed as separate messages */
+  isToolResult?: boolean;
 }
 
 export interface ChatSkillSuggestion {
