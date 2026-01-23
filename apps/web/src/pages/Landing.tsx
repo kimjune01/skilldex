@@ -5,7 +5,7 @@
  * Shows features, pricing, and call-to-action for login/signup.
  */
 import { useState } from 'react';
-import { Zap, Plug, MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Monitor, Database, Target } from 'lucide-react';
+import { MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Database, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
 
@@ -125,7 +125,12 @@ function DifferentiatorSection() {
                   accent: 'text-purple-400',
                   iconBg: 'bg-purple-400/20',
                 },
-              }[item.color];
+              }[item.color] ?? {
+                glow: '',
+                border: 'border-white/40',
+                accent: 'text-white',
+                iconBg: 'bg-white/20',
+              };
 
               return (
                 <div
@@ -220,42 +225,154 @@ function DifferentiatorSection() {
   );
 }
 
-const features = [
-  {
-    icon: Zap,
-    title: 'Instant Skills',
-    description: 'Pre-built recruiting automations ready to use. Search candidates, sync with your ATS, send personalized outreach.',
-    color: 'text-cyan-500',
-    bgColor: 'bg-cyan-500',
-  },
-  {
-    icon: Plug,
-    title: 'One-Click Integrations',
-    description: 'Connect Greenhouse, Lever, Gmail, Outlook, and more. Simple OAuth setup in seconds.',
-    color: 'text-green-500',
-    bgColor: 'bg-green-500',
-  },
-  {
-    icon: Monitor,
-    title: 'Use Your Favorite AI',
-    description: 'Works with Claude Desktop, ChatGPT, and other AI chat apps. Or use our built-in web chatbot.',
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500',
-  },
-  {
-    icon: Shield,
-    title: 'Enterprise Security',
-    description: 'Your credentials stay secure. Full control over your data and integrations.',
-    color: 'text-amber-500',
-    bgColor: 'bg-amber-500',
-  },
+const setupSteps = [
+  { id: 'connect', number: '1', title: 'Connect Your Tools', description: 'Link your ATS, email, calendar, and browser extension', color: 'cyan', size: 100 },
+  { id: 'choose', number: '2', title: 'Choose Your AI', description: 'Use our web chat or your favorite desktop app', color: 'green', size: 140 },
+  { id: 'start', number: '3', title: 'Start Recruiting', description: 'Chat naturally to automate your workflow', color: 'amber', size: 200 },
+  { id: 'go', number: "LET'S GO", title: "You're Ready!", description: 'Start recruiting smarter today', color: 'primary', size: 280, isLink: true },
 ];
 
-const steps = [
-  { number: '01', title: 'Connect Your Tools', description: 'Link your ATS, email, calendar, and browser extension' },
-  { number: '02', title: 'Choose Your AI', description: 'Use our web chat or your favorite desktop app' },
-  { number: '03', title: 'Start Recruiting', description: 'Chat naturally to automate your workflow' },
-];
+function HowItWorksSection() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [extraOs, setExtraOs] = useState(0);
+
+  const handlePress = () => {
+    if (currentStep < setupSteps.length) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handleLetsGo = () => {
+    // Add O's rapidly over 2 seconds, then navigate
+    let count = 0;
+    const interval = setInterval(() => {
+      count++;
+      setExtraOs(count);
+      if (count >= 40) {
+        clearInterval(interval);
+        window.location.href = '/login';
+      }
+    }, 50);
+  };
+
+  const allDone = currentStep >= setupSteps.length;
+  const activeStep = allDone ? null : setupSteps[currentStep];
+
+  const colorStyles = {
+    cyan: { bg: 'bg-cyan-500', glow: 'shadow-[0_0_30px_rgba(34,211,238,0.5)]', text: 'text-cyan-600' },
+    green: { bg: 'bg-green-500', glow: 'shadow-[0_0_30px_rgba(34,197,94,0.5)]', text: 'text-green-600' },
+    amber: { bg: 'bg-amber-500', glow: 'shadow-[0_0_30px_rgba(251,191,36,0.5)]', text: 'text-amber-600' },
+    primary: { bg: 'bg-primary', glow: 'shadow-[0_0_40px_rgba(249,115,22,0.6)]', text: 'text-primary' },
+  };
+
+  return (
+    <section id="how-it-works" className="py-20 px-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h2
+            className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4 transition-opacity duration-500"
+            style={{ opacity: Math.pow(0.5, currentStep) }}
+          >
+            Up and Running in just a few minutes
+          </h2>
+        </div>
+
+        {/* Single button area */}
+        <div className="flex flex-col items-center mb-10">
+          {activeStep && (
+            <>
+              {/* Fixed-height container for button - prevents layout shift */}
+              <div className="h-[280px] flex items-center justify-center">
+                {/* Growing button - either final CTA or step button */}
+                {(activeStep as typeof setupSteps[number] & { isLink?: boolean }).isLink ? (
+                  <button
+                    onClick={handleLetsGo}
+                    className={`
+                      rounded-full font-black text-white flex items-center justify-center
+                      whitespace-nowrap overflow-hidden
+                      ${colorStyles[activeStep.color as keyof typeof colorStyles].bg}
+                      ${colorStyles[activeStep.color as keyof typeof colorStyles].glow}
+                      hover:scale-110 active:scale-95 cursor-pointer
+                      border-4 border-b-8 border-white/30
+                      active:border-b-4
+                    `}
+                    style={{
+                      width: activeStep.size,
+                      height: activeStep.size,
+                      fontSize: activeStep.size * 0.14,
+                      transform: `scale(${1 + Math.pow(extraOs / 40, 2) * 5})`,
+                      zIndex: extraOs > 0 ? 9999 : undefined,
+                    }}
+                  >
+                    LET'S G{'O'.repeat(1 + extraOs)}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePress}
+                    className={`
+                      rounded-full font-black text-white
+                      transition-all duration-500 transform
+                      ${colorStyles[activeStep.color as keyof typeof colorStyles].bg}
+                      ${colorStyles[activeStep.color as keyof typeof colorStyles].glow}
+                      hover:scale-110 active:scale-95 cursor-pointer
+                      border-4 border-b-8 border-white/30
+                      active:border-b-4
+                    `}
+                    style={{
+                      width: activeStep.size,
+                      height: activeStep.size,
+                      fontSize: activeStep.size * 0.4,
+                    }}
+                  >
+                    {activeStep.number}
+                  </button>
+                )}
+              </div>
+
+              {/* Current step info - scales with button size */}
+              <div
+                className="mt-6 text-center transition-transform duration-500 origin-top"
+                style={{ transform: `scale(${0.8 + (activeStep.size / 280) * 0.6})` }}
+              >
+                <h3 className={`text-xl font-black ${colorStyles[activeStep.color as keyof typeof colorStyles].text}`}>
+                  {activeStep.title}
+                </h3>
+                <p className="text-[hsl(220_15%_45%)] mt-1 max-w-md">
+                  {activeStep.description}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Progress: completed steps as small indicators (only first 3) */}
+        <div className="flex justify-center gap-3 mb-8">
+          {setupSteps.slice(0, 3).map((step, index) => {
+            const isDone = index < currentStep;
+            const styles = colorStyles[step.color as keyof typeof colorStyles];
+
+            return (
+              <div
+                key={step.id}
+                className={`
+                  w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
+                  transition-all duration-300
+                  ${isDone
+                    ? `${styles.bg} text-white`
+                    : 'bg-gray-200 text-gray-400'
+                  }
+                `}
+              >
+                {isDone ? '✓' : step.number}
+              </div>
+            );
+          })}
+        </div>
+
+      </div>
+    </section>
+  );
+}
 
 export default function Landing() {
   return (
@@ -363,73 +480,8 @@ export default function Landing() {
       {/* Bold Differentiator Section */}
       <DifferentiatorSection />
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
-              Up and Running in just a few minutes
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {steps.map((step, index) => (
-              <div key={step.number} className="text-center">
-                <div className="relative inline-block mb-6">
-                  <div className="w-20 h-20 rounded-2xl robot-display flex items-center justify-center mx-auto">
-                    <span className="text-3xl font-black text-cyan-400 digital-text">
-                      {step.number}
-                    </span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className="hidden md:block absolute top-1/2 left-full w-full h-0.5 bg-[hsl(220_15%_85%)]" />
-                  )}
-                </div>
-                <h3 className="text-xl font-black text-[hsl(220_30%_20%)] mb-2">
-                  {step.title}
-                </h3>
-                <p className="text-[hsl(220_15%_45%)]">
-                  {step.description}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Chat example */}
-          <div className="mt-16 max-w-2xl mx-auto">
-            <div className="robot-panel rounded-2xl overflow-hidden">
-              <div className="bg-[hsl(220_15%_88%)] px-4 py-2 flex items-center gap-2 border-b-2 border-[hsl(220_15%_80%)]">
-                <div className="led-light led-green" />
-                <span className="text-xs font-medium text-[hsl(220_15%_50%)]">AI Chat</span>
-              </div>
-              <div className="bg-white p-4 space-y-4">
-                <div className="flex justify-end">
-                  <div className="bg-primary/10 text-[hsl(220_20%_30%)] px-4 py-2 rounded-2xl rounded-br-sm max-w-[80%] text-sm">
-                    Find senior engineers in San Francisco
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="bg-[hsl(220_15%_95%)] text-[hsl(220_20%_30%)] px-4 py-2 rounded-2xl rounded-bl-sm max-w-[80%] text-sm">
-                    <CheckCircle className="h-4 w-4 inline mr-2 text-green-500" />
-                    Found 24 candidates in Greenhouse matching your criteria.
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <div className="bg-primary/10 text-[hsl(220_20%_30%)] px-4 py-2 rounded-2xl rounded-br-sm max-w-[80%] text-sm">
-                    Send them a personalized intro email
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="bg-[hsl(220_15%_95%)] text-[hsl(220_20%_30%)] px-4 py-2 rounded-2xl rounded-bl-sm max-w-[80%] text-sm">
-                    <CheckCircle className="h-4 w-4 inline mr-2 text-green-500" />
-                    Drafted personalized emails for 24 candidates. Ready to review!
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* How It Works - Interactive Boot Sequence */}
+      <HowItWorksSection />
 
       {/* CTA Section */}
       <section className="py-20 px-6 bg-gradient-to-br from-primary to-amber-500">
