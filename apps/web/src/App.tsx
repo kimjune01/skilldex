@@ -23,7 +23,7 @@
  * @see docs/ADMIN_GUIDE.md for admin documentation
  */
 import { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { ToastProvider, useToast } from './components/ui/toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -101,6 +101,17 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
+
 // Component to display auth errors as toast notifications
 function AuthErrorDisplay() {
   const { authError, clearAuthError } = useAuth();
@@ -157,6 +168,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
+        <ScrollToTop />
         <AuthErrorDisplay />
         <Routes>
           {/* Home - Landing page or redirect based on auth/onboarding */}
