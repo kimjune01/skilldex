@@ -9,8 +9,8 @@ Run all steps in sequence:
 export TURSO_DATABASE_URL=$(turso db show skillomatic --url)
 export TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic)
 
-# 2. Run migrations
-pnpm --filter @skillomatic/db migrate:prod
+# 2. Run database migrations
+pnpm --filter @skillomatic/db migrate
 
 # 3. Deploy infrastructure
 pnpm sst deploy --stage production
@@ -33,6 +33,24 @@ curl -s -X POST "$(cat .sst/outputs.json | jq -r .api)/api/auth/login" \
 - Is idempotent - safe to run multiple times
 
 Without running seed, users may exist in the database but have incorrect password hashes, causing "Invalid email or password" errors on login.
+
+## Database Schema Management
+
+**Use migrations, not push, for production:**
+
+```bash
+# Generate a new migration after schema changes
+pnpm --filter @skillomatic/db generate
+
+# Apply migrations to production
+pnpm --filter @skillomatic/db migrate
+```
+
+- `generate` - Creates SQL migration files from schema.ts changes (review before applying)
+- `migrate` - Applies pending migrations to the database (safe, tracks what's applied)
+- `push` - Direct schema sync (dev only, can lose data, doesn't track changes)
+
+Migration files are in `packages/db/drizzle/` and should be committed to git.
 
 ## Detailed Steps
 
@@ -62,11 +80,13 @@ turso db shell skillomatic "SELECT slug, name, is_enabled FROM skills ORDER BY s
 
 **All users share password:** `Skillomatic2024!`
 
-### Step 3: Run migrations
+### Step 3: Run database migrations
 
 ```bash
-pnpm --filter @skillomatic/db migrate:prod
+pnpm --filter @skillomatic/db migrate
 ```
+
+This applies any pending migrations from `packages/db/drizzle/`.
 
 ### Step 4: Deploy infrastructure
 
@@ -116,3 +136,8 @@ curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" "$API_URL/api/v1/me"
 
 **Skills not showing:**
 - Run seed:prod to sync skills from `skills/` directory
+
+**Schema out of sync:**
+1. Generate migration: `pnpm --filter @skillomatic/db generate`
+2. Review the generated SQL in `packages/db/drizzle/`
+3. Apply: `pnpm --filter @skillomatic/db migrate`

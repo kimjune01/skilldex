@@ -12,8 +12,8 @@
   },
   "scripts": {
     "push": "drizzle-kit push",
-    "push:prod": "drizzle-kit push",
     "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
     "seed": "tsx seed/index.ts",
     "seed:prod": "tsx src/seed-prod.ts",

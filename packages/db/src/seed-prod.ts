@@ -146,8 +146,8 @@ async function seed() {
   // 1. Upsert default organization
   console.log('\n1. Ensuring default organization exists...');
   await client.execute({
-    sql: `INSERT INTO organizations (id, name, slug, web_ui_enabled, desktop_enabled)
-          VALUES (?, ?, ?, 1, 1)
+    sql: `INSERT INTO organizations (id, name, slug, web_ui_enabled, desktop_enabled, created_at, updated_at)
+          VALUES (?, ?, ?, 1, 1, unixepoch(), unixepoch())
           ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             updated_at = unixepoch()`,
@@ -165,8 +165,8 @@ async function seed() {
 
   for (const role of roles) {
     await client.execute({
-      sql: `INSERT INTO roles (id, name, description)
-            VALUES (?, ?, ?)
+      sql: `INSERT INTO roles (id, name, description, created_at)
+            VALUES (?, ?, ?, unixepoch())
             ON CONFLICT(id) DO UPDATE SET
               name = excluded.name,
               description = excluded.description`,
@@ -208,8 +208,8 @@ async function seed() {
 
   for (const user of users) {
     await client.execute({
-      sql: `INSERT INTO users (id, email, password_hash, name, is_admin, is_super_admin, organization_id, onboarding_step)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 4)
+      sql: `INSERT INTO users (id, email, password_hash, name, is_admin, is_super_admin, organization_id, onboarding_step, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 4, unixepoch(), unixepoch())
             ON CONFLICT(id) DO UPDATE SET
               email = excluded.email,
               password_hash = excluded.password_hash,
@@ -223,8 +223,8 @@ async function seed() {
 
     // Assign role to user
     await client.execute({
-      sql: `INSERT INTO user_roles (user_id, role_id)
-            VALUES (?, ?)
+      sql: `INSERT INTO user_roles (user_id, role_id, assigned_at)
+            VALUES (?, ?, unixepoch())
             ON CONFLICT(user_id, role_id) DO NOTHING`,
       args: [user.id, user.roleId],
     });
@@ -245,8 +245,8 @@ async function seed() {
     const capabilities = frontmatter.capabilities?.length ? JSON.stringify(frontmatter.capabilities) : null;
 
     await client.execute({
-      sql: `INSERT INTO skills (id, slug, name, description, category, is_global, is_enabled, intent, capabilities, instructions, required_integrations)
-            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+      sql: `INSERT INTO skills (id, slug, name, description, category, is_global, is_enabled, intent, capabilities, instructions, required_integrations, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
             ON CONFLICT(id) DO UPDATE SET
               name = excluded.name,
               description = excluded.description,
@@ -275,8 +275,8 @@ async function seed() {
   // 5. Upsert API key for super admin
   console.log('\n5. Ensuring super admin API key exists...');
   await client.execute({
-    sql: `INSERT INTO api_keys (id, user_id, organization_id, key, name)
-          VALUES (?, ?, ?, ?, ?)
+    sql: `INSERT INTO api_keys (id, user_id, organization_id, key, name, created_at)
+          VALUES (?, ?, ?, ?, ?, unixepoch())
           ON CONFLICT(id) DO UPDATE SET
             key = excluded.key,
             revoked_at = NULL`,
