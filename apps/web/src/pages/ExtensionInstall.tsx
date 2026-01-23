@@ -171,9 +171,9 @@ export default function ExtensionInstall() {
                   <p className="font-bold text-green-700">Extension step completed!</p>
                   <p className="text-sm text-green-600">You can continue with the next onboarding step.</p>
                 </div>
-                <Link to="/overview">
+                <Link to="/home">
                   <Button variant="outline" className="gap-2">
-                    Back to Overview
+                    Back to Home
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>

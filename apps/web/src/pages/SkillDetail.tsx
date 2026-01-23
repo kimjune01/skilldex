@@ -25,7 +25,6 @@ import {
   AlertCircle,
   RefreshCw,
   Folder,
-  Terminal,
   Sparkles,
   Shield,
   Plug,
@@ -557,59 +556,6 @@ export default function SkillDetail() {
         </CardContent>
       </Card>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Terminal className="h-5 w-5" />
-            Installation
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ol className="space-y-4">
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                1
-              </span>
-              <div>
-                <p className="text-sm">Download the skill file above</p>
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                2
-              </span>
-              <div>
-                <p className="text-sm">Move it to your Claude commands directory:</p>
-                <pre className="mt-2 bg-muted p-3 rounded text-sm overflow-x-auto font-mono">
-                  mv ~/Downloads/{skill.slug}.md ~/.claude/commands/
-                </pre>
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                3
-              </span>
-              <div>
-                <p className="text-sm">Set your API key (if not already set):</p>
-                <pre className="mt-2 bg-muted p-3 rounded text-sm overflow-x-auto font-mono">
-                  export SKILLOMATIC_API_KEY="your-api-key-here"
-                </pre>
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                4
-              </span>
-              <div>
-                <p className="text-sm">
-                  Use the skill in Claude Desktop or Claude Code by typing{' '}
-                  <code className="bg-muted px-1.5 py-0.5 rounded font-mono">/{skill.slug}</code>
-                </p>
-              </div>
-            </li>
-          </ol>
-        </CardContent>
-      </Card>
     </div>
   );
 }

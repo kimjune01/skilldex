@@ -68,7 +68,7 @@ export default function Login() {
       setIsLoading(true);
       loginWithToken(token)
         .then((user) => {
-          const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/overview';
+          const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home';
           navigate(redirectTo);
         })
         .catch((err) => {
@@ -88,7 +88,7 @@ export default function Login() {
     try {
       const user = await login(email, password);
       // Redirect based on onboarding status
-      const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/overview';
+      const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home';
       navigate(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

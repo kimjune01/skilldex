@@ -55,6 +55,7 @@ import Terms from './pages/Terms';
 import ForIT from './pages/ForIT';
 import ForRecruiters from './pages/ForRecruiters';
 import Pricing from './pages/Pricing';
+import NotFound from './pages/NotFound';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAuth();
@@ -155,7 +156,7 @@ export default function App() {
 
         {/* Authenticated routes with Layout */}
         <Route element={<AuthenticatedRoutes />}>
-          <Route path="overview" element={<Dashboard />} />
+          <Route path="home" element={<Dashboard />} />
           <Route path="chat" element={<Chat />} />
           <Route path="skills" element={<Skills />} />
           <Route path="skills/:slug" element={<SkillDetail />} />
@@ -251,6 +252,9 @@ export default function App() {
         <Route path="/for-it" element={<ForIT />} />
         <Route path="/for-recruiters" element={<ForRecruiters />} />
         <Route path="/pricing" element={<Pricing />} />
+
+        {/* 404 catch-all */}
+        <Route path="*" element={<NotFound />} />
         </Routes>
       </ToastProvider>
     </ErrorBoundary>
