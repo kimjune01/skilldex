@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { apiKeyAuth } from '../../middleware/apiKey.js';
+import { combinedAuth } from '../../middleware/combinedAuth.js';
 import { db } from '@skillomatic/db';
 import { skillUsageLogs, skills, integrations } from '@skillomatic/db/schema';
 import { eq, and, or } from 'drizzle-orm';
@@ -37,8 +37,8 @@ const telemetry = {
 
 export const v1AtsRoutes = new Hono();
 
-// All routes require API key auth
-v1AtsRoutes.use('*', apiKeyAuth);
+// All routes require auth (JWT or API key)
+v1AtsRoutes.use('*', combinedAuth);
 
 const MOCK_ATS_URL = process.env.MOCK_ATS_URL || 'http://localhost:3001';
 const USE_ZOHO = process.env.USE_ZOHO_ATS === 'true';
@@ -135,7 +135,7 @@ function classifyAtsError(error: unknown): ErrorCode {
 // Helper to log skill usage (uses error codes instead of raw messages for ephemerality)
 async function logUsage(
   userId: string,
-  apiKeyId: string,
+  apiKeyId: string | undefined,
   skillSlug: string,
   status: 'success' | 'error' | 'partial',
   durationMs?: number,
@@ -148,7 +148,7 @@ async function logUsage(
         id: randomUUID(),
         skillId: skill[0].id,
         userId,
-        apiKeyId,
+        apiKeyId: apiKeyId ?? null,
         status,
         durationMs,
         errorMessage: errorCode, // Store error code (no PII)
@@ -170,7 +170,7 @@ async function proxyToMockAts(path: string, options?: RequestInit) {
 v1AtsRoutes.get('/candidates', async (c) => {
   const query = c.req.query();
   const params = new URLSearchParams(query);
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
   const startTime = Date.now();
 
   // Demo mode returns mock data
@@ -233,7 +233,7 @@ v1AtsRoutes.get('/candidates', async (c) => {
 // GET /v1/ats/candidates/:id - Get candidate by ID
 v1AtsRoutes.get('/candidates/:id', async (c) => {
   const id = c.req.param('id');
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
   const startTime = Date.now();
 
   // Demo mode returns mock data
@@ -278,7 +278,7 @@ v1AtsRoutes.get('/candidates/:id', async (c) => {
 // POST /v1/ats/candidates - Create candidate
 v1AtsRoutes.post('/candidates', async (c) => {
   const body = await c.req.json();
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
   const startTime = Date.now();
 
   // Demo mode simulates creation
@@ -331,7 +331,7 @@ v1AtsRoutes.post('/candidates', async (c) => {
 v1AtsRoutes.put('/candidates/:id', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
   const startTime = Date.now();
 
   // Demo mode simulates update
@@ -381,7 +381,7 @@ v1AtsRoutes.put('/candidates/:id', async (c) => {
 // GET /v1/ats/jobs - List jobs
 v1AtsRoutes.get('/jobs', async (c) => {
   const query = c.req.query();
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
 
   // Demo mode returns mock data
   if (isDemoMode(c.req.raw)) {
@@ -415,7 +415,7 @@ v1AtsRoutes.get('/jobs', async (c) => {
 // GET /v1/ats/jobs/:id - Get job by ID
 v1AtsRoutes.get('/jobs/:id', async (c) => {
   const id = c.req.param('id');
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
 
   // Demo mode returns mock data
   if (isDemoMode(c.req.raw)) {
@@ -455,7 +455,7 @@ v1AtsRoutes.get('/jobs/:id', async (c) => {
 v1AtsRoutes.get('/applications', async (c) => {
   const query = c.req.query();
   const params = new URLSearchParams(query);
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
 
   // Demo mode returns mock data
   if (isDemoMode(c.req.raw)) {
@@ -505,7 +505,7 @@ v1AtsRoutes.get('/applications', async (c) => {
 v1AtsRoutes.post('/applications/:id/stage', async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json();
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
 
   // Demo mode simulates stage change
   if (isDemoMode(c.req.raw)) {
@@ -649,7 +649,7 @@ interface ProxyRequestBody {
 
 // POST /v1/ats/proxy - Proxy requests to ATS provider
 v1AtsRoutes.post('/proxy', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user');
   const startTime = Date.now();
 
   let requestBody: ProxyRequestBody;

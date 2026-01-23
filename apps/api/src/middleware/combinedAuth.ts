@@ -2,7 +2,8 @@ import { createMiddleware } from 'hono/factory';
 import { db } from '@skillomatic/db';
 import { apiKeys, users } from '@skillomatic/db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
-import { verifyToken, type JWTPayload } from '../lib/jwt.js';
+import { verifyToken } from '../lib/jwt.js';
+import type { AuthPayload } from './auth.js';
 
 /**
  * Combined authentication middleware that accepts both JWT tokens and API keys.
@@ -50,15 +51,17 @@ export const combinedAuth = createMiddleware(async (c, next) => {
       .execute()
       .catch(console.error);
 
-    // Set user in same format as JWT
+    // Set user with apiKeyId for logging
     c.set('user', {
       sub: user.id,
+      id: user.id,
       email: user.email,
       name: user.name,
       isAdmin: user.isAdmin,
       isSuperAdmin: user.isSuperAdmin ?? false,
       organizationId: user.organizationId ?? null,
-    } as JWTPayload);
+      apiKeyId: apiKey.id,
+    } as AuthPayload);
 
     await next();
     return;
@@ -71,6 +74,6 @@ export const combinedAuth = createMiddleware(async (c, next) => {
     return c.json({ error: { message: 'Invalid or expired token' } }, 401);
   }
 
-  c.set('user', payload);
+  c.set('user', payload as AuthPayload);
   await next();
 });

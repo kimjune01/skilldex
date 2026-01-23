@@ -1,10 +1,15 @@
 import { createMiddleware } from 'hono/factory';
 import { verifyToken, type JWTPayload } from '../lib/jwt.js';
 
+// Extended payload that includes optional apiKeyId for logging (from combinedAuth)
+export interface AuthPayload extends JWTPayload {
+  apiKeyId?: string;
+}
+
 // Extend Hono's context to include user
 declare module 'hono' {
   interface ContextVariableMap {
-    user: JWTPayload;
+    user: AuthPayload;
   }
 }
 
