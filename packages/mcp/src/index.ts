@@ -2,8 +2,8 @@
 /**
  * Skillomatic MCP Server
  *
- * Exposes Skillomatic skills as MCP resources and provides action tools
- * for ATS operations, web scraping, and more.
+ * Provides recruiting workflow tools for ATS operations, web scraping, and more.
+ * Skills are discovered via get_skill_catalog and fetched via get_skill tools.
  *
  * Required environment variables:
  * - SKILLOMATIC_API_KEY: Your Skillomatic API key (sk_live_...)
@@ -17,7 +17,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createRequire } from 'module';
 import { SkillomaticClient } from './api-client.js';
-import { registerResources } from './resources.js';
 import { registerTools } from './tools/index.js';
 import { log } from './logger.js';
 
@@ -106,15 +105,10 @@ async function main(): Promise<void> {
     },
     {
       capabilities: {
-        resources: {},
         tools: {},
       },
     }
   );
-
-  // Register resources (skills as prompts)
-  registerResources(server, client);
-  log.info('Resources registered');
 
   // Register tools (based on user capabilities)
   await registerTools(server, client, capabilities);

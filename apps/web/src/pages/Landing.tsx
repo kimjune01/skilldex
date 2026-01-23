@@ -4,9 +4,227 @@
  * Public landing page for Skillomatic with robot vending machine theme.
  * Shows features, pricing, and call-to-action for login/signup.
  */
+import { useState } from 'react';
 import { Zap, Plug, MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Monitor, Database, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
+
+const vendingItems = [
+  {
+    id: 'data',
+    code: 'A1',
+    label: 'LIVE DATA',
+    description: 'Connected to your ATS, LinkedIn, and email in real-time. No stale training data.',
+    icon: Database,
+    color: 'cyan',
+    rotation: -0.75,
+    flipAxis: 'Y', // left-right
+  },
+  {
+    id: 'precision',
+    code: 'A2',
+    label: 'PRECISION',
+    description: 'Every action executed exactly as requested. No retries. No corrections needed.',
+    icon: Target,
+    color: 'green',
+    rotation: 0.5,
+    flipAxis: 'X', // up-down
+  },
+  {
+    id: 'truth',
+    code: 'B1',
+    label: 'GROUNDED',
+    description: 'Every fact verified against your real systems. Zero hallucinations.',
+    icon: CheckCircle,
+    color: 'amber',
+    rotation: 0.5,
+    flipAxis: '-Y', // right-left
+  },
+  {
+    id: 'control',
+    code: 'B2',
+    label: 'CONTROL',
+    description: 'AI suggests, you decide. Review and approve every action before it happens.',
+    icon: Shield,
+    color: 'purple',
+    rotation: -0.5,
+    flipAxis: '-X', // down-up
+  },
+];
+
+function DifferentiatorSection() {
+  const [flipped, setFlipped] = useState<string | null>(null);
+  const [discovered, setDiscovered] = useState<Set<string>>(new Set());
+
+  const handleFlip = (code: string) => {
+    if (flipped === code) {
+      setFlipped(null);
+    } else {
+      setFlipped(code);
+      setDiscovered(prev => new Set(prev).add(code));
+    }
+  };
+
+  const allDiscovered = discovered.size === 4;
+
+  return (
+    <section className="py-24 px-6 bg-[hsl(220_25%_12%)]">
+      <div className="max-w-5xl mx-auto">
+        {/* Vending Machine */}
+        <div className="robot-panel rounded-3xl p-8 md:p-12 max-w-3xl mx-auto relative">
+          {/* Corner screws */}
+          <div className="absolute top-5 left-5 screw" />
+          <div className="absolute top-5 right-5 screw" />
+          <div className="absolute bottom-5 left-5 screw" />
+          <div className="absolute bottom-5 right-5 screw" />
+
+          {/* Top display with title */}
+          <div className="robot-display rounded-2xl p-8 mb-8 relative overflow-hidden">
+            {/* Scan line effect */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse pointer-events-none" />
+
+            <div className="flex items-center justify-center gap-3 mb-5">
+              <div className="led-light led-green" />
+              <div className="led-light led-orange" />
+              <div className="led-light led-cyan" />
+            </div>
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-center digital-text tracking-tight">
+              <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">Overdelivered,</span>
+              <br />
+              <span className="bg-gradient-to-r from-cyan-400 to-primary bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]">
+                Underpriced
+              </span>
+            </h2>
+          </div>
+
+          {/* Product slots - 2x2 grid with flip cards */}
+          <div className="grid grid-cols-2 gap-5">
+            {vendingItems.map((item) => {
+              const Icon = item.icon;
+              const isFlipped = flipped === item.code;
+              const colorStyles = {
+                cyan: {
+                  glow: 'shadow-[0_0_30px_rgba(34,211,238,0.3),inset_0_1px_0_rgba(34,211,238,0.2)]',
+                  border: 'border-cyan-400/60',
+                  accent: 'text-cyan-400',
+                  iconBg: 'bg-cyan-400/20',
+                },
+                green: {
+                  glow: 'shadow-[0_0_30px_rgba(34,197,94,0.3),inset_0_1px_0_rgba(34,197,94,0.2)]',
+                  border: 'border-green-400/60',
+                  accent: 'text-green-400',
+                  iconBg: 'bg-green-400/20',
+                },
+                amber: {
+                  glow: 'shadow-[0_0_30px_rgba(251,191,36,0.3),inset_0_1px_0_rgba(251,191,36,0.2)]',
+                  border: 'border-amber-400/60',
+                  accent: 'text-amber-400',
+                  iconBg: 'bg-amber-400/20',
+                },
+                purple: {
+                  glow: 'shadow-[0_0_30px_rgba(168,85,247,0.3),inset_0_1px_0_rgba(168,85,247,0.2)]',
+                  border: 'border-purple-400/60',
+                  accent: 'text-purple-400',
+                  iconBg: 'bg-purple-400/20',
+                },
+              }[item.color];
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleFlip(item.code)}
+                  className="cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+                  style={{
+                    perspective: '1000px',
+                    transform: `rotate(${item.rotation}deg)`,
+                  }}
+                >
+                  <div
+                    className="relative h-56 transition-transform duration-500"
+                    style={{
+                      transformStyle: 'preserve-3d',
+                      transform: isFlipped
+                        ? `rotate${item.flipAxis.replace('-', '')}(${item.flipAxis.startsWith('-') ? '-' : ''}180deg)`
+                        : 'rotate(0deg)',
+                    }}
+                  >
+                    {/* Front - Card back pattern */}
+                    <div
+                      className="absolute inset-0 rounded-xl border-[3px] border-white/20 bg-gradient-to-br from-[hsl(220_30%_25%)] via-[hsl(220_25%_18%)] to-[hsl(220_30%_12%)] p-4 flex flex-col items-center justify-center hover:border-white/40 transition-all duration-200 shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden"
+                      style={{ backfaceVisibility: 'hidden' }}
+                    >
+                      {/* Card back pattern */}
+                      <div className="absolute inset-3 rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent" />
+                      <div className="absolute inset-0 opacity-30" style={{
+                        backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.03) 8px, rgba(255,255,255,0.03) 16px)`
+                      }} />
+
+                      {/* Center icon */}
+                      <div className={`relative h-20 w-20 rounded-2xl ${colorStyles.iconBg} flex items-center justify-center shadow-lg border border-white/10`}>
+                        <Icon className={`h-10 w-10 ${colorStyles.accent}`} />
+                      </div>
+
+                      {/* Corner codes */}
+                      <div className={`absolute top-3 left-3 text-xs font-bold ${colorStyles.accent}`}>
+                        {item.code}
+                      </div>
+                      <div className={`absolute bottom-3 right-3 text-xs font-bold ${colorStyles.accent} rotate-180`}>
+                        {item.code}
+                      </div>
+                    </div>
+
+                    {/* Back - Card face with content */}
+                    <div
+                      className={`absolute inset-0 rounded-xl border-[3px] ${colorStyles.border} bg-gradient-to-br from-[hsl(220_25%_22%)] via-[hsl(220_20%_16%)] to-[hsl(220_25%_12%)] ${colorStyles.glow} p-5 flex flex-col shadow-[0_8px_24px_rgba(0,0,0,0.4)]`}
+                      style={{
+                        backfaceVisibility: 'hidden',
+                        transform: `rotate${item.flipAxis.replace('-', '')}(180deg)`,
+                      }}
+                    >
+                      {/* Corner codes */}
+                      <div className={`absolute top-3 left-3 text-xs font-bold ${colorStyles.accent}`}>
+                        {item.code}
+                      </div>
+                      <div className={`absolute bottom-3 right-3 text-xs font-bold ${colorStyles.accent} rotate-180`}>
+                        {item.code}
+                      </div>
+
+                      {/* Content centered */}
+                      <div className="flex-1 flex flex-col justify-center">
+                        <div className={`font-black text-xl ${colorStyles.accent} mb-3 text-center`}>
+                          {item.label}
+                        </div>
+                        <div className="text-sm text-white/70 leading-relaxed text-center">
+                          {item.description}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Dispenser slot with tagline */}
+          <div className="dispense-slot rounded-xl p-4 mt-6 text-center min-h-[52px]">
+            {allDiscovered ? (
+              <p className="text-white/50 text-sm font-mono animate-fade-in">
+                Other AI locks you in. We connect to{' '}
+                <span className="text-cyan-400">everything</span> and work with{' '}
+                <span className="text-primary">any AI</span>.
+              </p>
+            ) : (
+              <p className="text-white/30 text-xs font-mono">
+                {4 - discovered.size} more to discover
+              </p>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
+}
 
 const features = [
   {
@@ -149,104 +367,7 @@ export default function Landing() {
       </section>
 
       {/* Bold Differentiator Section */}
-      <section className="py-24 px-6 bg-[hsl(220_25%_12%)]">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-6">
-              AI That{' '}
-              <span className="bg-gradient-to-r from-cyan-400 to-primary bg-clip-text text-transparent">
-                Actually Works
-              </span>
-            </h2>
-            <p className="text-xl text-white/70 max-w-3xl mx-auto">
-              Not demos. Not promises. Real recruiting workflows that execute flawlessly—powered by the next generation of AI models.
-            </p>
-          </div>
-
-          {/* Four Promise Cards */}
-          <div className="grid md:grid-cols-2 gap-6 mb-16">
-            {/* Promise 1: Real Data */}
-            <div className="robot-display rounded-2xl p-8 stagger-fade-in">
-              <div className="flex items-start gap-4">
-                <div className="h-14 w-14 rounded-xl bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
-                  <Database className="h-7 w-7 text-cyan-400" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-white mb-3">
-                    Your Data. Live.
-                  </h3>
-                  <p className="text-white/70 text-lg">
-                    Connected to your ATS, LinkedIn, and email in real-time. Every action pulls from your actual systems—not stale training data from years ago.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Promise 2: Precision */}
-            <div className="robot-display rounded-2xl p-8 stagger-fade-in" style={{ animationDelay: '100ms' }}>
-              <div className="flex items-start gap-4">
-                <div className="h-14 w-14 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                  <Target className="h-7 w-7 text-green-400" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-white mb-3">
-                    Precision You Can Trust
-                  </h3>
-                  <p className="text-white/70 text-lg">
-                    Every search, every sync, every email—executed exactly as requested. No "let me try again." No corrections needed.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Promise 3: No Hallucinations */}
-            <div className="robot-display rounded-2xl p-8 stagger-fade-in" style={{ animationDelay: '200ms' }}>
-              <div className="flex items-start gap-4">
-                <div className="h-14 w-14 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="h-7 w-7 text-amber-400" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-white mb-3">
-                    Zero Hallucinations
-                  </h3>
-                  <p className="text-white/70 text-lg">
-                    AI that makes things up? Not here. Every candidate, every company, every fact is grounded in real data from your connected systems.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Promise 4: Human in Control */}
-            <div className="robot-display rounded-2xl p-8 stagger-fade-in" style={{ animationDelay: '300ms' }}>
-              <div className="flex items-start gap-4">
-                <div className="h-14 w-14 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                  <Shield className="h-7 w-7 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-white mb-3">
-                    You Stay in Control
-                  </h3>
-                  <p className="text-white/70 text-lg">
-                    AI suggests, you decide. Review every action before it happens. Approve emails before they send. Your judgment, amplified.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Contrast Statement */}
-          <div className="text-center">
-            <p className="text-xl text-white/80 max-w-3xl mx-auto mb-6">
-              Other AI tools lock you into their platform for one workflow.
-            </p>
-            <p className="text-2xl font-black text-white max-w-3xl mx-auto">
-              Skillomatic connects to{' '}
-              <span className="text-cyan-400">everything</span>, works with{' '}
-              <span className="text-primary">any AI</span>, and grows with you.
-            </p>
-          </div>
-        </div>
-      </section>
+      <DifferentiatorSection />
 
       {/* How It Works */}
       <section id="how-it-works" className="py-20 px-6">
