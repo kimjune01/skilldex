@@ -208,7 +208,7 @@ function DifferentiatorSection() {
           {/* Dispenser slot with tagline */}
           <div className="dispense-slot rounded-xl p-4 mt-6 text-center min-h-[52px]">
             {allDiscovered ? (
-              <p className="text-white/50 text-sm font-mono animate-fade-in">
+              <p className="text-white/50 text-sm font-mono animate-reveal-ltr">
                 Other AI locks you in. We connect to{' '}
                 <span className="text-cyan-400">everything</span> and work with{' '}
                 <span className="text-primary">any AI</span>.
