@@ -5,13 +5,13 @@
  * Built with React Router for navigation, Tailwind for styling.
  *
  * Route structure:
- * - / - Landing page (unauthenticated), redirects to /chat or /overview based on onboarding
+ * - / - Landing page (unauthenticated), redirects to /chat or /home based on onboarding
  * - /login - Login page
- * - /overview - Dashboard with setup progress (requires auth)
+ * - /home - Dashboard with setup progress (requires auth)
  * - /chat - AI chat for skill suggestions (requires auth)
  * - /skills - Browse and download skills (requires auth)
  * - /skills/:slug - Skill detail page (requires auth)
- * - /keys - Manage API keys (requires auth)
+ * - /desktop-chat - Desktop chat app setup (requires auth)
  * - /integrations - OAuth connections (requires auth)
  * - /usage - Usage history (requires auth)
  * - /admin/* - Admin-only routes (requires admin role)
@@ -120,7 +120,7 @@ function HomePage() {
 
   if (isAuthenticated) {
     // Redirect based on onboarding status
-    return <Navigate to={isOnboarded ? '/chat' : '/overview'} replace />;
+    return <Navigate to={isOnboarded ? '/chat' : '/home'} replace />;
   }
 
   return <Landing />;
@@ -160,7 +160,7 @@ export default function App() {
           <Route path="skills" element={<Skills />} />
           <Route path="skills/:slug" element={<SkillDetail />} />
           <Route path="skills/:slug/raw" element={<SkillRaw />} />
-          <Route path="keys" element={<ApiKeys />} />
+          <Route path="desktop-chat" element={<ApiKeys />} />
           <Route path="integrations" element={<Integrations />} />
           <Route path="extension/install" element={<ExtensionInstall />} />
           <Route path="usage" element={<Usage />} />

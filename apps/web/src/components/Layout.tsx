@@ -15,16 +15,15 @@ import { useAuth } from '../hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { apiKeys } from '../lib/api';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2 } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2 } from 'lucide-react';
 
 // Main navigation - visible to all authenticated users
 const navigation = [
   { name: 'Overview', href: '/overview', icon: Home },
   { name: 'Chat', href: '/chat', icon: MessageSquare },
   { name: 'Skills', href: '/skills', icon: Zap },
-  { name: 'Desktop Chat', href: '/keys', icon: Key },
+  { name: 'Desktop Chat', href: '/desktop-chat', icon: Key },
   { name: 'Connections', href: '/integrations', icon: Plug },
-  { name: 'Activity', href: '/usage', icon: BarChart3 },
 ];
 
 // Admin navigation - visible only to users with isAdmin=true

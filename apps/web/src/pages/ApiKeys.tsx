@@ -108,37 +108,22 @@ export default function ApiKeys() {
       },
     },
     {
-      id: 'cursor',
-      name: 'Cursor',
+      id: 'chatgpt',
+      name: 'ChatGPT Desktop',
       configPath: {
-        mac: '~/.cursor/mcp.json',
-        windows: '%USERPROFILE%\\.cursor\\mcp.json',
+        mac: '~/Library/Application Support/com.openai.chat/mcp.json',
+        windows: '%APPDATA%\\com.openai.chat\\mcp.json',
       },
+      note: 'Requires ChatGPT Plus subscription. Enable Developer Mode in settings first.',
     },
     {
-      id: 'windsurf',
-      name: 'Windsurf',
+      id: 'chatmcp',
+      name: 'ChatMCP (Free)',
       configPath: {
-        mac: '~/.codeium/windsurf/mcp_config.json',
-        windows: '%USERPROFILE%\\.codeium\\windsurf\\mcp_config.json',
+        mac: '~/.chatmcp/mcp_config.json',
+        windows: '%USERPROFILE%\\.chatmcp\\mcp_config.json',
       },
-    },
-    {
-      id: 'vscode',
-      name: 'VS Code (Copilot)',
-      configPath: {
-        mac: '~/Library/Application Support/Code/User/mcp.json',
-        windows: '%APPDATA%\\Code\\User\\mcp.json',
-      },
-    },
-    {
-      id: 'cline',
-      name: 'Cline (VS Code)',
-      configPath: {
-        mac: 'Via Cline extension settings',
-        windows: 'Via Cline extension settings',
-      },
-      note: 'Open Cline sidebar → MCP Servers → Configure → Advanced MCP Settings',
+      note: 'Free, open-source MCP client. Download from chatmcp.com',
     },
   ];
 

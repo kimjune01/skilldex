@@ -1,13 +1,13 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { skills, integrations, apiKeys, organizations, onboarding } from '../lib/api';
+import { skills, integrations, apiKeys, organizations, onboarding, analytics, type UsageStats } from '../lib/api';
 import type { SkillPublic, IntegrationPublic, ApiKeyPublic, OnboardingStatus } from '@skillomatic/shared';
 import type { DeploymentSettings } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Zap, Plug, Key, ArrowRight, AlertCircle, CheckCircle, Bot, Cog, Circle, Terminal, Chrome, PartyPopper } from 'lucide-react';
+import { Zap, Plug, Key, ArrowRight, AlertCircle, CheckCircle, Bot, Cog, Circle, Terminal, Chrome, PartyPopper, CheckCircle2, XCircle, BarChart3 } from 'lucide-react';
 import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import { Confetti } from '@/components/ui/confetti';
 import { SkeletonDashboard } from '@/components/ui/skeleton';
@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
   const prevOnboardingCompleteRef = useRef<boolean | null>(null);
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -34,13 +35,15 @@ export default function Dashboard() {
       apiKeys.list(),
       organizations.getDeployment().catch(() => null), // May fail for non-admins, that's ok
       onboarding.getStatus().catch(() => null),
+      analytics.getUsage(30).catch(() => null), // Get last 30 days activity
     ])
-      .then(([s, i, a, d, o]) => {
+      .then(([s, i, a, d, o, u]) => {
         setSkillList(s);
         setIntegrationList(i);
         setApiKeyList(a);
         setDeploymentSettings(d);
         setOnboardingStatus(o);
+        setUsageStats(u);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
@@ -126,7 +129,7 @@ export default function Dashboard() {
         label: 'Connect desktop chat app',
         done: currentStep >= ONBOARDING_STEPS.API_KEY_GENERATED || apiKeyList.length > 0,
         icon: Key,
-        route: '/keys',
+        route: '/desktop-chat',
         actionLabel: 'Connect',
       });
 
@@ -374,7 +377,7 @@ export default function Dashboard() {
               icon: Key,
               active: apiKeyList.length > 0,
               ledColor: 'led-orange',
-              link: '/keys',
+              link: '/desktop-chat',
               linkText: apiKeyList.length > 0 ? 'View' : 'Create',
             },
           ].map((card, index) => {
@@ -427,6 +430,78 @@ export default function Dashboard() {
           })}
         </div>
       )}
+
+      {/* Recent Activity Section */}
+      <Card className="card-robot rounded-xl overflow-hidden animate-fade-in">
+        <CardHeader className="bg-[hsl(220_15%_92%)] border-b-2 border-[hsl(220_15%_82%)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg robot-button flex items-center justify-center">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="font-black tracking-wide uppercase text-[hsl(220_30%_20%)]">
+                  Recent Activity
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Last 30 days • {usageStats?.summary.totalExecutions || 0} executions
+                </p>
+              </div>
+            </div>
+            {usageStats && usageStats.summary.totalExecutions > 0 && (
+              <Badge variant="outline" className="text-xs font-bold">
+                {usageStats.summary.successRate}% success
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {!usageStats || usageStats.recentLogs?.length === 0 ? (
+            <div className="robot-display rounded-lg p-6 text-center">
+              <p className="text-cyan-400/60 text-sm font-mono">
+                &gt; No activity yet_
+              </p>
+              <p className="text-cyan-400/40 text-xs font-mono mt-1">
+                Use skills from your desktop chat app to see history here
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {usageStats.recentLogs?.slice(0, 8).map((log) => (
+                <div key={log.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-[hsl(220_15%_97%)] border border-[hsl(220_15%_90%)]">
+                  <div className="flex items-center gap-3">
+                    {log.status === 'success' ? (
+                      <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                      </div>
+                    ) : (
+                      <div className="h-6 w-6 rounded-full bg-red-100 flex items-center justify-center">
+                        <XCircle className="h-3.5 w-3.5 text-red-600" />
+                      </div>
+                    )}
+                    <span className="font-semibold text-sm">{log.skillName}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    {log.durationMs && (
+                      <span className="font-mono">{log.durationMs}ms</span>
+                    )}
+                    <span>{new Date(log.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+              {usageStats.recentLogs && usageStats.recentLogs.length > 8 && (
+                <Link
+                  to="/usage"
+                  className="flex items-center justify-center gap-2 w-full py-2 mt-2 rounded-lg bg-[hsl(220_15%_88%)] border-2 border-[hsl(220_15%_78%)] text-[hsl(220_20%_35%)] text-xs font-bold tracking-wider uppercase hover:bg-primary hover:border-primary hover:text-white transition-all"
+                >
+                  View all activity
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

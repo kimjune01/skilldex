@@ -106,7 +106,7 @@ export default function Extension() {
                 <h3 className="font-medium">Configure your API key</h3>
                 <p className="text-slate-600">
                   Click the extension icon, enter your Skillomatic API URL and key from the{' '}
-                  <Link to="/keys" className="text-indigo-600 hover:underline">API Keys page</Link>.
+                  <Link to="/desktop-chat" className="text-indigo-600 hover:underline">Desktop Chat page</Link>.
                 </p>
               </div>
             </div>

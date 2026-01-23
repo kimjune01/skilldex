@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 const TEST_EMAIL = 'admin@example.com'
 const TEST_PASSWORD = 'changeme'
 
-test.describe('API Keys', () => {
+test.describe('Desktop Chat', () => {
   test.beforeEach(async ({ page }) => {
     // Login before each test
     await page.goto('/login')
@@ -13,74 +13,60 @@ test.describe('API Keys', () => {
     await expect(page).toHaveURL('/', { timeout: 10000 })
   })
 
-  test('should display API keys page', async ({ page }) => {
-    await page.goto('/keys')
+  test('should display Desktop Chat page with auto-created key', async ({ page }) => {
+    await page.goto('/desktop-chat')
 
     // Wait for loading to finish
     await page.waitForLoadState('networkidle')
 
-    // Should show API keys heading (h1 element)
-    await expect(page.locator('h1:has-text("API Keys")')).toBeVisible({ timeout: 10000 })
+    // Should show Desktop Chat heading (h1 element)
+    await expect(page.locator('h1:has-text("Desktop Chat")')).toBeVisible({ timeout: 10000 })
 
-    // Should show generate button
-    await expect(page.getByRole('button', { name: /generate key/i })).toBeVisible()
+    // Should show MCP Server Setup card (key is auto-created)
+    await expect(page.getByText(/MCP Server Setup/i)).toBeVisible({ timeout: 10000 })
   })
 
-  test('should generate a new API key', async ({ page }) => {
-    await page.goto('/keys')
+  test('should show MCP configuration with API key', async ({ page }) => {
+    await page.goto('/desktop-chat')
 
-    // Fill in key name
-    await page.getByPlaceholder(/key name/i).fill('Test Key')
-
-    // Click generate button
-    await page.getByRole('button', { name: /generate key/i }).click()
-
-    // Should show the new API key (starts with sk_live_)
-    await expect(page.getByText(/sk_live_[a-f0-9]+/).first()).toBeVisible({ timeout: 5000 })
-  })
-
-  test('should show existing API keys after refresh', async ({ page }) => {
-    // Generate a unique key name
-    const keyName = `ExistKey-${Date.now()}`
-
-    await page.goto('/keys')
-    await page.getByPlaceholder(/key name/i).fill(keyName)
-    await page.getByRole('button', { name: /generate key/i }).click()
-
-    // Wait for key to be created
-    await expect(page.getByText(/sk_live_[a-f0-9]+/).first()).toBeVisible({ timeout: 5000 })
-
-    // Refresh page
-    await page.reload()
+    // Wait for setup to complete
     await page.waitForLoadState('networkidle')
+    await expect(page.getByText(/MCP Server Setup/i)).toBeVisible({ timeout: 10000 })
 
-    // Should still show the key by name
-    await expect(page.getByText(keyName)).toBeVisible({ timeout: 5000 })
-  })
-
-  test('should revoke an API key', async ({ page }) => {
-    // First generate a key with unique name
-    const keyName = `RevokeKey-${Date.now()}`
-    await page.goto('/keys')
-    await page.getByPlaceholder(/key name/i).fill(keyName)
-    await page.getByRole('button', { name: /generate key/i }).click()
-
+    // Should show the MCP config with API key (starts with sk_live_)
     await expect(page.getByText(/sk_live_[a-f0-9]+/).first()).toBeVisible({ timeout: 5000 })
 
-    // Dismiss the created key alert
-    await page.getByRole('button', { name: /dismiss/i }).click()
+    // Should show chat app options
+    await expect(page.getByText(/Claude Desktop/i)).toBeVisible()
+    await expect(page.getByText(/ChatGPT Desktop/i)).toBeVisible()
+    await expect(page.getByText(/ChatMCP/i)).toBeVisible()
+  })
 
-    // Verify the key exists in the list - use the more specific key item selector
-    const keyItem = page.locator('div.flex.items-center.justify-between.p-4', { hasText: keyName })
-    await expect(keyItem).toBeVisible({ timeout: 5000 })
+  test('should allow copying MCP configuration', async ({ page }) => {
+    await page.goto('/desktop-chat')
 
-    // Click the revoke button in this specific key's card
-    await keyItem.getByRole('button', { name: /revoke/i }).click()
+    // Wait for setup to complete
+    await expect(page.getByText(/MCP Server Setup/i)).toBeVisible({ timeout: 10000 })
 
-    // Confirm in dialog
-    await page.getByRole('button', { name: /revoke key/i }).click()
+    // Should have copy buttons
+    const copyButtons = page.getByRole('button', { name: /copy/i })
+    await expect(copyButtons.first()).toBeVisible()
+  })
 
-    // Wait for the specific key to disappear
-    await expect(page.getByText(keyName)).not.toBeVisible({ timeout: 5000 })
+  test('should allow regenerating API key', async ({ page }) => {
+    await page.goto('/desktop-chat')
+
+    // Wait for setup to complete
+    await expect(page.getByText(/MCP Server Setup/i)).toBeVisible({ timeout: 10000 })
+
+    // Click regenerate key button
+    await page.getByRole('button', { name: /regenerate key/i }).click()
+
+    // Should show confirmation dialog
+    await expect(page.getByText(/Regenerate API Key/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Regenerate$/i })).toBeVisible()
+
+    // Cancel the dialog
+    await page.getByRole('button', { name: /cancel/i }).click()
   })
 })

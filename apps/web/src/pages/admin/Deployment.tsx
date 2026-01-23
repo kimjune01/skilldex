@@ -457,7 +457,7 @@ export default function AdminDeployment() {
             {deployment && (
               <div className="flex gap-2">
                 <Button className="flex-1" variant="outline" asChild>
-                  <a href="/keys">Setup Instructions</a>
+                  <a href="/desktop-chat">Setup Instructions</a>
                 </Button>
                 {!deployment.desktopEnabled && (
                   <Button
@@ -471,7 +471,7 @@ export default function AdminDeployment() {
             )}
             {!deployment && (
               <Button className="w-full" variant="outline" asChild>
-                <a href="/keys">Setup Instructions</a>
+                <a href="/desktop-chat">Setup Instructions</a>
               </Button>
             )}
           </CardContent>

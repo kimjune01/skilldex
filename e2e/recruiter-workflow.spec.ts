@@ -64,25 +64,18 @@ test.describe('Recruiter Workflow E2E', () => {
     })
   })
 
-  test.describe('API Key Management', () => {
-    test('recruiter can generate and view API key', async ({ page }) => {
+  test.describe('Desktop Chat Setup', () => {
+    test('recruiter can view Desktop Chat setup with auto-created API key', async ({ page }) => {
       await login(page)
 
-      // Navigate to API Keys page
-      await page.getByRole('link', { name: /api keys|keys/i }).click()
-      await expect(page).toHaveURL('/keys')
+      // Navigate to Desktop Chat page
+      await page.getByRole('link', { name: /desktop chat/i }).click()
+      await expect(page).toHaveURL('/desktop-chat')
 
-      // Generate a new key
-      await page.getByRole('button', { name: /generate|create|new/i }).click()
+      // Should show MCP Server Setup card (key is auto-created)
+      await expect(page.getByText(/MCP Server Setup/i)).toBeVisible({ timeout: 10000 })
 
-      // Fill in key name if prompted
-      const nameInput = page.getByLabel(/name/i)
-      if (await nameInput.isVisible().catch(() => false)) {
-        await nameInput.fill('E2E Test Key')
-        await page.getByRole('button', { name: /generate|create|submit/i }).click()
-      }
-
-      // Should show the generated key (sk_live_...)
+      // Should show the API key in the config (sk_live_...)
       await expect(page.getByText(/sk_live_/).first()).toBeVisible({ timeout: 5000 })
     })
   })
