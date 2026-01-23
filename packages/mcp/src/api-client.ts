@@ -75,35 +75,35 @@ export class SkillomaticClient {
    * Get all skills available to the authenticated user.
    */
   async getSkills(): Promise<SkillPublic[]> {
-    return this.request<SkillPublic[]>('/api/skills');
+    return this.request<SkillPublic[]>('/skills');
   }
 
   /**
    * Get a specific skill by slug (metadata only).
    */
   async getSkill(slug: string): Promise<SkillPublic> {
-    return this.request<SkillPublic>(`/api/skills/${slug}`);
+    return this.request<SkillPublic>(`/skills/${slug}`);
   }
 
   /**
    * Get a skill with rendered instructions (credentials injected).
    */
   async getRenderedSkill(slug: string): Promise<RenderedSkill> {
-    return this.request<RenderedSkill>(`/api/skills/${slug}/rendered`);
+    return this.request<RenderedSkill>(`/skills/${slug}/rendered`);
   }
 
   /**
    * Get user's capability profile (which integrations are connected).
    */
   async getCapabilities(): Promise<ConfigResponse> {
-    return this.request<ConfigResponse>('/api/skills/config');
+    return this.request<ConfigResponse>('/skills/config');
   }
 
   /**
    * Verify the API key is valid by fetching user info.
    */
   async verifyAuth(): Promise<{ id: string; email: string; name: string }> {
-    return this.request<{ id: string; email: string; name: string }>('/api/v1/me');
+    return this.request<{ id: string; email: string; name: string }>('/v1/me');
   }
 
   // ============ ATS Operations ============
@@ -125,7 +125,7 @@ export class SkillomaticClient {
 
     const query = searchParams.toString();
     return this.request<{ candidates: Candidate[]; total: number }>(
-      `/api/v1/ats/candidates${query ? `?${query}` : ''}`
+      `/v1/ats/candidates${query ? `?${query}` : ''}`
     );
   }
 
@@ -133,7 +133,7 @@ export class SkillomaticClient {
    * Get a specific candidate by ID.
    */
   async getCandidate(id: string): Promise<Candidate> {
-    return this.request<Candidate>(`/api/v1/ats/candidates/${id}`);
+    return this.request<Candidate>(`/v1/ats/candidates/${id}`);
   }
 
   /**
@@ -149,7 +149,7 @@ export class SkillomaticClient {
     source?: string;
     tags?: string[];
   }): Promise<Candidate> {
-    return this.request<Candidate>('/api/v1/ats/candidates', {
+    return this.request<Candidate>('/v1/ats/candidates', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -167,7 +167,7 @@ export class SkillomaticClient {
     summary?: string;
     tags?: string[];
   }>): Promise<Candidate> {
-    return this.request<Candidate>(`/api/v1/ats/candidates/${id}`, {
+    return this.request<Candidate>(`/v1/ats/candidates/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
@@ -179,7 +179,7 @@ export class SkillomaticClient {
    * Create a scrape task for a URL (e.g., LinkedIn profile).
    */
   async createScrapeTask(url: string): Promise<ScrapeTask> {
-    return this.request<ScrapeTask>('/api/v1/scrape/tasks', {
+    return this.request<ScrapeTask>('/v1/scrape/tasks', {
       method: 'POST',
       body: JSON.stringify({ url }),
     });
@@ -189,7 +189,7 @@ export class SkillomaticClient {
    * Get the status/result of a scrape task.
    */
   async getScrapeTask(id: string): Promise<ScrapeTask> {
-    return this.request<ScrapeTask>(`/api/v1/scrape/tasks/${id}`);
+    return this.request<ScrapeTask>(`/v1/scrape/tasks/${id}`);
   }
 
   /**
@@ -220,7 +220,7 @@ export class SkillomaticClient {
    * Get the user's email profile.
    */
   async getEmailProfile(): Promise<EmailProfile> {
-    return this.request<EmailProfile>('/api/v1/email/profile');
+    return this.request<EmailProfile>('/v1/email/profile');
   }
 
   /**
@@ -234,7 +234,7 @@ export class SkillomaticClient {
     bcc?: string;
     bodyType?: 'text' | 'html';
   }): Promise<EmailDraft> {
-    return this.request<EmailDraft>('/api/v1/email/draft', {
+    return this.request<EmailDraft>('/v1/email/draft', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -251,7 +251,7 @@ export class SkillomaticClient {
     bcc?: string;
     bodyType?: 'text' | 'html';
   }): Promise<SentEmail> {
-    return this.request<SentEmail>('/api/v1/email/send', {
+    return this.request<SentEmail>('/v1/email/send', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -261,7 +261,7 @@ export class SkillomaticClient {
    * Search user's mailbox.
    */
   async searchEmails(query: string, maxResults?: number): Promise<EmailSearchResult> {
-    return this.request<EmailSearchResult>('/api/v1/email/search', {
+    return this.request<EmailSearchResult>('/v1/email/search', {
       method: 'POST',
       body: JSON.stringify({ query, maxResults: maxResults || 10 }),
     });
@@ -272,7 +272,7 @@ export class SkillomaticClient {
    */
   async listDrafts(maxResults?: number): Promise<{ drafts: EmailDraft[] }> {
     const params = maxResults ? `?maxResults=${maxResults}` : '';
-    return this.request<{ drafts: EmailDraft[] }>(`/api/v1/email/drafts${params}`);
+    return this.request<{ drafts: EmailDraft[] }>(`/v1/email/drafts${params}`);
   }
 
   // ============ Database Operations (Super Admin Only) ============
@@ -281,14 +281,14 @@ export class SkillomaticClient {
    * List available database tables.
    */
   async listDatabaseTables(): Promise<{ tables: string[]; redactedColumns: string[] }> {
-    return this.request<{ tables: string[]; redactedColumns: string[] }>('/api/v1/database/tables');
+    return this.request<{ tables: string[]; redactedColumns: string[] }>('/v1/database/tables');
   }
 
   /**
    * Get schema for a specific table.
    */
   async getTableSchema(table: string): Promise<{ table: string; columns: unknown[] }> {
-    return this.request<{ table: string; columns: unknown[] }>(`/api/v1/database/schema/${table}`);
+    return this.request<{ table: string; columns: unknown[] }>(`/v1/database/schema/${table}`);
   }
 
   /**
@@ -305,7 +305,7 @@ export class SkillomaticClient {
       rowCount: number;
       durationMs: number;
       query: string;
-    }>('/api/v1/database/query', {
+    }>('/v1/database/query', {
       method: 'POST',
       body: JSON.stringify({ query, limit }),
     });
@@ -315,7 +315,7 @@ export class SkillomaticClient {
    * Get row counts for all tables.
    */
   async getDatabaseStats(): Promise<{ stats: Record<string, number> }> {
-    return this.request<{ stats: Record<string, number> }>('/api/v1/database/stats');
+    return this.request<{ stats: Record<string, number> }>('/v1/database/stats');
   }
 
   // ============ ATS Proxy Operations (Dynamic Tools) ============
@@ -332,7 +332,7 @@ export class SkillomaticClient {
     body?: unknown;
     headers?: Record<string, string>;
   }): Promise<unknown> {
-    return this.request<unknown>('/api/v1/ats/proxy', {
+    return this.request<unknown>('/v1/ats/proxy', {
       method: 'POST',
       body: JSON.stringify(request),
     });
@@ -350,7 +350,7 @@ export class SkillomaticClient {
     body?: unknown;
     headers?: Record<string, string>;
   }): Promise<unknown> {
-    return this.request<unknown>('/api/v1/calendar/proxy', {
+    return this.request<unknown>('/v1/calendar/proxy', {
       method: 'POST',
       body: JSON.stringify(request),
     });

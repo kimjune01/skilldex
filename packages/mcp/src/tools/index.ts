@@ -1,9 +1,10 @@
 /**
  * Tool registry for the MCP server.
  * Dynamically registers tools based on the user's connected integrations.
+ *
+ * Note: Skills are exposed as MCP Resources (not tools) - see resources.ts
  */
 
-import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SkillomaticClient, CapabilityProfile } from '../api-client.js';
 import { registerAtsTools } from './ats.js';
@@ -30,79 +31,6 @@ export async function registerTools(
   profile: CapabilityProfile
 ): Promise<void> {
   const registeredTools: string[] = [];
-
-  // Always register: list_skills tool
-  server.tool(
-    'list_skills',
-    'List all available Skillomatic skills for the current user',
-    {},
-    async () => {
-      try {
-        const skills = await client.getSkills();
-        const enabledSkills = skills.filter(s => s.isEnabled);
-
-        const skillList = enabledSkills.map(s => ({
-          slug: s.slug,
-          name: s.name,
-          description: s.description,
-          category: s.category,
-          intent: s.intent,
-        }));
-
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  skills: skillList,
-                  count: skillList.length,
-                  hint: 'Use the resource URI skillomatic://skills/{slug} to read full skill instructions.',
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error listing skills: ${message}` }],
-          isError: true,
-        };
-      }
-    }
-  );
-  registeredTools.push('list_skills');
-
-  // Always register: get_skill tool
-  server.tool(
-    'get_skill',
-    'Get the full instructions for a specific skill',
-    { slug: z.string().describe('Skill slug (e.g., linkedin-lookup, ats-candidate-search)') },
-    async (args) => {
-      try {
-        const skill = await client.getRenderedSkill(args.slug);
-
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: skill.instructions || `No instructions found for skill: ${args.slug}`,
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error fetching skill: ${message}` }],
-          isError: true,
-        };
-      }
-    }
-  );
-  registeredTools.push('get_skill');
 
   // ATS tools - only if ATS is connected
   if (profile.hasATS) {

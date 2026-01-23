@@ -33,7 +33,7 @@ describe('SkillomaticClient', () => {
       });
       clientWithSlash.getSkills();
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/skills',
+        'http://localhost:3000/skills',
         expect.any(Object)
       );
     });
@@ -49,7 +49,7 @@ describe('SkillomaticClient', () => {
       await client.getSkills();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/skills',
+        'http://localhost:3000/skills',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer sk_live_test123',
@@ -122,7 +122,7 @@ describe('SkillomaticClient', () => {
       await client.getSkills();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/skills',
+        'http://localhost:3000/skills',
         expect.any(Object)
       );
     });
@@ -138,7 +138,7 @@ describe('SkillomaticClient', () => {
       await client.getSkill('test-skill');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/skills/test-skill',
+        'http://localhost:3000/skills/test-skill',
         expect.any(Object)
       );
     });
@@ -156,7 +156,7 @@ describe('SkillomaticClient', () => {
       const result = await client.getRenderedSkill('test-skill');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/skills/test-skill/rendered',
+        'http://localhost:3000/skills/test-skill/rendered',
         expect.any(Object)
       );
       expect(result.rendered).toBe(true);
@@ -177,7 +177,7 @@ describe('SkillomaticClient', () => {
       await client.getCapabilities();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/skills/config',
+        'http://localhost:3000/skills/config',
         expect.any(Object)
       );
     });
@@ -193,7 +193,7 @@ describe('SkillomaticClient', () => {
       await client.verifyAuth();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/me',
+        'http://localhost:3000/v1/me',
         expect.any(Object)
       );
     });
@@ -209,7 +209,7 @@ describe('SkillomaticClient', () => {
       await client.searchCandidates({});
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/ats/candidates',
+        'http://localhost:3000/v1/ats/candidates',
         expect.any(Object)
       );
     });
@@ -228,7 +228,7 @@ describe('SkillomaticClient', () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/ats/candidates?q=engineer&tags=frontend&limit=10&offset=20',
+        'http://localhost:3000/v1/ats/candidates?q=engineer&tags=frontend&limit=10&offset=20',
         expect.any(Object)
       );
     });
@@ -244,7 +244,7 @@ describe('SkillomaticClient', () => {
       await client.getCandidate('cand-123');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/ats/candidates/cand-123',
+        'http://localhost:3000/v1/ats/candidates/cand-123',
         expect.any(Object)
       );
     });
@@ -266,7 +266,7 @@ describe('SkillomaticClient', () => {
       await client.createCandidate(candidateData);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/ats/candidates',
+        'http://localhost:3000/v1/ats/candidates',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify(candidateData),
@@ -287,7 +287,7 @@ describe('SkillomaticClient', () => {
       await client.updateCandidate('cand-123', updateData);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/ats/candidates/cand-123',
+        'http://localhost:3000/v1/ats/candidates/cand-123',
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify(updateData),
@@ -308,7 +308,7 @@ describe('SkillomaticClient', () => {
       await client.createScrapeTask('https://linkedin.com/in/test');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/scrape/tasks',
+        'http://localhost:3000/v1/scrape/tasks',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ url: 'https://linkedin.com/in/test' }),
@@ -327,7 +327,7 @@ describe('SkillomaticClient', () => {
       await client.getScrapeTask('task-123');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/scrape/tasks/task-123',
+        'http://localhost:3000/v1/scrape/tasks/task-123',
         expect.any(Object)
       );
     });
