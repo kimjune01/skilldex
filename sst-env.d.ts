@@ -10,6 +10,10 @@ declare module "sst" {
       "type": "sst.aws.Function"
       "url": string
     }
+    "ApiRouter": {
+      "type": "sst.aws.Router"
+      "url": string
+    }
     "Email": {
       "configSet": string
       "sender": string

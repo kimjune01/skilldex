@@ -11,5 +11,8 @@ export default defineConfig({
     },
     server: {
         port: 5173,
+        // NOTE: Do NOT add a proxy for /api here.
+        // API calls should use VITE_API_URL env variable directly (e.g., API_BASE from lib/api.ts).
+        // This keeps dev/prod consistent and avoids proxy configuration issues.
     },
 });

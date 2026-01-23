@@ -18,7 +18,6 @@ const vendingItems = [
     color: 'cyan',
     led: 'led-cyan',
     rotation: -0.75,
-    flipAxis: 'Y', // left-right
   },
   {
     id: 'precision',
@@ -28,7 +27,6 @@ const vendingItems = [
     color: 'green',
     led: 'led-green',
     rotation: 0.5,
-    flipAxis: 'X', // up-down
   },
   {
     id: 'truth',
@@ -38,7 +36,6 @@ const vendingItems = [
     color: 'amber',
     led: 'led-amber',
     rotation: 0.5,
-    flipAxis: '-Y', // right-left
   },
   {
     id: 'control',
@@ -48,18 +45,23 @@ const vendingItems = [
     color: 'purple',
     led: 'led-purple',
     rotation: -0.5,
-    flipAxis: '-X', // down-up
   },
 ];
+
+const flipAxes = ['X', '-X', 'Y', '-Y'] as const;
 
 function DifferentiatorSection() {
   const [flipped, setFlipped] = useState<string | null>(null);
   const [discovered, setDiscovered] = useState<Set<string>>(new Set());
+  const [flipAxisMap, setFlipAxisMap] = useState<Record<string, string>>({});
 
   const handleFlip = (id: string) => {
     if (flipped === id) {
       setFlipped(null);
     } else {
+      // Assign a random flip axis each time a card is flipped
+      const randomAxis = flipAxes[Math.floor(Math.random() * flipAxes.length)];
+      setFlipAxisMap(prev => ({ ...prev, [id]: randomAxis }));
       setFlipped(id);
       setDiscovered(prev => new Set(prev).add(id));
     }
@@ -87,11 +89,8 @@ function DifferentiatorSection() {
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse pointer-events-none" />
 
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-center digital-text tracking-tight">
-              <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">Overdelivered,</span>
-              <br />
-              <span className="bg-gradient-to-r from-cyan-400 to-primary bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]">
-                Underpriced
-              </span>
+              <span className="bg-gradient-to-r from-cyan-400 to-primary bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]">Vibe</span>
+              <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"> Recruiting</span>
             </h2>
           </div>
 
@@ -146,8 +145,8 @@ function DifferentiatorSection() {
                     className="relative h-56 transition-transform duration-500"
                     style={{
                       transformStyle: 'preserve-3d',
-                      transform: isFlipped
-                        ? `rotate${item.flipAxis.replace('-', '')}(${item.flipAxis.startsWith('-') ? '-' : ''}180deg)`
+                      transform: isFlipped && flipAxisMap[item.id]
+                        ? `rotate${flipAxisMap[item.id].replace('-', '')}(${flipAxisMap[item.id].startsWith('-') ? '-' : ''}180deg)`
                         : 'rotate(0deg)',
                     }}
                   >
@@ -179,7 +178,9 @@ function DifferentiatorSection() {
                       className={`absolute inset-0 rounded-xl border-[3px] ${colorStyles.border} bg-gradient-to-br from-[hsl(220_25%_22%)] via-[hsl(220_20%_16%)] to-[hsl(220_25%_12%)] ${colorStyles.glow} p-5 flex flex-col shadow-[0_8px_24px_rgba(0,0,0,0.4)]`}
                       style={{
                         backfaceVisibility: 'hidden',
-                        transform: `rotate${item.flipAxis.replace('-', '')}(180deg)`,
+                        transform: flipAxisMap[item.id]
+                          ? `rotate${flipAxisMap[item.id].replace('-', '')}(180deg)`
+                          : 'rotateY(180deg)',
                       }}
                     >
                       {/* Corner LED - blinks to entice user to click next undiscovered card */}
@@ -226,6 +227,7 @@ function DifferentiatorSection() {
 }
 
 const setupSteps = [
+  { id: 'start-here', number: '0', title: '', description: '', color: 'gray', size: 72 },
   { id: 'connect', number: '1', title: 'Connect Your Tools', description: 'Link your ATS, email, calendar, and browser extension', color: 'cyan', size: 100 },
   { id: 'choose', number: '2', title: 'Choose Your AI', description: 'Use our web chat or your favorite desktop app', color: 'green', size: 140 },
   { id: 'start', number: '3', title: 'Start Recruiting', description: 'Chat naturally to automate your workflow', color: 'amber', size: 200 },
@@ -259,6 +261,7 @@ function HowItWorksSection() {
   const activeStep = allDone ? null : setupSteps[currentStep];
 
   const colorStyles = {
+    gray: { bg: 'bg-gray-400', glow: 'shadow-[0_0_20px_rgba(156,163,175,0.4)]', text: 'text-gray-600' },
     cyan: { bg: 'bg-cyan-500', glow: 'shadow-[0_0_30px_rgba(34,211,238,0.5)]', text: 'text-cyan-600' },
     green: { bg: 'bg-green-500', glow: 'shadow-[0_0_30px_rgba(34,197,94,0.5)]', text: 'text-green-600' },
     amber: { bg: 'bg-amber-500', glow: 'shadow-[0_0_30px_rgba(251,191,36,0.5)]', text: 'text-amber-600' },
@@ -330,25 +333,27 @@ function HowItWorksSection() {
               </div>
 
               {/* Current step info - scales with button size */}
-              <div
-                className="mt-6 text-center transition-transform duration-500 origin-top"
-                style={{ transform: `scale(${0.8 + (activeStep.size / 280) * 0.6})` }}
-              >
-                <h3 className={`text-xl font-black ${colorStyles[activeStep.color as keyof typeof colorStyles].text}`}>
-                  {activeStep.title}
-                </h3>
-                <p className="text-[hsl(220_15%_45%)] mt-1 max-w-md">
-                  {activeStep.description}
-                </p>
-              </div>
+              {activeStep.title && (
+                <div
+                  className="mt-6 text-center transition-transform duration-500 origin-top"
+                  style={{ transform: `scale(${0.8 + (activeStep.size / 280) * 0.6})` }}
+                >
+                  <h3 className={`text-xl font-black ${colorStyles[activeStep.color as keyof typeof colorStyles].text}`}>
+                    {activeStep.title}
+                  </h3>
+                  <p className="text-[hsl(220_15%_45%)] mt-1 max-w-md">
+                    {activeStep.description}
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>
 
-        {/* Progress: completed steps as small indicators (only first 3) */}
+        {/* Progress: completed steps as small indicators (steps 1-3, skip 0) */}
         <div className="flex justify-center gap-3 mb-8">
-          {setupSteps.slice(0, 3).map((step, index) => {
-            const isDone = index < currentStep;
+          {setupSteps.slice(1, 4).map((step, index) => {
+            const isDone = index + 1 < currentStep;
             const styles = colorStyles[step.color as keyof typeof colorStyles];
 
             return (
