@@ -220,11 +220,15 @@ export const roleSkills = sqliteTable('role_skills', {
 /**
  * Skills table - metadata for downloadable Claude Code skills
  *
- * Skills are markdown files in /skills/<slug>/SKILL.md with YAML frontmatter.
- * The frontmatter contains: name, description, intent, capabilities, allowed-tools.
- * This table stores the database record; actual skill content is in the filesystem.
+ * Skills can be:
+ * 1. System skills (isGlobal=true) - seeded from /skills/<slug>/SKILL.md filesystem
+ * 2. User-generated skills (sourceType='user-generated') - created via chat/API
  *
- * @see skills/ directory for skill definitions
+ * Visibility levels:
+ * - 'private' - Only the creator can see/use (userId must be set)
+ * - 'organization' - All members of the org can see/use
+ *
+ * @see skills/ directory for system skill definitions
  * @see docs/ADMIN_GUIDE.md for adding new skills
  */
 export const skills = sqliteTable('skills', {
@@ -232,12 +236,23 @@ export const skills = sqliteTable('skills', {
   slug: text('slug').notNull().unique(), // 'linkedin-lookup'
   name: text('name').notNull(),
   description: text('description').notNull(),
-  category: text('category').notNull(), // 'sourcing', 'communication', 'ats'
+  category: text('category').notNull(), // 'sourcing', 'communication', 'ats', 'productivity', 'system'
   version: text('version').notNull().default('1.0.0'),
+
+  // Ownership - who created this skill (null for system skills)
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
 
   // Organization scoping
   organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
-  isGlobal: integer('is_global', { mode: 'boolean' }).notNull().default(true), // Global skills visible to all orgs
+  isGlobal: integer('is_global', { mode: 'boolean' }).notNull().default(true), // System skills visible to all orgs
+
+  // Visibility control for user-generated skills
+  visibility: text('visibility').notNull().default('private'), // 'private' | 'organization'
+  sourceType: text('source_type').notNull().default('filesystem'), // 'filesystem' | 'user-generated'
+
+  // Visibility request workflow (inline for simplicity)
+  pendingVisibility: text('pending_visibility'), // 'organization' if user requested sharing
+  visibilityRequestedAt: integer('visibility_requested_at', { mode: 'timestamp' }),
 
   // Frontmatter fields (progressive disclosure - Level 1 metadata)
   intent: text('intent'), // When to use this skill (e.g., "user asks to find candidates on LinkedIn")
@@ -247,13 +262,16 @@ export const skills = sqliteTable('skills', {
   instructions: text('instructions'), // Full skill instructions in markdown
 
   // Metadata stored as JSON strings
-  requiredIntegrations: text('required_integrations'), // JSON array
+  requiredIntegrations: text('required_integrations'), // JSON object: {"ats": "read-only", "email": "read-write"}
   requiredScopes: text('required_scopes'), // JSON array
 
   isEnabled: integer('is_enabled', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  userIdIdx: index('skills_user_id_idx').on(table.userId),
+  visibilityIdx: index('skills_visibility_idx').on(table.visibility),
+}));
 
 // ============ INTEGRATIONS ============
 
@@ -397,6 +415,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   integrations: many(integrations),
   skillUsage: many(skillUsageLogs),
   scrapeTasks: many(scrapeTasks),
+  createdSkills: many(skills),
 }));
 
 export const scrapeTasksRelations = relations(scrapeTasks, ({ one }) => ({
@@ -431,6 +450,10 @@ export const skillsRelations = relations(skills, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [skills.organizationId],
     references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [skills.userId],
+    references: [users.id],
   }),
   usageLogs: many(skillUsageLogs),
   roles: many(roleSkills),

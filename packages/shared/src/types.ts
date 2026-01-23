@@ -139,6 +139,12 @@ export interface ApiKeyCreateResponse {
 
 // ============ Skill Types ============
 
+/** Skill visibility level */
+export type SkillVisibility = 'private' | 'organization';
+
+/** Skill source type - how the skill was created */
+export type SkillSourceType = 'filesystem' | 'user-generated';
+
 /** Skill access status */
 export type SkillAccessStatus = 'available' | 'limited' | 'disabled';
 
@@ -180,6 +186,22 @@ export interface SkillPublic {
   intent: string;
   capabilities: string[];
   isEnabled: boolean;
+  /** Visibility level: private (creator only) or organization (all org members) */
+  visibility: SkillVisibility;
+  /** How the skill was created: filesystem (seeded) or user-generated */
+  sourceType: SkillSourceType;
+  /** Whether this is a system-wide global skill */
+  isGlobal?: boolean;
+  /** Creator's user ID (null for system skills) */
+  creatorId?: string;
+  /** Creator's display name (included when available) */
+  creatorName?: string;
+  /** True if the current user is the creator of this skill */
+  isOwner?: boolean;
+  /** True if the current user can edit this skill */
+  canEdit?: boolean;
+  /** True if there's a pending visibility request */
+  hasPendingVisibilityRequest?: boolean;
   /** Access status info (included when requested) */
   accessInfo?: SkillAccessInfo;
 }
@@ -199,6 +221,36 @@ export interface SkillMetadata {
   capabilities: string[];
   triggers?: string[];
   configuration?: Record<string, unknown>;
+}
+
+/** Request body for creating a new skill - accepts raw markdown with YAML frontmatter */
+export interface SkillCreateRequest {
+  /** Raw markdown content with YAML frontmatter containing name, description, etc. */
+  content: string;
+  /** Category for the skill (extracted from frontmatter if present) */
+  category?: SkillCategory;
+  /** Visibility: 'private' (default) or 'organization' */
+  visibility?: SkillVisibility;
+}
+
+/** Request body for updating a skill */
+export interface SkillUpdateRequest {
+  /** Raw markdown content with YAML frontmatter (replaces entire skill content) */
+  content?: string;
+  /** Individual field updates (when not using content) */
+  name?: string;
+  description?: string;
+  category?: SkillCategory;
+  intent?: string;
+  capabilities?: string[];
+  /** Toggle skill enabled/disabled (admin only) */
+  isEnabled?: boolean;
+}
+
+/** Request body for requesting visibility change */
+export interface SkillVisibilityRequest {
+  visibility: 'organization';
+  reason?: string;
 }
 
 // ============ Integration Types ============

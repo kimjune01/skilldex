@@ -1,11 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
-import { skills, proposals } from '../lib/api';
+import { skills } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
-import type { SkillPublic, SkillCategory, SkillProposalPublic } from '@skillomatic/shared';
+import type { SkillPublic, SkillCategory, SkillVisibility } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
@@ -16,78 +15,72 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   RefreshCw,
   AlertCircle,
-  Plus,
-  Lightbulb,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Trash2,
-  Edit,
   Zap,
   Plug,
   Lock,
   Ban,
+  Globe,
+  User,
+  Building2,
+  Trash2,
+  Clock,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
-type ViewMode = 'skills' | 'proposals';
+type ViewFilter = 'all' | 'my' | 'pending';
 
 export default function Skills() {
   const { user } = useAuth();
   const isAdmin = user?.isAdmin || false;
   const navigate = useNavigate();
 
-  const [viewMode, setViewMode] = useState<ViewMode>('skills');
+  const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [skillList, setSkillList] = useState<SkillPublic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState<SkillCategory | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<SkillCategory | 'all'>('all');
   const [showDisabled, setShowDisabled] = useState(false);
 
-  // Proposals state
-  const [proposalList, setProposalList] = useState<SkillProposalPublic[]>([]);
-  const [isLoadingProposals, setIsLoadingProposals] = useState(false);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [useCases, setUseCases] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Visibility request dialog state
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestingSkill, setRequestingSkill] = useState<SkillPublic | null>(null);
+  const [requestReason, setRequestReason] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
-  useEffect(() => {
-    skills
-      .list({ includeAccess: true })
-      .then(setSkillList)
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to load skills');
-      })
-      .finally(() => setIsLoading(false));
-  }, []);
+  // Admin approval dialog state
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [approvingSkill, setApprovingSkill] = useState<SkillPublic | null>(null);
+  const [denialFeedback, setDenialFeedback] = useState('');
+  const [isProcessingApproval, setIsProcessingApproval] = useState(false);
 
-  const loadProposals = async () => {
-    setIsLoadingProposals(true);
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingSkill, setDeletingSkill] = useState<SkillPublic | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const loadSkills = async () => {
+    setIsLoading(true);
     setError('');
     try {
-      const data = await proposals.list();
-      setProposalList(data);
+      const data = await skills.list({ includeAccess: true, filter: viewFilter });
+      setSkillList(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load proposals');
+      setError(err instanceof Error ? err.message : 'Failed to load skills');
     } finally {
-      setIsLoadingProposals(false);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (viewMode === 'proposals' && proposalList.length === 0) {
-      loadProposals();
-    }
-  }, [viewMode]);
+    loadSkills();
+  }, [viewFilter]);
 
   const categories = useMemo(
     () => [...new Set(skillList.map((s) => s.category))],
@@ -103,12 +96,12 @@ export default function Skills() {
     }
 
     // Apply category filter
-    if (filter !== 'all') {
-      filtered = filtered.filter((s) => s.category === filter);
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter((s) => s.category === categoryFilter);
     }
 
     return filtered;
-  }, [skillList, filter, isAdmin, showDisabled]);
+  }, [skillList, categoryFilter, isAdmin, showDisabled]);
 
   const handleToggleEnabled = async (skill: SkillPublic) => {
     try {
@@ -119,87 +112,99 @@ export default function Skills() {
     }
   };
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setUseCases('');
-    setEditingId(null);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleRequestVisibility = async () => {
+    if (!requestingSkill) return;
+    setIsSubmittingRequest(true);
     setError('');
 
     try {
-      const useCasesArray = useCases
-        .split('\n')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-
-      if (editingId) {
-        await proposals.update(editingId, {
-          title,
-          description,
-          useCases: useCasesArray.length > 0 ? useCasesArray : undefined,
-        });
-      } else {
-        await proposals.create({
-          title,
-          description,
-          useCases: useCasesArray.length > 0 ? useCasesArray : undefined,
-        });
-      }
-
-      setIsCreateOpen(false);
-      resetForm();
-      loadProposals();
+      const updated = await skills.requestVisibility(
+        requestingSkill.slug,
+        'organization',
+        requestReason || undefined
+      );
+      setSkillList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      setRequestDialogOpen(false);
+      setRequestingSkill(null);
+      setRequestReason('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit proposal');
+      setError(err instanceof Error ? err.message : 'Failed to request visibility');
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingRequest(false);
     }
   };
 
-  const handleEdit = (proposal: SkillProposalPublic) => {
-    setTitle(proposal.title);
-    setDescription(proposal.description);
-    setUseCases(proposal.useCases?.join('\n') || '');
-    setEditingId(proposal.id);
-    setIsCreateOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this proposal?')) return;
+  const handleApproveVisibility = async () => {
+    if (!approvingSkill) return;
+    setIsProcessingApproval(true);
+    setError('');
 
     try {
-      await proposals.delete(id);
-      loadProposals();
+      const updated = await skills.approveVisibility(approvingSkill.slug);
+      setSkillList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      setApprovalDialogOpen(false);
+      setApprovingSkill(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete proposal');
+      setError(err instanceof Error ? err.message : 'Failed to approve visibility');
+    } finally {
+      setIsProcessingApproval(false);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case 'denied':
-        return <XCircle className="h-5 w-5 text-destructive" />;
-      default:
-        return <Clock className="h-5 w-5 text-yellow-500" />;
+  const handleDenyVisibility = async () => {
+    if (!approvingSkill) return;
+    setIsProcessingApproval(true);
+    setError('');
+
+    try {
+      const updated = await skills.denyVisibility(approvingSkill.slug, denialFeedback || undefined);
+      setSkillList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      setApprovalDialogOpen(false);
+      setApprovingSkill(null);
+      setDenialFeedback('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to deny visibility');
+    } finally {
+      setIsProcessingApproval(false);
     }
   };
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'default';
-      case 'denied':
-        return 'destructive';
-      default:
-        return 'secondary';
+  const handleDeleteSkill = async () => {
+    if (!deletingSkill) return;
+    setIsDeleting(true);
+    setError('');
+
+    try {
+      await skills.delete(deletingSkill.slug);
+      setSkillList((prev) => prev.filter((s) => s.id !== deletingSkill.id));
+      setDeleteDialogOpen(false);
+      setDeletingSkill(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete skill');
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const getVisibilityIcon = (visibility: SkillVisibility, isGlobal?: boolean) => {
+    if (isGlobal) return <Globe className="h-4 w-4 text-blue-500" />;
+    switch (visibility) {
+      case 'organization':
+        return <Building2 className="h-4 w-4 text-green-500" />;
+      case 'private':
+      default:
+        return <User className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getVisibilityBadge = (skill: SkillPublic) => {
+    if (skill.isGlobal) {
+      return <Badge variant="outline" className="text-blue-600 border-blue-300">System</Badge>;
+    }
+    if (skill.visibility === 'organization') {
+      return <Badge variant="outline" className="text-green-600 border-green-300">Org-wide</Badge>;
+    }
+    return <Badge variant="outline" className="text-muted-foreground">Private</Badge>;
   };
 
   if (isLoading) {
@@ -211,355 +216,393 @@ export default function Skills() {
     );
   }
 
-  if (error && viewMode === 'skills') {
-    return (
-      <Alert variant="destructive" className="max-w-md">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Skills</h1>
           <p className="text-muted-foreground mt-1">
-            {viewMode === 'skills'
-              ? 'Browse and download Claude Code skills for your recruiting workflow'
-              : 'Request new skills for your workflow'}
+            {viewFilter === 'all' && 'Browse and download Claude Code skills for your recruiting workflow'}
+            {viewFilter === 'my' && 'Skills you have created'}
+            {viewFilter === 'pending' && 'Skills awaiting visibility approval'}
           </p>
         </div>
 
         {/* View Toggle */}
         <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
           <Button
-            variant={viewMode === 'skills' ? 'default' : 'ghost'}
+            variant={viewFilter === 'all' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setViewMode('skills')}
+            onClick={() => setViewFilter('all')}
           >
-            Available Skills
+            All Skills
           </Button>
           <Button
-            variant={viewMode === 'proposals' ? 'default' : 'ghost'}
+            variant={viewFilter === 'my' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setViewMode('proposals')}
+            onClick={() => setViewFilter('my')}
           >
-            <Lightbulb className="h-4 w-4 mr-1" />
-            Requests
+            <User className="h-4 w-4 mr-1" />
+            My Skills
           </Button>
+          {isAdmin && (
+            <Button
+              variant={viewFilter === 'pending' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewFilter('pending')}
+            >
+              <Clock className="h-4 w-4 mr-1" />
+              Pending
+            </Button>
+          )}
         </div>
       </div>
 
-      {viewMode === 'skills' ? (
-        <>
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={filter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('all')}
-              >
-                All
-              </Button>
-              {categories.map((cat) => (
-                <Button
-                  key={cat}
-                  variant={filter === cat ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter(cat as SkillCategory)}
-                >
-                  {cat}
-                </Button>
-              ))}
-            </div>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="show-disabled"
-                  checked={showDisabled}
-                  onCheckedChange={setShowDisabled}
-                />
-                <Label htmlFor="show-disabled" className="text-sm text-muted-foreground">
-                  Show disabled
-                </Label>
-              </div>
-            )}
+      {/* Category Filters and Admin Toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={categoryFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCategoryFilter('all')}
+          >
+            All
+          </Button>
+          {categories.map((cat) => (
+            <Button
+              key={cat}
+              variant={categoryFilter === cat ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setCategoryFilter(cat as SkillCategory)}
+            >
+              {cat}
+            </Button>
+          ))}
+        </div>
+
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-disabled"
+              checked={showDisabled}
+              onCheckedChange={setShowDisabled}
+            />
+            <Label htmlFor="show-disabled" className="text-sm text-muted-foreground">
+              Show disabled
+            </Label>
           </div>
+        )}
+      </div>
 
-          <Card>
-            <CardContent className="p-0">
-              <table className="min-w-full divide-y divide-border">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                      Skill
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                      Integrations
-                    </th>
-                    {isAdmin && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        Status
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredSkills.map((skill) => {
-                    const accessStatus = skill.accessInfo?.status;
-                    const isLimited = accessStatus === 'limited';
-                    const isDisabled = accessStatus === 'disabled' || !skill.isEnabled;
+      {/* Skills Table */}
+      <Card>
+        <CardContent className="p-0">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Skill
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Category
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Visibility
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Integrations
+                </th>
+                {isAdmin && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                    Status
+                  </th>
+                )}
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredSkills.map((skill) => {
+                const accessStatus = skill.accessInfo?.status;
+                const isLimited = accessStatus === 'limited';
+                const isDisabled = accessStatus === 'disabled' || !skill.isEnabled;
+                const isOwner = skill.isOwner;
+                const hasPendingRequest = skill.hasPendingVisibilityRequest;
 
-                    return (
-                      <tr
-                        key={skill.id}
-                        className={`cursor-pointer ${
-                          isDisabled
-                            ? 'bg-muted/30 opacity-50'
-                            : isLimited
-                            ? 'bg-yellow-50/50 hover:bg-yellow-50'
-                            : 'hover:bg-muted/50'
-                        }`}
-                        onClick={() => navigate(`/skills/${skill.slug}`)}
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            {isDisabled ? (
-                              <Ban className="h-4 w-4 text-muted-foreground" />
-                            ) : isLimited ? (
-                              <Lock className="h-4 w-4 text-yellow-600" />
-                            ) : (
-                              <Zap className="h-4 w-4 text-muted-foreground" />
-                            )}
-                            <div>
-                              <div className={`font-medium ${isDisabled ? 'text-muted-foreground' : ''}`}>
-                                {skill.name}
-                                {isLimited && (
-                                  <Badge variant="outline" className="ml-2 text-xs text-yellow-700 border-yellow-300">
-                                    Limited
-                                  </Badge>
-                                )}
-                                {isDisabled && (
-                                  <Badge variant="outline" className="ml-2 text-xs">
-                                    Disabled
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="text-sm text-muted-foreground">{skill.description}</div>
-                              {isLimited && skill.accessInfo?.limitations && (
-                                <div className="text-xs text-yellow-700 mt-1">
-                                  {skill.accessInfo.limitations[0]}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={getCategoryBadgeVariant(skill.category)}>
-                            {skill.category}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
-                            {skill.requiredIntegrations.length > 0 ? (
-                              skill.requiredIntegrations.map((int) => (
-                                <Badge key={int} variant="secondary" className="gap-1">
-                                  <Plug className="h-3 w-3" />
-                                  {int}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-sm text-muted-foreground">None</span>
-                            )}
-                          </div>
-                        </td>
-                        {isAdmin && (
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                            <Switch
-                              checked={skill.isEnabled}
-                              onCheckedChange={() => handleToggleEnabled(skill)}
-                            />
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {filteredSkills.length === 0 && (
-                <div className="text-center text-muted-foreground py-8">
-                  No skills found for this category
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      ) : (
-        <>
-          {/* Proposals View */}
-          <div className="flex justify-end">
-            <Dialog open={isCreateOpen} onOpenChange={(open) => {
-              setIsCreateOpen(open);
-              if (!open) resetForm();
-            }}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Request a Skill
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingId ? 'Edit Request' : 'Request a New Skill'}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Describe the skill you'd like to see. We'll review your request and get back to you.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Skill Title</Label>
-                    <Input
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g., LinkedIn Message Templates"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <textarea
-                      id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Describe what this skill should do and how it would help your workflow..."
-                      className="w-full min-h-[100px] p-3 border rounded-md text-sm"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="useCases">Use Cases (one per line, optional)</Label>
-                    <textarea
-                      id="useCases"
-                      value={useCases}
-                      onChange={(e) => setUseCases(e.target.value)}
-                      placeholder="Find candidates matching specific criteria&#10;Generate personalized outreach&#10;Track response rates"
-                      className="w-full min-h-[80px] p-3 border rounded-md text-sm font-mono"
-                    />
-                  </div>
-
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? 'Submitting...' : editingId ? 'Save Changes' : 'Submit Request'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {isLoadingProposals ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Loading proposals...
-            </div>
-          ) : proposalList.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Lightbulb className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No requests yet</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Have an idea for a skill that would help your recruiting workflow?
-                  <br />
-                  Let us know and we'll build it!
-                </p>
-                <Button onClick={() => setIsCreateOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Request a Skill
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {proposalList.map((proposal) => (
-                <Card key={proposal.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
+                return (
+                  <tr
+                    key={skill.id}
+                    className={`cursor-pointer ${
+                      isDisabled
+                        ? 'bg-muted/30 opacity-50'
+                        : isLimited
+                        ? 'bg-yellow-50/50 hover:bg-yellow-50'
+                        : hasPendingRequest
+                        ? 'bg-orange-50/50 hover:bg-orange-50'
+                        : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => navigate(`/skills/${skill.slug}`)}
+                  >
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        {getStatusIcon(proposal.status)}
+                        {isDisabled ? (
+                          <Ban className="h-4 w-4 text-muted-foreground" />
+                        ) : isLimited ? (
+                          <Lock className="h-4 w-4 text-yellow-600" />
+                        ) : (
+                          <Zap className="h-4 w-4 text-muted-foreground" />
+                        )}
                         <div>
-                          <CardTitle className="text-lg">{proposal.title}</CardTitle>
-                          <CardDescription>
-                            Submitted {new Date(proposal.createdAt).toLocaleDateString()}
-                          </CardDescription>
+                          <div className={`font-medium ${isDisabled ? 'text-muted-foreground' : ''}`}>
+                            {skill.name}
+                            {isOwner && (
+                              <Badge variant="secondary" className="ml-2 text-xs">
+                                Owner
+                              </Badge>
+                            )}
+                            {isLimited && (
+                              <Badge variant="outline" className="ml-2 text-xs text-yellow-700 border-yellow-300">
+                                Limited
+                              </Badge>
+                            )}
+                            {isDisabled && (
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                Disabled
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">{skill.description}</div>
+                          {skill.creatorName && !isOwner && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              by {skill.creatorName}
+                            </div>
+                          )}
+                          {isLimited && skill.accessInfo?.limitations && (
+                            <div className="text-xs text-yellow-700 mt-1">
+                              {skill.accessInfo.limitations[0]}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <Badge variant={getStatusVariant(proposal.status) as 'default' | 'destructive' | 'secondary'}>
-                        {proposal.status}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant={getCategoryBadgeVariant(skill.category)}>
+                        {skill.category}
                       </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm">{proposal.description}</p>
-
-                    {proposal.useCases && proposal.useCases.length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium mb-2">Use Cases:</p>
-                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                          {proposal.useCases.map((useCase, idx) => (
-                            <li key={idx}>{useCase}</li>
-                          ))}
-                        </ul>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {getVisibilityIcon(skill.visibility, skill.isGlobal)}
+                        {getVisibilityBadge(skill)}
+                        {hasPendingRequest && (
+                          <Badge variant="outline" className="text-orange-600 border-orange-300">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pending
+                          </Badge>
+                        )}
                       </div>
-                    )}
-
-                    {proposal.reviewFeedback && (
-                      <div className={`p-3 rounded-lg ${
-                        proposal.status === 'approved' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-                      }`}>
-                        <p className="text-sm font-medium mb-1">Feedback from reviewer:</p>
-                        <p className="text-sm">{proposal.reviewFeedback}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        {skill.requiredIntegrations.length > 0 ? (
+                          skill.requiredIntegrations.map((int) => (
+                            <Badge key={int} variant="secondary" className="gap-1">
+                              <Plug className="h-3 w-3" />
+                              {int}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">None</span>
+                        )}
                       </div>
+                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <Switch
+                          checked={skill.isEnabled}
+                          onCheckedChange={() => handleToggleEnabled(skill)}
+                        />
+                      </td>
                     )}
+                    <td className="px-6 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Request org-wide visibility for private skills owned by user */}
+                        {isOwner && skill.visibility === 'private' && !hasPendingRequest && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setRequestingSkill(skill);
+                              setRequestDialogOpen(true);
+                            }}
+                            title="Request Org-wide Visibility"
+                          >
+                            <Building2 className="h-4 w-4" />
+                          </Button>
+                        )}
 
-                    {proposal.status === 'pending' && (
-                      <div className="flex gap-2 pt-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(proposal)}>
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDelete(proposal.id)}>
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
+                        {/* Admin: Review pending visibility requests */}
+                        {isAdmin && hasPendingRequest && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setApprovingSkill(skill);
+                              setApprovalDialogOpen(true);
+                            }}
+                            title="Review Request"
+                          >
+                            <CheckCircle2 className="h-4 w-4 text-orange-500" />
+                          </Button>
+                        )}
+
+                        {/* Delete for owners or admins (except system skills) */}
+                        {(isOwner || (isAdmin && !skill.isGlobal)) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setDeletingSkill(skill);
+                              setDeleteDialogOpen(true);
+                            }}
+                            title="Delete Skill"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filteredSkills.length === 0 && (
+            <div className="text-center text-muted-foreground py-8">
+              {viewFilter === 'my'
+                ? "You haven't created any skills yet. Use the Chat to create new skills!"
+                : viewFilter === 'pending'
+                ? 'No pending visibility requests'
+                : 'No skills found for this category'}
             </div>
           )}
-        </>
-      )}
+        </CardContent>
+      </Card>
+
+      {/* Request Visibility Dialog */}
+      <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Organization-wide Visibility</DialogTitle>
+            <DialogDescription>
+              Request to make "{requestingSkill?.name}" visible to all members of your organization.
+              An admin will review your request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason (optional)</Label>
+              <textarea
+                id="reason"
+                value={requestReason}
+                onChange={(e) => setRequestReason(e.target.value)}
+                placeholder="Why should this skill be shared with the organization?"
+                className="w-full min-h-[80px] p-3 border rounded-md text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRequestVisibility} disabled={isSubmittingRequest}>
+              {isSubmittingRequest ? 'Requesting...' : 'Submit Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Approval Dialog */}
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Review Visibility Request</DialogTitle>
+            <DialogDescription>
+              {approvingSkill?.creatorName} has requested to make "{approvingSkill?.name}"
+              visible to all organization members.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{approvingSkill?.name}</CardTitle>
+                <CardDescription>{approvingSkill?.description}</CardDescription>
+              </CardHeader>
+            </Card>
+            <div className="space-y-2">
+              <Label htmlFor="feedback">Feedback (optional, shown if denied)</Label>
+              <textarea
+                id="feedback"
+                value={denialFeedback}
+                onChange={(e) => setDenialFeedback(e.target.value)}
+                placeholder="Provide feedback if denying the request..."
+                className="w-full min-h-[60px] p-3 border rounded-md text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDenyVisibility}
+              disabled={isProcessingApproval}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Deny
+            </Button>
+            <Button onClick={handleApproveVisibility} disabled={isProcessingApproval}>
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Skill</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deletingSkill?.name}"?
+              {deletingSkill?.visibility === 'organization' && (
+                <span className="text-destructive font-medium">
+                  {' '}This will remove it for all organization members.
+                </span>
+              )}
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteSkill} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete Skill'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

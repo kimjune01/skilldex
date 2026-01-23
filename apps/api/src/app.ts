@@ -25,7 +25,7 @@ import { apiKeysRoutes } from './routes/api-keys.js';
 import { integrationsRoutes } from './routes/integrations.js';
 import { usersRoutes } from './routes/users.js';
 import { analyticsRoutes } from './routes/analytics.js';
-import { proposalsRoutes } from './routes/proposals.js';
+// proposals routes removed - replaced by direct skill creation in /skills
 import { settingsRoutes } from './routes/settings.js';
 import { docsRoutes } from './routes/docs.js';
 import { extensionRoutes } from './routes/extension.js';
@@ -89,7 +89,7 @@ app.route('/api-keys', apiKeysRoutes);    // Manage API keys
 app.route('/integrations', integrationsRoutes);  // OAuth connections
 app.route('/users', usersRoutes);         // User management (admin)
 app.route('/analytics', analyticsRoutes); // Usage analytics (admin)
-app.route('/proposals', proposalsRoutes); // Skill proposals
+// proposals routes removed - replaced by direct skill creation in /skills
 app.route('/settings', settingsRoutes);   // System settings (admin)
 app.route('/organizations', organizationsRoutes); // Organization management
 app.route('/invites', invitesRoutes);     // Organization invites

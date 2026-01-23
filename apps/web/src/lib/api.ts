@@ -15,6 +15,9 @@ import type {
   OrganizationPublic,
   OrganizationInvitePublic,
   OnboardingStatus,
+  SkillCreateRequest,
+  SkillUpdateRequest,
+  SkillVisibility,
 } from '@skillomatic/shared';
 import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import type { RenderedSkill, ConfigSkill } from './skills-client';
@@ -86,11 +89,28 @@ export const auth = {
 };
 
 // Skills
+export interface SkillListOptions {
+  includeAccess?: boolean;
+  filter?: 'all' | 'my' | 'pending';
+}
+
 export const skills = {
-  list: (options?: { includeAccess?: boolean }) =>
-    request<SkillPublic[]>(`/skills${options?.includeAccess ? '?includeAccess=true' : ''}`),
+  list: (options?: SkillListOptions) => {
+    const params = new URLSearchParams();
+    if (options?.includeAccess) params.set('includeAccess', 'true');
+    if (options?.filter) params.set('filter', options.filter);
+    const query = params.toString();
+    return request<SkillPublic[]>(`/skills${query ? `?${query}` : ''}`);
+  },
 
   get: (slug: string) => request<SkillPublic>(`/skills/${slug}`),
+
+  // Create a new user-generated skill
+  create: (data: SkillCreateRequest) =>
+    request<SkillPublic>('/skills', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // Get rendered skill with embedded credentials (ephemeral architecture)
   getRendered: (slug: string) => request<RenderedSkill>(`/skills/${slug}/rendered`),
@@ -129,18 +149,36 @@ export const skills = {
     return response.text();
   },
 
-  update: (slug: string, data: Partial<{
-    name: string;
-    description: string;
-    category: string;
-    intent: string;
-    capabilities: string[];
-    requiredIntegrations: string[];
-    isEnabled: boolean;
-  }>) =>
+  update: (slug: string, data: SkillUpdateRequest) =>
     request<SkillPublic>(`/skills/${slug}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+
+  // Delete a skill (owner or admin only)
+  delete: (slug: string) =>
+    request<{ message: string }>(`/skills/${slug}`, {
+      method: 'DELETE',
+    }),
+
+  // Request org-wide visibility for a private skill
+  requestVisibility: (slug: string, visibility: SkillVisibility, reason?: string) =>
+    request<SkillPublic>(`/skills/${slug}/request-visibility`, {
+      method: 'POST',
+      body: JSON.stringify({ visibility, reason }),
+    }),
+
+  // Approve visibility request (admin only)
+  approveVisibility: (slug: string) =>
+    request<SkillPublic>(`/skills/${slug}/approve-visibility`, {
+      method: 'POST',
+    }),
+
+  // Deny visibility request (admin only)
+  denyVisibility: (slug: string, feedback?: string) =>
+    request<SkillPublic>(`/skills/${slug}/deny-visibility`, {
+      method: 'POST',
+      body: JSON.stringify({ feedback }),
     }),
 
   // Get skill access info (permissions debug view)
@@ -279,35 +317,32 @@ export const analytics = {
   getAdminStats: (days = 30) => request<UsageStats>(`/analytics/admin?days=${days}`),
 };
 
-// Skill Proposals
+// Skill Proposals - DEPRECATED
+// Use skills.create() instead for direct skill creation
+// Keeping for backward compatibility with any legacy code
+/** @deprecated Use skills.create() for direct skill creation */
 export const proposals = {
-  list: (status?: string) =>
-    request<SkillProposalPublic[]>(`/proposals${status ? `?status=${status}` : ''}`),
+  /** @deprecated Proposals are no longer used */
+  list: (_status?: string) => Promise.resolve([] as SkillProposalPublic[]),
 
-  get: (id: string) => request<SkillProposalPublic>(`/proposals/${id}`),
+  /** @deprecated Proposals are no longer used */
+  get: (_id: string) => Promise.reject(new Error('Proposals are deprecated. Use skills.create() instead.')),
 
-  create: (body: SkillProposalCreateRequest) =>
-    request<SkillProposalPublic>('/proposals', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
+  /** @deprecated Use skills.create() instead */
+  create: (_body: SkillProposalCreateRequest) =>
+    Promise.reject(new Error('Proposals are deprecated. Use skills.create() instead.')),
 
-  update: (id: string, body: SkillProposalCreateRequest) =>
-    request<SkillProposalPublic>(`/proposals/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
+  /** @deprecated Proposals are no longer used */
+  update: (_id: string, _body: SkillProposalCreateRequest) =>
+    Promise.reject(new Error('Proposals are deprecated. Use skills.update() instead.')),
 
-  delete: (id: string) =>
-    request<{ success: boolean }>(`/proposals/${id}`, {
-      method: 'DELETE',
-    }),
+  /** @deprecated Proposals are no longer used */
+  delete: (_id: string) =>
+    Promise.reject(new Error('Proposals are deprecated. Use skills.delete() instead.')),
 
-  review: (id: string, body: SkillProposalReviewRequest) =>
-    request<SkillProposalPublic>(`/proposals/${id}/review`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
+  /** @deprecated Visibility requests are handled through skills.requestVisibility() */
+  review: (_id: string, _body: SkillProposalReviewRequest) =>
+    Promise.reject(new Error('Proposals are deprecated. Use skills.approveVisibility() or skills.denyVisibility() instead.')),
 };
 
 // Scrape Tasks (API key auth - used by extension and skills)

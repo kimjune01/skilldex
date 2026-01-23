@@ -259,7 +259,7 @@ async function seed() {
     emailDraft: 'skill-email-draft',
     interviewScheduler: 'skill-interview-scheduler',
     meetingNotes: 'skill-meeting-notes',
-    proposeNewSkill: 'skill-propose-new-skill',
+    skillBuilder: 'skill-skill-builder',
     candidatePipelineBuilder: 'skill-candidate-pipeline-builder',
     dailyReport: 'skill-daily-report',
   };
@@ -307,7 +307,7 @@ async function seed() {
   // Note: All these skills are global (isGlobal: true, organizationId: null)
   // Organization-specific skills would have isGlobal: false and organizationId set
   const skillData = [
-    buildSkill(skillIds.proposeNewSkill, 'propose-new-skill', 'Propose New Skill', 'Submit a proposal for a new skill to be added to Skillomatic', 'system', [], ['proposals:write']),
+    buildSkill(skillIds.skillBuilder, 'skill-builder', 'Skill Builder', 'Create a new custom skill for your recruiting workflow. I\'ll guide you through defining what the skill does and how it works.', 'Productivity', [], ['skills:write']),
     buildSkill(skillIds.linkedinLookup, 'linkedin-lookup', 'LinkedIn Profile Lookup', 'Find candidate profiles on LinkedIn that match a job description using browser automation', 'sourcing', [], ['candidates:read']),
     buildSkill(skillIds.atsCandidateSearch, 'ats-candidate-search', 'ATS Candidate Search', 'Search for candidates in your Applicant Tracking System', 'ats', ['ats'], ['candidates:read']),
     buildSkill(skillIds.atsCandidateCrud, 'ats-candidate-crud', 'ATS Candidate Management', 'Create, update, and manage candidates in your ATS', 'ats', ['ats'], ['candidates:read', 'candidates:write']),
@@ -348,10 +348,10 @@ async function seed() {
   // ============ ROLE-SKILL ASSIGNMENTS ============
 
   const roleSkillAssignments = [
-    // System skills available to everyone
-    { roleId: adminRoleId, skillId: skillIds.proposeNewSkill },
-    { roleId: recruiterRoleId, skillId: skillIds.proposeNewSkill },
-    { roleId: viewerRoleId, skillId: skillIds.proposeNewSkill },
+    // Skill Builder available to everyone - allows creating custom skills
+    { roleId: adminRoleId, skillId: skillIds.skillBuilder },
+    { roleId: recruiterRoleId, skillId: skillIds.skillBuilder },
+    { roleId: viewerRoleId, skillId: skillIds.skillBuilder },
 
     // Admin gets all skills
     { roleId: adminRoleId, skillId: skillIds.linkedinLookup },
