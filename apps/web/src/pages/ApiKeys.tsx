@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Copy, AlertCircle, CheckCircle2, RefreshCw, Monitor, ChevronDown } from 'lucide-react';
+import { Copy, AlertCircle, CheckCircle2, RefreshCw, Monitor, ChevronDown, Zap, Shield, Sparkles } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -102,6 +102,7 @@ export default function ApiKeys() {
     {
       id: 'claude',
       name: 'Claude Desktop',
+      url: 'https://claude.ai/download',
       configPath: {
         mac: '~/Library/Application Support/Claude/claude_desktop_config.json',
         windows: '%APPDATA%\\Claude\\claude_desktop_config.json',
@@ -110,6 +111,7 @@ export default function ApiKeys() {
     {
       id: 'chatgpt',
       name: 'ChatGPT Desktop',
+      url: 'https://openai.com/chatgpt/desktop',
       configPath: {
         mac: '~/Library/Application Support/com.openai.chat/mcp.json',
         windows: '%APPDATA%\\com.openai.chat\\mcp.json',
@@ -119,13 +121,27 @@ export default function ApiKeys() {
     {
       id: 'chatmcp',
       name: 'ChatMCP (Free)',
+      url: 'https://chatmcp.com',
       configPath: {
         mac: '~/.chatmcp/mcp_config.json',
         windows: '%USERPROFILE%\\.chatmcp\\mcp_config.json',
       },
-      note: 'Free, open-source MCP client. Download from chatmcp.com',
+      note: 'Free, open-source MCP client.',
+    },
+    {
+      id: 'deepchat',
+      name: 'DeepChat (Free)',
+      url: 'https://deepchat.dev',
+      configPath: {
+        mac: '~/Library/Application Support/DeepChat/mcp.json',
+        windows: '%APPDATA%\\DeepChat\\mcp.json',
+      },
+      note: 'Free, cross-platform AI chat app.',
     },
   ];
+
+  // API URL for MCP server (web is 5173, API is 3000 in dev)
+  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
 
   const getMcpConfig = (key: string) => JSON.stringify({
     mcpServers: {
@@ -134,7 +150,7 @@ export default function ApiKeys() {
         args: ["@skillomatic/mcp"],
         env: {
           SKILLOMATIC_API_KEY: key,
-          SKILLOMATIC_API_URL: window.location.origin
+          SKILLOMATIC_API_URL: apiUrl
         }
       }
     }
@@ -146,7 +162,7 @@ export default function ApiKeys() {
       args: ["@skillomatic/mcp"],
       env: {
         SKILLOMATIC_API_KEY: key,
-        SKILLOMATIC_API_URL: window.location.origin
+        SKILLOMATIC_API_URL: apiUrl
       }
     }
   }, null, 2);
@@ -177,6 +193,43 @@ export default function ApiKeys() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      {/* Why Desktop Chat */}
+      <Card className="bg-gradient-to-br from-primary/5 to-amber-500/5 border-primary/20">
+        <CardContent className="pt-6">
+          <div>
+            <h3 className="font-bold text-lg text-foreground mb-2">
+              Why though?
+            </h3>
+              <p className="text-muted-foreground text-sm mb-4">
+                Desktop apps like Claude Desktop let you use Skillomatic right where you work:
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="flex items-start gap-2">
+                  <Zap className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">No Tab Switching</p>
+                    <p className="text-xs text-muted-foreground">Chat stays open while you work in your ATS, LinkedIn, email</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Shield className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Use Your Own AI Account</p>
+                    <p className="text-xs text-muted-foreground">No extra subscriptions—works with the Claude or ChatGPT you already have</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Works With Everything</p>
+                    <p className="text-xs text-muted-foreground">Analyze resumes, scrape LinkedIn, draft emails—all in one flow</p>
+                  </div>
+                </div>
+              </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/*
         =======================================================================
@@ -243,6 +296,16 @@ export default function ApiKeys() {
                         </div>
                         {app.note && (
                           <p className="text-muted-foreground italic mt-1">{app.note}</p>
+                        )}
+                        {app.url && (
+                          <a
+                            href={app.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline mt-1"
+                          >
+                            Download {app.name} →
+                          </a>
                         )}
                       </div>
                     </CollapsibleContent>

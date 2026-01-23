@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { MessageList, ChatInput } from '@/components/chat';
 import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Download, Wrench, ChevronRight, Lock } from 'lucide-react';
+import { AlertCircle, Loader2, Download, Wrench, ChevronRight, Lock, KeyRound, Settings, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { isSkillExecutable } from '@/lib/skills-client';
 import {
@@ -98,14 +98,61 @@ export default function Chat() {
 
   // Show setup message if no LLM configured
   if (!llmConfig) {
+    const isAdmin = user?.isAdmin || false;
+
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center p-8">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-lg font-semibold mb-2">LLM Not Configured</h2>
-        <p className="text-muted-foreground text-center max-w-md">
-          Chat requires an LLM API key. Please configure your organization's LLM settings in the
-          admin panel.
-        </p>
+        <div className="max-w-lg w-full">
+          {/* Main alert card */}
+          <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
+              <KeyRound className="h-8 w-8 text-amber-600" />
+            </div>
+            <h2 className="text-xl font-bold text-amber-900 mb-2">LLM API Key Required</h2>
+            <p className="text-amber-700 mb-6">
+              Web Chat needs an LLM API key (Anthropic, OpenAI, or Groq) to work.
+              {isAdmin
+                ? " You can configure this in the admin settings."
+                : " Please ask your organization admin to set this up."}
+            </p>
+
+            {isAdmin ? (
+              <a
+                href="/admin/settings"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-amber-600 text-white font-semibold hover:bg-amber-700 transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                Configure LLM Settings
+              </a>
+            ) : (
+              <div className="text-sm text-amber-600 bg-amber-100 rounded-lg p-3">
+                Contact your admin to add an LLM API key in Admin Settings
+              </div>
+            )}
+          </div>
+
+          {/* Alternative: Desktop Chat */}
+          <div className="mt-6 p-4 bg-muted/50 rounded-xl border">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <ExternalLink className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Alternative: Use Desktop Chat</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Desktop apps like Claude Desktop use your own API keys and don't require org configuration.
+                </p>
+                <a
+                  href="/desktop-chat"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                >
+                  Set up Desktop Chat
+                  <ChevronRight className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
