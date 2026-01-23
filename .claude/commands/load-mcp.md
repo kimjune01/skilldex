@@ -10,9 +10,8 @@ Load and test the Skillomatic MCP server for a specific user.
 
 2. **Determine user** (elicit if not obvious):
    - Check context for user email/name
-   - Common users:
-     - Local: `demo@skillomatic.technology` (API key: `sk_test_demo_api_key`)
-     - Prod: `superadmin@skillomatic.technology` (API key: `sk_live_prod_super_admin_debug_key_2024`)
+   - Common test users: `demo@skillomatic.technology` (local), `superadmin@skillomatic.technology` (prod)
+   - Always query for API key from database (step 3)
 
 3. **Get API key** for user:
    ```bash
@@ -70,10 +69,10 @@ Load and test the Skillomatic MCP server for a specific user.
 
 ## Quick Reference
 
-| Environment | API URL | Demo API Key |
-|-------------|---------|--------------|
-| Local | http://localhost:3000 | sk_test_demo_api_key |
-| Production | https://api.skillomatic.technology | sk_live_prod_super_admin_debug_key_2024 |
+| Environment | API URL |
+|-------------|---------|
+| Local | http://localhost:3000 |
+| Production | https://api.skillomatic.technology |
 
 ## Troubleshooting
 
