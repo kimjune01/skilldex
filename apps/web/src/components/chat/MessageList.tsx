@@ -7,6 +7,7 @@ interface MessageListProps {
   onRunSkill?: (skillSlug: string) => void;
   onShowInstructions?: (skillSlug: string) => void;
   onSuggestionClick?: (suggestion: string) => void;
+  onRefreshAction?: (action: string, params: Record<string, unknown>) => void;
 }
 
 const SUGGESTIONS = [
@@ -32,6 +33,7 @@ export function MessageList({
   onRunSkill,
   onShowInstructions,
   onSuggestionClick,
+  onRefreshAction,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +80,7 @@ export function MessageList({
           message={message}
           onRunSkill={onRunSkill}
           onShowInstructions={onShowInstructions}
+          onRefreshAction={onRefreshAction}
         />
       ))}
       <div ref={bottomRef} />

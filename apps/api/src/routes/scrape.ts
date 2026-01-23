@@ -245,3 +245,35 @@ scrapeRoutes.get('/tasks/:id', async (c) => {
 
   return c.json({ data: formatTask(task) });
 });
+
+// DELETE /scrape/cache - Clear cached scrape result for a URL
+scrapeRoutes.delete('/cache', async (c) => {
+  const user = c.get('user');
+  const url = c.req.query('url');
+
+  if (!url) {
+    return c.json({ error: { message: 'URL query parameter is required' } }, 400);
+  }
+
+  let urlHash: string;
+  try {
+    const normalizedUrl = normalizeUrl(url);
+    urlHash = hashUrl(normalizedUrl);
+  } catch {
+    return c.json({ error: { message: 'Invalid URL format' } }, 400);
+  }
+
+  // Delete all completed scrape tasks for this URL (clear cache)
+  const deleted = await db
+    .delete(scrapeTasks)
+    .where(
+      and(
+        eq(scrapeTasks.userId, user.id),
+        eq(scrapeTasks.urlHash, urlHash),
+        eq(scrapeTasks.status, 'completed')
+      )
+    )
+    .returning();
+
+  return c.json({ data: { deleted: deleted.length } });
+});

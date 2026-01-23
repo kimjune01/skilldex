@@ -39,6 +39,7 @@ export interface UseClientChatReturn {
   abort: () => void;
   clearError: () => void;
   clearMessages: () => void;
+  updateMessageActionResult: (messageId: string, action: string, result: string) => void;
 }
 
 /**
@@ -246,6 +247,16 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     setMessages([]);
   }, []);
 
+  const updateMessageActionResult = useCallback((messageId: string, action: string, result: string) => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, actionResult: { action, result } }
+          : m
+      )
+    );
+  }, []);
+
   return {
     messages,
     isStreaming,
@@ -256,5 +267,6 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     abort,
     clearError,
     clearMessages,
+    updateMessageActionResult,
   };
 }

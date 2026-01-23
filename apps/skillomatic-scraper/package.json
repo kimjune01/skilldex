@@ -1,0 +1,11 @@
+{
+  "name": "skillomatic-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node extractors/extractors.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

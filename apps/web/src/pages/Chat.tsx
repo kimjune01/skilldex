@@ -66,6 +66,21 @@ export default function Chat() {
 
   const handleShowInstructions = handleRunSkill;
 
+  // Handler for clearing cached scrape results
+  const handleRefreshAction = useCallback(async (_action: string, params: Record<string, unknown>) => {
+    if (params.action === 'delete' && params.url) {
+      const API_BASE = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/scrape/cache?url=${encodeURIComponent(params.url as string)}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to clear cache: ${response.status}`);
+      }
+    }
+  }, []);
+
   const handleDownloadChat = useCallback(() => {
     if (messages.length === 0) return;
 
@@ -214,6 +229,7 @@ export default function Chat() {
         onRunSkill={handleRunSkill}
         onShowInstructions={handleShowInstructions}
         onSuggestionClick={send}
+        onRefreshAction={handleRefreshAction}
       />
 
       {/* Input */}

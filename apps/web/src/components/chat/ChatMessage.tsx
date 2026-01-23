@@ -8,9 +8,10 @@ interface ChatMessageProps {
   message: ChatMessageType;
   onRunSkill?: (skillSlug: string) => void;
   onShowInstructions?: (skillSlug: string) => void;
+  onRefreshAction?: (action: string, params: Record<string, unknown>) => void;
 }
 
-export function ChatMessage({ message, onRunSkill, onShowInstructions }: ChatMessageProps) {
+export function ChatMessage({ message, onRunSkill, onShowInstructions, onRefreshAction }: ChatMessageProps) {
   const isUser = message.role === 'user';
 
   // Clean up skill suggestion markers and action blocks from content
@@ -140,6 +141,7 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions }: ChatMes
               <ActionResultCard
                 action={message.actionResult.action}
                 result={message.actionResult.result}
+                onRefresh={onRefreshAction}
               />
             </div>
           </div>

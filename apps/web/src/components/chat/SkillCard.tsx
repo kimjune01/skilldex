@@ -315,15 +315,110 @@ function JobCard({ job }: { job: Job }) {
   );
 }
 
+// Scrape result card with cache delete functionality
+interface ScrapeResultCardProps {
+  res: Record<string, unknown>;
+  onRefresh?: (action: string, params: Record<string, unknown>) => void;
+}
+
+function ScrapeResultCard({ res, onRefresh }: ScrapeResultCardProps) {
+  // null = not cached (fresh), 'cached' = from cache, 'deleting' = in progress, 'cleared' = user cleared it
+  const [cacheState, setCacheState] = useState<null | 'cached' | 'deleting' | 'cleared'>(
+    res.cached ? 'cached' : null
+  );
+
+  const content = res.content as string;
+  const url = res.url as string;
+
+  const handleClearCache = async () => {
+    if (!onRefresh || cacheState !== 'cached') return;
+    setCacheState('deleting');
+    try {
+      await onRefresh('scrape_url', { url, action: 'delete' });
+      setCacheState('cleared');
+    } catch {
+      setCacheState('cached'); // Revert on error
+    }
+  };
+
+  return (
+    <Card className="my-2">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between bg-primary/10 -mx-3 -mt-3 px-3 py-2 rounded-t">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">
+              Page scraped successfully ({(content.length / 1024).toFixed(1)} KB)
+            </span>
+          </div>
+          {cacheState === 'cached' && (
+            <Badge
+              variant="secondary"
+              className="text-xs cursor-pointer hover:bg-destructive/20 transition-colors"
+              onClick={handleClearCache}
+              title="Click to clear cache"
+            >
+              Cached ✕
+            </Badge>
+          )}
+          {cacheState === 'deleting' && (
+            <Badge variant="secondary" className="text-xs">
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              Clearing...
+            </Badge>
+          )}
+          {cacheState === 'cleared' && (
+            <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Cache cleared
+            </Badge>
+          )}
+        </div>
+        <div className="mt-3">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary hover:underline truncate block mb-2"
+          >
+            {url}
+          </a>
+          <div className="bg-muted p-2 rounded text-xs max-h-96 overflow-y-auto whitespace-pre-wrap break-all font-mono">
+            {content}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // Action result card for displaying ATS action results
 interface ActionResultCardProps {
   action: string;
   result: unknown;
+  onRefresh?: (action: string, params: Record<string, unknown>) => void;
 }
 
-export function ActionResultCard({ action, result }: ActionResultCardProps) {
+export function ActionResultCard({ action, result, onRefresh }: ActionResultCardProps) {
   const [showAll, setShowAll] = useState(false);
-  const res = result as Record<string, unknown>;
+
+  // Parse result if it's a JSON string
+  let res: Record<string, unknown>;
+  if (typeof result === 'string') {
+    // Strip "Action <action> result:\n" prefix if present
+    let jsonStr = result;
+    const prefixMatch = result.match(/^Action \w+ result:\n/);
+    if (prefixMatch) {
+      jsonStr = result.slice(prefixMatch[0].length);
+    }
+    try {
+      res = JSON.parse(jsonStr);
+    } catch {
+      res = { _raw: result };
+    }
+  } else {
+    res = result as Record<string, unknown>;
+  }
 
   // Handle candidates result
   if (res?.candidates && Array.isArray(res.candidates)) {
@@ -415,44 +510,7 @@ export function ActionResultCard({ action, result }: ActionResultCardProps) {
 
   // Handle scrape_url result
   if (res?.content && res?.url) {
-    const content = res.content as string;
-    const url = res.url as string;
-    const cached = res.cached as boolean;
-    const truncatedContent = content.length > 1000 ? content.slice(0, 1000) + '...' : content;
-
-    return (
-      <Card className="my-2">
-        <CardContent className="p-3">
-          <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950 -mx-3 -mt-3 px-3 py-2 rounded-t">
-            <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Page scraped successfully
-              </span>
-            </div>
-            {cached && <Badge variant="secondary" className="text-xs">Cached</Badge>}
-          </div>
-          <div className="mt-3">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary hover:underline truncate block mb-2"
-            >
-              {url}
-            </a>
-            <div className="bg-muted p-2 rounded text-xs max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">
-              {truncatedContent}
-            </div>
-            {content.length > 1000 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Showing first 1000 characters of {content.length.toLocaleString()} total
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ScrapeResultCard res={res} onRefresh={onRefresh} />;
   }
 
   // Handle error
@@ -476,7 +534,11 @@ export function ActionResultCard({ action, result }: ActionResultCardProps) {
     );
   }
 
-  // Default: show JSON
+  // Default: show JSON or raw text
+  const displayContent = res._raw
+    ? String(res._raw)
+    : JSON.stringify(res, null, 2);
+
   return (
     <Card className="my-2">
       <CardContent className="p-3">
@@ -484,8 +546,8 @@ export function ActionResultCard({ action, result }: ActionResultCardProps) {
           <CheckCircle className="h-4 w-4 text-green-600" />
           <span className="text-sm font-medium">Action: {action}</span>
         </div>
-        <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
-          {JSON.stringify(result, null, 2)}
+        <pre className="text-xs bg-muted p-2 rounded whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
+          {displayContent}
         </pre>
       </CardContent>
     </Card>
