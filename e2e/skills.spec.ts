@@ -9,8 +9,8 @@ test.describe('Skills', () => {
     await page.goto('/login')
     await page.getByLabel(/email/i).fill(TEST_EMAIL)
     await page.getByLabel(/password/i).fill(TEST_PASSWORD)
-    await page.getByRole('button', { name: /sign in/i }).click()
-    await expect(page).toHaveURL('/', { timeout: 5000 })
+    await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+    await expect(page).toHaveURL(/\/(home|chat)/, { timeout: 5000 })
   })
 
   test('should display skills list', async ({ page }) => {
@@ -20,21 +20,21 @@ test.describe('Skills', () => {
     await expect(page.getByRole('heading', { name: /skills/i })).toBeVisible()
 
     // Should show at least one skill (from seed data)
-    await expect(page.getByRole('link', { name: /linkedin profile lookup/i })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/LinkedIn Profile Lookup/i).first()).toBeVisible({ timeout: 5000 })
   })
 
   test('should filter skills by category', async ({ page }) => {
     await page.goto('/skills')
 
     // Wait for skills to load
-    await expect(page.getByRole('link', { name: /linkedin profile lookup/i })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/LinkedIn Profile Lookup/i).first()).toBeVisible({ timeout: 5000 })
 
     // Click on a category filter if available
     const sourcingFilter = page.getByRole('button', { name: /sourcing/i })
     if (await sourcingFilter.isVisible()) {
       await sourcingFilter.click()
       // Should still show linkedin-lookup (sourcing category)
-      await expect(page.getByRole('link', { name: /linkedin profile lookup/i })).toBeVisible()
+      await expect(page.getByText(/LinkedIn Profile Lookup/i).first()).toBeVisible()
     }
   })
 
@@ -42,10 +42,10 @@ test.describe('Skills', () => {
     await page.goto('/skills')
 
     // Wait for skills to load
-    await expect(page.getByRole('link', { name: /linkedin profile lookup/i })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/LinkedIn Profile Lookup/i).first()).toBeVisible({ timeout: 5000 })
 
     // Click on a skill
-    await page.getByRole('link', { name: /linkedin profile lookup/i }).click()
+    await page.getByText(/LinkedIn Profile Lookup/i).first().click()
 
     // Should show skill detail with download button
     await expect(page.getByRole('button', { name: /download/i })).toBeVisible({ timeout: 5000 })

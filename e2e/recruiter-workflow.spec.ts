@@ -9,8 +9,8 @@ async function login(page: import('@playwright/test').Page) {
   await page.goto('/login')
   await page.getByLabel(/email/i).fill(TEST_EMAIL)
   await page.getByLabel(/password/i).fill(TEST_PASSWORD)
-  await page.getByRole('button', { name: /sign in/i }).click()
-  await expect(page).toHaveURL('/', { timeout: 5000 })
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+  await expect(page).toHaveURL(/\/(home|chat)/, { timeout: 5000 })
 }
 
 test.describe('Recruiter Workflow E2E', () => {
@@ -36,13 +36,12 @@ test.describe('Recruiter Workflow E2E', () => {
     test('recruiter can view their usage analytics', async ({ page }) => {
       await login(page)
 
-      // Navigate to Usage page
-      await page.getByRole('link', { name: /usage/i }).click()
-      await expect(page).toHaveURL('/usage')
+      // Navigate directly to Usage page (not in main nav)
+      await page.goto('/usage')
 
-      // Should see usage stats
-      await expect(page.getByText(/total executions/i)).toBeVisible({ timeout: 5000 })
-      await expect(page.getByText(/success rate/i)).toBeVisible()
+      // Should see usage stats (page shows "Total: X executions" and "Success rate: X%")
+      await expect(page.getByText(/Total:/i)).toBeVisible({ timeout: 5000 })
+      await expect(page.getByText(/Success rate:/i)).toBeVisible()
     })
   })
 
