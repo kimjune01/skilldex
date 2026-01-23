@@ -134,6 +134,20 @@ app.put('/api/candidates/:id', async (c) => {
   return c.json({ data: candidates[index] });
 });
 
+// DELETE /api/candidates/:id - Delete candidate
+app.delete('/api/candidates/:id', (c) => {
+  const id = c.req.param('id');
+
+  const index = candidates.findIndex((cand) => cand.id === id);
+  if (index === -1) {
+    return c.json({ error: { message: 'Candidate not found' } }, 404);
+  }
+
+  const deleted = candidates.splice(index, 1)[0];
+
+  return c.json({ data: deleted, deleted: true });
+});
+
 // ============ JOBS ============
 
 // GET /api/jobs - List jobs

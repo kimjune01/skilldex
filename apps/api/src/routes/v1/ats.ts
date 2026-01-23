@@ -409,6 +409,50 @@ v1AtsRoutes.put('/candidates/:id', async (c) => {
   }
 });
 
+// DELETE /v1/ats/candidates/:id - Delete candidate
+v1AtsRoutes.delete('/candidates/:id', async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('user');
+  const startTime = Date.now();
+
+  // Demo mode simulates deletion
+  if (isDemoMode(c.req.raw)) {
+    const candidates = generateDemoCandidates();
+    const candidate = candidates.find((c) => c.id === id);
+    if (!candidate) {
+      return c.json({ error: { message: 'Candidate not found' } }, 404);
+    }
+    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
+    return c.json({ candidate, deleted: true, demo: true });
+  }
+
+  // Try Zoho Recruit if enabled and connected
+  if (USE_ZOHO) {
+    const zoho = await getZohoClient(user.id, user.organizationId);
+    if (zoho) {
+      try {
+        // Note: Zoho Recruit may not support true deletion - check their API
+        // For now, we'll return an error indicating this isn't supported
+        return c.json({ error: { message: 'Delete not supported in Zoho Recruit' } }, 501);
+      } catch (error) {
+        logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
+        return c.json({ error: { message: 'Failed to delete candidate in Zoho Recruit' } }, 502);
+      }
+    }
+  }
+
+  try {
+    const data = await proxyToMockAts(`/api/candidates/${id}`, {
+      method: 'DELETE',
+    });
+    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
+    return c.json(data);
+  } catch (error) {
+    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
+    return c.json({ error: { message: `Failed to delete candidate: ${getErrorMessage(error)}` } }, 502);
+  }
+});
+
 // GET /v1/ats/jobs - List jobs
 v1AtsRoutes.get('/jobs', async (c) => {
   const query = c.req.query();

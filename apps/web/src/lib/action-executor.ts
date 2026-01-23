@@ -21,6 +21,7 @@ export type ActionType =
   | 'get_candidate'
   | 'create_candidate'
   | 'update_candidate'
+  | 'delete_candidate'
   | 'list_jobs'
   | 'get_job'
   | 'scrape_url'
@@ -183,7 +184,7 @@ async function executeUpdateCandidate(
   try {
     const { id, ...updates } = params;
     const result = await serverRequest<unknown>(`/v1/ats/candidates/${id}`, {
-      method: 'PATCH',
+      method: 'PUT',
       body: JSON.stringify(updates),
     });
     return {
@@ -196,6 +197,31 @@ async function executeUpdateCandidate(
       success: false,
       action: 'update_candidate',
       error: error instanceof Error ? error.message : 'Failed to update candidate',
+    };
+  }
+}
+
+/**
+ * Execute ATS delete_candidate action
+ */
+async function executeDeleteCandidate(
+  params: { id: string },
+  _context: ActionContext
+): Promise<ActionResult> {
+  try {
+    const result = await serverRequest<unknown>(`/v1/ats/candidates/${params.id}`, {
+      method: 'DELETE',
+    });
+    return {
+      success: true,
+      action: 'delete_candidate',
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'delete_candidate',
+      error: error instanceof Error ? error.message : 'Failed to delete candidate',
     };
   }
 }
@@ -437,6 +463,9 @@ export async function executeAction(
         params as { id: string } & Record<string, unknown>,
         context
       );
+
+    case 'delete_candidate':
+      return executeDeleteCandidate(params as { id: string }, context);
 
     case 'list_jobs':
       return executeListJobs(

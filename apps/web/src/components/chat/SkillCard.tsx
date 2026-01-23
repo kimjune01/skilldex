@@ -49,6 +49,7 @@ export function SkillCard({
 }: SkillCardProps) {
   // Auto-expand details section (not results) only when pending
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [resultExpanded, setResultExpanded] = useState(false);
   const hasResult = result !== undefined && result !== null;
 
   const categoryVariant = skill.category as 'sourcing' | 'ats' | 'communication' | 'scheduling' | 'productivity' | 'system';
@@ -110,11 +111,31 @@ export function SkillCard({
           </div>
         </div>
 
-        {/* Results section - shown prominently when available */}
+        {/* Results section - collapsible, collapsed by default */}
         {hasResult && (
-          <div className="mt-3 pt-3 border-t">
-            <ResultDisplay result={result} />
-          </div>
+          <>
+            <button
+              onClick={() => setResultExpanded(!resultExpanded)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors"
+            >
+              {resultExpanded ? (
+                <>
+                  <ChevronUp className="h-3 w-3" />
+                  Hide result
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3 w-3" />
+                  Show result
+                </>
+              )}
+            </button>
+            {resultExpanded && (
+              <div className="mt-3 pt-3 border-t">
+                <ResultDisplay result={result} />
+              </div>
+            )}
+          </>
         )}
 
         {/* Details toggle - for skill info (Intent/Capabilities) */}
@@ -400,7 +421,7 @@ interface ActionResultCardProps {
 }
 
 export function ActionResultCard({ action, result, onRefresh }: ActionResultCardProps) {
-  const [showAll, setShowAll] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   // Parse result if it's a JSON string
   let res: Record<string, unknown>;
@@ -420,6 +441,75 @@ export function ActionResultCard({ action, result, onRefresh }: ActionResultCard
     res = result as Record<string, unknown>;
   }
 
+  // Generate a summary for the collapsed state
+  const getSummary = (): string => {
+    if (res?.candidates && Array.isArray(res.candidates)) {
+      return `Found ${res.total || res.candidates.length} candidate${(res.total || res.candidates.length) !== 1 ? 's' : ''}`;
+    }
+    if (res?.jobs && Array.isArray(res.jobs)) {
+      return `${res.total || res.jobs.length} open job${(res.total || res.jobs.length) !== 1 ? 's' : ''}`;
+    }
+    if (res?.candidate) {
+      const candidate = res.candidate as Candidate;
+      if (res.created) return `Created: ${candidate.firstName} ${candidate.lastName}`;
+      if (res.updated) return `Updated: ${candidate.firstName} ${candidate.lastName}`;
+      return `${candidate.firstName} ${candidate.lastName}`;
+    }
+    if (res?.content && res?.url) {
+      const content = res.content as string;
+      return `Page scraped (${(content.length / 1024).toFixed(1)} KB)`;
+    }
+    if (res?.error) {
+      return `Error: ${res.error}`;
+    }
+    return `Action completed`;
+  };
+
+  const isError = !!res?.error;
+
+  return (
+    <div className="my-2">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={`flex items-center gap-2 text-xs transition-colors w-full text-left ${
+          isError
+            ? 'text-red-600 hover:text-red-700'
+            : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        {expanded ? (
+          <ChevronUp className="h-3 w-3 shrink-0" />
+        ) : (
+          <ChevronDown className="h-3 w-3 shrink-0" />
+        )}
+        {isError ? (
+          <XCircle className="h-3 w-3 shrink-0" />
+        ) : (
+          <CheckCircle className="h-3 w-3 shrink-0 text-green-600" />
+        )}
+        <span className="truncate">{getSummary()}</span>
+      </button>
+      {expanded && (
+        <div className="mt-2">
+          <ActionResultContent res={res} onRefresh={onRefresh} action={action} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Internal component to render the actual result content
+function ActionResultContent({
+  res,
+  onRefresh,
+  action,
+}: {
+  res: Record<string, unknown>;
+  onRefresh?: (action: string, params: Record<string, unknown>) => void;
+  action: string;
+}) {
+  const [showAll, setShowAll] = useState(false);
+
   // Handle candidates result
   if (res?.candidates && Array.isArray(res.candidates)) {
     const candidates = res.candidates as Candidate[];
@@ -427,7 +517,7 @@ export function ActionResultCard({ action, result, onRefresh }: ActionResultCard
     const hasMore = candidates.length > 5;
 
     return (
-      <Card className="my-2">
+      <Card>
         <CardContent className="p-3">
           <div className="flex items-center justify-between bg-green-50 dark:bg-green-950 -mx-3 -mt-3 px-3 py-2 rounded-t">
             <div className="flex items-center gap-2">
@@ -461,7 +551,7 @@ export function ActionResultCard({ action, result, onRefresh }: ActionResultCard
     const jobs = res.jobs as Job[];
 
     return (
-      <Card className="my-2">
+      <Card>
         <CardContent className="p-3">
           <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950 -mx-3 -mt-3 px-3 py-2 rounded-t">
             <div className="flex items-center gap-2">
@@ -489,7 +579,7 @@ export function ActionResultCard({ action, result, onRefresh }: ActionResultCard
     const isUpdated = res.updated;
 
     return (
-      <Card className="my-2">
+      <Card>
         <CardContent className="p-3">
           <div className="flex items-center justify-between bg-green-50 dark:bg-green-950 -mx-3 -mt-3 px-3 py-2 rounded-t">
             <div className="flex items-center gap-2">
@@ -517,7 +607,7 @@ export function ActionResultCard({ action, result, onRefresh }: ActionResultCard
   if (res?.error) {
     const suggestion = res.suggestion as string | undefined;
     return (
-      <Card className="my-2 border-red-200">
+      <Card className="border-red-200">
         <CardContent className="p-3">
           <div className="flex items-center gap-2 text-red-600">
             <XCircle className="h-4 w-4" />
@@ -540,7 +630,7 @@ export function ActionResultCard({ action, result, onRefresh }: ActionResultCard
     : JSON.stringify(res, null, 2);
 
   return (
-    <Card className="my-2">
+    <Card>
       <CardContent className="p-3">
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle className="h-4 w-4 text-green-600" />

@@ -241,6 +241,7 @@ The system will execute the action and return the result. You will then see the 
 - \`get_candidate\` - Get candidate details
 - \`create_candidate\` - Create a new candidate
 - \`update_candidate\` - Update candidate information
+- \`delete_candidate\` - Delete/remove a candidate from ATS
 - \`list_jobs\` - List open jobs
 - \`get_job\` - Get job details
 - \`scrape_url\` - Scrape content from a URL (LinkedIn profiles, job postings, etc.)
