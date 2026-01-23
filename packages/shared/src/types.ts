@@ -58,6 +58,14 @@ export function getOnboardingStepRoute(step: number): string | null {
   return '/integrations';
 }
 
+/** Get the element ID for an onboarding step (for in-page badge highlighting) */
+export function getOnboardingStepElementId(step: number): string | null {
+  if (step >= ONBOARDING_STEPS.COMPLETE) return null;
+  // ATS connect button on integrations page
+  if (step < ONBOARDING_STEPS.ATS_CONNECTED) return 'ats-connect';
+  return null;
+}
+
 /** Get the step name key for advancing to the next step */
 export function getNextOnboardingStepKey(currentStep: number): keyof typeof ONBOARDING_STEPS | null {
   if (currentStep < ONBOARDING_STEPS.ATS_CONNECTED) return 'ATS_CONNECTED';

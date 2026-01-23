@@ -495,7 +495,7 @@ describe('buildCapabilityProfile', () => {
     vi.mocked(getUserIntegrationsByCategory).mockResolvedValue({
       ats: [],
       email: [],
-      calendar: [{ id: 'int-1', provider: 'calendar', accessLevel: 'read-write' }],
+      calendar: [{ id: 'int-1', provider: 'calendar', metadata: null }],
     });
 
     const mockGetToken = vi.fn().mockResolvedValue({

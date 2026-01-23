@@ -401,7 +401,7 @@ export default function Landing() {
                 </span>
               </h1>
               <p className="text-lg text-[hsl(220_15%_45%)] mb-8 max-w-xl mx-auto lg:mx-0">
-                Powerful recruiting automations that work with your favorite AI. Use our web chatbot,
+                Pre-built recruiting playbooks (we call them Skills) that work with your favorite AI. Use our web chatbot,
                 Claude Desktop, ChatGPT, or any BYOAI app to search candidates, sync with your ATS, and send personalized outreach.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">

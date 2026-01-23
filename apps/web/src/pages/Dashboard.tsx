@@ -143,10 +143,10 @@ export default function Dashboard() {
         actionLabel: 'Install',
       });
 
-      // Inspect skills - skills are available by default (step 3)
+      // Browse playbooks - skills/playbooks are available by default (step 3)
       steps.push({
         id: 'skills',
-        label: 'Inspect skills',
+        label: 'Browse playbooks',
         done: currentStep >= ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED,
         icon: Terminal,
         route: '/skills',

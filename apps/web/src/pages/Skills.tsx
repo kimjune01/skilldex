@@ -30,6 +30,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  X,
+  Lightbulb,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -64,6 +66,16 @@ export default function Skills() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingSkill, setDeletingSkill] = useState<SkillPublic | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Educational banner state - show on first visit
+  const [showEducationBanner, setShowEducationBanner] = useState(() => {
+    return localStorage.getItem('skills-education-dismissed') !== 'true';
+  });
+
+  const dismissEducationBanner = () => {
+    localStorage.setItem('skills-education-dismissed', 'true');
+    setShowEducationBanner(false);
+  };
 
   const loadSkills = async () => {
     setIsLoading(true);
@@ -218,13 +230,33 @@ export default function Skills() {
 
   return (
     <div className="space-y-6">
+      {/* Educational banner - explains Skills = Playbooks */}
+      {showEducationBanner && (
+        <Alert className="bg-primary/5 border-primary/20">
+          <Lightbulb className="h-4 w-4 text-primary" />
+          <AlertDescription className="flex items-start justify-between gap-4">
+            <span>
+              <strong>Skills are pre-built recruiting playbooks.</strong> Each one automates a complete workflow—like
+              sourcing candidates or scheduling interviews. Browse below to see what's available.
+            </span>
+            <button
+              onClick={dismissEducationBanner}
+              className="shrink-0 p-1 rounded hover:bg-primary/10 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Skills</h1>
           <p className="text-muted-foreground mt-1">
-            {viewFilter === 'all' && 'Browse and download Claude Code skills for your recruiting workflow'}
-            {viewFilter === 'my' && 'Skills you have created'}
-            {viewFilter === 'pending' && 'Skills awaiting visibility approval'}
+            {viewFilter === 'all' && 'Browse and download recruiting playbooks for your workflow'}
+            {viewFilter === 'my' && 'Playbooks you have created'}
+            {viewFilter === 'pending' && 'Playbooks awaiting visibility approval'}
           </p>
         </div>
 

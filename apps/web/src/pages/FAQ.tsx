@@ -38,6 +38,12 @@ const faqItems: FAQItem[] = [
   },
   {
     category: 'Getting Started',
+    question: 'What are Skills?',
+    answer:
+      'Skills are pre-built recruiting playbooks. Each one automates a complete workflow—like sourcing candidates on LinkedIn, scheduling interviews, or sending follow-up emails. Think of them as step-by-step recipes that Claude follows to get work done in your ATS, email, and calendar.',
+  },
+  {
+    category: 'Getting Started',
     question: 'Do I need to be technical to use this?',
     answer:
       'No. If you can use ChatGPT, you can use Skillomatic. You just type what you want in plain English, like "find me 10 senior engineers in NYC" or "send a follow-up to everyone who hasn\'t responded." No coding, no special commands.',
