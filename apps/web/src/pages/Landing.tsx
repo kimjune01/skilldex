@@ -254,7 +254,7 @@ function HowItWorksSection() {
         clearInterval(interval);
         window.location.href = '/login';
       }
-    }, 50);
+    }, 60);
   };
 
   const allDone = currentStep >= setupSteps.length;
