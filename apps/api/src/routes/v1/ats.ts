@@ -132,6 +132,17 @@ function classifyAtsError(error: unknown): ErrorCode {
   return 'UNKNOWN_ERROR';
 }
 
+/**
+ * Extract a user-friendly error message from an error.
+ * Safe to return to clients as it doesn't expose internal details.
+ */
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Unknown error occurred';
+}
+
 // Helper to log skill usage (uses error codes instead of raw messages for ephemerality)
 async function logUsage(
   userId: string,
@@ -162,8 +173,28 @@ async function logUsage(
 // Helper to proxy requests to mock ATS
 async function proxyToMockAts(path: string, options?: RequestInit) {
   const url = `${MOCK_ATS_URL}${path}`;
-  const response = await fetch(url, options);
-  return response.json();
+
+  let response: Response;
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    // Network error - mock ATS likely not running
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    if (message.includes('ECONNREFUSED') || message.includes('fetch failed')) {
+      throw new Error(`Mock ATS server not reachable at ${MOCK_ATS_URL}. Is it running? (pnpm dev:ats)`);
+    }
+    throw new Error(`Network error connecting to ATS: ${message}`);
+  }
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    // ATS returned an error response
+    const errorMessage = data?.error?.message || `ATS returned ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
 }
 
 // GET /v1/ats/candidates - Search candidates
@@ -226,7 +257,7 @@ v1AtsRoutes.get('/candidates', async (c) => {
     return c.json(data);
   } catch (error) {
     logUsage(user.id, user.apiKeyId, 'ats-candidate-search', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: 'Failed to fetch candidates from ATS' } }, 502);
+    return c.json({ error: { message: `Failed to fetch candidates: ${getErrorMessage(error)}` } }, 502);
   }
 });
 
@@ -271,7 +302,7 @@ v1AtsRoutes.get('/candidates/:id', async (c) => {
     return c.json(data);
   } catch (error) {
     logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: 'Failed to fetch candidate from ATS' } }, 502);
+    return c.json({ error: { message: `Failed to fetch candidate: ${getErrorMessage(error)}` } }, 502);
   }
 });
 
@@ -323,7 +354,7 @@ v1AtsRoutes.post('/candidates', async (c) => {
     return c.json(data, 201);
   } catch (error) {
     logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: 'Failed to create candidate in ATS' } }, 502);
+    return c.json({ error: { message: `Failed to create candidate: ${getErrorMessage(error)}` } }, 502);
   }
 });
 
@@ -374,7 +405,7 @@ v1AtsRoutes.put('/candidates/:id', async (c) => {
     return c.json(data);
   } catch (error) {
     logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: 'Failed to update candidate in ATS' } }, 502);
+    return c.json({ error: { message: `Failed to update candidate: ${getErrorMessage(error)}` } }, 502);
   }
 });
 
@@ -408,7 +439,7 @@ v1AtsRoutes.get('/jobs', async (c) => {
     const data = await proxyToMockAts('/api/jobs');
     return c.json(data);
   } catch (error) {
-    return c.json({ error: { message: 'Failed to fetch jobs from ATS' } }, 502);
+    return c.json({ error: { message: `Failed to fetch jobs: ${getErrorMessage(error)}` } }, 502);
   }
 });
 
@@ -447,7 +478,7 @@ v1AtsRoutes.get('/jobs/:id', async (c) => {
     const data = await proxyToMockAts(`/api/jobs/${id}`);
     return c.json(data);
   } catch (error) {
-    return c.json({ error: { message: 'Failed to fetch job from ATS' } }, 502);
+    return c.json({ error: { message: `Failed to fetch job: ${getErrorMessage(error)}` } }, 502);
   }
 });
 
@@ -497,7 +528,7 @@ v1AtsRoutes.get('/applications', async (c) => {
     const data = await proxyToMockAts(`/api/applications?${params}`);
     return c.json(data);
   } catch (error) {
-    return c.json({ error: { message: 'Failed to fetch applications from ATS' } }, 502);
+    return c.json({ error: { message: `Failed to fetch applications: ${getErrorMessage(error)}` } }, 502);
   }
 });
 
@@ -547,7 +578,7 @@ v1AtsRoutes.post('/applications/:id/stage', async (c) => {
     });
     return c.json(data);
   } catch (error) {
-    return c.json({ error: { message: 'Failed to update application stage in ATS' } }, 502);
+    return c.json({ error: { message: `Failed to update application stage: ${getErrorMessage(error)}` } }, 502);
   }
 });
 
