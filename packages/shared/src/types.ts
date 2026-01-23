@@ -48,6 +48,26 @@ export function getOnboardingStepName(step: number): string {
   return 'Get Started';
 }
 
+/** Get the route path for an onboarding step */
+export function getOnboardingStepRoute(step: number): string | null {
+  if (step >= ONBOARDING_STEPS.COMPLETE) return null;
+  if (step >= ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) return '/skills';
+  if (step >= ONBOARDING_STEPS.EXTENSION_INSTALLED) return '/skills';
+  if (step >= ONBOARDING_STEPS.API_KEY_GENERATED) return '/extension';
+  if (step >= ONBOARDING_STEPS.ATS_CONNECTED) return '/desktop-chat';
+  return '/integrations';
+}
+
+/** Get the step name key for advancing to the next step */
+export function getNextOnboardingStepKey(currentStep: number): keyof typeof ONBOARDING_STEPS | null {
+  if (currentStep < ONBOARDING_STEPS.ATS_CONNECTED) return 'ATS_CONNECTED';
+  if (currentStep < ONBOARDING_STEPS.API_KEY_GENERATED) return 'API_KEY_GENERATED';
+  if (currentStep < ONBOARDING_STEPS.EXTENSION_INSTALLED) return 'EXTENSION_INSTALLED';
+  if (currentStep < ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) return 'DEPLOYMENT_CONFIGURED';
+  if (currentStep < ONBOARDING_STEPS.COMPLETE) return 'COMPLETE';
+  return null;
+}
+
 export interface OnboardingStatus {
   currentStep: number;
   isComplete: boolean;

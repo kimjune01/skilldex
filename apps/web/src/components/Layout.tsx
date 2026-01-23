@@ -15,7 +15,8 @@ import { useAuth } from '../hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { apiKeys } from '../lib/api';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2 } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome } from 'lucide-react';
+import { getOnboardingStepRoute } from '@skillomatic/shared';
 
 // Main navigation - visible to all authenticated users
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Connections', href: '/integrations', icon: Plug },
   { name: 'Skills', href: '/skills', icon: Zap },
   { name: 'Desktop Chat', href: '/desktop-chat', icon: Key },
+  { name: 'Extension', href: '/extension', icon: Chrome },
   { name: 'Web Chat', href: '/chat', icon: MessageSquare },
 ];
 
@@ -126,7 +128,9 @@ export default function Layout() {
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
-            const showSetupBadge = item.href === '/home' && !isOnboarded;
+            // Show badge on the tab that corresponds to the next onboarding step
+            const nextStepRoute = !isOnboarded && user ? getOnboardingStepRoute(user.onboardingStep) : null;
+            const showSetupBadge = nextStepRoute === item.href;
             return (
               <Link
                 key={item.href}
@@ -138,19 +142,21 @@ export default function Layout() {
                     : "bg-[hsl(220_15%_88%)] text-[hsl(220_20%_35%)] border-2 border-[hsl(220_15%_78%)] hover:bg-[hsl(220_15%_85%)] hover:border-[hsl(220_15%_70%)]"
                 )}
               >
-                <div className={cn(
-                  "h-7 w-7 rounded-md flex items-center justify-center transition-all",
-                  isActive
-                    ? "bg-white/20"
-                    : "bg-[hsl(220_15%_80%)] group-hover:bg-[hsl(220_15%_75%)]"
-                )}>
-                  <Icon className="h-4 w-4" />
+                <div className="relative">
+                  <div className={cn(
+                    "h-7 w-7 rounded-md flex items-center justify-center transition-all",
+                    isActive
+                      ? "bg-white/20"
+                      : "bg-[hsl(220_15%_80%)] group-hover:bg-[hsl(220_15%_75%)]"
+                  )}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  {showSetupBadge && (
+                    <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 animate-pulse border-2 border-white" />
+                  )}
                 </div>
                 <span className="tracking-wide">{item.name}</span>
-                {showSetupBadge && (
-                  <span className="ml-auto h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
-                )}
-                {isActive && !showSetupBadge && (
+                {isActive && (
                   <Circle className="ml-auto h-2 w-2 fill-current" />
                 )}
               </Link>
