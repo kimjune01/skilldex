@@ -1,5 +1,6 @@
 import { User, Bot, Mail, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { SkillCard, ActionResultCard } from './SkillCard';
 import type { ChatMessage as ChatMessageType } from '@skillomatic/shared';
@@ -57,6 +58,7 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions, onRefresh
           ) : (
             // Assistant messages: render markdown
             <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
               components={{
                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                 ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
@@ -103,6 +105,19 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions, onRefresh
                 blockquote: ({ children }) => (
                   <blockquote className="border-l-2 border-primary/50 pl-2 italic my-2">{children}</blockquote>
                 ),
+                // Table components for GFM tables
+                table: ({ children }) => (
+                  <div className="overflow-x-auto my-2">
+                    <table className="min-w-full text-xs border-collapse">{children}</table>
+                  </div>
+                ),
+                thead: ({ children }) => <thead className="bg-background/50">{children}</thead>,
+                tbody: ({ children }) => <tbody>{children}</tbody>,
+                tr: ({ children }) => <tr className="border-b border-border/50">{children}</tr>,
+                th: ({ children }) => (
+                  <th className="px-2 py-1 text-left font-semibold border-b border-border">{children}</th>
+                ),
+                td: ({ children }) => <td className="px-2 py-1">{children}</td>,
               }}
             >
               {cleanContent}
