@@ -31,6 +31,44 @@ describe('registerTools', () => {
     };
   });
 
+  describe('skill discovery tools', () => {
+    it('should always register get_skill_catalog tool', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+      };
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      expect(mockServer.tool).toHaveBeenCalledWith(
+        'get_skill_catalog',
+        expect.stringContaining('recruiting workflows'),
+        {},
+        expect.any(Function)
+      );
+    });
+
+    it('should always register get_skill tool', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+      };
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      expect(mockServer.tool).toHaveBeenCalledWith(
+        'get_skill',
+        expect.stringContaining('detailed instructions'),
+        expect.objectContaining({ slug: expect.any(Object) }),
+        expect.any(Function)
+      );
+    });
+  });
+
   describe('base tools registration', () => {
     it('should always register scrape tools', async () => {
       const profile: CapabilityProfile = {
@@ -40,11 +78,7 @@ describe('registerTools', () => {
         hasEmail: false,
       };
 
-      await registerTools(
-        mockServer as any,
-        mockClient as SkillomaticClient,
-        profile
-      );
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
 
       expect(registerScrapeTools).toHaveBeenCalledWith(mockServer, mockClient);
     });
@@ -60,11 +94,7 @@ describe('registerTools', () => {
         atsProvider: 'greenhouse',
       };
 
-      await registerTools(
-        mockServer as any,
-        mockClient as SkillomaticClient,
-        profile
-      );
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
 
       // With dynamic tools, registerAtsTools is NOT called - tools are generated from manifest
       // Instead, server.tool() is called directly for each generated tool
@@ -82,11 +112,7 @@ describe('registerTools', () => {
         atsProvider: 'unsupported-ats', // Provider without a manifest
       };
 
-      await registerTools(
-        mockServer as any,
-        mockClient as SkillomaticClient,
-        profile
-      );
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
 
       // Static tools are used for unsupported providers
       expect(registerAtsTools).toHaveBeenCalledWith(mockServer, mockClient);
@@ -100,13 +126,155 @@ describe('registerTools', () => {
         hasEmail: false,
       };
 
-      await registerTools(
-        mockServer as any,
-        mockClient as SkillomaticClient,
-        profile
-      );
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
 
       expect(registerAtsTools).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('get_skill_catalog handler', () => {
+    it('should return formatted skill catalog', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+      };
+
+      const mockSkills = [
+        {
+          slug: 'linkedin-lookup',
+          name: 'LinkedIn Lookup',
+          description: 'Look up candidate profiles on LinkedIn',
+          intent: 'find someone on LinkedIn',
+          capabilities: ['scraping'],
+          isEnabled: true,
+        },
+        {
+          slug: 'disabled-skill',
+          name: 'Disabled',
+          description: 'This is disabled',
+          isEnabled: false,
+        },
+        {
+          slug: 'ats-search',
+          name: 'ATS Search',
+          description: 'Search candidates in ATS',
+          intent: 'find candidates in database',
+          capabilities: ['ats'],
+          isEnabled: true,
+        },
+      ];
+
+      (mockClient.getSkills as ReturnType<typeof vi.fn>).mockResolvedValue(mockSkills);
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      // Get the handler for get_skill_catalog
+      const catalogCall = mockServer.tool.mock.calls.find((call) => call[0] === 'get_skill_catalog');
+      const handler = catalogCall![3];
+
+      const result = await handler({});
+
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0].text).toContain('LinkedIn Lookup');
+      expect(result.content[0].text).toContain('ATS Search');
+      expect(result.content[0].text).not.toContain('Disabled'); // disabled skill excluded
+      expect(result.content[0].text).toContain('find someone on LinkedIn'); // intent included
+    });
+
+    it('should handle errors gracefully', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+      };
+
+      (mockClient.getSkills as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      const catalogCall = mockServer.tool.mock.calls.find((call) => call[0] === 'get_skill_catalog');
+      const handler = catalogCall![3];
+
+      const result = await handler({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Error fetching skill catalog');
+    });
+  });
+
+  describe('get_skill handler', () => {
+    it('should return skill instructions', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+      };
+
+      const mockSkill = {
+        slug: 'linkedin-lookup',
+        instructions: '# LinkedIn Lookup\n\nFollow these steps...',
+      };
+
+      (mockClient.getRenderedSkill as ReturnType<typeof vi.fn>).mockResolvedValue(mockSkill);
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      const skillCall = mockServer.tool.mock.calls.find((call) => call[0] === 'get_skill');
+      const handler = skillCall![3];
+
+      const result = await handler({ slug: 'linkedin-lookup' });
+
+      expect(result.content[0].text).toBe('# LinkedIn Lookup\n\nFollow these steps...');
+    });
+
+    it('should handle missing instructions', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+      };
+
+      (mockClient.getRenderedSkill as ReturnType<typeof vi.fn>).mockResolvedValue({
+        slug: 'empty-skill',
+        instructions: '',
+      });
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      const skillCall = mockServer.tool.mock.calls.find((call) => call[0] === 'get_skill');
+      const handler = skillCall![3];
+
+      const result = await handler({ slug: 'empty-skill' });
+
+      expect(result.content[0].text).toBe('No instructions found for skill: empty-skill');
+    });
+
+    it('should handle errors gracefully', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+      };
+
+      (mockClient.getRenderedSkill as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Skill not found')
+      );
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      const skillCall = mockServer.tool.mock.calls.find((call) => call[0] === 'get_skill');
+      const handler = skillCall![3];
+
+      const result = await handler({ slug: 'nonexistent' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Error fetching skill');
     });
   });
 });

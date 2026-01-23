@@ -1,10 +1,9 @@
 /**
  * Tool registry for the MCP server.
  * Dynamically registers tools based on the user's connected integrations.
- *
- * Note: Skills are exposed as MCP Resources (not tools) - see resources.ts
  */
 
+import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SkillomaticClient, CapabilityProfile } from '../api-client.js';
 import { registerAtsTools } from './ats.js';
@@ -31,6 +30,72 @@ export async function registerTools(
   profile: CapabilityProfile
 ): Promise<void> {
   const registeredTools: string[] = [];
+
+  // Skill discovery tools - always register
+  // These help Claude find the right workflow for recruiting tasks
+  server.tool(
+    'get_skill_catalog',
+    'Get available recruiting workflows and their intents. Call this FIRST when user asks about recruiting tasks like sourcing candidates, LinkedIn outreach, scheduling interviews, searching ATS, or any hiring-related workflow.',
+    {},
+    async () => {
+      try {
+        const skills = await client.getSkills();
+        const enabledSkills = skills.filter((s) => s.isEnabled);
+
+        const catalog = enabledSkills
+          .map((s) => {
+            const parts = [`## ${s.name} (${s.slug})`, s.description];
+            if (s.intent) parts.push(`**When to use:** ${s.intent}`);
+            if (s.capabilities?.length) parts.push(`**Capabilities:** ${s.capabilities.join(', ')}`);
+            return parts.join('\n');
+          })
+          .join('\n\n---\n\n');
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: catalog || 'No skills available.',
+            },
+          ],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text' as const, text: `Error fetching skill catalog: ${message}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+  registeredTools.push('get_skill_catalog');
+
+  server.tool(
+    'get_skill',
+    'Get detailed instructions for a specific recruiting workflow. Call this after identifying the right skill from the catalog.',
+    { slug: z.string().describe('Skill slug from the catalog (e.g., linkedin-lookup, candidate-outreach)') },
+    async (args) => {
+      try {
+        const skill = await client.getRenderedSkill(args.slug);
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: skill.instructions || `No instructions found for skill: ${args.slug}`,
+            },
+          ],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text' as const, text: `Error fetching skill: ${message}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+  registeredTools.push('get_skill');
 
   // ATS tools - only if ATS is connected
   if (profile.hasATS) {
