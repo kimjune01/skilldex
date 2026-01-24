@@ -128,31 +128,47 @@ v1DataRoutes.post('/proxy', async (c) => {
     return c.json({ error: { message: `You have read-only access to ${provider}` } }, 403);
   }
 
-  // Get access token from Nango
-  if (!int.nangoConnectionId) {
-    log.error('proxy_missing_nango_connection', {
-      integrationId: int.id,
-      provider: int.provider,
-      userId: user.sub,
-    });
-    return c.json({ error: { message: `${provider} integration not properly configured` } }, 400);
-  }
-
+  // Get access token - support both Nango and direct OAuth (google-direct)
   let accessToken: string;
-  try {
-    const nango = getNangoClient();
-    const providerConfigKey = getNangoKey(provider);
 
-    const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
-    accessToken = token.access_token;
-  } catch (error) {
-    log.error('proxy_nango_token_failed', {
-      integrationId: int.id,
-      provider: int.provider,
-      userId: user.sub,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-    return c.json({ error: { message: `Failed to authenticate with ${provider}` } }, 502);
+  if (providerConfig.oauthFlow === 'google-direct') {
+    // Direct OAuth - token stored in integration metadata
+    const token = metadata.accessToken as string | undefined;
+    if (!token) {
+      log.error('proxy_missing_direct_token', {
+        integrationId: int.id,
+        provider: int.provider,
+        userId: user.sub,
+      });
+      return c.json({ error: { message: `${provider} integration not properly configured` } }, 400);
+    }
+    accessToken = token;
+  } else {
+    // Nango OAuth
+    if (!int.nangoConnectionId) {
+      log.error('proxy_missing_nango_connection', {
+        integrationId: int.id,
+        provider: int.provider,
+        userId: user.sub,
+      });
+      return c.json({ error: { message: `${provider} integration not properly configured` } }, 400);
+    }
+
+    try {
+      const nango = getNangoClient();
+      const providerConfigKey = getNangoKey(provider);
+
+      const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
+      accessToken = token.access_token;
+    } catch (error) {
+      log.error('proxy_nango_token_failed', {
+        integrationId: int.id,
+        provider: int.provider,
+        userId: user.sub,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return c.json({ error: { message: `Failed to authenticate with ${provider}` } }, 502);
+    }
   }
 
   // Build the full URL using registry
