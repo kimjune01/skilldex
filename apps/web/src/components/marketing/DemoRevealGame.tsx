@@ -524,7 +524,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
       {/* Carnival Sign - Above on mobile, left side on larger screens */}
       {/* Mobile: centered above, arrow points down */}
       <div
-        className={`absolute -top-20 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center lg:hidden transition-all duration-700 ease-in ${
+        className={`absolute -top-20 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center lg:hidden transition-all duration-700 ease-in pointer-events-none ${
           isRevealed ? 'sign-exit-up' : ''
         }`}
       >
@@ -542,7 +542,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
       </div>
       {/* Desktop: left side, arrow points right */}
       <div
-        className={`absolute top-12 -left-52 z-10 hidden lg:flex items-center transition-all duration-700 ease-in ${
+        className={`absolute top-12 -left-52 z-10 hidden lg:flex items-center transition-all duration-700 ease-in pointer-events-none ${
           isRevealed ? 'sign-exit-up' : ''
         }`}
       >
