@@ -31,6 +31,12 @@ const GOOGLE_CALENDAR_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
+// Google Sheets scopes
+const GOOGLE_SHEETS_SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ');
+
 const log = createLogger('GoogleOAuth');
 
 // Helper to determine URLs from request
@@ -45,7 +51,7 @@ function getUrlsFromRequest(c: Context) {
 }
 
 // Google OAuth configuration for different services
-export type GoogleService = 'gmail' | 'google-calendar';
+export type GoogleService = 'gmail' | 'google-calendar' | 'google-sheets';
 
 const GOOGLE_SERVICE_CONFIG: Record<GoogleService, {
   scopes: string;
@@ -67,6 +73,13 @@ const GOOGLE_SERVICE_CONFIG: Record<GoogleService, {
     stateType: 'google_calendar_oauth',
     emailField: 'calendarEmail',
     displayName: 'Google Calendar',
+  },
+  'google-sheets': {
+    scopes: GOOGLE_SHEETS_SCOPES,
+    provider: 'database',
+    stateType: 'google_sheets_oauth',
+    emailField: 'sheetsEmail',
+    displayName: 'Google Sheets',
   },
 };
 
@@ -222,6 +235,34 @@ async function handleGoogleOAuthCallback(
         ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
         : undefined,
     };
+
+    // For Google Sheets, create a default spreadsheet
+    if (service === 'google-sheets') {
+      try {
+        const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            properties: { title: 'Skillomatic Data' },
+            sheets: [{ properties: { title: 'Candidates' } }],
+          }),
+        });
+
+        if (createResponse.ok) {
+          const sheet = await createResponse.json() as { spreadsheetId: string; spreadsheetUrl: string };
+          metadata.spreadsheetId = sheet.spreadsheetId;
+          metadata.spreadsheetUrl = sheet.spreadsheetUrl;
+          metadata.spreadsheetTitle = 'Skillomatic Data';
+          log.info('google_sheets_created', { userId, spreadsheetId: sheet.spreadsheetId });
+        }
+      } catch (err) {
+        log.warn('google_sheets_create_failed', { userId, error: err instanceof Error ? err.message : 'Unknown' });
+        // Continue anyway - user can set up manually
+      }
+    }
 
     if (existingIntegration.length === 0) {
       await db.insert(integrations).values({
@@ -379,10 +420,12 @@ export function createGoogleOAuthRoutes() {
   // Connect routes (no auth middleware - uses token from query param)
   routes.get('/gmail/connect', (c) => handleGoogleOAuthConnect(c, 'gmail'));
   routes.get('/google-calendar/connect', (c) => handleGoogleOAuthConnect(c, 'google-calendar'));
+  routes.get('/google-sheets/connect', (c) => handleGoogleOAuthConnect(c, 'google-sheets'));
 
   // Callback routes (no auth middleware - uses state token)
   routes.get('/gmail/callback', (c) => handleGoogleOAuthCallback(c, 'gmail'));
   routes.get('/google-calendar/callback', (c) => handleGoogleOAuthCallback(c, 'google-calendar'));
+  routes.get('/google-sheets/callback', (c) => handleGoogleOAuthCallback(c, 'google-sheets'));
 
   return routes;
 }
@@ -396,6 +439,7 @@ export function createGoogleOAuthTokenRoutes() {
 
   routes.get('/gmail/token', (c) => handleGoogleTokenRequest(c, 'gmail'));
   routes.get('/google-calendar/token', (c) => handleGoogleTokenRequest(c, 'google-calendar'));
+  routes.get('/google-sheets/token', (c) => handleGoogleTokenRequest(c, 'google-sheets'));
 
   return routes;
 }

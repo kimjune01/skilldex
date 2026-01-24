@@ -231,6 +231,16 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     order: 1,
     hasManifest: true,
   },
+
+  'google-sheets': {
+    id: 'google-sheets',
+    displayName: 'Google Sheets',
+    category: 'database',
+    oauthFlow: 'google-direct',
+    apiBaseUrl: 'https://sheets.googleapis.com/v4',
+    apiAuth: { type: 'bearer' },
+    order: 2,
+  },
 };
 
 // ============ Query Functions ============
