@@ -1,15 +1,24 @@
 # Skillomatic - Claude Code Instructions
 
-## Quick Start
-
-**Read these docs first:**
-- `docs/ARCHITECTURE.md` - Full architecture reference (tech stack, directory structure, API endpoints, database schema)
-- `docs/EPHEMERAL_ARCHITECTURE.md` - PII-free design, skill rendering, OAuth flow
-- `docs/DYNAMIC_TOOLS_ARCHITECTURE.md` - MCP provider manifests, ATS proxy
-
 ## What This Project Is
 
 Skillomatic is a Claude Code skills platform for recruiters. Recruiters download markdown skill files that authenticate back to this API for ATS data, integration tokens, and usage tracking.
+
+## Documentation Index
+
+**Start here:**
+- `docs/ARCHITECTURE.md` - Tech stack, directory structure, API endpoints, database schema
+- `docs/BEST_PRACTICES.md` - Critical guardrails, common mistakes to avoid
+
+**Then read based on your task:**
+
+| Task | Doc |
+|------|-----|
+| Working with integrations | `docs/INTEGRATION_GUIDE.md` |
+| Modifying ATS/MCP tools | `docs/DYNAMIC_TOOLS_ARCHITECTURE.md` |
+| Security/privacy changes | `docs/EPHEMERAL_ARCHITECTURE.md` |
+| Adding/modifying skills | `docs/SKILLS_AND_CAPABILITIES.md` |
+| Testing MCP server | `docs/MCP_MANUAL_TESTS.md` |
 
 ## Tech Stack Summary
 
@@ -24,12 +33,15 @@ Skillomatic is a Claude Code skills platform for recruiters. Recruiters download
 | Purpose | Location |
 |---------|----------|
 | Database schema | `packages/db/src/schema.ts` |
+| Provider registry (single source of truth) | `packages/shared/src/providers.ts` |
 | API routes | `apps/api/src/routes/` |
 | Skill API (API key auth) | `apps/api/src/routes/v1/` |
+| Provider manifests (MCP tools) | `packages/mcp/src/providers/manifests/` |
 | Skills | `skills/<slug>/SKILL.md` |
 | Shared types | `packages/shared/src/types.ts` |
 | LLM client | `apps/api/src/lib/llm.ts` |
 | Nango OAuth | `apps/api/src/lib/nango.ts` |
+| Integration permissions | `apps/api/src/lib/integration-permissions.ts` |
 
 ## Development
 
@@ -38,6 +50,7 @@ pnpm dev          # Start all services (web:5173, api:3000, mock-ats:3001)
 pnpm db:push      # Apply schema changes
 pnpm db:studio    # Open Drizzle Studio
 pnpm typecheck    # Run TypeScript check
+pnpm test         # Run tests
 ```
 
 ## Not Yet Implemented
@@ -48,21 +61,10 @@ pnpm typecheck    # Run TypeScript check
 - RBAC enforcement (tables ready, not enforced)
 - Admin query skills
 
-## Critical Guardrails
-
-| Don't | Do Instead |
-|-------|------------|
-| Log `error.message` to DB | Use `ErrorCode` enum (PII risk) |
-| Store LLM conversations server-side | Client-side only (ephemeral architecture) |
-| Cache ATS response bodies | Stateless proxy, log only metadata |
-| Use `apiKeyAuth` on `/v1/*` routes | Use `combinedAuth` (supports JWT + API key) |
-| Add ATS endpoints as new routes | Add to provider manifest in `packages/mcp/` |
-
-See `docs/BEST_PRACTICES.md` for full context.
-
 ## Testing
 
 Always verify changes work before completing:
 - Run `pnpm typecheck` for type errors
 - Test API endpoints with `curl`
 - Check browser console for frontend errors
+- See `docs/MCP_MANUAL_TESTS.md` for MCP testing scenarios

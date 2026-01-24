@@ -176,6 +176,45 @@ const skills = await db.query.skills.findMany({
 
 ---
 
+## 10. Structured Logging with Centralized Logger
+
+Use the centralized logger (`apps/api/src/lib/logger.ts`) for consistent, debuggable telemetry.
+
+**Key features:**
+- Module-specific prefixes for filtering (`[ATS]`, `[Email]`, `[Permissions]`)
+- Request correlation IDs (via `x-request-id` header)
+- Structured JSON output in production for log aggregation
+- Debug mode support (`LOG_LEVEL=debug`)
+
+```typescript
+import { createLogger } from '../lib/logger.js';
+
+const log = createLogger('ATS');
+
+// ✅ Structured logging with context
+log.info('proxy_request', {
+  provider: 'greenhouse',
+  path: '/candidates',
+  durationMs: 150
+});
+
+log.error('token_refresh_failed', { userId, errorCode: 'INTEGRATION_TOKEN_EXPIRED' });
+
+// ❌ Don't use raw console.log/error
+console.log('[ATS] Something happened', someData);
+```
+
+**Request-scoped logging:** Use `createRequestLogger(module, c)` to automatically include requestId and userId.
+
+**Log levels:**
+- `debug`: Verbose info, only shown when `LOG_LEVEL=debug`
+- `info`: Normal operations
+- `warn`: Unexpected but handled situations
+- `error`: Failures that need attention
+- `unreachable`: Should never happen (code path bugs)
+
+---
+
 ## Quick Reference: What NOT to Do
 
 | Don't | Why | Do Instead |
@@ -187,3 +226,4 @@ const skills = await db.query.skills.findMany({
 | Use apiKeyAuth on /v1/* | Breaks web chat | Use combinedAuth |
 | Add ATS routes manually | Bypasses blocklist | Add to manifest |
 | Renumber ONBOARDING_STEPS | Breaks existing users | Use floats between |
+| Use raw console.log/error | Inconsistent format | Use centralized logger |

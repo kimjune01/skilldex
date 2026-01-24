@@ -39,20 +39,9 @@ import {
   type IntegrationCategory,
 } from './integration-permissions.js';
 import { LLM_DEFAULT_MODELS } from '@skillomatic/shared';
+import { createLogger } from './logger.js';
 
-/**
- * Structured telemetry for skill rendering operations.
- */
-const telemetry = {
-  info: (event: string, data?: Record<string, unknown>) =>
-    console.log(`[SkillRenderer] ${event}`, data ? JSON.stringify(data) : ''),
-  warn: (event: string, data?: Record<string, unknown>) =>
-    console.warn(`[SkillRenderer] ${event}`, data ? JSON.stringify(data) : ''),
-  error: (event: string, data?: Record<string, unknown>) =>
-    console.error(`[SkillRenderer] ${event}`, data ? JSON.stringify(data) : ''),
-  unreachable: (event: string, data?: Record<string, unknown>) =>
-    console.error(`[SkillRenderer] UNREACHABLE: ${event}`, data ? JSON.stringify(data) : ''),
-};
+const log = createLogger('SkillRenderer');
 
 /**
  * Capability profile - what a user has access to
@@ -195,7 +184,7 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
 
     if (!integration) {
       // Integration was in category list but not found - data inconsistency
-      telemetry.warn('integration_not_found', {
+      log.warn('integration_not_found', {
         integrationId: integrationInfo.id,
         category,
         userId,
@@ -208,7 +197,7 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
       metadata = integration.metadata ? JSON.parse(integration.metadata) : {};
     } catch {
       // Invalid JSON in metadata - should never happen
-      telemetry.unreachable('invalid_integration_metadata', {
+      log.unreachable('invalid_integration_metadata', {
         integrationId: integration.id,
         provider: integration.provider,
         userId,
@@ -228,7 +217,7 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
 
     // In production, mock-ats should not exist
     if (!isDev && (integration.provider === 'mock-ats' || atsProvider === 'mock-ats')) {
-      telemetry.unreachable('mock_ats_in_production', {
+      log.unreachable('mock_ats_in_production', {
         integrationId: integration.id,
         userId,
       });
@@ -237,7 +226,7 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
 
     // Skip OAuth-based integrations without Nango connection
     if (!integration.nangoConnectionId) {
-      telemetry.warn('integration_missing_nango', {
+      log.warn('integration_missing_nango', {
         integrationId: integration.id,
         provider: integration.provider,
         category,
@@ -291,7 +280,7 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
 
         default: {
           // Unknown category - should never happen if categories are properly defined
-          telemetry.unreachable('unknown_category_in_switch', {
+          log.unreachable('unknown_category_in_switch', {
             category,
             integrationId: integration.id,
             userId,
@@ -300,7 +289,7 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
       }
     } catch (error) {
       // Log token fetch failures - these may indicate expired OAuth connections
-      telemetry.warn('nango_token_fetch_failed', {
+      log.warn('nango_token_fetch_failed', {
         integrationId: integration.id,
         provider: integration.provider,
         category,

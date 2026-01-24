@@ -18,18 +18,9 @@ import {
   buildAuthHeader,
   isPathBlocked,
 } from '@skillomatic/shared';
+import { createLogger } from '../../lib/logger.js';
 
-/**
- * Structured telemetry logging for Data operations.
- */
-const telemetry = {
-  info: (event: string, data?: Record<string, unknown>) =>
-    console.log(`[Data] ${event}`, data ? JSON.stringify(data) : ''),
-  warn: (event: string, data?: Record<string, unknown>) =>
-    console.warn(`[Data] ${event}`, data ? JSON.stringify(data) : ''),
-  error: (event: string, data?: Record<string, unknown>) =>
-    console.error(`[Data] ${event}`, data ? JSON.stringify(data) : ''),
-};
+const log = createLogger('Data');
 
 export const v1DataRoutes = new Hono();
 
@@ -71,7 +62,7 @@ v1DataRoutes.post('/proxy', async (c) => {
   try {
     requestBody = await c.req.json();
   } catch {
-    telemetry.warn('proxy_invalid_json', { userId: user.sub });
+    log.warn('proxy_invalid_json', { userId: user.sub });
     return c.json({ error: { message: 'Invalid JSON body' } }, 400);
   }
 
@@ -79,20 +70,20 @@ v1DataRoutes.post('/proxy', async (c) => {
 
   // Validate required fields
   if (!provider || !method || !path) {
-    telemetry.warn('proxy_missing_fields', { userId: user.sub, provider, method, path });
+    log.warn('proxy_missing_fields', { userId: user.sub, provider, method, path });
     return c.json({ error: { message: 'Missing required fields: provider, method, path' } }, 400);
   }
 
   // Check if provider is supported (must be a database provider from registry)
   const providerConfig = getProvider(provider);
   if (!providerConfig || providerConfig.category !== 'database') {
-    telemetry.warn('proxy_unsupported_provider', { userId: user.sub, provider });
+    log.warn('proxy_unsupported_provider', { userId: user.sub, provider });
     return c.json({ error: { message: `Unsupported data provider: ${provider}` } }, 400);
   }
 
   // Check if path is blocklisted (using registry)
   if (isPathBlocked(provider, path)) {
-    telemetry.warn('proxy_blocklisted_path', { userId: user.sub, provider, path });
+    log.warn('proxy_blocklisted_path', { userId: user.sub, provider, path });
     return c.json({ error: { message: 'Access to this endpoint is not allowed' } }, 403);
   }
 
@@ -110,7 +101,7 @@ v1DataRoutes.post('/proxy', async (c) => {
     .limit(1);
 
   if (!dataIntegration) {
-    telemetry.info('proxy_no_integration', { userId: user.sub, provider });
+    log.info('proxy_no_integration', { userId: user.sub, provider });
     return c.json({ error: { message: `No ${provider} integration connected` } }, 400);
   }
 
@@ -119,7 +110,7 @@ v1DataRoutes.post('/proxy', async (c) => {
   try {
     metadata = int.metadata ? JSON.parse(int.metadata) : {};
   } catch {
-    telemetry.warn('proxy_invalid_metadata', {
+    log.warn('proxy_invalid_metadata', {
       integrationId: int.id,
       provider: int.provider,
     });
@@ -128,7 +119,7 @@ v1DataRoutes.post('/proxy', async (c) => {
   // Check access level from metadata
   const accessLevel = (metadata.accessLevel as string) || 'read-write';
   if (requiresWriteAccess(method) && accessLevel === 'read-only') {
-    telemetry.info('proxy_access_denied', {
+    log.info('proxy_access_denied', {
       userId: user.sub,
       accessLevel,
       method,
@@ -139,7 +130,7 @@ v1DataRoutes.post('/proxy', async (c) => {
 
   // Get access token from Nango
   if (!int.nangoConnectionId) {
-    telemetry.error('proxy_missing_nango_connection', {
+    log.error('proxy_missing_nango_connection', {
       integrationId: int.id,
       provider: int.provider,
       userId: user.sub,
@@ -155,7 +146,7 @@ v1DataRoutes.post('/proxy', async (c) => {
     const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
     accessToken = token.access_token;
   } catch (error) {
-    telemetry.error('proxy_nango_token_failed', {
+    log.error('proxy_nango_token_failed', {
       integrationId: int.id,
       provider: int.provider,
       userId: user.sub,
@@ -212,7 +203,7 @@ v1DataRoutes.post('/proxy', async (c) => {
 
     // Return error responses with proper status
     if (!response.ok) {
-      telemetry.warn('proxy_provider_error', {
+      log.warn('proxy_provider_error', {
         provider,
         method,
         path,
@@ -232,7 +223,7 @@ v1DataRoutes.post('/proxy', async (c) => {
       );
     }
 
-    telemetry.info('proxy_success', {
+    log.info('proxy_success', {
       provider,
       method,
       path,
@@ -252,7 +243,7 @@ v1DataRoutes.post('/proxy', async (c) => {
   } catch (error) {
     const durationMs = Date.now() - startTime;
 
-    telemetry.error('proxy_network_error', {
+    log.error('proxy_network_error', {
       provider,
       method,
       path,

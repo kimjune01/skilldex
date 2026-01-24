@@ -17,20 +17,9 @@ import {
   buildAuthHeader,
   isPathBlocked,
 } from '@skillomatic/shared';
+import { createLogger } from '../../lib/logger.js';
 
-/**
- * Structured telemetry logging for Calendar operations.
- */
-const telemetry = {
-  info: (event: string, data?: Record<string, unknown>) =>
-    console.log(`[Calendar] ${event}`, data ? JSON.stringify(data) : ''),
-  warn: (event: string, data?: Record<string, unknown>) =>
-    console.warn(`[Calendar] ${event}`, data ? JSON.stringify(data) : ''),
-  error: (event: string, data?: Record<string, unknown>) =>
-    console.error(`[Calendar] ${event}`, data ? JSON.stringify(data) : ''),
-  unreachable: (event: string, data?: Record<string, unknown>) =>
-    console.error(`[Calendar] UNREACHABLE: ${event}`, data ? JSON.stringify(data) : ''),
-};
+const log = createLogger('Calendar');
 
 export const v1CalendarRoutes = new Hono();
 
@@ -79,7 +68,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
   try {
     requestBody = await c.req.json();
   } catch {
-    telemetry.warn('proxy_invalid_json', { userId: user.id });
+    log.warn('proxy_invalid_json', { userId: user.id });
     return c.json({ error: { message: 'Invalid JSON body' } }, 400);
   }
 
@@ -87,26 +76,26 @@ v1CalendarRoutes.post('/proxy', async (c) => {
 
   // Validate required fields
   if (!provider || !method || !path) {
-    telemetry.warn('proxy_missing_fields', { userId: user.id, provider, method, path });
+    log.warn('proxy_missing_fields', { userId: user.id, provider, method, path });
     return c.json({ error: { message: 'Missing required fields: provider, method, path' } }, 400);
   }
 
   // Check if provider is supported (must be a calendar provider from registry)
   const providerConfig = getProvider(provider);
   if (!providerConfig || providerConfig.category !== 'calendar') {
-    telemetry.warn('proxy_unsupported_provider', { userId: user.id, provider });
+    log.warn('proxy_unsupported_provider', { userId: user.id, provider });
     return c.json({ error: { message: `Unsupported calendar provider: ${provider}` } }, 400);
   }
 
   // Check if path is blocklisted (using registry)
   if (isPathBlocked(provider, path)) {
-    telemetry.warn('proxy_blocklisted_path', { userId: user.id, provider, path });
+    log.warn('proxy_blocklisted_path', { userId: user.id, provider, path });
     return c.json({ error: { message: 'Access to this endpoint is not allowed' } }, 403);
   }
 
   // Check user's effective access level
   if (!user.organizationId) {
-    telemetry.warn('proxy_no_org', { userId: user.id });
+    log.warn('proxy_no_org', { userId: user.id });
     return c.json({ error: { message: 'User must belong to an organization' } }, 403);
   }
 
@@ -115,13 +104,13 @@ v1CalendarRoutes.post('/proxy', async (c) => {
 
   // Check if user has any calendar access
   if (!canRead(calendarAccess)) {
-    telemetry.info('proxy_access_denied', { userId: user.id, calendarAccess, reason: 'no_read' });
+    log.info('proxy_access_denied', { userId: user.id, calendarAccess, reason: 'no_read' });
     return c.json({ error: { message: 'Calendar access is disabled or not connected' } }, 403);
   }
 
   // Check write access for mutating operations
   if (requiresWriteAccess(method) && !canWrite(calendarAccess)) {
-    telemetry.info('proxy_access_denied', { userId: user.id, calendarAccess, method, reason: 'no_write' });
+    log.info('proxy_access_denied', { userId: user.id, calendarAccess, method, reason: 'no_write' });
     return c.json({ error: { message: 'You have read-only access to the calendar' } }, 403);
   }
 
@@ -143,7 +132,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
     .limit(1);
 
   if (!calendarIntegration) {
-    telemetry.info('proxy_no_integration', { userId: user.id, orgId: user.organizationId, provider });
+    log.info('proxy_no_integration', { userId: user.id, orgId: user.organizationId, provider });
     return c.json({ error: { message: 'No calendar integration connected' } }, 400);
   }
 
@@ -152,7 +141,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
   try {
     metadata = int.metadata ? JSON.parse(int.metadata) : {};
   } catch {
-    telemetry.unreachable('proxy_invalid_metadata', {
+    log.unreachable('proxy_invalid_metadata', {
       integrationId: int.id,
       provider: int.provider,
     });
@@ -160,7 +149,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
 
   // Get access token from Nango
   if (!int.nangoConnectionId) {
-    telemetry.error('proxy_missing_nango_connection', {
+    log.error('proxy_missing_nango_connection', {
       integrationId: int.id,
       provider: int.provider,
       userId: user.id,
@@ -177,7 +166,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
     const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
     accessToken = token.access_token;
   } catch (error) {
-    telemetry.error('proxy_nango_token_failed', {
+    log.error('proxy_nango_token_failed', {
       integrationId: int.id,
       provider: int.provider,
       userId: user.id,
@@ -229,7 +218,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
 
     // Return error responses with proper status
     if (!response.ok) {
-      telemetry.warn('proxy_provider_error', {
+      log.warn('proxy_provider_error', {
         provider,
         method,
         path,
@@ -246,7 +235,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
       }, response.status as 400 | 401 | 403 | 404 | 500 | 502);
     }
 
-    telemetry.info('proxy_success', {
+    log.info('proxy_success', {
       provider,
       method,
       path,
@@ -266,7 +255,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
   } catch (error) {
     const durationMs = Date.now() - startTime;
 
-    telemetry.error('proxy_network_error', {
+    log.error('proxy_network_error', {
       provider,
       method,
       path,

@@ -22,16 +22,11 @@ import {
   type OrgIntegrationPermissions,
   type AccessLevel,
 } from '../lib/integration-permissions.js';
+import { createLogger } from '../lib/logger.js';
 
 export const capabilityProfilesRoutes = new Hono();
 
-/** Structured logging for permissions admin routes */
-const log = {
-  info: (event: string, data?: Record<string, unknown>) =>
-    console.log(`[Permissions:Admin] ${event}`, data ? JSON.stringify(data) : ''),
-  warn: (event: string, data?: Record<string, unknown>) =>
-    console.warn(`[Permissions:Admin] ${event}`, data ? JSON.stringify(data) : ''),
-};
+const log = createLogger('Permissions:Admin');
 
 // All routes require JWT auth and org context
 capabilityProfilesRoutes.use('*', jwtAuth);

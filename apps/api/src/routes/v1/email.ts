@@ -14,6 +14,9 @@ import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import type { ErrorCode } from '@skillomatic/shared';
 import { GmailClient, GmailError, type EmailMessage, type EmailAddress } from '../../lib/gmail.js';
+import { createLogger } from '../../lib/logger.js';
+
+const log = createLogger('Email');
 
 export const v1EmailRoutes = new Hono();
 
@@ -47,7 +50,7 @@ async function getGmailClient(userId: string): Promise<GmailClient | null> {
   try {
     metadata = JSON.parse(int.metadata || '{}');
   } catch {
-    console.error('Failed to parse email integration metadata');
+    log.error('metadata_parse_failed', { userId });
     return null;
   }
 
@@ -69,7 +72,7 @@ async function getGmailClient(userId: string): Promise<GmailClient | null> {
     const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      console.error('Google OAuth not configured for token refresh');
+      log.error('oauth_not_configured', { userId });
       return null;
     }
 
@@ -107,7 +110,7 @@ async function getGmailClient(userId: string): Promise<GmailClient | null> {
           })
           .where(eq(integrations.id, int.id));
 
-        console.log('[Email] Gmail token refreshed for user:', userId);
+        log.info('token_refreshed', { userId });
       } else {
         // Refresh failed - mark integration as error
         await db
@@ -115,17 +118,17 @@ async function getGmailClient(userId: string): Promise<GmailClient | null> {
           .set({ status: 'error', updatedAt: new Date() })
           .where(eq(integrations.id, int.id));
 
-        console.error('[Email] Gmail token refresh failed');
+        log.error('token_refresh_failed', { userId });
         return null;
       }
     } catch (error) {
-      console.error('[Email] Gmail token refresh error:', error);
+      log.error('token_refresh_error', { userId, error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
 
   if (!accessToken) {
-    console.error('[Email] No Gmail access token available');
+    log.error('no_access_token', { userId });
     return null;
   }
 
@@ -136,7 +139,7 @@ async function getGmailClient(userId: string): Promise<GmailClient | null> {
       const profile = await tempClient.getProfile();
       return new GmailClient(accessToken, profile.emailAddress);
     } catch (error) {
-      console.error('[Email] Failed to get Gmail profile:', error);
+      log.error('profile_fetch_failed', { userId, error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -193,7 +196,7 @@ async function logUsage(
       });
     }
   } catch (err) {
-    console.error('Failed to log usage:', err);
+    log.error('usage_log_failed', { error: err instanceof Error ? err.message : String(err) });
   }
 }
 

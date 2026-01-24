@@ -15,19 +15,9 @@ import { db } from '@skillomatic/db';
 import { organizations, integrations } from '@skillomatic/db/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { getProviderCategory as getProviderCategoryFromRegistry } from '@skillomatic/shared';
+import { createLogger } from './logger.js';
 
-/**
- * Structured logging for permissions telemetry.
- * Logs to stderr for serverless compatibility, uses JSON for structured data.
- */
-const log = {
-  info: (event: string, data?: Record<string, unknown>) =>
-    console.log(`[Permissions] ${event}`, data ? JSON.stringify(data) : ''),
-  warn: (event: string, data?: Record<string, unknown>) =>
-    console.warn(`[Permissions] ${event}`, data ? JSON.stringify(data) : ''),
-  error: (event: string, data?: Record<string, unknown>) =>
-    console.error(`[Permissions] ${event}`, data ? JSON.stringify(data) : ''),
-};
+const log = createLogger('Permissions');
 
 /**
  * Access level for an integration category

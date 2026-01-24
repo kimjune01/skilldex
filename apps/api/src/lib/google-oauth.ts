@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { verifyToken } from './jwt.js';
 import { SignJWT, jwtVerify } from 'jose';
+import { createLogger } from './logger.js';
 
 // Google OAuth constants
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -30,13 +31,7 @@ const GOOGLE_CALENDAR_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
-/** Structured logging for Google OAuth events */
-const log = {
-  info: (event: string, data?: Record<string, unknown>) =>
-    console.log(`[GoogleOAuth] ${event}`, data ? JSON.stringify(data) : ''),
-  warn: (event: string, data?: Record<string, unknown>) =>
-    console.warn(`[GoogleOAuth] ${event}`, data ? JSON.stringify(data) : ''),
-};
+const log = createLogger('GoogleOAuth');
 
 // Helper to determine URLs from request
 function getUrlsFromRequest(c: Context) {

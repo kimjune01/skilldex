@@ -6,10 +6,11 @@ export interface AuthPayload extends JWTPayload {
   apiKeyId?: string;
 }
 
-// Extend Hono's context to include user
+// Extend Hono's context to include user and request ID
 declare module 'hono' {
   interface ContextVariableMap {
     user: AuthPayload;
+    requestId: string;
   }
 }
 

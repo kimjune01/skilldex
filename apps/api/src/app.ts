@@ -17,6 +17,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { createNodeWebSocket } from '@hono/node-ws';
+import { createLogger } from './lib/logger.js';
 
 // Web UI routes (JWT auth)
 import { authRoutes } from './routes/auth.js';
@@ -55,6 +56,15 @@ const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 // Middleware
+
+// Request ID middleware - assigns unique ID to each request for tracing
+app.use('*', async (c, next) => {
+  const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+  c.set('requestId', requestId);
+  c.header('x-request-id', requestId);
+  await next();
+});
+
 app.use('*', logger());
 
 // CORS - allow both local dev and production origins
@@ -117,8 +127,16 @@ app.get('/ws/scrape', upgradeWebSocket(createWsScrapeHandler()));  // Scrape tas
 app.notFound((c) => c.json({ error: { message: 'Not Found' } }, 404));
 
 // Error handler
+const appLog = createLogger('App');
 app.onError((err, c) => {
-  console.error('Error:', err);
+  const requestId = c.get('requestId') as string | undefined;
+  appLog.error('unhandled_error', {
+    requestId,
+    path: c.req.path,
+    method: c.req.method,
+    errorName: err.name,
+    errorMessage: err.message,
+  });
   return c.json({ error: { message: err.message || 'Internal Server Error' } }, 500);
 });
 

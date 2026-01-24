@@ -12,16 +12,11 @@ import {
 } from '../lib/nango.js';
 import { createGoogleOAuthRoutes, createGoogleOAuthTokenRoutes } from '../lib/google-oauth.js';
 import { randomUUID } from 'crypto';
+import { createLogger } from '../lib/logger.js';
 
 export const integrationsRoutes = new Hono();
 
-/** Structured logging for integration events */
-const log = {
-  info: (event: string, data?: Record<string, unknown>) =>
-    console.log(`[Integrations] ${event}`, data ? JSON.stringify(data) : ''),
-  warn: (event: string, data?: Record<string, unknown>) =>
-    console.warn(`[Integrations] ${event}`, data ? JSON.stringify(data) : ''),
-};
+const log = createLogger('Integrations');
 
 // ============================================================================
 // Google OAuth routes (Gmail & Calendar) - no middleware, handle auth manually
