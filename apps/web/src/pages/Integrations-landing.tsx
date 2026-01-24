@@ -81,7 +81,7 @@ const integrationCategories = [
     capabilities: [
       'Check interviewer availability',
       'Find overlapping free slots',
-      'Hook up your calendar to book meetings',
+      'Create calendar events',
       'Send scheduling links to candidates',
       'Handle timezone conversions',
     ],
