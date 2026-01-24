@@ -12,9 +12,9 @@ const YOUTUBE_VIDEO_ID = 'itjxyHSH0jo';
 // Onboarding-style steps
 const STEPS = [
   { label: 'Connect ATS', instruction: 'Click to connect your ATS' },
-  { label: 'Allow Email', instruction: 'Double-click to grant access' },
+  { label: 'Allow Email', instruction: 'Flip the switch to allow' },
   { label: 'Insert AI API Key', instruction: 'Drag your API token into the slot' },
-  { label: 'Book a Meeting', instruction: 'Spin it to book!' },
+  { label: 'Hook up Calendar', instruction: 'Spin it to hook it!' },
   { label: 'Install Browser Addon', instruction: 'Hold to install addon' },
   { label: 'Prompt AI Playbook', instruction: 'Hit the jackpot to activate!' },
 ] as const;
@@ -32,7 +32,6 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
   const [isRevealed, setIsRevealed] = useState(false);
 
   // Interaction-specific state
-  const [lastClickTime, setLastClickTime] = useState(0); // For double-click detection
   const [rotationAngle, setRotationAngle] = useState(0); // Visual rotation of the element
   const [lastPointerAngle, setLastPointerAngle] = useState<number | null>(null); // Last pointer angle from center
   const [cumulativeRotation, setCumulativeRotation] = useState(0); // Net rotation (can be negative)
@@ -46,6 +45,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
   const [reels, setReels] = useState(['?', '?', '?']);
   const [isSpinning, setIsSpinning] = useState(false);
   const [slotAttempts, setSlotAttempts] = useState(0);
+  const [isJackpot, setIsJackpot] = useState(false);
 
   // Refs for interaction detection
   const coinSlotRef = useRef<HTMLDivElement>(null);
@@ -76,18 +76,16 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
   };
 
   // ============================================
-  // ROUND 2: Double Click (EMAIL)
+  // ROUND 2: Toggle Switch (EMAIL)
   // ============================================
-  const handleEmailClick = () => {
-    if (currentRound !== 1 || completedRounds.has(1)) return;
+  const [emailToggled, setEmailToggled] = useState(false);
 
-    const now = Date.now();
-    if (now - lastClickTime < 400) {
+  const handleEmailToggle = () => {
+    if (currentRound !== 1 || completedRounds.has(1)) return;
+    setEmailToggled(true);
+    setTimeout(() => {
       completeRound(1);
-      setLastClickTime(0);
-    } else {
-      setLastClickTime(now);
-    }
+    }, 300);
   };
 
   // ============================================
@@ -226,6 +224,12 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
   const spinSlotMachine = () => {
     if (currentRound !== 5 || completedRounds.has(5) || isSpinning) return;
 
+    // If jackpot already hit, clicking again completes the round
+    if (isJackpot) {
+      completeRound(5);
+      return;
+    }
+
     setIsSpinning(true);
     const newAttempts = slotAttempts + 1;
     setSlotAttempts(newAttempts);
@@ -233,7 +237,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
     // Deterministic: always win on exactly the 3rd try
     const shouldWin = newAttempts === 3;
 
-    const spinDurations = [800, 1200, 1600];
+    const spinDurations = [400, 600, 800];
     const finalReels: string[] = [];
 
     if (shouldWin) {
@@ -273,10 +277,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
           setTimeout(() => {
             setIsSpinning(false);
             if (shouldWin) {
-              // Show JACKPOT for 500ms before completing
-              setTimeout(() => {
-                completeRound(5);
-              }, 500);
+              setIsJackpot(true);
             }
           }, 200);
         }
@@ -288,49 +289,76 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
   // RENDER CURRENT INTERACTION
   // ============================================
   const renderCurrentInteraction = () => {
-    // Round 1: Connect ATS (Orange)
+    // Round 1: Connect ATS (Orange) - Big arcade button style
     if (currentRound === 0) {
       return (
         <button
           onClick={handleAtsClick}
-          className="px-6 py-4 rounded-xl bg-orange-500/20 border-4 border-orange-500 hover:bg-orange-500/30 active:scale-95 cursor-pointer transition-all flex flex-col items-center justify-center gap-1"
+          className="relative px-8 py-5 rounded-full cursor-pointer transition-all duration-100 transform hover:-translate-y-1 active:translate-y-1"
+          style={{
+            background: 'linear-gradient(180deg, #fb923c 0%, #ea580c 50%, #c2410c 100%)',
+            boxShadow: '0 6px 0 #9a3412, 0 8px 16px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.3)',
+            border: '3px solid #9a3412',
+          }}
           aria-label={STEPS[0].instruction}
         >
-          <span className="text-lg font-black text-orange-500">{STEPS[0].label}</span>
+          <span className="text-lg font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] tracking-wide" style={{ fontFamily: 'system-ui' }}>
+            {STEPS[0].label}
+          </span>
         </button>
       );
     }
 
-    // Round 2: Allow Email (Blue)
+    // Round 2: Allow Email (Blue) - Toggle switch style
     if (currentRound === 1) {
       return (
-        <button
-          onClick={handleEmailClick}
-          className="px-6 py-4 rounded-xl bg-blue-500/20 border-4 border-blue-500 hover:bg-blue-500/30 active:scale-95 cursor-pointer transition-all flex flex-col items-center justify-center gap-1"
-          aria-label={STEPS[1].instruction}
-        >
-          <span className="text-lg font-black text-blue-500">{STEPS[1].label}</span>
-        </button>
+        <div className="flex flex-col items-center gap-3">
+          <span className="text-sm font-bold text-blue-400 tracking-wide uppercase">{STEPS[1].label}</span>
+          <button
+            onClick={handleEmailToggle}
+            className={`relative w-20 h-10 rounded-full cursor-pointer transition-all duration-300 ${
+              emailToggled
+                ? 'bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]'
+                : 'bg-gray-600'
+            }`}
+            style={{
+              boxShadow: emailToggled
+                ? '0 0 20px rgba(59,130,246,0.5), inset 0 2px 4px rgba(0,0,0,0.2)'
+                : 'inset 0 2px 4px rgba(0,0,0,0.3)',
+            }}
+            aria-label={STEPS[1].instruction}
+          >
+            <div
+              className={`absolute top-1 w-8 h-8 rounded-full bg-white shadow-md transition-all duration-300 ${
+                emailToggled ? 'left-11' : 'left-1'
+              }`}
+              style={{
+                background: 'linear-gradient(180deg, #fff 0%, #e5e5e5 100%)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              }}
+            />
+          </button>
+        </div>
       );
     }
 
     // Round 3: Insert Token
     if (currentRound === 2) {
       return (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           {/* Placeholder to prevent layout shift */}
-          <div className="w-12 h-12 relative">
+          <div className="w-20 h-20 relative">
             <div
               onPointerDown={handleCoinPointerDown}
               onPointerMove={handleCoinPointerMove}
               onPointerUp={handleCoinPointerUp}
-              className={`draggable-coin w-12 h-12 ${isDragging ? 'dragging' : ''}`}
+              className={`draggable-coin w-20 h-20 ${isDragging ? 'dragging' : ''}`}
               style={
                 coinPosition
                   ? {
                       position: 'fixed',
-                      left: coinPosition.x - 24,
-                      top: coinPosition.y - 24,
+                      left: coinPosition.x - 40,
+                      top: coinPosition.y - 40,
                       zIndex: 1000,
                     }
                   : {
@@ -340,58 +368,96 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
                     }
               }
             >
-              <span className="text-sm font-black text-amber-800">API</span>
+              <span className="text-lg font-black text-amber-800">API</span>
             </div>
           </div>
-          <ArrowDown className="h-5 w-5 text-primary rotate-[-90deg]" />
+          <ArrowDown className="h-8 w-8 text-primary rotate-[-90deg]" />
           <div
             ref={coinSlotRef}
-            className={`w-14 h-3 rounded bg-[hsl(220_20%_20%)] border-2 border-[hsl(220_15%_30%)] ${isOverSlot ? 'drop-target' : ''}`}
+            className={`w-24 h-5 rounded bg-[hsl(220_20%_20%)] border-2 border-[hsl(220_15%_30%)] ${isOverSlot ? 'drop-target' : ''}`}
           />
         </div>
       );
     }
 
-    // Round 4: Spin 360° (Green)
+    // Round 4: Spin 360° (Green) - Dial/knob style
     if (currentRound === 3) {
       const progress = Math.min((Math.abs(cumulativeRotation) / 360) * 100, 100);
       return (
-        <button
-          ref={spinButtonRef}
-          onPointerDown={handleSpinPointerDown}
-          onPointerMove={handleSpinPointerMove}
-          onPointerUp={handleSpinPointerUp}
-          onPointerLeave={handleSpinPointerUp}
-          className="px-6 py-4 rounded-xl bg-green-500/20 border-4 border-green-500 hover:bg-green-500/30 cursor-grab active:cursor-grabbing transition-all flex flex-col items-center justify-center gap-1 touch-none select-none"
-          style={{ transform: `rotate(${rotationAngle}deg)` }}
-          aria-label={`${STEPS[3].label} - ${Math.round(progress)}%`}
-        >
-          <span className="text-lg font-black text-green-500">{STEPS[3].label}</span>
-          {cumulativeRotation !== 0 && (
-            <span className="text-xs font-bold text-green-500">{Math.round(progress)}%</span>
-          )}
-        </button>
+        <div className="flex flex-col items-center gap-2">
+          <button
+            ref={spinButtonRef}
+            onPointerDown={handleSpinPointerDown}
+            onPointerMove={handleSpinPointerMove}
+            onPointerUp={handleSpinPointerUp}
+            onPointerLeave={handleSpinPointerUp}
+            className="w-24 h-24 rounded-full cursor-grab active:cursor-grabbing touch-none select-none relative"
+            style={{
+              background: 'radial-gradient(circle at 30% 30%, #4ade80, #16a34a 60%, #15803d)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.4), inset 0 -4px 8px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.2)',
+              border: '4px solid #166534',
+              transform: `rotate(${rotationAngle}deg)`,
+            }}
+            aria-label={`${STEPS[3].label} - ${Math.round(progress)}%`}
+          >
+            {/* Knob indicator line */}
+            <div
+              className="absolute top-3 left-1/2 w-1 h-4 bg-white rounded-full shadow-md"
+              style={{ transform: 'translateX(-50%)' }}
+            />
+            {/* Center cap */}
+            <div
+              className="absolute top-1/2 left-1/2 w-8 h-8 rounded-full"
+              style={{
+                transform: 'translate(-50%, -50%)',
+                background: 'radial-gradient(circle at 30% 30%, #86efac, #22c55e)',
+                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)',
+              }}
+            />
+          </button>
+          <span className="text-xs font-mono font-bold text-green-400 tracking-wider">
+            {STEPS[3].label.toUpperCase()}
+            {cumulativeRotation !== 0 && ` • ${Math.round(progress)}%`}
+          </span>
+        </div>
       );
     }
 
-    // Round 5: Install Browser Addon (Purple)
+    // Round 5: Install Browser Addon (Purple) - Download/progress bar style
     if (currentRound === 4) {
       return (
-        <button
-          onPointerDown={handleLinkPointerDown}
-          onPointerUp={handleLinkPointerUp}
-          onPointerLeave={handleLinkPointerUp}
-          className="px-6 py-4 rounded-xl bg-purple-500/20 border-4 border-purple-500 hover:bg-purple-500/30 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 relative overflow-hidden"
-          aria-label={STEPS[4].instruction}
-        >
-          {holdProgress > 0 && (
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onPointerDown={handleLinkPointerDown}
+            onPointerUp={handleLinkPointerUp}
+            onPointerLeave={handleLinkPointerUp}
+            className="relative w-48 h-12 rounded-lg cursor-pointer overflow-hidden"
+            style={{
+              background: 'linear-gradient(180deg, #374151 0%, #1f2937 100%)',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2)',
+              border: '2px solid #4b5563',
+            }}
+            aria-label={STEPS[4].instruction}
+          >
+            {/* Progress fill */}
             <div
-              className="absolute inset-0 bg-purple-500/30 transition-all"
-              style={{ height: `${holdProgress}%`, bottom: 0, top: 'auto' }}
+              className="absolute inset-0 transition-all duration-100"
+              style={{
+                width: `${holdProgress}%`,
+                background: 'linear-gradient(180deg, #a855f7 0%, #7c3aed 50%, #6d28d9 100%)',
+                boxShadow: holdProgress > 0 ? '0 0 10px rgba(168,85,247,0.5)' : 'none',
+              }}
             />
-          )}
-          <span className="text-lg font-black text-purple-500 relative z-10">{STEPS[4].label}</span>
-        </button>
+            {/* Text */}
+            <span
+              className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white tracking-wide"
+              style={{ fontFamily: 'monospace', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+            >
+              {holdProgress > 0 ? `INSTALLING ${Math.round(holdProgress)}%` : 'HOLD TO INSTALL'}
+            </span>
+          </button>
+          <span className="text-xs font-mono text-purple-400">{STEPS[4].label}</span>
+        </div>
       );
     }
 
@@ -427,7 +493,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
               textShadow: '0 2px 0 rgba(0,0,0,0.3), 0 -1px 0 rgba(255,255,255,0.2)',
             }}
           >
-            {isSpinning ? '...' : slotAttempts === 0 ? 'SPIN' : slotAttempts === 1 ? 'LOSER' : slotAttempts === 2 ? 'WINNER?' : 'JACKPOT'}
+            {isSpinning ? '...' : isJackpot ? 'JACKPOT' : slotAttempts === 0 ? 'SPIN' : slotAttempts === 1 ? 'LOSER' : 'WINNER?'}
           </span>
           {/* Button shine */}
           <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
@@ -446,7 +512,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
   return (
     <div
       ref={gameContainerRef}
-      className={`relative ${className}`}
+      className={`relative mt-24 lg:mt-0 ${className}`}
       role="region"
       aria-label="Interactive demo unlock game"
     >
@@ -457,9 +523,28 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
           : `Step ${currentRound + 1} of 6: ${STEPS[currentRound].instruction}`}
       </div>
 
-      {/* Carnival Sign - Left side of machine */}
+      {/* Carnival Sign - Above on mobile, left side on larger screens */}
+      {/* Mobile: centered above, arrow points down */}
       <div
-        className={`absolute top-12 -left-40 md:-left-52 z-10 flex items-center transition-all duration-700 ease-in ${
+        className={`absolute -top-20 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center lg:hidden transition-all duration-700 ease-in ${
+          isRevealed ? 'sign-exit-up' : ''
+        }`}
+      >
+        <div className="carnival-sign-wrapper relative p-1 rounded-2xl">
+          <div className="absolute inset-0 rounded-2xl overflow-hidden">
+            <div className="marquee-lights absolute inset-0" />
+          </div>
+          <div className="carnival-sign relative px-4 py-3 rounded-xl">
+            <span className="text-sm font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] tracking-wide">
+              DEMO VIDEO HERE
+            </span>
+          </div>
+        </div>
+        <ArrowDown className="carnival-arrow h-10 w-10 text-primary -mt-1 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" strokeWidth={3} />
+      </div>
+      {/* Desktop: left side, arrow points right */}
+      <div
+        className={`absolute top-12 -left-52 z-10 hidden lg:flex items-center transition-all duration-700 ease-in ${
           isRevealed ? 'sign-exit-up' : ''
         }`}
       >
@@ -467,13 +552,13 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
           <div className="absolute inset-0 rounded-2xl overflow-hidden">
             <div className="marquee-lights absolute inset-0" />
           </div>
-          <div className="carnival-sign relative px-4 py-3 md:px-6 md:py-4 rounded-xl">
-            <span className="text-sm md:text-xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] tracking-wide">
+          <div className="carnival-sign relative px-6 py-4 rounded-xl">
+            <span className="text-xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] tracking-wide">
               DEMO VIDEO HERE
             </span>
           </div>
         </div>
-        <ArrowDown className="carnival-arrow h-10 w-10 md:h-12 md:w-12 text-primary -ml-2 rotate-[-135deg] drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" strokeWidth={3} />
+        <ArrowDown className="carnival-arrow h-12 w-12 text-primary -ml-2 rotate-[-135deg] drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" strokeWidth={3} />
       </div>
 
       {/* Vending Machine Body with Lever */}

@@ -64,7 +64,18 @@ function DifferentiatorSection() {
       const randomAxis = flipAxes[Math.floor(Math.random() * flipAxes.length)];
       setFlipAxisMap(prev => ({ ...prev, [id]: randomAxis }));
       setFlipped(id);
-      setDiscovered(prev => new Set(prev).add(id));
+
+      // Check if this is the last card (Absolute Control)
+      const isLastCard = id === 'control' && discovered.size === 3;
+
+      if (isLastCard) {
+        // Delay the reveal of the final message by 800ms
+        setTimeout(() => {
+          setDiscovered(prev => new Set(prev).add(id));
+        }, 800);
+      } else {
+        setDiscovered(prev => new Set(prev).add(id));
+      }
 
       // Scroll card into center view on mobile (single column layout)
       if (element && window.innerWidth < 640) {
