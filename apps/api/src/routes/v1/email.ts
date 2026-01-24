@@ -14,7 +14,6 @@ import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import type { ErrorCode } from '@skillomatic/shared';
 import { GmailClient, GmailError, type EmailMessage, type EmailAddress } from '../../lib/gmail.js';
-import { getNangoClient, PROVIDER_CONFIG_KEYS } from '../../lib/nango.js';
 
 export const v1EmailRoutes = new Hono();
 
@@ -24,13 +23,17 @@ v1EmailRoutes.use('*', apiKeyAuth);
 /**
  * Get a Gmail client for the user.
  * Returns null if no Gmail integration is connected.
+ *
+ * Supports both:
+ * - Direct Google OAuth (provider: 'email', tokens in metadata)
+ * - Nango OAuth (provider: 'gmail', tokens via Nango) - legacy/future
  */
 async function getGmailClient(userId: string): Promise<GmailClient | null> {
-  // Find the user's Gmail integration
+  // Find the user's email integration (Google OAuth stores as 'email' with subProvider: 'gmail')
   const integration = await db
     .select()
     .from(integrations)
-    .where(and(eq(integrations.userId, userId), eq(integrations.provider, 'gmail')))
+    .where(and(eq(integrations.userId, userId), eq(integrations.provider, 'email')))
     .limit(1);
 
   if (integration.length === 0 || integration[0].status !== 'connected') {
@@ -38,25 +41,107 @@ async function getGmailClient(userId: string): Promise<GmailClient | null> {
   }
 
   const int = integration[0];
-  if (!int.nangoConnectionId) {
-    return null;
-  }
 
+  // Parse metadata to get tokens
+  let metadata: Record<string, unknown> = {};
   try {
-    const nango = getNangoClient();
-    const providerConfigKey = PROVIDER_CONFIG_KEYS['gmail'];
-    const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
-
-    // Get user email from Nango token metadata or Gmail profile
-    // For now, we'll get it from the Gmail API
-    const tempClient = new GmailClient(token.access_token, '');
-    const profile = await tempClient.getProfile();
-
-    return new GmailClient(token.access_token, profile.emailAddress);
-  } catch (error) {
-    console.error('Failed to get Gmail token:', error);
+    metadata = JSON.parse(int.metadata || '{}');
+  } catch {
+    console.error('Failed to parse email integration metadata');
     return null;
   }
+
+  // Check if this is a Gmail integration (subProvider check)
+  if (metadata.subProvider !== 'gmail') {
+    // Not Gmail (could be Outlook), skip
+    return null;
+  }
+
+  let accessToken = metadata.accessToken as string | undefined;
+  const refreshToken = metadata.refreshToken as string | undefined;
+  const expiresAt = metadata.expiresAt as string | undefined;
+  const userEmail = metadata.gmailEmail as string | undefined;
+
+  // Check if token is expired and needs refresh
+  if (expiresAt && new Date(expiresAt) < new Date() && refreshToken) {
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+    const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      console.error('Google OAuth not configured for token refresh');
+      return null;
+    }
+
+    try {
+      const refreshResponse = await fetch(GOOGLE_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      if (refreshResponse.ok) {
+        const newTokens = await refreshResponse.json() as {
+          access_token: string;
+          expires_in?: number;
+        };
+        accessToken = newTokens.access_token;
+
+        // Update stored token in DB
+        metadata.accessToken = accessToken;
+        metadata.expiresAt = newTokens.expires_in
+          ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
+          : undefined;
+
+        await db
+          .update(integrations)
+          .set({
+            metadata: JSON.stringify(metadata),
+            lastSyncAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(integrations.id, int.id));
+
+        console.log('[Email] Gmail token refreshed for user:', userId);
+      } else {
+        // Refresh failed - mark integration as error
+        await db
+          .update(integrations)
+          .set({ status: 'error', updatedAt: new Date() })
+          .where(eq(integrations.id, int.id));
+
+        console.error('[Email] Gmail token refresh failed');
+        return null;
+      }
+    } catch (error) {
+      console.error('[Email] Gmail token refresh error:', error);
+      return null;
+    }
+  }
+
+  if (!accessToken) {
+    console.error('[Email] No Gmail access token available');
+    return null;
+  }
+
+  // If we don't have user email cached, fetch it
+  if (!userEmail) {
+    try {
+      const tempClient = new GmailClient(accessToken, '');
+      const profile = await tempClient.getProfile();
+      return new GmailClient(accessToken, profile.emailAddress);
+    } catch (error) {
+      console.error('[Email] Failed to get Gmail profile:', error);
+      return null;
+    }
+  }
+
+  return new GmailClient(accessToken, userEmail);
 }
 
 /**
