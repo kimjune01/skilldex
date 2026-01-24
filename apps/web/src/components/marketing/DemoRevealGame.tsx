@@ -94,7 +94,6 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
   const handleCoinPointerDown = (e: React.PointerEvent) => {
     if (currentRound !== 2 || completedRounds.has(2)) return;
 
-    e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setIsDragging(true);
     setCoinPosition({ x: e.clientX, y: e.clientY });
@@ -143,7 +142,6 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
 
   const handleSpinPointerDown = (e: React.PointerEvent) => {
     if (currentRound !== 3 || completedRounds.has(3)) return;
-    e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     const angle = getAngleFromCenter(e.clientX, e.clientY);
     setLastPointerAngle(angle);
@@ -352,7 +350,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
               onPointerDown={handleCoinPointerDown}
               onPointerMove={handleCoinPointerMove}
               onPointerUp={handleCoinPointerUp}
-              className={`draggable-coin w-20 h-20 ${isDragging ? 'dragging' : ''}`}
+              className={`draggable-coin w-20 h-20 touch-none ${isDragging ? 'dragging' : ''}`}
               style={
                 coinPosition
                   ? {
