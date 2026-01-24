@@ -240,6 +240,7 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     apiBaseUrl: 'https://sheets.googleapis.com/v4',
     apiAuth: { type: 'bearer' },
     order: 2,
+    hasManifest: true,
   },
 };
 

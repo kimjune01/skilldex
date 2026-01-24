@@ -10,6 +10,7 @@ import { zohoRecruitManifest } from './zoho-recruit.js';
 import { mockAtsManifest } from './mock-ats.js';
 import { calendlyManifest } from './calendly.js';
 import { airtableManifest } from './airtable.js';
+import { googleSheetsManifest } from './google-sheets.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -27,6 +28,7 @@ export const manifests: Record<string, ProviderManifest> = {
   calendly: calendlyManifest,
   // Data providers
   airtable: airtableManifest,
+  'google-sheets': googleSheetsManifest,
 };
 
 /**
@@ -50,4 +52,4 @@ export function isProviderSupported(provider: string): boolean {
   return provider in manifests;
 }
 
-export { greenhouseManifest, zohoRecruitManifest, mockAtsManifest, calendlyManifest, airtableManifest };
+export { greenhouseManifest, zohoRecruitManifest, mockAtsManifest, calendlyManifest, airtableManifest, googleSheetsManifest };
