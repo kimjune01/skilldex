@@ -1,6 +1,6 @@
 # Integration Addition Guide
 
-This guide covers how to add new third-party integrations to Skillomatic. The system uses Nango for OAuth management, provider manifests for API definition, and a three-way permission system for access control.
+This guide covers how to add new third-party integrations to Skillomatic. The system uses a **centralized provider registry**, Nango for OAuth management, provider manifests for API definition, and a three-way permission system for access control.
 
 ## Architecture Overview
 
@@ -31,48 +31,54 @@ This guide covers how to add new third-party integrations to Skillomatic. The sy
 
 | Purpose | Location |
 |---------|----------|
+| **Provider Registry (Single Source of Truth)** | `packages/shared/src/providers.ts` |
 | Database schema | `packages/db/src/schema.ts` |
-| Nango client & provider keys | `apps/api/src/lib/nango.ts` |
+| Nango client | `apps/api/src/lib/nango.ts` |
 | Integration routes (OAuth) | `apps/api/src/routes/integrations.ts` |
 | Permission system | `apps/api/src/lib/integration-permissions.ts` |
-| Provider manifests | `packages/mcp/src/providers/manifests/` |
+| Provider manifests (MCP tools) | `packages/mcp/src/providers/manifests/` |
 | ATS proxy route | `apps/api/src/routes/v1/ats.ts` |
 | Calendar proxy route | `apps/api/src/routes/v1/calendar.ts` |
+| Data proxy route | `apps/api/src/routes/v1/data.ts` |
 | Email routes | `apps/api/src/routes/v1/email.ts` |
 | Shared types | `packages/shared/src/types.ts` |
 | Frontend UI | `apps/web/src/pages/Integrations.tsx` |
 
 ---
 
-## Step-by-Step: Adding a New Integration
+## Quick Start: Adding a New Integration
 
-### Step 1: Add to Shared Types
+Adding a new provider now requires **only 1-2 files** thanks to the centralized provider registry.
 
-Add your provider to the `IntegrationProvider` union type:
+### Step 1: Add to Provider Registry (Required)
 
-```typescript
-// packages/shared/src/types.ts
-export type IntegrationProvider =
-  | 'linkedin' | 'ats' | 'email' | 'calendar' | 'granola'
-  | 'airtable'  // Add new provider
-  | 'my-new-provider';
-```
-
-### Step 2: Configure Nango
-
-#### 2a. Add to Provider Config Keys
+Add your provider to `packages/shared/src/providers.ts`:
 
 ```typescript
-// apps/api/src/lib/nango.ts
-export const PROVIDER_CONFIG_KEYS: Record<string, string> = {
+export const PROVIDERS: Record<string, ProviderConfig> = {
   // ... existing providers
 
-  // Your new provider
-  'my-provider': 'my-provider',  // Maps to Nango provider config key
+  'my-provider': {
+    id: 'my-provider',
+    displayName: 'My Provider',
+    category: 'ats',  // 'ats' | 'email' | 'calendar' | 'database'
+    oauthFlow: 'nango',  // 'nango' | 'google-direct' | 'none'
+    nangoKey: 'my-provider',  // Nango integration key (if different from id)
+    apiBaseUrl: 'https://api.myprovider.com/v2',
+    apiAuth: { type: 'bearer' },  // 'bearer' | 'basic' | 'api-key'
+    rateLimit: { requests: 100, windowSeconds: 60 },  // Optional
+    blockedPaths: [  // Optional - security blocklist
+      /^\/admin/i,
+      /^\/settings/i,
+    ],
+    order: 10,  // Optional - sort order in UI (lower = first)
+    devOnly: false,  // Optional - only show in development
+    hasManifest: true,  // Optional - has MCP manifest for Claude tools
+  },
 };
 ```
 
-#### 2b. Configure in Nango Dashboard
+### Step 2: Configure in Nango Dashboard (Required for OAuth)
 
 1. Go to [Nango Dashboard](https://app.nango.dev) → Integrations → Add New
 2. Search for your provider (or create custom OAuth)
@@ -82,46 +88,9 @@ export const PROVIDER_CONFIG_KEYS: Record<string, string> = {
    - **Scopes**: Comma-separated (e.g., `data.records:read,data.records:write`)
 4. Set redirect URL: `https://api.nango.dev/oauth/callback` (Nango Cloud)
 
-### Step 3: Add Category Mapping (if needed)
+### Step 3: Add Provider Manifest (Optional - for MCP tools)
 
-If your provider belongs to an existing category (ats, email, calendar, database):
-
-```typescript
-// apps/api/src/lib/integration-permissions.ts
-export function providerToCategory(provider: string): IntegrationCategory | null {
-  switch (provider) {
-    // ATS providers
-    case 'ats':
-    case 'greenhouse':
-    case 'lever':
-    case 'my-new-ats':  // Add here if ATS
-      return 'ats';
-
-    // Email providers
-    case 'email':
-    case 'gmail':
-    case 'outlook':
-      return 'email';
-
-    // Calendar providers
-    case 'calendar':
-    case 'google-calendar':
-    case 'calendly':
-      return 'calendar';
-
-    // Database providers (Airtable, etc.)
-    case 'airtable':
-      return 'database';
-
-    default:
-      return null;  // Standalone integration
-  }
-}
-```
-
-### Step 4: Create Provider Manifest (for MCP tools)
-
-If your integration should expose API operations as Claude tools:
+If your integration should expose API operations as Claude tools, create a manifest:
 
 ```typescript
 // packages/mcp/src/providers/manifests/my-provider.ts
@@ -130,13 +99,12 @@ import type { ProviderManifest } from '../types.js';
 export const myProviderManifest: ProviderManifest = {
   provider: 'my-provider',
   displayName: 'My Provider',
-  category: 'ats',  // 'ats' | 'calendar' | 'email' | 'database'
+  category: 'ats',
   baseUrl: 'https://api.myprovider.com/v2',
   apiVersion: 'v2',
 
   auth: {
-    type: 'bearer',  // 'bearer' | 'basic' | 'api-key'
-    // headerName: 'X-Api-Key',  // For api-key auth
+    type: 'bearer',
   },
 
   rateLimit: {
@@ -144,11 +112,9 @@ export const myProviderManifest: ProviderManifest = {
     windowSeconds: 60,
   },
 
-  // Endpoints that should NEVER be exposed
   blocklist: [
     '/admin',
     '/settings',
-    '/users/*/delete',
   ],
 
   operations: [
@@ -156,7 +122,7 @@ export const myProviderManifest: ProviderManifest = {
       id: 'list_items',
       method: 'GET',
       path: '/items',
-      access: 'read',  // 'read' | 'write' | 'delete' | 'dangerous'
+      access: 'read',
       description: 'List all items',
       params: {
         page: { type: 'number', description: 'Page number', default: 1 },
@@ -191,77 +157,40 @@ export const manifests: Record<string, ProviderManifest> = {
 };
 ```
 
-### Step 5: Add Proxy Route Config (for API proxying)
+### Step 4: Add to Shared Types (Optional - for type safety)
 
-If using the proxy pattern (ATS/Calendar/Database categories):
+If you want the provider to be recognized in TypeScript types:
 
 ```typescript
-// apps/api/src/routes/v1/ats.ts (or calendar.ts)
-
-const PROVIDER_CONFIG: Record<string, {
-  getBaseUrl: (orgConfig?: { baseUrl?: string }) => string;
-  getAuthHeader: (token: string) => Record<string, string>;
-}> = {
-  // ... existing providers
-
-  'my-provider': {
-    getBaseUrl: () => 'https://api.myprovider.com/v2',
-    getAuthHeader: (token) => ({
-      'Authorization': `Bearer ${token}`,
-    }),
-  },
-};
-
-const BLOCKLISTED_PATHS: Record<string, RegExp[]> = {
-  // ... existing
-
-  'my-provider': [
-    /^\/admin/i,
-    /^\/settings/i,
-    /^\/users\/.*\/delete/i,
-  ],
-};
+// packages/shared/src/types.ts
+export type IntegrationProvider =
+  | 'linkedin' | 'ats' | 'email' | 'calendar' | 'granola'
+  | 'airtable'
+  | 'my-provider';  // Add new provider
 ```
 
-### Step 6: Add to Frontend UI
+### Step 5: Add Frontend Icon (Optional)
+
+If the provider needs a custom icon in the UI:
 
 ```typescript
 // apps/web/src/pages/Integrations.tsx
+import { MyIcon } from 'lucide-react';
 
-// 1. Add icon import
-import { Table2 } from 'lucide-react';
-
-// 2. Add to provider icons
-const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
+const providerIcons: Record<IntegrationProvider, LucideIcon> = {
   // ... existing
-  'my-provider': Table2,
+  'my-provider': MyIcon,
 };
-
-// 3. Add to appropriate provider list
-const otherProviders: ProviderConfig[] = [
-  // ... existing
-  {
-    id: 'my-provider',
-    name: 'My Provider',
-    description: 'Connect your My Provider account',
-  },
-];
-
-// OR if it's a sub-provider of an existing category:
-const atsProviders = [
-  // ... existing
-  { id: 'my-provider', name: 'My Provider' },
-];
 ```
 
-### Step 7: Verify
+### Step 6: Verify
 
 ```bash
 # Type check
 pnpm typecheck
 
-# Build affected packages
-pnpm --filter @skillomatic/mcp build
+# Run tests
+pnpm test
 
 # Start dev servers
 pnpm dev
@@ -272,6 +201,91 @@ pnpm dev
 # 3. Complete OAuth flow
 # 4. Verify connection appears as "Connected"
 ```
+
+---
+
+## Provider Registry Reference
+
+The provider registry (`packages/shared/src/providers.ts`) is the single source of truth for all provider configuration. It provides:
+
+### ProviderConfig Interface
+
+```typescript
+interface ProviderConfig {
+  id: string;                    // Unique identifier (e.g., 'greenhouse')
+  displayName: string;           // UI display name (e.g., 'Greenhouse')
+  category: IntegrationCategory; // 'ats' | 'email' | 'calendar' | 'database'
+  oauthFlow: OAuthFlow;          // 'nango' | 'google-direct' | 'none'
+  nangoKey?: string;             // Nango config key (defaults to id)
+  apiBaseUrl: string;            // API base URL
+  apiAuth: {
+    type: AuthType;              // 'bearer' | 'basic' | 'api-key'
+    headerName?: string;         // For api-key auth (e.g., 'X-Api-Key')
+  };
+  rateLimit?: {
+    requests: number;
+    windowSeconds: number;
+  };
+  blockedPaths?: RegExp[];       // Paths that should never be proxied
+  order?: number;                // Sort order in UI (lower = first)
+  devOnly?: boolean;             // Only available in development
+  hasManifest?: boolean;         // Has MCP manifest with tool operations
+}
+```
+
+### Helper Functions
+
+The registry exports these helper functions (used by API and frontend):
+
+```typescript
+// Get all providers, optionally filtered
+getProviders(options?: { category?: IntegrationCategory; includeDevOnly?: boolean }): ProviderConfig[]
+
+// Get a specific provider by ID
+getProvider(id: string): ProviderConfig | undefined
+
+// Check if a provider ID is valid
+isValidProvider(id: string): boolean
+
+// Get the Nango config key for a provider
+getNangoKey(providerId: string): string
+
+// Get the category for a provider
+getProviderCategory(providerId: string): IntegrationCategory | null
+
+// Get all provider IDs for a category
+getProviderIds(category: IntegrationCategory): string[]
+
+// Get blocked paths for a provider
+getBlockedPaths(providerId: string): RegExp[]
+
+// Check if a path is blocked
+isPathBlocked(providerId: string, path: string): boolean
+
+// Build auth header for a provider
+buildAuthHeader(providerId: string, token: string, base64Encoder?: (str: string) => string): Record<string, string>
+
+// Get API base URL
+getApiBaseUrl(providerId: string): string | undefined
+
+// Get all categories
+getAllCategories(): IntegrationCategory[]
+```
+
+---
+
+## What's Automatic
+
+Thanks to the centralized registry, these things happen automatically when you add a provider:
+
+| Feature | How It Works |
+|---------|--------------|
+| **Category mapping** | `getProviderCategory()` reads from registry |
+| **Nango key lookup** | `getNangoKey()` reads from registry |
+| **Proxy route support** | Proxy routes use `getProvider()`, `isPathBlocked()`, `buildAuthHeader()` |
+| **Frontend provider lists** | `Integrations.tsx` uses `getProviders({ category })` |
+| **Auth header generation** | `buildAuthHeader()` handles bearer/basic/api-key based on config |
+| **Blocked path enforcement** | `isPathBlocked()` checks against provider's blockedPaths |
 
 ---
 
@@ -378,20 +392,31 @@ Effective Access = min(Org Admin Setting, User Choice, Connection Status)
 
 ### Google OAuth (Gmail, Google Calendar)
 
-Uses direct OAuth instead of Nango for better UX:
+Uses direct OAuth instead of Nango for better UX. Set `oauthFlow: 'google-direct'` in the registry:
 
 ```typescript
-// apps/api/src/lib/google-oauth.ts
-// Handles: /integrations/gmail/connect, /integrations/google-calendar/connect
+gmail: {
+  id: 'gmail',
+  displayName: 'Gmail',
+  category: 'email',
+  oauthFlow: 'google-direct',  // Uses apps/api/src/lib/google-oauth.ts
+  // ...
+},
 ```
 
 ### Mock ATS (Development)
 
-Instant connect without OAuth:
+Instant connect without OAuth. Set `oauthFlow: 'none'` and `devOnly: true`:
 
 ```typescript
-// POST /integrations/mock-ats/connect
-// Only available when NODE_ENV !== 'production'
+'mock-ats': {
+  id: 'mock-ats',
+  displayName: 'Mock ATS (Dev)',
+  category: 'ats',
+  oauthFlow: 'none',
+  devOnly: true,
+  // ...
+},
 ```
 
 ---
@@ -421,7 +446,7 @@ Never log raw error messages or response bodies (PII risk).
 ## Security Checklist
 
 - [ ] OAuth tokens stored in Nango, not Skillomatic DB
-- [ ] Blocklist prevents access to sensitive endpoints
+- [ ] `blockedPaths` in registry prevents access to sensitive endpoints
 - [ ] Dangerous operations never exposed via manifests
 - [ ] Three-way permission check on every proxy request
 - [ ] Error codes used instead of raw messages (no PII)
@@ -440,6 +465,7 @@ Never log raw error messages or response bodies (PII risk).
 7. [ ] Read-only hides write operations
 8. [ ] Blocklisted paths return 403
 9. [ ] Type check passes: `pnpm typecheck`
+10. [ ] Tests pass: `pnpm test`
 
 ---
 
@@ -451,9 +477,11 @@ Never log raw error messages or response bodies (PII risk).
 | Zoho Recruit | ATS | Nango | Yes (26 ops) | v1/ats |
 | Lever | ATS | Nango | Planned | v1/ats |
 | Ashby | ATS | Nango | Planned | v1/ats |
+| Workable | ATS | Nango | Planned | v1/ats |
 | Gmail | Email | Direct | No | v1/email |
 | Outlook | Email | Nango | Planned | v1/email |
 | Google Calendar | Calendar | Direct | No | v1/calendar |
+| Outlook Calendar | Calendar | Nango | Planned | v1/calendar |
 | Calendly | Calendar | Nango | Yes | v1/calendar |
 | Airtable | Database | Nango | Yes (14 ops) | v1/data |
-| Mock ATS | ATS (dev) | None | Yes | v1/ats |
+| Mock ATS | ATS (dev) | None | Yes (14 ops) | v1/ats |

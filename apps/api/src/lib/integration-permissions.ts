@@ -14,6 +14,7 @@
 import { db } from '@skillomatic/db';
 import { organizations, integrations } from '@skillomatic/db/schema';
 import { eq, and, or } from 'drizzle-orm';
+import { getProviderCategory as getProviderCategoryFromRegistry } from '@skillomatic/shared';
 
 /**
  * Structured logging for permissions telemetry.
@@ -224,46 +225,35 @@ function getUserAccessLevel(integration: { metadata: string | null }): AccessLev
   }
 }
 
-const isDev = process.env.NODE_ENV !== 'production';
-
 /**
- * Map provider to category
- * Note: mock-ats is only recognized in development mode
+ * Map provider to category.
+ * Uses the centralized provider registry from @skillomatic/shared.
+ * Also handles generic category aliases (e.g., 'ats' -> 'ats', 'email' -> 'email').
  */
 export function providerToCategory(provider: string): IntegrationCategory | null {
-  switch (provider) {
-    case 'ats':
-    case 'greenhouse':
-    case 'lever':
-    case 'ashby':
-    case 'workable':
-    case 'zoho-recruit':
-      return 'ats';
-    case 'mock-ats':
-      // Only allow mock-ats in development
-      if (!isDev) {
-        // This indicates a configuration error - mock-ats should not exist in prod DB
-        log.warn('mock_ats_in_production', { provider });
-      }
-      return isDev ? 'ats' : null;
-    case 'email':
-    case 'gmail':
-    case 'outlook':
-      return 'email';
-    case 'calendar':
-    case 'google-calendar':
-    case 'outlook-calendar':
-    case 'calendly':
-      return 'calendar';
-    case 'airtable':
-      return 'database';
-    default:
-      // Unknown provider - could indicate data migration issue or new provider
-      if (provider) {
-        log.warn('unknown_provider', { provider });
-      }
-      return null;
+  // Handle generic category aliases
+  const categoryAliases: Record<string, IntegrationCategory> = {
+    ats: 'ats',
+    email: 'email',
+    calendar: 'calendar',
+    database: 'database',
+  };
+
+  if (categoryAliases[provider]) {
+    return categoryAliases[provider];
   }
+
+  // Look up in centralized registry
+  const category = getProviderCategoryFromRegistry(provider);
+  if (category) {
+    return category as IntegrationCategory;
+  }
+
+  // Unknown provider - could indicate data migration issue or new provider
+  if (provider) {
+    log.warn('unknown_provider', { provider });
+  }
+  return null;
 }
 
 /**

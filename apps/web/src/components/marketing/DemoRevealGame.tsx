@@ -273,7 +273,10 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
           setTimeout(() => {
             setIsSpinning(false);
             if (shouldWin) {
-              completeRound(5);
+              // Show JACKPOT for 500ms before completing
+              setTimeout(() => {
+                completeRound(5);
+              }, 500);
             }
           }, 200);
         }
@@ -424,7 +427,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
               textShadow: '0 2px 0 rgba(0,0,0,0.3), 0 -1px 0 rgba(255,255,255,0.2)',
             }}
           >
-            {isSpinning ? '...' : slotAttempts === 0 ? 'SPIN' : slotAttempts === 1 ? 'LOSER' : 'WINNER?'}
+            {isSpinning ? '...' : slotAttempts === 0 ? 'SPIN' : slotAttempts === 1 ? 'LOSER' : slotAttempts === 2 ? 'WINNER?' : 'JACKPOT'}
           </span>
           {/* Button shine */}
           <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
@@ -475,7 +478,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
 
       {/* Vending Machine Body with Lever */}
       <div className="flex items-start">
-        <div className="w-80 md:w-96 lg:w-[420px] robot-panel rounded-3xl p-6 md:p-8 relative">
+        <div className="w-80 md:w-[480px] lg:w-[560px] robot-panel rounded-3xl p-6 md:p-8 relative">
           {/* Corner screws */}
           <div className="absolute top-4 left-4 screw" />
           <div className="absolute top-4 right-4 screw" />

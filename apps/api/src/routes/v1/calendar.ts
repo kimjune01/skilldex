@@ -3,12 +3,20 @@ import { apiKeyAuth } from '../../middleware/apiKey.js';
 import { db } from '@skillomatic/db';
 import { integrations } from '@skillomatic/db/schema';
 import { eq, and, or } from 'drizzle-orm';
-import { getNangoClient, PROVIDER_CONFIG_KEYS } from '../../lib/nango.js';
+import { getNangoClient } from '../../lib/nango.js';
 import {
   getEffectiveAccessForUser,
   canRead,
   canWrite,
 } from '../../lib/integration-permissions.js';
+import {
+  getProvider,
+  getProviders,
+  getNangoKey,
+  getApiBaseUrl,
+  buildAuthHeader,
+  isPathBlocked,
+} from '@skillomatic/shared';
 
 /**
  * Structured telemetry logging for Calendar operations.
@@ -30,45 +38,17 @@ export const v1CalendarRoutes = new Hono();
 v1CalendarRoutes.use('*', apiKeyAuth);
 
 /**
- * Provider-specific base URLs and auth configuration
+ * Get all supported calendar providers from registry
  */
-const PROVIDER_CONFIG: Record<string, {
-  getBaseUrl: () => string;
-  getAuthHeader: (token: string) => Record<string, string>;
-}> = {
-  'calendly': {
-    getBaseUrl: () => 'https://api.calendly.com',
-    getAuthHeader: (token) => ({
-      'Authorization': `Bearer ${token}`,
-    }),
-  },
-  'google-calendar': {
-    getBaseUrl: () => 'https://www.googleapis.com/calendar/v3',
-    getAuthHeader: (token) => ({
-      'Authorization': `Bearer ${token}`,
-    }),
-  },
-};
+function getCalendarProviderIds(): string[] {
+  return getProviders({ category: 'calendar' }).map((p) => p.id);
+}
 
 /**
- * Blocklisted paths that should never be proxied (security)
+ * Node.js base64 encoder for basic auth
  */
-const BLOCKLISTED_PATHS: Record<string, RegExp[]> = {
-  'calendly': [
-    /^\/webhook_subscriptions/i,
-    /^\/data_compliance/i,
-  ],
-  'google-calendar': [
-    /^\/users\/.*\/settings/i,
-  ],
-};
-
-/**
- * Check if a path is blocklisted for a provider
- */
-function isPathBlocklisted(provider: string, path: string): boolean {
-  const patterns = BLOCKLISTED_PATHS[provider] || [];
-  return patterns.some((pattern) => pattern.test(path));
+function base64Encode(str: string): string {
+  return Buffer.from(str).toString('base64');
 }
 
 /**
@@ -111,15 +91,15 @@ v1CalendarRoutes.post('/proxy', async (c) => {
     return c.json({ error: { message: 'Missing required fields: provider, method, path' } }, 400);
   }
 
-  // Check if provider is supported
-  const providerConfig = PROVIDER_CONFIG[provider];
-  if (!providerConfig) {
+  // Check if provider is supported (must be a calendar provider from registry)
+  const providerConfig = getProvider(provider);
+  if (!providerConfig || providerConfig.category !== 'calendar') {
     telemetry.warn('proxy_unsupported_provider', { userId: user.id, provider });
     return c.json({ error: { message: `Unsupported calendar provider: ${provider}` } }, 400);
   }
 
-  // Check if path is blocklisted
-  if (isPathBlocklisted(provider, path)) {
+  // Check if path is blocklisted (using registry)
+  if (isPathBlocked(provider, path)) {
     telemetry.warn('proxy_blocklisted_path', { userId: user.id, provider, path });
     return c.json({ error: { message: 'Access to this endpoint is not allowed' } }, 403);
   }
@@ -146,7 +126,8 @@ v1CalendarRoutes.post('/proxy', async (c) => {
   }
 
   // Get the user's calendar integration
-  const calendarProviders = [provider, 'calendar', 'calendly', 'google-calendar'];
+  // Include all calendar providers from registry for fallback matching
+  const calendarProviders = [provider, ...getCalendarProviderIds()];
   const [calendarIntegration] = await db
     .select()
     .from(integrations)
@@ -191,7 +172,7 @@ v1CalendarRoutes.post('/proxy', async (c) => {
   try {
     const nango = getNangoClient();
     const providerKey = (metadata.subProvider as string) || provider;
-    const providerConfigKey = PROVIDER_CONFIG_KEYS[providerKey] || providerKey;
+    const providerConfigKey = getNangoKey(providerKey);
 
     const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
     accessToken = token.access_token;
@@ -205,8 +186,8 @@ v1CalendarRoutes.post('/proxy', async (c) => {
     return c.json({ error: { message: 'Failed to authenticate with calendar provider' } }, 502);
   }
 
-  // Build the full URL
-  const baseUrl = providerConfig.getBaseUrl().replace(/\/+$/, '');
+  // Build the full URL using registry
+  const baseUrl = (getApiBaseUrl(provider) || '').replace(/\/+$/, '');
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const url = new URL(baseUrl + normalizedPath);
 
@@ -219,8 +200,8 @@ v1CalendarRoutes.post('/proxy', async (c) => {
     }
   }
 
-  // Build headers
-  const authHeaders = providerConfig.getAuthHeader(accessToken);
+  // Build headers using registry
+  const authHeaders = buildAuthHeader(provider, accessToken, base64Encode);
   const requestHeaders: Record<string, string> = {
     ...authHeaders,
     'Content-Type': 'application/json',

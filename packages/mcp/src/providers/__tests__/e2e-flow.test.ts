@@ -644,7 +644,7 @@ describe('E2E: Mock ATS Provider', () => {
     const manifest = getManifest('mock-ats')!;
     const tools = generateToolsFromManifest(manifest, 'read-write');
 
-    expect(tools.length).toBe(13); // All 13 operations (8 read + 5 write)
+    expect(tools.length).toBe(14); // All 14 operations (8 read + 6 write, including delete_candidate)
     expect(tools.some(t => t.name === 'mock_ats_list_candidates')).toBe(true);
     expect(tools.some(t => t.name === 'mock_ats_create_candidate')).toBe(true);
   });

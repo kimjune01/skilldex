@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Nango from '@nangohq/frontend';
 import { integrations, type IntegrationAccessLevel } from '../lib/api';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
+import { getProviders, type IntegrationCategory } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,9 +43,14 @@ import {
   Shield,
   ShieldCheck,
   Table2,
+  type LucideIcon,
 } from 'lucide-react';
 
-const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
+/**
+ * Icon mapping for integration providers.
+ * Uses category-based icons with provider-specific overrides.
+ */
+const providerIcons: Record<IntegrationProvider, LucideIcon> = {
   ats: Briefcase,
   linkedin: Linkedin,
   email: Mail,
@@ -53,36 +59,23 @@ const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
   airtable: Table2,
 };
 
-// ATS sub-providers for specific ATS selection
-const atsProviders = [
-  // Mock ATS only in development
-  ...(import.meta.env.DEV ? [{ id: 'mock-ats', name: 'Mock ATS (Dev)' }] : []),
-  { id: 'zoho-recruit', name: 'Zoho Recruit' },
-  { id: 'greenhouse', name: 'Greenhouse' },
-  { id: 'lever', name: 'Lever' },
-  { id: 'ashby', name: 'Ashby' },
-  { id: 'workable', name: 'Workable' },
-  { id: 'icims', name: 'iCIMS (Beta)' },
-  { id: 'workday', name: 'Workday (Beta)' },
-  { id: 'taleo', name: 'Oracle Taleo (Beta)' },
-  { id: 'successfactors', name: 'SAP SuccessFactors (Beta)' },
-  { id: 'smartrecruiters', name: 'SmartRecruiters (Beta)' },
-  { id: 'jobvite', name: 'Jobvite (Beta)' },
-  { id: 'bamboohr', name: 'BambooHR (Beta)' },
-  { id: 'jazzhr', name: 'JazzHR (Beta)' },
-  { id: 'bullhorn', name: 'Bullhorn (Beta)' },
-  { id: 'recruitee', name: 'Recruitee (Beta)' },
-];
+/**
+ * Get sub-providers for a category from the registry.
+ * Includes devOnly providers when in development mode.
+ */
+function getSubProvidersForCategory(category: IntegrationCategory): { id: string; name: string }[] {
+  const includeDevOnly = import.meta.env.DEV;
+  return getProviders({ category, includeDevOnly }).map((p) => ({
+    id: p.id,
+    name: p.displayName,
+  }));
+}
 
-// Calendar sub-providers
-const calendarProviders = [
-  { id: 'google-calendar', name: 'Google Calendar' },
-  { id: 'outlook-calendar', name: 'Outlook Calendar' },
-  { id: 'calendly', name: 'Calendly' },
-];
-
-// Email sub-providers - IDs must match Nango Integration IDs
-const emailProviders = [
+/**
+ * Special email provider mapping since Nango uses different IDs.
+ * The provider registry uses 'gmail' but Nango uses 'google-mail'.
+ */
+const emailProviderOverrides = [
   { id: 'google-mail', name: 'Gmail' },
   { id: 'outlook', name: 'Outlook' },
 ];
@@ -94,48 +87,62 @@ type ProviderConfig = {
   subProviders?: { id: string; name: string }[];
 };
 
-// Essential integrations - core recruiting workflow
-const essentialProviders: ProviderConfig[] = [
-  {
-    id: 'email',
-    name: 'Email',
-    description: 'Email integration for outreach',
-    subProviders: emailProviders,
-  },
-  {
-    id: 'calendar',
-    name: 'Calendar',
-    description: 'Calendar integration for scheduling',
-    subProviders: calendarProviders,
-  },
-  {
-    id: 'linkedin',
-    name: 'LinkedIn',
-    description: 'LinkedIn profile lookup (via browser extension)',
-  },
-];
+/**
+ * UI configuration for integration providers.
+ * Uses registry for sub-providers where applicable.
+ */
+function buildProviderConfigs(): {
+  essentialProviders: ProviderConfig[];
+  otherProviders: ProviderConfig[];
+} {
+  // Essential integrations - core recruiting workflow
+  const essentialProviders: ProviderConfig[] = [
+    {
+      id: 'email',
+      name: 'Email',
+      description: 'Email integration for outreach',
+      // Email uses special override due to Nango ID differences
+      subProviders: emailProviderOverrides,
+    },
+    {
+      id: 'calendar',
+      name: 'Calendar',
+      description: 'Calendar integration for scheduling',
+      subProviders: getSubProvidersForCategory('calendar'),
+    },
+    {
+      id: 'linkedin',
+      name: 'LinkedIn',
+      description: 'LinkedIn profile lookup (via browser extension)',
+    },
+  ];
 
-// Other integrations - specialized tools
-const otherProviders: ProviderConfig[] = [
-  {
-    id: 'ats',
-    name: 'ATS',
-    description: 'Connect your Applicant Tracking System',
-    subProviders: atsProviders,
-  },
-  {
-    id: 'airtable',
-    name: 'Airtable',
-    description: 'Connect your Airtable bases for CRM data',
-  },
-  {
-    id: 'granola',
-    name: 'Granola',
-    description: 'Meeting notes sync',
-  },
-];
+  // Other integrations - specialized tools
+  // Database providers from registry (e.g., Airtable)
+  const databaseProviders = getProviders({ category: 'database' });
 
-const availableProviders = [...essentialProviders, ...otherProviders];
+  const otherProviders: ProviderConfig[] = [
+    {
+      id: 'ats',
+      name: 'ATS',
+      description: 'Connect your Applicant Tracking System',
+      subProviders: getSubProvidersForCategory('ats'),
+    },
+    // Add each database provider as a standalone integration
+    ...databaseProviders.map((p) => ({
+      id: p.id as IntegrationProvider,
+      name: p.displayName,
+      description: `Connect your ${p.displayName} account`,
+    })),
+    {
+      id: 'granola',
+      name: 'Granola',
+      description: 'Meeting notes sync',
+    },
+  ];
+
+  return { essentialProviders, otherProviders };
+}
 
 export default function Integrations() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -143,6 +150,13 @@ export default function Integrations() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Build provider configs from registry (memoized to avoid rebuilding on every render)
+  const { essentialProviders, otherProviders } = useMemo(() => buildProviderConfigs(), []);
+  const availableProviders = useMemo(
+    () => [...essentialProviders, ...otherProviders],
+    [essentialProviders, otherProviders]
+  );
 
   // Dialog states
   const [connectDialogProvider, setConnectDialogProvider] = useState<{

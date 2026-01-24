@@ -10,7 +10,14 @@ import { combinedAuth } from '../../middleware/combinedAuth.js';
 import { db } from '@skillomatic/db';
 import { integrations } from '@skillomatic/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { getNangoClient, PROVIDER_CONFIG_KEYS } from '../../lib/nango.js';
+import { getNangoClient } from '../../lib/nango.js';
+import {
+  getProvider,
+  getNangoKey,
+  getApiBaseUrl,
+  buildAuthHeader,
+  isPathBlocked,
+} from '@skillomatic/shared';
 
 /**
  * Structured telemetry logging for Data operations.
@@ -30,38 +37,10 @@ export const v1DataRoutes = new Hono();
 v1DataRoutes.use('*', combinedAuth);
 
 /**
- * Provider-specific base URLs and auth configuration
+ * Node.js base64 encoder for basic auth
  */
-const PROVIDER_CONFIG: Record<
-  string,
-  {
-    getBaseUrl: () => string;
-    getAuthHeader: (token: string) => Record<string, string>;
-  }
-> = {
-  airtable: {
-    getBaseUrl: () => 'https://api.airtable.com/v0',
-    getAuthHeader: (token) => ({
-      Authorization: `Bearer ${token}`,
-    }),
-  },
-};
-
-/**
- * Blocklisted paths that should never be proxied (security)
- */
-const BLOCKLISTED_PATHS: Record<string, RegExp[]> = {
-  airtable: [
-    /^\/enterprise/i, // Enterprise admin APIs
-  ],
-};
-
-/**
- * Check if a path is blocklisted for a provider
- */
-function isPathBlocklisted(provider: string, path: string): boolean {
-  const patterns = BLOCKLISTED_PATHS[provider] || [];
-  return patterns.some((pattern) => pattern.test(path));
+function base64Encode(str: string): string {
+  return Buffer.from(str).toString('base64');
 }
 
 /**
@@ -104,15 +83,15 @@ v1DataRoutes.post('/proxy', async (c) => {
     return c.json({ error: { message: 'Missing required fields: provider, method, path' } }, 400);
   }
 
-  // Check if provider is supported
-  const providerConfig = PROVIDER_CONFIG[provider];
-  if (!providerConfig) {
+  // Check if provider is supported (must be a database provider from registry)
+  const providerConfig = getProvider(provider);
+  if (!providerConfig || providerConfig.category !== 'database') {
     telemetry.warn('proxy_unsupported_provider', { userId: user.sub, provider });
     return c.json({ error: { message: `Unsupported data provider: ${provider}` } }, 400);
   }
 
-  // Check if path is blocklisted
-  if (isPathBlocklisted(provider, path)) {
+  // Check if path is blocklisted (using registry)
+  if (isPathBlocked(provider, path)) {
     telemetry.warn('proxy_blocklisted_path', { userId: user.sub, provider, path });
     return c.json({ error: { message: 'Access to this endpoint is not allowed' } }, 403);
   }
@@ -171,7 +150,7 @@ v1DataRoutes.post('/proxy', async (c) => {
   let accessToken: string;
   try {
     const nango = getNangoClient();
-    const providerConfigKey = PROVIDER_CONFIG_KEYS[provider] || provider;
+    const providerConfigKey = getNangoKey(provider);
 
     const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
     accessToken = token.access_token;
@@ -185,8 +164,8 @@ v1DataRoutes.post('/proxy', async (c) => {
     return c.json({ error: { message: `Failed to authenticate with ${provider}` } }, 502);
   }
 
-  // Build the full URL
-  const baseUrl = providerConfig.getBaseUrl().replace(/\/+$/, '');
+  // Build the full URL using registry
+  const baseUrl = (getApiBaseUrl(provider) || '').replace(/\/+$/, '');
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const url = new URL(baseUrl + normalizedPath);
 
@@ -204,8 +183,8 @@ v1DataRoutes.post('/proxy', async (c) => {
     }
   }
 
-  // Build headers
-  const authHeaders = providerConfig.getAuthHeader(accessToken);
+  // Build headers using registry
+  const authHeaders = buildAuthHeader(provider, accessToken, base64Encode);
   const requestHeaders: Record<string, string> = {
     ...authHeaders,
     'Content-Type': 'application/json',

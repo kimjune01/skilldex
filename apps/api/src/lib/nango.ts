@@ -272,34 +272,25 @@ export function getNangoClient(): NangoClient {
 }
 
 /**
- * Map our integration provider names to Nango provider config keys
- * These must match the provider configurations in your Nango instance
+ * Get the Nango provider config key for a given provider ID.
+ * Uses the centralized provider registry from @skillomatic/shared.
+ *
+ * @deprecated Import getNangoKey directly from @skillomatic/shared instead
  */
-export const PROVIDER_CONFIG_KEYS: Record<string, string> = {
-  // ATS providers
-  greenhouse: 'greenhouse',
-  lever: 'lever',
-  ashby: 'ashby',
-  workable: 'workable',
-  'zoho-recruit': 'zoho-recruit',
+export { getNangoKey } from '@skillomatic/shared';
 
-  // Calendar providers
-  'google-calendar': 'google-calendar',
-  'outlook-calendar': 'outlook-calendar',
-  calendly: 'calendly',
+/**
+ * @deprecated Use getNangoKey from @skillomatic/shared instead.
+ * Kept for backwards compatibility during migration.
+ */
+import { getNangoKey as getKey } from '@skillomatic/shared';
 
-  // Email providers
-  gmail: 'google-mail',
-  outlook: 'outlook',
-
-  // Data/CRM providers
-  airtable: 'airtable',
-
-  // Generic mappings (for backwards compatibility)
-  ats: 'zoho-recruit', // Default ATS - using Zoho Recruit
-  calendar: 'google-calendar', // Default calendar
-  email: 'gmail', // Default email
-};
+export const PROVIDER_CONFIG_KEYS: Record<string, string> = new Proxy(
+  {} as Record<string, string>,
+  {
+    get: (_target, prop: string) => getKey(prop),
+  }
+);
 
 /**
  * Generate a unique connection ID for a user + provider combination
