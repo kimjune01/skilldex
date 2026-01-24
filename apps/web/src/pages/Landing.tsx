@@ -5,9 +5,9 @@
  * Shows features, pricing, and call-to-action for login/signup.
  */
 import { useState, useRef } from 'react';
-import { MessageSquare, Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Database, Target } from 'lucide-react';
+import { Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Database, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { MarketingNav, MarketingFooter } from '@/components/marketing';
+import { MarketingNav, MarketingFooter, DemoRevealGame } from '@/components/marketing';
 
 const vendingItems = [
   {
@@ -425,7 +425,7 @@ export default function Landing() {
                   href="mailto:email@skillomatic.technology?subject=Demo%20Request&body=Hi%2C%20I%27d%20like%20to%20see%20a%20demo%20of%20Skillomatic."
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl robot-button text-white font-bold tracking-wide text-lg border-0"
                 >
-                  Request Demo Video
+                  Request Live Demo
                   <ArrowRight className="h-5 w-5" />
                 </a>
                 <a
@@ -437,62 +437,9 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Right - Vending Machine Illustration */}
+            {/* Right - Interactive Demo Reveal Game */}
             <div className="flex-1 flex justify-center">
-              <div className="relative">
-                {/* Vending machine body */}
-                <div className="w-72 md:w-80 robot-panel rounded-3xl p-6 relative">
-                  {/* Corner screws */}
-                  <div className="absolute top-4 left-4 screw" />
-                  <div className="absolute top-4 right-4 screw" />
-                  <div className="absolute bottom-4 left-4 screw" />
-                  <div className="absolute bottom-4 right-4 screw" />
-
-                  {/* Display screen */}
-                  <div className="robot-display rounded-xl p-4 mb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="led-light led-green" />
-                      <div className="led-light led-orange" />
-                      <div className="led-light led-cyan" />
-                      <span className="text-[10px] font-mono text-cyan-400/60 tracking-wider ml-auto">
-                        READY
-                      </span>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-black text-cyan-400 digital-text mb-1">
-                        12
-                      </div>
-                      <div className="text-[10px] text-cyan-400/60 font-mono uppercase tracking-wider">
-                        Skills Available
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Skill slots */}
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {['ATS', 'EMAIL', 'CAL', 'LINK', 'SRCH', 'SYNC'].map((skill, i) => (
-                      <div
-                        key={skill}
-                        className="aspect-square rounded-lg bg-[hsl(220_15%_97%)] border-2 border-[hsl(220_15%_88%)] flex items-center justify-center stagger-fade-in"
-                        style={{ animationDelay: `${i * 100}ms` }}
-                      >
-                        <span className="text-[10px] font-black text-[hsl(220_20%_50%)]">{skill}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Dispenser slot */}
-                  <div className="dispense-slot h-16 flex items-center justify-center">
-                    <MessageSquare className="h-6 w-6 text-cyan-400/50" />
-                  </div>
-
-                  {/* Coin slot */}
-                  <div className="flex justify-center mt-4">
-                    <div className="coin-slot" />
-                  </div>
-                </div>
-
-              </div>
+              <DemoRevealGame />
             </div>
           </div>
         </div>
@@ -521,7 +468,7 @@ export default function Landing() {
             href="mailto:email@skillomatic.technology?subject=Demo%20Request&body=Hi%2C%20I%27d%20like%20to%20see%20a%20demo%20of%20Skillomatic."
             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-primary font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
           >
-            Request Demo Video
+            Request Live Demo
             <ArrowRight className="h-5 w-5" />
           </a>
         </div>
