@@ -57,6 +57,7 @@ const providerIcons: Record<IntegrationProvider, LucideIcon> = {
   calendar: Calendar,
   granola: FileText,
   airtable: Table2,
+  'google-sheets': Table2,
 };
 
 /**
@@ -226,7 +227,8 @@ export default function Integrations() {
       const token = localStorage.getItem('token');
 
       // Get provider config from registry to determine OAuth flow
-      const providerConfig = subProvider ? getProvider(subProvider) : null;
+      // Check subProvider first, then fall back to provider ID (for standalone providers like google-sheets)
+      const providerConfig = getProvider(subProvider || provider);
       const oauthFlow = providerConfig?.oauthFlow || 'nango';
 
       // Handle different OAuth flows based on registry config
@@ -251,7 +253,8 @@ export default function Integrations() {
 
       if (oauthFlow === 'google-direct') {
         // Use direct Google OAuth instead of Nango
-        window.location.href = `${apiUrl}/integrations/${subProvider}/connect?token=${encodeURIComponent(token || '')}`;
+        const providerId = subProvider || provider;
+        window.location.href = `${apiUrl}/integrations/${providerId}/connect?token=${encodeURIComponent(token || '')}`;
         return;
       }
 
@@ -322,7 +325,9 @@ export default function Integrations() {
   };
 
   const getIntegrationStatus = (provider: IntegrationProvider) => {
-    return integrationList.find((i) => i.provider === provider);
+    // Prioritize connected integrations over disconnected ones
+    const matches = integrationList.filter((i) => i.provider === provider);
+    return matches.find((i) => i.status === 'connected') || matches[0];
   };
 
   const getStatusBadge = (status: string) => {

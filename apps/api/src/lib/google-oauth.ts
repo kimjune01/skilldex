@@ -76,7 +76,7 @@ const GOOGLE_SERVICE_CONFIG: Record<GoogleService, {
   },
   'google-sheets': {
     scopes: GOOGLE_SHEETS_SCOPES,
-    provider: 'database',
+    provider: 'google-sheets',
     stateType: 'google_sheets_oauth',
     emailField: 'sheetsEmail',
     displayName: 'Google Sheets',
@@ -264,29 +264,25 @@ async function handleGoogleOAuthCallback(
       }
     }
 
-    if (existingIntegration.length === 0) {
-      await db.insert(integrations).values({
-        id: randomUUID(),
-        userId,
-        organizationId: dbUser?.organizationId ?? null,
-        provider: config.provider,
-        status: 'connected',
-        metadata: JSON.stringify(metadata),
-        lastSyncAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    } else {
+    // Delete any existing integration for this provider (one per user)
+    if (existingIntegration.length > 0) {
       await db
-        .update(integrations)
-        .set({
-          status: 'connected',
-          metadata: JSON.stringify(metadata),
-          lastSyncAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(integrations.id, existingIntegration[0].id));
+        .delete(integrations)
+        .where(and(eq(integrations.userId, userId), eq(integrations.provider, config.provider)));
     }
+
+    // Insert fresh integration
+    await db.insert(integrations).values({
+      id: randomUUID(),
+      userId,
+      organizationId: dbUser?.organizationId ?? null,
+      provider: config.provider,
+      status: 'connected',
+      metadata: JSON.stringify(metadata),
+      lastSyncAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     log.info(`${service}_connected`, { userId, email: userEmail });
 
@@ -319,7 +315,11 @@ async function handleGoogleTokenRequest(
   const integration = await db
     .select()
     .from(integrations)
-    .where(and(eq(integrations.userId, user.sub), eq(integrations.provider, config.provider)))
+    .where(and(
+      eq(integrations.userId, user.sub),
+      eq(integrations.provider, config.provider),
+      eq(integrations.status, 'connected')
+    ))
     .limit(1);
 
   if (integration.length === 0) {
@@ -327,9 +327,6 @@ async function handleGoogleTokenRequest(
   }
 
   const int = integration[0];
-  if (int.status !== 'connected') {
-    return c.json({ error: { message: `${config.displayName} integration is not connected` } }, 400);
-  }
 
   let metadata: Record<string, unknown> = {};
   try {
