@@ -5,8 +5,10 @@ Deploy Skillomatic to production using SST.
 ```bash
 pnpm typecheck && \
 pnpm sst deploy --stage production && \
+TURSO_DATABASE_URL=$(turso db show skillomatic --url) \
+TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic) \
 pnpm --filter @skillomatic/db seed:prod && \
-curl -sf "$(cat .sst/outputs.json | jq -r .api)/api/health" && \
+curl -sf "$(cat .sst/outputs.json | jq -r .api)/health" && \
 echo "✓ Deploy complete"
 ```
 
@@ -36,16 +38,16 @@ pnpm --filter @skillomatic/db migrate   # Apply to prod (needs TURSO_* env vars)
 API_URL=$(cat .sst/outputs.json | jq -r .api)
 
 # Health
-curl -s "$API_URL/api/health" | jq .
+curl -s "$API_URL/health" | jq .
 
 # Login
-curl -s -X POST "$API_URL/api/auth/login" \
+curl -s -X POST "$API_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"superadmin@skillomatic.technology","password":"Skillomatic2024!"}' | jq .
 
 # API key
 curl -s -H "Authorization: Bearer sk_live_prod_super_admin_debug_key_2024" \
-  "$API_URL/api/v1/me" | jq .
+  "$API_URL/v1/me" | jq .
 ```
 
 Test credentials: `superadmin@skillomatic.technology` / `Skillomatic2024!`
