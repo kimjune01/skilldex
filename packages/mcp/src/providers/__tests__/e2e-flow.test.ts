@@ -624,7 +624,7 @@ describe('E2E: Mock ATS Provider', () => {
     const manifest = getManifest('mock-ats');
     expect(manifest).toBeDefined();
     expect(manifest!.provider).toBe('mock-ats');
-    expect(manifest!.displayName).toBe('Mock ATS');
+    expect(manifest!.displayName).toBe('Mock ATS (Dev)');
   });
 
   it('has expected operations', () => {

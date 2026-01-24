@@ -2,7 +2,7 @@ import type { ProviderManifest } from '../types.js';
 
 export const mockAtsManifest: ProviderManifest = {
   provider: 'mock-ats',
-  displayName: 'Mock ATS',
+  displayName: 'Mock ATS (Dev)',
   category: 'ats',
   baseUrl: process.env.MOCK_ATS_URL || 'http://localhost:3001',
   apiVersion: 'v1',

@@ -84,6 +84,7 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
       /^\/user_roles/i,
       /^\/custom_fields/i,
       /^\/webhooks/i,
+      /^\/tracking_links/i,
       /^\/eeoc/i,
       /^\/demographics/i,
     ],

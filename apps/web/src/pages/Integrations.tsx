@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Nango from '@nangohq/frontend';
 import { integrations, type IntegrationAccessLevel } from '../lib/api';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
-import { getProviders, type IntegrationCategory } from '@skillomatic/shared';
+import { getProviders, getProvider, type IntegrationCategory } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,14 +71,6 @@ function getSubProvidersForCategory(category: IntegrationCategory): { id: string
   }));
 }
 
-/**
- * Special email provider mapping since Nango uses different IDs.
- * The provider registry uses 'gmail' but Nango uses 'google-mail'.
- */
-const emailProviderOverrides = [
-  { id: 'google-mail', name: 'Gmail' },
-  { id: 'outlook', name: 'Outlook' },
-];
 
 type ProviderConfig = {
   id: IntegrationProvider;
@@ -101,8 +93,7 @@ function buildProviderConfigs(): {
       id: 'email',
       name: 'Email',
       description: 'Email integration for outreach',
-      // Email uses special override due to Nango ID differences
-      subProviders: emailProviderOverrides,
+      subProviders: getSubProvidersForCategory('email'),
     },
     {
       id: 'calendar',
@@ -234,9 +225,14 @@ export default function Integrations() {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('token');
 
-      // Special handling for Mock ATS - direct connect without OAuth (dev only)
-      if (provider === 'ats' && subProvider === 'mock-ats') {
-        const response = await fetch(`${apiUrl}/integrations/mock-ats/connect`, {
+      // Get provider config from registry to determine OAuth flow
+      const providerConfig = subProvider ? getProvider(subProvider) : null;
+      const oauthFlow = providerConfig?.oauthFlow || 'nango';
+
+      // Handle different OAuth flows based on registry config
+      if (oauthFlow === 'none') {
+        // Direct connect without OAuth (e.g., mock-ats in dev)
+        const response = await fetch(`${apiUrl}/integrations/${subProvider}/connect`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -244,28 +240,22 @@ export default function Integrations() {
           },
         });
         if (!response.ok) {
-          throw new Error('Failed to connect Mock ATS');
+          throw new Error(`Failed to connect ${providerConfig?.displayName || subProvider}`);
         }
-        setSuccessMessage('Mock ATS connected successfully');
+        setSuccessMessage(`${providerConfig?.displayName || subProvider} connected successfully`);
         await loadIntegrations();
         setIsConnecting(false);
         setTimeout(() => setSuccessMessage(''), 5000);
         return;
       }
 
-      // Special handling for Gmail - use direct OAuth instead of Nango
-      if (provider === 'email' && (subProvider === 'google-mail' || subProvider === 'gmail')) {
-        window.location.href = `${apiUrl}/integrations/gmail/connect?token=${encodeURIComponent(token || '')}`;
+      if (oauthFlow === 'google-direct') {
+        // Use direct Google OAuth instead of Nango
+        window.location.href = `${apiUrl}/integrations/${subProvider}/connect?token=${encodeURIComponent(token || '')}`;
         return;
       }
 
-      // Special handling for Google Calendar - use direct OAuth instead of Nango
-      if (provider === 'calendar' && subProvider === 'google-calendar') {
-        window.location.href = `${apiUrl}/integrations/google-calendar/connect?token=${encodeURIComponent(token || '')}`;
-        return;
-      }
-
-      // For other providers, use Nango Connect UI
+      // Default: Use Nango Connect UI
       const allowedIntegrations = subProvider ? [subProvider] : undefined;
 
       const nango = new Nango();
