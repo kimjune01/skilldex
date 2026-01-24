@@ -19,6 +19,7 @@ import {
   isPathBlocked,
 } from '@skillomatic/shared';
 import { createLogger } from '../../lib/logger.js';
+import { refreshGoogleToken, isGoogleTokenExpired } from '../../lib/google-oauth.js';
 
 const log = createLogger('Data');
 
@@ -133,7 +134,10 @@ v1DataRoutes.post('/proxy', async (c) => {
 
   if (providerConfig.oauthFlow === 'google-direct') {
     // Direct OAuth - token stored in integration metadata
-    const token = metadata.accessToken as string | undefined;
+    let token = metadata.accessToken as string | undefined;
+    const refreshToken = metadata.refreshToken as string | undefined;
+    const expiresAt = metadata.expiresAt as string | undefined;
+
     if (!token) {
       log.error('proxy_missing_direct_token', {
         integrationId: int.id,
@@ -142,6 +146,37 @@ v1DataRoutes.post('/proxy', async (c) => {
       });
       return c.json({ error: { message: `${provider} integration not properly configured` } }, 400);
     }
+
+    // Check if token is expired and refresh if needed
+    if (isGoogleTokenExpired(expiresAt) && refreshToken) {
+      const refreshResult = await refreshGoogleToken(refreshToken, metadata);
+
+      if (refreshResult) {
+        token = refreshResult.accessToken;
+
+        // Update stored token in database
+        await db
+          .update(integrations)
+          .set({
+            metadata: JSON.stringify(refreshResult.metadata),
+            lastSyncAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(integrations.id, int.id));
+
+        log.info('proxy_token_refreshed', { provider, userId: user.sub });
+      } else {
+        // Refresh failed - mark integration as error
+        await db
+          .update(integrations)
+          .set({ status: 'error', updatedAt: new Date() })
+          .where(eq(integrations.id, int.id));
+
+        log.warn('proxy_token_refresh_failed', { provider, userId: user.sub });
+        return c.json({ error: { message: `Token expired - please reconnect ${provider}` } }, 401);
+      }
+    }
+
     accessToken = token;
   } else {
     // Nango OAuth

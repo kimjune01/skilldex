@@ -388,8 +388,37 @@ export default function Integrations() {
       <div>
         <h1 className="text-2xl font-bold">Integrations</h1>
         <p className="text-muted-foreground mt-1">
-          Connect external services to enable skill capabilities
+          Connect your tools so Skillomatic can help you work faster
         </p>
+      </div>
+
+      {/* Motivation + conceptual explanation */}
+      <div className="bg-amber-50 border-amber-200 rounded-lg p-5 border">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-amber-900 mb-2">
+              Skillomatic needs your tools to work
+            </p>
+            <p className="text-sm text-amber-800 mb-4">
+              Without connections, there's no candidate data to search, nowhere to track progress, and no way to send emails. Connect at least one tool from each category below to unlock the full experience.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-white/60 rounded-md p-3">
+                <p className="font-medium text-amber-900 mb-1">1. Where candidates live</p>
+                <p className="text-amber-700">Your ATS or a spreadsheet—this is your source of truth</p>
+              </div>
+              <div className="bg-white/60 rounded-md p-3">
+                <p className="font-medium text-amber-900 mb-1">2. How you reach them</p>
+                <p className="text-amber-700">Email to send outreach and follow-ups</p>
+              </div>
+              <div className="bg-white/60 rounded-md p-3">
+                <p className="font-medium text-amber-900 mb-1">3. How you schedule</p>
+                <p className="text-amber-700">Calendar to book interviews and check availability</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && (

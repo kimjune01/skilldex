@@ -39,6 +39,74 @@ const GOOGLE_SHEETS_SCOPES = [
 
 const log = createLogger('GoogleOAuth');
 
+/**
+ * Refresh a Google OAuth access token using the refresh token.
+ * Returns the new access token and updated metadata, or null if refresh fails.
+ *
+ * This function is shared between the token endpoints and the data proxy.
+ */
+export async function refreshGoogleToken(
+  refreshToken: string,
+  metadata: Record<string, unknown>
+): Promise<{ accessToken: string; metadata: Record<string, unknown> } | null> {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    log.error('google_token_refresh_missing_config');
+    return null;
+  }
+
+  try {
+    const refreshResponse = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!refreshResponse.ok) {
+      log.warn('google_token_refresh_failed', { status: refreshResponse.status });
+      return null;
+    }
+
+    const newTokens = await refreshResponse.json() as {
+      access_token: string;
+      expires_in?: number;
+    };
+
+    // Update metadata with new token
+    const updatedMetadata = {
+      ...metadata,
+      accessToken: newTokens.access_token,
+      expiresAt: newTokens.expires_in
+        ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
+        : undefined,
+    };
+
+    return {
+      accessToken: newTokens.access_token,
+      metadata: updatedMetadata,
+    };
+  } catch (err) {
+    log.error('google_token_refresh_error', { error: err instanceof Error ? err.message : 'Unknown' });
+    return null;
+  }
+}
+
+/**
+ * Check if a Google OAuth token needs refresh based on expiration time.
+ * Returns true if the token is expired or will expire within 5 minutes.
+ */
+export function isGoogleTokenExpired(expiresAt: string | undefined): boolean {
+  if (!expiresAt) return false; // No expiry info, assume valid
+  const expiryTime = new Date(expiresAt).getTime();
+  const now = Date.now();
+  const fiveMinutes = 5 * 60 * 1000;
+  return expiryTime < now + fiveMinutes; // Refresh 5 min before expiry
+}
+
 // Helper to determine URLs from request
 function getUrlsFromRequest(c: Context) {
   const host = c.req.header('host') || 'localhost:3000';
@@ -340,55 +408,33 @@ async function handleGoogleTokenRequest(
   const refreshToken = metadata.refreshToken as string | undefined;
   let accessToken = metadata.accessToken as string | undefined;
 
-  if (expiresAt && new Date(expiresAt) < new Date() && refreshToken) {
-    // Token expired, refresh it
-    try {
-      const refreshResponse = await fetch(GOOGLE_TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: GOOGLE_CLIENT_ID!,
-          client_secret: GOOGLE_CLIENT_SECRET!,
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        }),
-      });
+  if (isGoogleTokenExpired(expiresAt) && refreshToken) {
+    // Token expired, refresh it using shared helper
+    const refreshResult = await refreshGoogleToken(refreshToken, metadata);
 
-      if (refreshResponse.ok) {
-        const newTokens = await refreshResponse.json() as {
-          access_token: string;
-          expires_in?: number;
-        };
-        accessToken = newTokens.access_token;
+    if (refreshResult) {
+      accessToken = refreshResult.accessToken;
+      metadata = refreshResult.metadata;
 
-        // Update stored token
-        metadata.accessToken = accessToken;
-        metadata.expiresAt = newTokens.expires_in
-          ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
-          : undefined;
+      // Update stored token
+      await db
+        .update(integrations)
+        .set({
+          metadata: JSON.stringify(metadata),
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(integrations.id, int.id));
 
-        await db
-          .update(integrations)
-          .set({
-            metadata: JSON.stringify(metadata),
-            lastSyncAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(integrations.id, int.id));
+      log.info(`${service}_token_refreshed`, { userId: user.sub });
+    } else {
+      // Refresh failed - mark integration as error
+      await db
+        .update(integrations)
+        .set({ status: 'error', updatedAt: new Date() })
+        .where(eq(integrations.id, int.id));
 
-        log.info(`${service}_token_refreshed`, { userId: user.sub });
-      } else {
-        // Refresh failed - mark integration as error
-        await db
-          .update(integrations)
-          .set({ status: 'error', updatedAt: new Date() })
-          .where(eq(integrations.id, int.id));
-
-        return c.json({ error: { message: `Failed to refresh token - please reconnect ${config.displayName}` } }, 401);
-      }
-    } catch (err) {
-      console.error(`${config.displayName} token refresh failed:`, err);
-      return c.json({ error: { message: 'Token refresh failed' } }, 500);
+      return c.json({ error: { message: `Failed to refresh token - please reconnect ${config.displayName}` } }, 401);
     }
   }
 
