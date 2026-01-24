@@ -380,4 +380,22 @@ export class SkillomaticClient {
       body: JSON.stringify(request),
     });
   }
+
+  /**
+   * Proxy a request to the connected data provider (Airtable, etc.).
+   * Used by dynamically generated tools to make provider-specific API calls.
+   */
+  async proxyDataRequest(request: {
+    provider: string;
+    method: string;
+    path: string;
+    query?: Record<string, unknown>;
+    body?: unknown;
+    headers?: Record<string, string>;
+  }): Promise<unknown> {
+    return this.request<unknown>('/v1/data/proxy', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
 }

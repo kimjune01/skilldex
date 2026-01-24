@@ -322,7 +322,7 @@ export interface IntegrationPublic {
   accessLevel?: IntegrationAccessLevel;
 }
 
-export type IntegrationProvider = 'linkedin' | 'ats' | 'email' | 'calendar' | 'granola';
+export type IntegrationProvider = 'linkedin' | 'ats' | 'email' | 'calendar' | 'granola' | 'airtable';
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error';
 export type IntegrationAccessLevel = 'read-write' | 'read-only';
 

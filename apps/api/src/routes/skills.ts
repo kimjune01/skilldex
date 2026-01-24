@@ -299,6 +299,11 @@ skillsRoutes.get('/config', async (c) => {
         ? 'outlook-calendar'
         : undefined;
 
+  // Check if user has Airtable connected
+  const hasAirtable = effectiveAccess
+    ? effectiveAccess.database !== 'none' && effectiveAccess.database !== 'disabled'
+    : false;
+
   return c.json({
     data: {
       slug: '_config',
@@ -310,16 +315,19 @@ skillsRoutes.get('/config', async (c) => {
         hasATS: !!profile.ats,
         hasCalendar: !!(profile.calendar?.ical || profile.calendar?.calendly),
         hasEmail: !!profile.email,
+        hasAirtable,
         isSuperAdmin: !!user.isSuperAdmin,
         llmProvider: profile.llm?.provider,
         atsProvider: profile.ats?.provider,
         calendarProvider,
         emailProvider: profile.email?.provider,
+        airtableProvider: hasAirtable ? 'airtable' : undefined,
         effectiveAccess: effectiveAccess
           ? {
               ats: effectiveAccess.ats,
               email: effectiveAccess.email,
               calendar: effectiveAccess.calendar,
+              database: effectiveAccess.database,
             }
           : undefined,
       },

@@ -41,6 +41,7 @@ import {
   Clock,
   Shield,
   ShieldCheck,
+  Table2,
 } from 'lucide-react';
 
 const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
@@ -49,6 +50,7 @@ const providerIcons: Record<IntegrationProvider, typeof Briefcase> = {
   email: Mail,
   calendar: Calendar,
   granola: FileText,
+  airtable: Table2,
 };
 
 // ATS sub-providers for specific ATS selection
@@ -120,6 +122,11 @@ const otherProviders: ProviderConfig[] = [
     name: 'ATS',
     description: 'Connect your Applicant Tracking System',
     subProviders: atsProviders,
+  },
+  {
+    id: 'airtable',
+    name: 'Airtable',
+    description: 'Connect your Airtable bases for CRM data',
   },
   {
     id: 'granola',

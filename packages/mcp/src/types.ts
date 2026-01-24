@@ -29,6 +29,7 @@ export interface EffectiveAccess {
   ats: import('./providers/permissions.js').AccessLevel;
   email: import('./providers/permissions.js').AccessLevel;
   calendar: import('./providers/permissions.js').AccessLevel;
+  database: import('./providers/permissions.js').AccessLevel;
 }
 
 export interface CapabilityProfile {
@@ -36,11 +37,13 @@ export interface CapabilityProfile {
   hasATS: boolean;
   hasCalendar: boolean;
   hasEmail: boolean;
+  hasAirtable?: boolean;
   isSuperAdmin?: boolean;
   llmProvider?: string;
   atsProvider?: string;
   calendarProvider?: string;
   emailProvider?: string;
+  airtableProvider?: string;
   effectiveAccess?: EffectiveAccess;
 }
 

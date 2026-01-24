@@ -107,7 +107,7 @@ capabilityProfilesRoutes.put('/', requireOrgAdmin, async (c) => {
   const validLevels: AccessLevel[] = ['read-write', 'read-only', 'disabled'];
   if (body.integrations) {
     for (const [key, value] of Object.entries(body.integrations)) {
-      if (!['ats', 'email', 'calendar'].includes(key)) {
+      if (!['ats', 'email', 'calendar', 'database'].includes(key)) {
         return c.json(
           { error: { message: `Invalid integration category: ${key}` } },
           400
@@ -172,7 +172,7 @@ capabilityProfilesRoutes.put('/integrations', requireOrgAdmin, async (c) => {
   // Validate access levels
   const validLevels: AccessLevel[] = ['read-write', 'read-only', 'disabled'];
   for (const [key, value] of Object.entries(body)) {
-    if (!['ats', 'email', 'calendar'].includes(key)) {
+    if (!['ats', 'email', 'calendar', 'database'].includes(key)) {
       return c.json(
         { error: { message: `Invalid integration category: ${key}` } },
         400

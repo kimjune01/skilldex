@@ -210,7 +210,7 @@ export function buildSkillsPromptSection(
     statusInfo: getSkillStatus(
       s.slug,
       s.requires,
-      effectiveAccess || { ats: 'read-write', email: 'read-write', calendar: 'read-write' },
+      effectiveAccess || { ats: 'read-write', email: 'read-write', calendar: 'read-write', database: 'read-write' },
       disabledSkills || []
     ),
   }));

@@ -292,6 +292,9 @@ export const PROVIDER_CONFIG_KEYS: Record<string, string> = {
   gmail: 'google-mail',
   outlook: 'outlook',
 
+  // Data/CRM providers
+  airtable: 'airtable',
+
   // Generic mappings (for backwards compatibility)
   ats: 'zoho-recruit', // Default ATS - using Zoho Recruit
   calendar: 'google-calendar', // Default calendar

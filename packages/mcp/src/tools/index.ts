@@ -171,6 +171,33 @@ export async function registerTools(
     log.info('Calendar tools not registered (no calendar integration connected)');
   }
 
+  // Database tools (Airtable) - only if connected
+  if (profile.hasAirtable) {
+    const dataProvider = profile.airtableProvider || 'airtable';
+    const dataAccess: AccessLevel = profile.effectiveAccess?.database || 'read-write';
+
+    // Use dynamic tools if provider has a manifest
+    if (isProviderSupported(dataProvider)) {
+      const manifest = getManifest(dataProvider);
+      if (manifest) {
+        const tools = generateToolsFromManifest(manifest, dataAccess);
+        const toolNames = registerGeneratedTools(server, tools, client);
+        registeredTools.push(...toolNames);
+
+        const summary = getToolSummary(manifest, dataAccess);
+        log.info(
+          `Dynamic Data tools registered: ${toolNames.length} tools ` +
+          `(provider: ${dataProvider}, access: ${dataAccess}, ` +
+          `read: ${summary.read}, write: ${summary.write}, filtered: ${summary.filtered})`
+        );
+      }
+    } else {
+      log.info(`Data tools not registered (provider: ${dataProvider} not supported for dynamic tools)`);
+    }
+  } else {
+    log.info('Data tools not registered (no data integration connected)');
+  }
+
   // Database tools - only for super admins
   if (profile.isSuperAdmin) {
     registerDatabaseTools(server, client);

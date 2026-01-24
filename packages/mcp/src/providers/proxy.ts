@@ -107,6 +107,8 @@ export function registerGeneratedTools(
         let result: unknown;
         if (tool.meta.category === 'calendar') {
           result = await client.proxyCalendarRequest(proxyRequest);
+        } else if (tool.meta.category === 'database') {
+          result = await client.proxyDataRequest(proxyRequest);
         } else {
           // Default to ATS proxy for backwards compatibility
           result = await client.proxyAtsRequest(proxyRequest);

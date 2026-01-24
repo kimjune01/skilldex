@@ -40,7 +40,7 @@ export type AccessLevel = 'read-write' | 'read-only' | 'disabled' | 'none';
 /**
  * Integration categories that can have permissions set
  */
-export type IntegrationCategory = 'ats' | 'email' | 'calendar';
+export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database';
 
 /**
  * Org-level integration permissions
@@ -49,6 +49,7 @@ export interface OrgIntegrationPermissions {
   ats: AccessLevel;
   email: AccessLevel;
   calendar: AccessLevel;
+  database: AccessLevel;
 }
 
 /**
@@ -58,6 +59,7 @@ export interface EffectiveAccess {
   ats: AccessLevel;
   email: AccessLevel;
   calendar: AccessLevel;
+  database: AccessLevel;
 }
 
 /**
@@ -76,6 +78,7 @@ const DEFAULT_PERMISSIONS: OrgIntegrationPermissions = {
   ats: 'read-write',
   email: 'read-write',
   calendar: 'read-write',
+  database: 'read-write',
 };
 
 /**
@@ -100,6 +103,7 @@ export async function getOrgIntegrationPermissions(
       ats: parsed.ats || 'read-write',
       email: parsed.email || 'read-write',
       calendar: parsed.calendar || 'read-write',
+      database: parsed.database || 'read-write',
     };
   } catch {
     return DEFAULT_PERMISSIONS;
@@ -251,6 +255,8 @@ export function providerToCategory(provider: string): IntegrationCategory | null
     case 'outlook-calendar':
     case 'calendly':
       return 'calendar';
+    case 'airtable':
+      return 'database';
     default:
       // Unknown provider - could indicate data migration issue or new provider
       if (provider) {
@@ -364,6 +370,7 @@ export async function getUserIntegrationsByCategory(
     ats: [],
     email: [],
     calendar: [],
+    database: [],
   };
 
   for (const int of all) {
@@ -397,6 +404,7 @@ export async function getEffectiveAccessForUser(
     ats: getEffectiveAccess('ats', orgPermissions, integrationsByCategory.ats),
     email: getEffectiveAccess('email', orgPermissions, integrationsByCategory.email),
     calendar: getEffectiveAccess('calendar', orgPermissions, integrationsByCategory.calendar),
+    database: getEffectiveAccess('database', orgPermissions, integrationsByCategory.database),
   };
 }
 

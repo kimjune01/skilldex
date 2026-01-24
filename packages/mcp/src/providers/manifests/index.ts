@@ -9,6 +9,7 @@ import { greenhouseManifest } from './greenhouse.js';
 import { zohoRecruitManifest } from './zoho-recruit.js';
 import { mockAtsManifest } from './mock-ats.js';
 import { calendlyManifest } from './calendly.js';
+import { airtableManifest } from './airtable.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -24,6 +25,8 @@ export const manifests: Record<string, ProviderManifest> = {
   ...(isDev ? { 'mock-ats': mockAtsManifest } : {}),
   // Calendar providers
   calendly: calendlyManifest,
+  // Data providers
+  airtable: airtableManifest,
 };
 
 /**
@@ -47,4 +50,4 @@ export function isProviderSupported(provider: string): boolean {
   return provider in manifests;
 }
 
-export { greenhouseManifest, zohoRecruitManifest, mockAtsManifest, calendlyManifest };
+export { greenhouseManifest, zohoRecruitManifest, mockAtsManifest, calendlyManifest, airtableManifest };

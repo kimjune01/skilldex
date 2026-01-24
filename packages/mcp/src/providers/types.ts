@@ -78,7 +78,7 @@ export interface ProviderManifest {
   displayName: string;
 
   /** Integration category */
-  category: 'ats' | 'crm' | 'email' | 'calendar';
+  category: 'ats' | 'crm' | 'email' | 'calendar' | 'database';
 
   /** Base API URL (can be overridden per-user for on-premise) */
   baseUrl: string;
