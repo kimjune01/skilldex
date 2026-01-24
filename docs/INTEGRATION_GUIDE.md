@@ -484,4 +484,5 @@ Never log raw error messages or response bodies (PII risk).
 | Outlook Calendar | Calendar | Nango | Planned | v1/calendar |
 | Calendly | Calendar | Nango | Yes | v1/calendar |
 | Airtable | Database | Nango | Yes (14 ops) | v1/data |
+| Google Sheets | Database | Direct | Yes (10 ops) | v1/data |
 | Mock ATS | ATS (dev) | None | Yes (14 ops) | v1/ats |
