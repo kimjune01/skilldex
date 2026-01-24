@@ -58,6 +58,15 @@ pnpm test         # Run tests
 
 After `pnpm db:seed`: **demo@skillomatic.technology / demopassword123** (or any `@example.com` user with password `changeme`)
 
+## Database
+
+Local SQLite path: `packages/db/data/skillomatic.db` (set via `DATABASE_URL` in `.env`)
+
+```bash
+# Query local database
+sqlite3 packages/db/data/skillomatic.db "SELECT * FROM users LIMIT 3;"
+```
+
 ## Not Yet Implemented
 
 - Meeting/call transcription (stub at `skills/meeting-notes/`)
