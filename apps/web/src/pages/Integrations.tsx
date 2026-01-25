@@ -4,7 +4,8 @@ import Nango from '@nangohq/frontend';
 import { integrations, type IntegrationAccessLevel } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
-import { getProviders, getProvider, type IntegrationCategory, isProviderAllowedForIndividual } from '@skillomatic/shared';
+import { getProviders, getProvider, type IntegrationCategory, isProviderAllowedForIndividual, type PayIntentionTrigger } from '@skillomatic/shared';
+import { PayIntentionDialog } from '@/components/PayIntentionDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -168,6 +169,14 @@ export default function Integrations() {
   );
   const [updatingAccessLevel, setUpdatingAccessLevel] = useState<string | null>(null);
 
+  // Pay intention dialog state
+  const [payIntentionDialog, setPayIntentionDialog] = useState<{
+    open: boolean;
+    triggerType: PayIntentionTrigger;
+    triggerProvider?: string;
+    providerName?: string;
+  }>({ open: false, triggerType: 'premium_integration' });
+
   // Nango Connect UI ref
   const nangoConnectRef = useRef<ReturnType<Nango['openConnectUI']> | null>(null);
 
@@ -187,10 +196,11 @@ export default function Integrations() {
     loadIntegrations();
   }, []);
 
-  // Handle OAuth callback query params
+  // Handle OAuth callback and pay intention query params
   useEffect(() => {
     const errorParam = searchParams.get('error');
     const successParam = searchParams.get('success');
+    const payIntentionParam = searchParams.get('pay_intention');
 
     if (errorParam) {
       setError(errorParam);
@@ -206,6 +216,18 @@ export default function Integrations() {
 
       // Clear success message after 5 seconds
       setTimeout(() => setSuccessMessage(''), 5000);
+    }
+
+    // Handle pay intention callback from Stripe
+    if (payIntentionParam === 'success') {
+      setSuccessMessage('Payment method added! You can now connect premium integrations.');
+      searchParams.delete('pay_intention');
+      searchParams.delete('id');
+      setSearchParams(searchParams, { replace: true });
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } else if (payIntentionParam === 'cancelled') {
+      searchParams.delete('pay_intention');
+      setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
@@ -314,6 +336,19 @@ export default function Integrations() {
       const session = await integrations.getSession(allowedIntegrations, accessLevel, provider);
       connect.setSessionToken(session.token);
     } catch (err) {
+      // Check if this is a pay intention required error
+      if (err instanceof Error && err.message.includes('payment method')) {
+        // Show pay intention dialog
+        const providerConfig = getProvider(subProvider || provider);
+        setPayIntentionDialog({
+          open: true,
+          triggerType: isIndividual ? 'individual_ats' : 'premium_integration',
+          triggerProvider: subProvider || provider,
+          providerName: providerConfig?.displayName,
+        });
+        setIsConnecting(false);
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to start connection');
       setIsConnecting(false);
     }
@@ -821,6 +856,15 @@ export default function Integrations() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Pay Intention Dialog - Prompts for payment method before premium integrations */}
+      <PayIntentionDialog
+        open={payIntentionDialog.open}
+        onClose={() => setPayIntentionDialog({ ...payIntentionDialog, open: false })}
+        triggerType={payIntentionDialog.triggerType}
+        triggerProvider={payIntentionDialog.triggerProvider}
+        providerName={payIntentionDialog.providerName}
+      />
     </div>
   );
 }

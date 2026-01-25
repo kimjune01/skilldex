@@ -1,0 +1,311 @@
+/**
+ * Pay Intentions API Routes
+ *
+ * Handles pay intention tracking for premium features.
+ * Users express intent to pay by completing Stripe checkout ($0 setup).
+ *
+ * User routes:
+ * - POST /pay-intentions - Create pay intention, get Stripe checkout URL
+ * - GET /pay-intentions/status - Check if user has confirmed for a trigger
+ * - GET /pay-intentions/my - List user's pay intentions
+ *
+ * Admin routes (super admin only):
+ * - GET /pay-intentions/admin/stats - Dashboard stats
+ * - GET /pay-intentions/admin/list - Paginated list with user info
+ */
+
+import { Hono } from 'hono';
+import { jwtAuth, superAdminOnly } from '../middleware/auth.js';
+import { db } from '@skillomatic/db';
+import { payIntentions, users } from '@skillomatic/db/schema';
+import { eq, desc, and, gte } from 'drizzle-orm';
+import { createSetupCheckout, isStripeConfigured } from '../lib/stripe.js';
+import { createLogger } from '../lib/logger.js';
+import type {
+  CreatePayIntentionRequest,
+  PayIntentionTrigger,
+} from '@skillomatic/shared';
+
+const log = createLogger('PayIntentions');
+
+export const payIntentionsRoutes = new Hono();
+
+// All routes require JWT auth
+payIntentionsRoutes.use('*', jwtAuth);
+
+// ============ USER ROUTES ============
+
+/**
+ * POST /pay-intentions
+ * Create a pay intention and get Stripe checkout URL
+ */
+payIntentionsRoutes.post('/', async (c) => {
+  const user = c.get('user');
+  const body = await c.req.json<CreatePayIntentionRequest>();
+
+  // Validate trigger type
+  if (!['individual_ats', 'premium_integration'].includes(body.triggerType)) {
+    return c.json({ error: { message: 'Invalid trigger type' } }, 400);
+  }
+
+  // Check if Stripe is configured
+  if (!isStripeConfigured()) {
+    log.warn('stripe_not_configured', { userId: user.sub });
+    return c.json({
+      error: {
+        message: 'Payment system is not configured. Please contact support.',
+        code: 'STRIPE_NOT_CONFIGURED',
+      },
+    }, 503);
+  }
+
+  // Check if user already has a confirmed pay intention for this trigger
+  const existing = await db
+    .select()
+    .from(payIntentions)
+    .where(
+      and(
+        eq(payIntentions.userId, user.sub),
+        eq(payIntentions.triggerType, body.triggerType),
+        eq(payIntentions.status, 'confirmed')
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) {
+    return c.json({
+      error: {
+        message: 'You have already confirmed payment intent for this feature',
+        code: 'ALREADY_CONFIRMED',
+      },
+    }, 400);
+  }
+
+  // Create pay intention record
+  const payIntentionId = crypto.randomUUID();
+  const now = new Date();
+
+  await db.insert(payIntentions).values({
+    id: payIntentionId,
+    userId: user.sub,
+    triggerType: body.triggerType,
+    triggerProvider: body.triggerProvider,
+    status: 'pending',
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // Create Stripe checkout
+  try {
+    const checkout = await createSetupCheckout({
+      userId: user.sub,
+      email: user.email,
+      payIntentionId,
+      triggerType: body.triggerType,
+      triggerProvider: body.triggerProvider,
+    });
+
+    // Update with Stripe IDs
+    await db
+      .update(payIntentions)
+      .set({
+        stripeCustomerId: checkout.customerId,
+        stripeSetupIntentId: checkout.setupIntentId,
+        updatedAt: new Date(),
+      })
+      .where(eq(payIntentions.id, payIntentionId));
+
+    log.info('pay_intention_created', {
+      payIntentionId,
+      userId: user.sub,
+      triggerType: body.triggerType,
+      triggerProvider: body.triggerProvider,
+    });
+
+    return c.json({
+      data: {
+        payIntentionId,
+        stripeCheckoutUrl: checkout.checkoutUrl,
+      },
+    });
+  } catch (err) {
+    // Clean up the pay intention record if Stripe fails
+    await db.delete(payIntentions).where(eq(payIntentions.id, payIntentionId));
+
+    log.error('stripe_checkout_failed', {
+      payIntentionId,
+      userId: user.sub,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
+
+    return c.json({
+      error: {
+        message: 'Failed to create checkout session. Please try again.',
+        code: 'STRIPE_ERROR',
+      },
+    }, 500);
+  }
+});
+
+/**
+ * GET /pay-intentions/status
+ * Check if user has confirmed pay intention for a feature
+ */
+payIntentionsRoutes.get('/status', async (c) => {
+  const user = c.get('user');
+  const triggerType = c.req.query('triggerType') as PayIntentionTrigger | undefined;
+
+  if (!triggerType) {
+    return c.json({ error: { message: 'triggerType query param required' } }, 400);
+  }
+
+  const intention = await db
+    .select()
+    .from(payIntentions)
+    .where(
+      and(
+        eq(payIntentions.userId, user.sub),
+        eq(payIntentions.triggerType, triggerType),
+        eq(payIntentions.status, 'confirmed')
+      )
+    )
+    .limit(1);
+
+  return c.json({
+    data: {
+      hasConfirmed: intention.length > 0,
+      confirmedAt: intention[0]?.confirmedAt?.toISOString(),
+    },
+  });
+});
+
+/**
+ * GET /pay-intentions/my
+ * Get user's pay intentions
+ */
+payIntentionsRoutes.get('/my', async (c) => {
+  const user = c.get('user');
+
+  const intentions = await db
+    .select()
+    .from(payIntentions)
+    .where(eq(payIntentions.userId, user.sub))
+    .orderBy(desc(payIntentions.createdAt));
+
+  return c.json({
+    data: intentions.map((i) => ({
+      id: i.id,
+      triggerType: i.triggerType,
+      triggerProvider: i.triggerProvider,
+      status: i.status,
+      confirmedAt: i.confirmedAt?.toISOString(),
+      createdAt: i.createdAt.toISOString(),
+    })),
+  });
+});
+
+// ============ ADMIN ROUTES ============
+
+/**
+ * GET /pay-intentions/admin/stats
+ * SuperAdmin stats dashboard
+ */
+payIntentionsRoutes.get('/admin/stats', superAdminOnly, async (c) => {
+  const days = parseInt(c.req.query('days') || '30');
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  // Get all intentions with user data
+  const allIntentions = await db
+    .select()
+    .from(payIntentions)
+    .leftJoin(users, eq(payIntentions.userId, users.id))
+    .where(gte(payIntentions.createdAt, since))
+    .orderBy(desc(payIntentions.createdAt));
+
+  // Calculate stats
+  const total = allIntentions.length;
+  const confirmed = allIntentions.filter((i) => i.pay_intentions.status === 'confirmed').length;
+  const pending = allIntentions.filter((i) => i.pay_intentions.status === 'pending').length;
+
+  const byTriggerType: Record<PayIntentionTrigger, number> = {
+    individual_ats: allIntentions.filter((i) => i.pay_intentions.triggerType === 'individual_ats').length,
+    premium_integration: allIntentions.filter((i) => i.pay_intentions.triggerType === 'premium_integration').length,
+  };
+
+  // Recent intentions with user info (top 50)
+  const recentIntentions = allIntentions.slice(0, 50).map((i) => ({
+    id: i.pay_intentions.id,
+    triggerType: i.pay_intentions.triggerType,
+    triggerProvider: i.pay_intentions.triggerProvider,
+    status: i.pay_intentions.status,
+    confirmedAt: i.pay_intentions.confirmedAt?.toISOString(),
+    createdAt: i.pay_intentions.createdAt.toISOString(),
+    user: i.users
+      ? {
+          id: i.users.id,
+          email: i.users.email,
+          name: i.users.name,
+          organizationId: i.users.organizationId,
+        }
+      : null,
+  }));
+
+  return c.json({
+    data: {
+      total,
+      confirmed,
+      pending,
+      byTriggerType,
+      recentIntentions,
+    },
+  });
+});
+
+/**
+ * GET /pay-intentions/admin/list
+ * SuperAdmin paginated list
+ */
+payIntentionsRoutes.get('/admin/list', superAdminOnly, async (c) => {
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = parseInt(c.req.query('limit') || '50');
+  const offset = (page - 1) * limit;
+
+  const intentions = await db
+    .select()
+    .from(payIntentions)
+    .leftJoin(users, eq(payIntentions.userId, users.id))
+    .orderBy(desc(payIntentions.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  // Get total count
+  const countResult = await db
+    .select()
+    .from(payIntentions);
+  const totalCount = countResult.length;
+
+  return c.json({
+    data: intentions.map((i) => ({
+      id: i.pay_intentions.id,
+      triggerType: i.pay_intentions.triggerType,
+      triggerProvider: i.pay_intentions.triggerProvider,
+      status: i.pay_intentions.status,
+      confirmedAt: i.pay_intentions.confirmedAt?.toISOString(),
+      createdAt: i.pay_intentions.createdAt.toISOString(),
+      user: i.users
+        ? {
+            id: i.users.id,
+            email: i.users.email,
+            name: i.users.name,
+            organizationId: i.users.organizationId,
+          }
+        : null,
+    })),
+    pagination: {
+      page,
+      limit,
+      total: totalCount,
+      hasMore: offset + intentions.length < totalCount,
+    },
+  });
+});

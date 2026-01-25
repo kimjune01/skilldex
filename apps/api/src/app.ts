@@ -41,6 +41,7 @@ import { webhooksRoutes } from './routes/webhooks.js';
 import { accountTypeRoutes } from './routes/account-type.js';
 import { capabilityProfilesRoutes } from './routes/capability-profiles.js';
 import { scrapeRoutes } from './routes/scrape.js';
+import { payIntentionsRoutes } from './routes/pay-intentions.js';
 
 // Skill API routes (API key auth) - called by Claude Code skills
 import { v1AtsRoutes } from './routes/v1/ats.js';
@@ -116,6 +117,7 @@ app.route('/organizations', organizationsRoutes); // Organization management
 app.route('/invites', invitesRoutes);     // Organization invites
 app.route('/capability-profiles', capabilityProfilesRoutes); // Capability profile management
 app.route('/scrape', scrapeRoutes);   // Web scraping (for web chat)
+app.route('/pay-intentions', payIntentionsRoutes); // Pay intention tracking (billing signals)
 
 // ============ SKILL API ROUTES (API Key Auth) ============
 // Called by Claude Code skills - requires Authorization: Bearer sk_live_xxx

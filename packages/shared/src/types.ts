@@ -804,3 +804,79 @@ export interface JoinOrgResponse {
   organization: OrganizationPublic;
   user: UserPublic;
 }
+
+// ============ Pay Intention Types ============
+
+/**
+ * What triggered the pay intention.
+ * - individual_ats: Individual user tried to access ATS integration
+ * - premium_integration: User tried to connect a premium integration
+ */
+export type PayIntentionTrigger = 'individual_ats' | 'premium_integration';
+
+/**
+ * Status of the pay intention.
+ * - pending: User has been redirected to Stripe checkout
+ * - confirmed: User completed checkout, payment method on file
+ * - cancelled: User abandoned checkout
+ */
+export type PayIntentionStatus = 'pending' | 'confirmed' | 'cancelled';
+
+/**
+ * Public pay intention data (for user's own view).
+ */
+export interface PayIntentionPublic {
+  id: string;
+  triggerType: PayIntentionTrigger;
+  triggerProvider?: string;
+  status: PayIntentionStatus;
+  confirmedAt?: string;
+  createdAt: string;
+}
+
+/**
+ * Pay intention with user data (for admin view).
+ */
+export interface PayIntentionWithUser extends PayIntentionPublic {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    organizationId?: string;
+  };
+}
+
+/**
+ * Request to create a pay intention.
+ */
+export interface CreatePayIntentionRequest {
+  triggerType: PayIntentionTrigger;
+  triggerProvider?: string;
+}
+
+/**
+ * Response when creating a pay intention.
+ */
+export interface CreatePayIntentionResponse {
+  payIntentionId: string;
+  stripeCheckoutUrl: string;
+}
+
+/**
+ * Response for checking pay intention status.
+ */
+export interface PayIntentionStatusResponse {
+  hasConfirmed: boolean;
+  confirmedAt?: string;
+}
+
+/**
+ * Admin stats for pay intentions dashboard.
+ */
+export interface PayIntentionStats {
+  total: number;
+  confirmed: number;
+  pending: number;
+  byTriggerType: Record<PayIntentionTrigger, number>;
+  recentIntentions: PayIntentionWithUser[];
+}

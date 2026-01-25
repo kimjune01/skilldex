@@ -187,6 +187,12 @@ authRoutes.post('/logout', (c) => {
   return c.json({ data: { message: 'Logged out' } });
 });
 
+// GET /auth/stats - Public stats (total user count)
+authRoutes.get('/stats', async (c) => {
+  const result = await db.select().from(users);
+  return c.json({ data: { totalUsers: result.length } });
+});
+
 // GET /auth/google - Redirect to Google OAuth
 authRoutes.get('/google', (c) => {
   if (!GOOGLE_CLIENT_ID) {

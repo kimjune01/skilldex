@@ -15,7 +15,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { apiKeys } from '../lib/api';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard } from 'lucide-react';
 import { getOnboardingStepRoute } from '@skillomatic/shared';
 
 // Main navigation - visible to all authenticated users
@@ -42,6 +42,7 @@ const adminNavigation = [
 // Super admin navigation - visible only to super admins
 const superAdminNavigation = [
   { name: 'Organizations', href: '/admin/organizations', icon: Building2 },
+  { name: 'Billing', href: '/admin/billing', icon: CreditCard },
 ];
 
 export default function Layout() {

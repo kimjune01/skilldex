@@ -12,11 +12,12 @@
  */
 
 import { db } from '@skillomatic/db';
-import { organizations, integrations } from '@skillomatic/db/schema';
+import { organizations, integrations, payIntentions, users } from '@skillomatic/db/schema';
 import { eq, and, or } from 'drizzle-orm';
 import {
   getProviderCategory as getProviderCategoryFromRegistry,
   isProviderAllowedForIndividual,
+  type PayIntentionTrigger,
 } from '@skillomatic/shared';
 import { createLogger } from './logger.js';
 
@@ -569,4 +570,46 @@ export async function updateUserAccessLevel(
       updatedAt: new Date(),
     })
     .where(eq(integrations.id, integrationId));
+}
+
+// ============ PAY INTENTION CHECKS ============
+
+/**
+ * Check if user has confirmed pay intention for a specific trigger type.
+ *
+ * Used to gate premium features:
+ * - individual_ats: Individual users accessing ATS integrations
+ * - premium_integration: Any user accessing premium integrations (non-free providers)
+ */
+export async function hasPayIntention(
+  userId: string,
+  triggerType: PayIntentionTrigger
+): Promise<boolean> {
+  const intention = await db
+    .select()
+    .from(payIntentions)
+    .where(
+      and(
+        eq(payIntentions.userId, userId),
+        eq(payIntentions.triggerType, triggerType),
+        eq(payIntentions.status, 'confirmed')
+      )
+    )
+    .limit(1);
+
+  return intention.length > 0;
+}
+
+/**
+ * Check if user has any confirmed pay intention (quick check via user flag).
+ * Uses the denormalized hasConfirmedPayIntention flag on the user record.
+ */
+export async function hasAnyPayIntention(userId: string): Promise<boolean> {
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return result[0]?.hasConfirmedPayIntention ?? false;
 }

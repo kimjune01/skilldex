@@ -70,6 +70,10 @@ export const users = sqliteTable('users', {
   onboardingStep: real('onboarding_step').notNull().default(0),
   /** Whether user has completed account type selection (individual vs organization) */
   accountTypeSelected: integer('account_type_selected', { mode: 'boolean' }).notNull().default(false),
+  /** Stripe customer ID for billing (set when user completes pay intention checkout) */
+  stripeCustomerId: text('stripe_customer_id'),
+  /** Quick flag to check if user has confirmed willingness to pay */
+  hasConfirmedPayIntention: integer('has_confirmed_pay_intention', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
@@ -555,6 +559,57 @@ export const systemSettings = sqliteTable('system_settings', {
   updatedBy: text('updated_by').references(() => users.id),
 });
 
+// ============ PAY INTENTIONS ============
+
+/**
+ * Pay Intentions table - tracks user intent to pay for premium features
+ *
+ * When users attempt to access premium features (ATS for individuals,
+ * premium integrations), they're redirected to Stripe Checkout ($0)
+ * to add a payment method. This signals willingness to pay.
+ *
+ * Lifecycle:
+ * 1. pending - User triggered premium feature, redirect to Stripe
+ * 2. confirmed - User completed Stripe checkout, payment method on file
+ * 3. cancelled - User abandoned checkout
+ *
+ * @see docs/BILLING.md for billing strategy
+ */
+export const payIntentions = sqliteTable('pay_intentions', {
+  id: text('id').primaryKey(), // UUID
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+
+  // What triggered the pay intention
+  triggerType: text('trigger_type').notNull(), // 'individual_ats' | 'premium_integration'
+  triggerProvider: text('trigger_provider'), // e.g., 'greenhouse', 'airtable', 'outlook'
+
+  // Stripe data
+  stripeCustomerId: text('stripe_customer_id'),
+  stripePaymentMethodId: text('stripe_payment_method_id'),
+  stripeSetupIntentId: text('stripe_setup_intent_id'),
+
+  // Status tracking
+  status: text('status').notNull().default('pending'), // 'pending' | 'confirmed' | 'cancelled'
+  confirmedAt: integer('confirmed_at', { mode: 'timestamp' }),
+
+  // Additional context
+  metadata: text('metadata'), // JSON for extensibility
+
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  userIdIdx: index('pay_intentions_user_id_idx').on(table.userId),
+  statusIdx: index('pay_intentions_status_idx').on(table.status),
+  triggerTypeIdx: index('pay_intentions_trigger_type_idx').on(table.triggerType),
+}));
+
+export const payIntentionsRelations = relations(payIntentions, ({ one }) => ({
+  user: one(users, {
+    fields: [payIntentions.userId],
+    references: [users.id],
+  }),
+}));
+
 // ============ TYPE EXPORTS ============
 
 export type Organization = typeof organizations.$inferSelect;
@@ -581,3 +636,5 @@ export type ScrapeTask = typeof scrapeTasks.$inferSelect;
 export type NewScrapeTask = typeof scrapeTasks.$inferInsert;
 export type ErrorEvent = typeof errorEvents.$inferSelect;
 export type NewErrorEvent = typeof errorEvents.$inferInsert;
+export type PayIntention = typeof payIntentions.$inferSelect;
+export type NewPayIntention = typeof payIntentions.$inferInsert;

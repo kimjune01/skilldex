@@ -412,3 +412,36 @@ export function getProvidersBlockedForIndividual(): ProviderConfig[] {
     (p) => !isProviderAllowedForIndividual(p.id) && !p.devOnly
   );
 }
+
+// ============ Premium Provider Detection (for Pay Intention) ============
+
+/**
+ * Free providers that don't require pay intention confirmation.
+ * Users can connect these without adding a payment method.
+ */
+export const FREE_PROVIDERS = [
+  'gmail',
+  'google-calendar',
+  'calendly',
+  'google-sheets',
+] as const;
+
+/**
+ * Check if a provider requires pay intention confirmation.
+ * Premium providers require users to add a payment method before connecting.
+ *
+ * Free providers: Gmail, Google Calendar, Calendly, Google Sheets
+ * Premium providers: All ATS providers, Outlook, Outlook Calendar, Airtable, etc.
+ *
+ * Note: For individual accounts, ATS providers are completely blocked (not just premium).
+ * This function is used for org members who can access premium integrations
+ * after confirming pay intention.
+ */
+export function isPremiumProvider(providerId: string): boolean {
+  // Dev-only providers (mock-ats) are not premium
+  const provider = PROVIDERS[providerId];
+  if (!provider || provider.devOnly) return false;
+
+  // Free providers don't require pay intention
+  return !FREE_PROVIDERS.includes(providerId as typeof FREE_PROVIDERS[number]);
+}

@@ -4,7 +4,8 @@ import { integrations, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
 import type { IntegrationPublic, IntegrationAccessLevel } from '@skillomatic/shared';
-import { isProviderAllowedForIndividual } from '@skillomatic/shared';
+import { isProviderAllowedForIndividual, isPremiumProvider } from '@skillomatic/shared';
+import { hasPayIntention } from '../lib/integration-permissions.js';
 import {
   getNangoClient,
   generateConnectionId,
@@ -163,6 +164,29 @@ integrationsRoutes.post('/session', async (c) => {
     }
   }
 
+  // Check if premium provider requires pay intention
+  const providerToCheck = body.provider || body.allowedIntegrations?.[0];
+  if (providerToCheck && isPremiumProvider(providerToCheck)) {
+    // Determine trigger type
+    const triggerType = isIndividual ? 'individual_ats' : 'premium_integration';
+
+    // Check if user has confirmed pay intention
+    const hasConfirmed = await hasPayIntention(user.sub, triggerType);
+
+    if (!hasConfirmed) {
+      return c.json({
+        error: {
+          message: 'This integration requires a payment method on file.',
+          code: 'PAY_INTENTION_REQUIRED',
+          data: {
+            triggerType,
+            triggerProvider: providerToCheck,
+          },
+        },
+      }, 403);
+    }
+  }
+
   // Validate accessLevel if provided
   if (body.accessLevel && !['read-write', 'read-only'].includes(body.accessLevel)) {
     return c.json(
@@ -268,6 +292,25 @@ integrationsRoutes.post('/connect', async (c) => {
         code: 'INDIVIDUAL_ACCOUNT_RESTRICTION',
       },
     }, 403);
+  }
+
+  // Check if premium provider requires pay intention
+  if (isPremiumProvider(providerToCheck)) {
+    const triggerType = isIndividual ? 'individual_ats' : 'premium_integration';
+    const hasConfirmed = await hasPayIntention(user.sub, triggerType);
+
+    if (!hasConfirmed) {
+      return c.json({
+        error: {
+          message: 'This integration requires a payment method on file.',
+          code: 'PAY_INTENTION_REQUIRED',
+          data: {
+            triggerType,
+            triggerProvider: providerToCheck,
+          },
+        },
+      }, 403);
+    }
   }
 
   // Validate accessLevel if provided
