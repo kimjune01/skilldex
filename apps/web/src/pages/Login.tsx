@@ -68,6 +68,11 @@ export default function Login() {
       setIsLoading(true);
       loginWithToken(token)
         .then((user) => {
+          // Check if user needs to select account type first
+          if (!user.accountTypeSelected) {
+            navigate('/onboarding/account-type');
+            return;
+          }
           const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home';
           navigate(redirectTo);
         })
@@ -87,6 +92,11 @@ export default function Login() {
 
     try {
       const user = await login(email, password);
+      // Check if user needs to select account type first
+      if (!user.accountTypeSelected) {
+        navigate('/onboarding/account-type');
+        return;
+      }
       // Redirect based on onboarding status
       const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home';
       navigate(redirectTo);

@@ -48,6 +48,7 @@ usersRoutes.get('/', async (c) => {
     organizationId: row.users.organizationId ?? undefined,
     organizationName: row.organizations?.name ?? undefined,
     onboardingStep: row.users.onboardingStep ?? 0,
+    accountTypeSelected: row.users.accountTypeSelected ?? false,
   }));
 
   return c.json({ data: publicUsers });
@@ -89,6 +90,7 @@ usersRoutes.get('/:id', async (c) => {
     organizationId: user.organizationId ?? undefined,
     organizationName: orgData?.name ?? undefined,
     onboardingStep: user.onboardingStep ?? 0,
+    accountTypeSelected: user.accountTypeSelected ?? false,
   };
 
   return c.json({ data: publicUser });
@@ -169,6 +171,7 @@ usersRoutes.post('/', async (c) => {
     organizationId: targetOrgId,
     organizationName: targetOrg.name,
     onboardingStep: 0,
+    accountTypeSelected: true, // Admin-created users join an org, so account type is selected
   };
 
   return c.json({ data: publicUser }, 201);

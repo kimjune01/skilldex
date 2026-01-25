@@ -97,13 +97,13 @@ export default function Jerbs() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[hsl(220_30%_15%)] border border-[hsl(220_20%_25%)] mb-6">
             <span className="text-2xl">💼</span>
-            <span className="text-sm font-medium text-[hsl(220_15%_70%)]">Join Our "Family" (Not Legally Binding)</span>
+            <span className="text-sm font-medium text-[hsl(220_15%_70%)]">Join Our "Movement" (Not Legally Binding)</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">
             Jerbs at Skillomatic
           </h1>
           <p className="text-lg text-[hsl(220_15%_60%)] max-w-2xl mx-auto">
-            We're hiring! (Citation needed)
+            We're hiring! (If/When we get investors)
           </p>
         </div>
       </section>
@@ -121,7 +121,7 @@ export default function Jerbs() {
             <div className="grid md:grid-cols-2 gap-3">
               {[
                 { emoji: '🧘', text: '"Unlimited" PTO (please don\'t actually use it)' },
-                { emoji: '📈', text: 'Equity that might be worth something someday!' },
+                { emoji: '📈', text: 'Vane promises for equity until you get fired before the 1-year cliff' },
                 { emoji: '🤖', text: 'Work alongside AI that\'s coming for all our jobs anyway' },
                 { emoji: '💻', text: 'Work from anywhere (as long as you\'re always online)' },
                 { emoji: '🕐', text: 'Flexible hours (meaning we\'ll Slack you at midnight)' },
@@ -252,7 +252,7 @@ export default function Jerbs() {
               <h2 className="text-2xl font-bold text-white">Don't See Your Role?</h2>
             </div>
             <p className="text-[hsl(220_15%_70%)] mb-4">
-              We're always looking for "rockstars," "ninjas," and other problematic job title metaphors.
+              We use AI to evaluate all candidates. No feelings will be involved to reject you.
               <br />Send your stuff or things to:
             </p>
             <a

@@ -7,6 +7,8 @@
 export const ONBOARDING_STEPS = {
   /** User just created account, hasn't started onboarding */
   NOT_STARTED: 0,
+  /** User has selected individual or organization account type */
+  ACCOUNT_TYPE_SELECTED: 0.5,
   /** User has connected their ATS integration */
   ATS_CONNECTED: 1,
   /** User has generated their API key for desktop chat */
@@ -44,7 +46,8 @@ export function getOnboardingStepName(step: number): string {
   if (step >= ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) return 'Configure Deployment';
   if (step >= ONBOARDING_STEPS.EXTENSION_INSTALLED) return 'Install Extension';
   if (step >= ONBOARDING_STEPS.API_KEY_GENERATED) return 'Generate API Key';
-  if (step >= ONBOARDING_STEPS.ATS_CONNECTED) return 'Connect ATS';
+  if (step >= ONBOARDING_STEPS.ATS_CONNECTED) return 'Connect Integration';
+  if (step >= ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED) return 'Select Account Type';
   return 'Get Started';
 }
 
@@ -55,7 +58,8 @@ export function getOnboardingStepRoute(step: number): string | null {
   if (step >= ONBOARDING_STEPS.EXTENSION_INSTALLED) return '/skills';
   if (step >= ONBOARDING_STEPS.API_KEY_GENERATED) return '/extension';
   if (step >= ONBOARDING_STEPS.ATS_CONNECTED) return '/desktop-chat';
-  return '/integrations';
+  if (step >= ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED) return '/integrations';
+  return '/onboarding/account-type';
 }
 
 /** Get the element ID for an onboarding step (for in-page badge highlighting) */
@@ -68,6 +72,7 @@ export function getOnboardingStepElementId(step: number): string | null {
 
 /** Get the step name key for advancing to the next step */
 export function getNextOnboardingStepKey(currentStep: number): keyof typeof ONBOARDING_STEPS | null {
+  if (currentStep < ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED) return 'ACCOUNT_TYPE_SELECTED';
   if (currentStep < ONBOARDING_STEPS.ATS_CONNECTED) return 'ATS_CONNECTED';
   if (currentStep < ONBOARDING_STEPS.API_KEY_GENERATED) return 'API_KEY_GENERATED';
   if (currentStep < ONBOARDING_STEPS.EXTENSION_INSTALLED) return 'EXTENSION_INSTALLED';
@@ -153,6 +158,10 @@ export interface UserPublic {
   organizationName?: string;
   /** User's onboarding progress (see ONBOARDING_STEPS) */
   onboardingStep: number;
+  /** Whether user has completed account type selection (individual vs organization) */
+  accountTypeSelected: boolean;
+  /** Org that the user can join based on their email domain (for individual users) */
+  availableOrg?: { id: string; name: string };
 }
 
 // ============ Organization Types ============
@@ -694,4 +703,104 @@ export function getErrorCategory(code: ErrorCode): ErrorCategory {
   if (code.startsWith('SCRAPE_')) return 'scrape';
   if (code.startsWith('INTEGRATION_')) return 'integration';
   return 'system';
+}
+
+// ============ Account Type Types ============
+
+/** Account type: individual (free) or organization (paid) */
+export type AccountType = 'individual' | 'organization';
+
+/**
+ * Personal email domains that default to individual accounts.
+ * Users with these domains are encouraged to use individual accounts.
+ * They can still create an organization if they want.
+ */
+export const PERSONAL_EMAIL_DOMAINS = [
+  'gmail.com',
+  'outlook.com',
+  'yahoo.com',
+  'icloud.com',
+  'hotmail.com',
+  'live.com',
+  'aol.com',
+  'protonmail.com',
+  'proton.me',
+  'mail.com',
+  'me.com',
+  'mac.com',
+  'ymail.com',
+  'googlemail.com',
+  'msn.com',
+] as const;
+
+/**
+ * Check if an email address uses a personal email domain.
+ */
+export function isPersonalEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return false;
+  return PERSONAL_EMAIL_DOMAINS.includes(domain as typeof PERSONAL_EMAIL_DOMAINS[number]);
+}
+
+/**
+ * Extract domain from email address.
+ */
+export function getEmailDomain(email: string): string {
+  return email.split('@')[1]?.toLowerCase() ?? '';
+}
+
+/**
+ * Account type info returned by the API for the onboarding flow.
+ */
+export interface AccountTypeInfo {
+  /** Suggested account type based on email domain */
+  suggestedType: AccountType;
+  /** User's email domain */
+  emailDomain: string;
+  /** Whether the email is a personal domain (gmail, etc.) */
+  isPersonalEmail: boolean;
+  /** Existing org that the user can join (if their domain matches an org's allowedDomains) */
+  existingOrg?: { id: string; name: string } | null;
+  /** Whether the user can create an org (always true, but messaging differs for personal emails) */
+  canCreateOrg: boolean;
+}
+
+/**
+ * Response when selecting individual account type.
+ */
+export interface SelectIndividualResponse {
+  success: boolean;
+  user: UserPublic;
+}
+
+/**
+ * Request to create an organization.
+ */
+export interface CreateOrgRequest {
+  name: string;
+}
+
+/**
+ * Response when creating an organization.
+ */
+export interface CreateOrgResponse {
+  success: boolean;
+  organization: OrganizationPublic;
+  user: UserPublic;
+}
+
+/**
+ * Request to join an existing organization.
+ */
+export interface JoinOrgRequest {
+  orgId: string;
+}
+
+/**
+ * Response when joining an organization.
+ */
+export interface JoinOrgResponse {
+  success: boolean;
+  organization: OrganizationPublic;
+  user: UserPublic;
 }

@@ -8,6 +8,7 @@ describe('JWT', () => {
     name: 'Test User',
     isAdmin: false,
     onboardingStep: 0,
+    accountTypeSelected: true,
     createdAt: Date.now(),
   }
 

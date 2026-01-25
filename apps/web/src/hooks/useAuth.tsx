@@ -18,6 +18,8 @@ interface AuthContextType {
   isAdmin: boolean; // Org admin or super admin
   isOrgAdmin: boolean; // Org admin only
   isSuperAdmin: boolean; // Super admin only
+  isIndividual: boolean; // Individual account (no org, account type selected)
+  accountTypeSelected: boolean; // Whether user has completed account type selection
   organizationId: string | undefined;
   organizationName: string | undefined;
   authError: string | null;
@@ -95,6 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: !!user?.isAdmin || !!user?.isSuperAdmin,
         isOrgAdmin: !!user?.isAdmin && !user?.isSuperAdmin,
         isSuperAdmin: !!user?.isSuperAdmin,
+        isIndividual: user ? (!user.organizationId && user.accountTypeSelected) : false,
+        accountTypeSelected: user?.accountTypeSelected ?? false,
         organizationId: user?.organizationId,
         organizationName: user?.organizationName,
         authError,

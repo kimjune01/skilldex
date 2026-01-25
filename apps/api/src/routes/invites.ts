@@ -308,6 +308,7 @@ invitesRoutes.post('/accept', async (c) => {
     organizationId: invite.organizationId,
     organizationName: org.name,
     onboardingStep: 0,
+    accountTypeSelected: true, // Invited users join an org, so account type is selected
   };
 
   const jwtToken = await createToken(userPublic);

@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import Nango from '@nangohq/frontend';
 import { integrations, type IntegrationAccessLevel } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
-import { getProviders, getProvider, type IntegrationCategory } from '@skillomatic/shared';
+import { getProviders, getProvider, type IntegrationCategory, isProviderAllowedForIndividual } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +44,8 @@ import {
   Shield,
   ShieldCheck,
   Table2,
+  Lock,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -142,6 +145,7 @@ export default function Integrations() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const { isIndividual } = useAuth();
 
   // Build provider configs from registry (memoized to avoid rebuilding on every render)
   const { essentialProviders, otherProviders } = useMemo(() => buildProviderConfigs(), []);
@@ -205,11 +209,39 @@ export default function Integrations() {
     }
   }, [searchParams, setSearchParams]);
 
+  /**
+   * Check if a provider is allowed for the current user.
+   * Individual users have restricted access to certain providers.
+   */
+  const isProviderBlocked = (providerId: string): boolean => {
+    if (!isIndividual) return false;
+    return !isProviderAllowedForIndividual(providerId);
+  };
+
   const handleConnect = (provider: (typeof availableProviders)[0]) => {
+    // Check if individual user is trying to connect a blocked provider
+    if (isIndividual) {
+      // For providers with sub-providers, check if ALL sub-providers are blocked
+      if (provider.subProviders) {
+        const allBlocked = provider.subProviders.every(sub => !isProviderAllowedForIndividual(sub.id));
+        if (allBlocked) {
+          setError('This integration requires an organization account. Create or join an organization to access ATS integrations.');
+          return;
+        }
+      } else if (!isProviderAllowedForIndividual(provider.id)) {
+        setError('This integration requires an organization account. Create or join an organization to access this integration.');
+        return;
+      }
+    }
+
     if (provider.subProviders && provider.subProviders.length > 0) {
       // Show dialog to select sub-provider
       setConnectDialogProvider(provider);
-      setSelectedSubProvider(provider.subProviders[0].id);
+      // For individual users, pre-select the first allowed sub-provider
+      const allowedSubProviders = isIndividual
+        ? provider.subProviders.filter(sub => isProviderAllowedForIndividual(sub.id))
+        : provider.subProviders;
+      setSelectedSubProvider(allowedSubProviders[0]?.id || provider.subProviders[0].id);
       setSelectedAccessLevel('read-write'); // Reset to default
     } else {
       // Direct connect for providers without sub-providers - show dialog for access level
@@ -392,6 +424,30 @@ export default function Integrations() {
         </p>
       </div>
 
+      {/* Individual account upgrade banner */}
+      {isIndividual && (
+        <div className="bg-gradient-to-r from-primary/10 to-purple-100 border-primary/20 rounded-lg p-5 border">
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-primary mb-1">
+                You're on a Free Individual Account
+              </p>
+              <p className="text-sm text-muted-foreground mb-3">
+                Individual accounts include email, calendar, and Google Sheets.
+                Create or join an organization to unlock ATS integrations and team features.
+              </p>
+              <Link to="/onboarding/account-type">
+                <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/5">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Upgrade to Organization
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Motivation + conceptual explanation */}
       <div className="bg-amber-50 border-amber-200 rounded-lg p-5 border">
         <div className="flex items-start gap-3">
@@ -537,30 +593,60 @@ export default function Integrations() {
             const integration = getIntegrationStatus(provider.id);
             const isConnected = integration?.status === 'connected';
             const Icon = providerIcons[provider.id];
+            const blocked = isProviderBlocked(provider.id);
 
             return (
-              <Card key={provider.id} className={isConnected ? 'border-green-200 bg-green-50/30' : ''}>
+              <Card
+                key={provider.id}
+                className={
+                  isConnected
+                    ? 'border-green-200 bg-green-50/30'
+                    : blocked
+                      ? 'opacity-60 border-dashed'
+                      : ''
+                }
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : 'bg-muted'}`}>
+                      <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : blocked ? 'bg-muted/50' : 'bg-muted'}`}>
                         <Icon
                           className={`h-5 w-5 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`}
                         />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">{provider.name}</CardTitle>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {provider.name}
+                          {blocked && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Lock className="h-3 w-3 mr-1" />
+                              Org Only
+                            </Badge>
+                          )}
+                        </CardTitle>
                         <CardDescription>{provider.description}</CardDescription>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      {getStatusBadge(integration?.status || 'disconnected')}
+                      {!blocked && getStatusBadge(integration?.status || 'disconnected')}
                       {isConnected && getAccessLevelBadge(integration?.accessLevel)}
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {integration && integration.status !== 'disconnected' ? (
+                  {blocked ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        This integration requires an organization account.
+                      </p>
+                      <Link to="/onboarding/account-type">
+                        <Button variant="outline" className="w-full">
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Upgrade to Organization
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : integration && integration.status !== 'disconnected' ? (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">

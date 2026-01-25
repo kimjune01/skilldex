@@ -14,7 +14,10 @@
 import { db } from '@skillomatic/db';
 import { organizations, integrations } from '@skillomatic/db/schema';
 import { eq, and, or } from 'drizzle-orm';
-import { getProviderCategory as getProviderCategoryFromRegistry } from '@skillomatic/shared';
+import {
+  getProviderCategory as getProviderCategoryFromRegistry,
+  isProviderAllowedForIndividual,
+} from '@skillomatic/shared';
 import { createLogger } from './logger.js';
 
 const log = createLogger('Permissions');
@@ -371,12 +374,24 @@ export async function getUserIntegrationsByCategory(
 }
 
 /**
- * Get the effective access for all categories for a user
+ * Get the effective access for all categories for a user.
+ *
+ * For organization users: uses three-way intersection (admin + connection + user preference)
+ * For individual users: applies individual account restrictions (no ATS, limited database)
+ *
+ * @param userId - The user ID
+ * @param organizationId - The organization ID (null for individual users)
  */
 export async function getEffectiveAccessForUser(
   userId: string,
-  organizationId: string
+  organizationId: string | null
 ): Promise<EffectiveAccess> {
+  // Individual users have restricted access
+  if (!organizationId) {
+    return getIndividualEffectiveAccess(userId);
+  }
+
+  // Organization users use the three-way intersection model
   const orgPermissions = await getOrgIntegrationPermissions(organizationId);
   const integrationsByCategory = await getUserIntegrationsByCategory(userId, organizationId);
 
@@ -386,6 +401,82 @@ export async function getEffectiveAccessForUser(
     calendar: getEffectiveAccess('calendar', orgPermissions, integrationsByCategory.calendar),
     database: getEffectiveAccess('database', orgPermissions, integrationsByCategory.database),
   };
+}
+
+/**
+ * Get effective access for individual (free) accounts.
+ *
+ * Individual accounts have restricted access:
+ * - ATS: always disabled (requires organization)
+ * - Email: allowed if connected
+ * - Calendar: allowed if connected
+ * - Database: only google-sheets allowed (not airtable)
+ */
+async function getIndividualEffectiveAccess(userId: string): Promise<EffectiveAccess> {
+  // Get user's connected integrations
+  const userIntegrations = await db
+    .select()
+    .from(integrations)
+    .where(
+      and(
+        eq(integrations.userId, userId),
+        eq(integrations.status, 'connected')
+      )
+    );
+
+  // Group by category, but only include allowed providers
+  const byCategory: Record<IntegrationCategory, typeof userIntegrations> = {
+    ats: [],
+    email: [],
+    calendar: [],
+    database: [],
+  };
+
+  for (const int of userIntegrations) {
+    const category = providerToCategory(int.provider);
+    if (category && isProviderAllowedForIndividual(int.provider)) {
+      byCategory[category].push(int);
+    }
+  }
+
+  // Calculate effective access for individual
+  return {
+    // ATS is always disabled for individuals
+    ats: 'disabled',
+    // Email: full access if connected
+    email: byCategory.email.length > 0
+      ? getHighestUserAccessLevel(byCategory.email)
+      : 'none',
+    // Calendar: full access if connected
+    calendar: byCategory.calendar.length > 0
+      ? getHighestUserAccessLevel(byCategory.calendar)
+      : 'none',
+    // Database: only google-sheets (already filtered above)
+    database: byCategory.database.length > 0
+      ? getHighestUserAccessLevel(byCategory.database)
+      : 'none',
+  };
+}
+
+/**
+ * Get the highest user access level among multiple integrations
+ */
+function getHighestUserAccessLevel(
+  integrations: Array<{ metadata: string | null }>
+): AccessLevel {
+  let highest: AccessLevel = 'none';
+
+  for (const integration of integrations) {
+    const level = getUserAccessLevel(integration);
+    if (level === 'read-write') {
+      return 'read-write'; // Can't get higher
+    }
+    if (level === 'read-only' && highest === 'none') {
+      highest = 'read-only';
+    }
+  }
+
+  return highest;
 }
 
 /**

@@ -106,6 +106,7 @@ authRoutes.post('/login', async (c) => {
     organizationId: user[0].organizationId ?? undefined,
     organizationName,
     onboardingStep: user[0].onboardingStep ?? 0,
+    accountTypeSelected: user[0].accountTypeSelected ?? false,
   };
 
   const token = await createToken(userPublic);
@@ -155,6 +156,15 @@ authRoutes.get('/me', async (c) => {
     organizationName = org?.name;
   }
 
+  // Check if individual user has an available org to join
+  let availableOrg: { id: string; name: string } | undefined;
+  if (!user[0].organizationId && user[0].accountTypeSelected) {
+    const matchedOrg = await findOrgByEmailDomain(user[0].email);
+    if (matchedOrg) {
+      availableOrg = matchedOrg;
+    }
+  }
+
   const userPublic: UserPublic = {
     id: user[0].id,
     email: user[0].email,
@@ -165,6 +175,8 @@ authRoutes.get('/me', async (c) => {
     organizationId: user[0].organizationId ?? undefined,
     organizationName,
     onboardingStep: user[0].onboardingStep ?? 0,
+    accountTypeSelected: user[0].accountTypeSelected ?? false,
+    availableOrg,
   };
 
   return c.json({ data: userPublic });
@@ -335,6 +347,7 @@ authRoutes.get('/google/callback', async (c) => {
       organizationId: dbUser.organizationId ?? undefined,
       organizationName,
       onboardingStep: dbUser.onboardingStep ?? 0,
+      accountTypeSelected: dbUser.accountTypeSelected ?? false,
     };
 
     const token = await createToken(userPublic);

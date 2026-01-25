@@ -193,14 +193,14 @@ export default function Sharks() {
               <div className="flex-1 space-y-4 w-full">
                 {fundsData.map((item, i) => (
                   <div key={i} className="flex items-center gap-4">
+                    <span className="text-white font-bold tabular-nums w-10">{item.pct}%</span>
+                    <span className="text-[hsl(220_15%_75%)] text-sm flex-1">
+                      {item.emoji} {item.label}
+                    </span>
                     <div
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-[hsl(220_15%_75%)] text-sm flex-1">
-                      {item.emoji} {item.label}
-                    </span>
-                    <span className="text-white font-bold tabular-nums">{item.pct}%</span>
                   </div>
                 ))}
               </div>
@@ -256,7 +256,7 @@ export default function Sharks() {
       {/* FAQ */}
       <section className="py-12 px-6">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-white mb-8">Frequently Asked Investor Questions</h2>
+          <h2 className="text-2xl font-bold text-white mb-8">Infrequently Asked Investor Questions</h2>
 
           <div className="space-y-4">
             {[
@@ -270,7 +270,19 @@ export default function Sharks() {
               },
               {
                 q: 'What if AI becomes sentient?',
-                a: "Then we'll need to renegotiate employment contracts with our product. We have a lawyer on retainer.",
+                a: "Then we'll need to renegotiate employment contracts with our product. We know somebody whose brother's husband's boyfriend is a lawyer.",
+              },
+              {
+                q: 'What happens if Anthropic raises their API prices?',
+                a: "We pivot to calling ourselves a 'human-first' company and hire actual people. Just kidding, we'll just pass the cost to you. 📈",
+              },
+              {
+                q: "What's your runway?",
+                a: "Depends on how many offsites we do this quarter. Currently optimistic. 🛫",
+              },
+              {
+                q: 'Can I get a board seat?',
+                a: "For $5M+ you can watch our Notion. For $10M+ you can comment on it. For $50M+ we'll actually read your comments.",
               },
             ].map((faq, i) => (
               <div key={i} className="rounded-xl p-6 bg-[hsl(220_30%_12%)] border border-[hsl(220_20%_20%)]">
@@ -287,10 +299,7 @@ export default function Sharks() {
         <div className="max-w-4xl mx-auto">
           <div className="rounded-2xl p-8 border-2 border-yellow-500/30 bg-[hsl(220_30%_12%)] text-center">
             <div className="text-4xl mb-4">📧</div>
-            <h2 className="text-2xl font-bold text-white mb-2">Ready to Give Us Money?</h2>
-            <p className="text-[hsl(220_15%_60%)] mb-4">
-              Reach out to our investor relations team (it's just Dave, but he's very enthusiastic):
-            </p>
+            <h2 className="text-2xl font-bold text-white mb-2">Ready to give us free money?</h2>
             <a
               href="mailto:sharks@skillomatic.technology"
               className="inline-block px-6 py-3 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-lg mb-4 transition-colors"

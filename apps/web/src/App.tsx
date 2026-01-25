@@ -63,7 +63,10 @@ import FAQ from './pages/FAQ';
 import Architecture from './pages/Architecture';
 import Deployment from './pages/Deployment';
 import ITFaq from './pages/ITFaq';
+import Sharks from './pages/Sharks';
+import Jerbs from './pages/Jerbs';
 import NotFound from './pages/NotFound';
+import AccountType from './pages/onboarding/AccountType';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAuth();
@@ -128,7 +131,7 @@ function AuthErrorDisplay() {
 }
 
 function HomePage() {
-  const { isAuthenticated, isOnboarded, isLoading } = useAuth();
+  const { isAuthenticated, isOnboarded, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -139,6 +142,10 @@ function HomePage() {
   }
 
   if (isAuthenticated) {
+    // Check if user needs to select account type first
+    if (user && !user.accountTypeSelected) {
+      return <Navigate to="/onboarding/account-type" replace />;
+    }
     // Redirect based on onboarding status
     return <Navigate to={isOnboarded ? '/chat' : '/home'} replace />;
   }
@@ -162,6 +169,29 @@ function AuthenticatedRoutes() {
   }
 
   return <Layout />;
+}
+
+function AccountTypeRoute() {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // If account type already selected, redirect to home
+  if (user?.accountTypeSelected) {
+    return <Navigate to="/home" replace />;
+  }
+
+  return <AccountType />;
 }
 
 export default function App() {
@@ -265,6 +295,9 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
 
+        {/* Onboarding - Account Type Selection */}
+        <Route path="/onboarding/account-type" element={<AccountTypeRoute />} />
+
         {/* Public pages */}
         <Route path="/extension" element={<Extension />} />
         <Route path="/privacy" element={<Privacy />} />
@@ -280,6 +313,8 @@ export default function App() {
         <Route path="/architecture" element={<Architecture />} />
         <Route path="/deployment" element={<Deployment />} />
         <Route path="/it-faq" element={<ITFaq />} />
+        <Route path="/sharks" element={<Sharks />} />
+        <Route path="/jerbs" element={<Jerbs />} />
 
         {/* 404 catch-all */}
         <Route path="*" element={<NotFound />} />

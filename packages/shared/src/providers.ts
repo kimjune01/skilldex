@@ -364,3 +364,51 @@ export function getApiBaseUrl(providerId: string): string | undefined {
 export function getAllCategories(): IntegrationCategory[] {
   return ['ats', 'email', 'calendar', 'database'];
 }
+
+// ============ Individual Account Restrictions ============
+
+/**
+ * Integrations allowed for individual (free) accounts.
+ * Organization accounts have access to all integrations.
+ *
+ * Individual accounts are limited to:
+ * - Email (personal productivity)
+ * - Calendar (scheduling)
+ * - Google Sheets (basic data management)
+ *
+ * ATS and Airtable require an organization account.
+ */
+export const INDIVIDUAL_ALLOWED_PROVIDERS = [
+  // Email
+  'gmail',
+  'outlook',
+  // Calendar
+  'google-calendar',
+  'calendly',
+  'outlook-calendar',
+  // Database (only Google Sheets, NOT Airtable)
+  'google-sheets',
+] as const;
+
+/**
+ * Categories that individual accounts have FULL access to.
+ * Note: 'database' is partially allowed (google-sheets only, not airtable)
+ */
+export const INDIVIDUAL_FULL_ACCESS_CATEGORIES: IntegrationCategory[] = ['email', 'calendar'];
+
+/**
+ * Check if a provider is allowed for individual (free) accounts.
+ */
+export function isProviderAllowedForIndividual(providerId: string): boolean {
+  return INDIVIDUAL_ALLOWED_PROVIDERS.includes(providerId as typeof INDIVIDUAL_ALLOWED_PROVIDERS[number]);
+}
+
+/**
+ * Get providers that are blocked for individual accounts.
+ * Returns providers that require an organization account.
+ */
+export function getProvidersBlockedForIndividual(): ProviderConfig[] {
+  return Object.values(PROVIDERS).filter(
+    (p) => !isProviderAllowedForIndividual(p.id) && !p.devOnly
+  );
+}

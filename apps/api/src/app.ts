@@ -34,6 +34,7 @@ import { onboardingRoutes } from './routes/onboarding.js';
 import { organizationsRoutes } from './routes/organizations.js';
 import { invitesRoutes } from './routes/invites.js';
 import { webhooksRoutes } from './routes/webhooks.js';
+import { accountTypeRoutes } from './routes/account-type.js';
 import { capabilityProfilesRoutes } from './routes/capability-profiles.js';
 import { scrapeRoutes } from './routes/scrape.js';
 
@@ -93,6 +94,7 @@ app.route('/docs', docsRoutes);            // API documentation (OpenAPI spec, m
 app.route('/extension', extensionRoutes);  // Browser extension installation guide
 app.route('/onboarding', onboardingRoutes); // New user getting started guide
 app.route('/webhooks', webhooksRoutes);    // External service webhooks (Nango, etc.)
+app.route('/account-type', accountTypeRoutes); // Account type selection (individual vs org)
 
 // ============ PROTECTED ROUTES (JWT Auth) ============
 // Used by the web UI - requires Authorization: Bearer <jwt-token>

@@ -31,6 +31,8 @@ import { relations } from 'drizzle-orm';
 export const ONBOARDING_STEPS = {
   /** User just created account, hasn't started onboarding */
   NOT_STARTED: 0,
+  /** User has selected individual or organization account type */
+  ACCOUNT_TYPE_SELECTED: 0.5,
   /** User has connected their ATS integration */
   ATS_CONNECTED: 1,
   /** User has generated their API key for desktop chat */
@@ -66,6 +68,8 @@ export const users = sqliteTable('users', {
   organizationId: text('organization_id'), // FK added via migration (circular ref)
   /** Onboarding progress tracked as float for flexibility (see ONBOARDING_STEPS) */
   onboardingStep: real('onboarding_step').notNull().default(0),
+  /** Whether user has completed account type selection (individual vs organization) */
+  accountTypeSelected: integer('account_type_selected', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

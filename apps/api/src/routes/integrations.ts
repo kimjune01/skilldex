@@ -4,6 +4,7 @@ import { integrations, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
 import type { IntegrationPublic, IntegrationAccessLevel } from '@skillomatic/shared';
+import { isProviderAllowedForIndividual } from '@skillomatic/shared';
 import {
   getNangoClient,
   generateConnectionId,
@@ -136,6 +137,32 @@ integrationsRoutes.post('/session', async (c) => {
     provider?: string;
   }>().catch(() => ({} as { allowedIntegrations?: string[]; accessLevel?: UserAccessLevel; provider?: string }));
 
+  // Check if individual user is trying to connect a restricted provider
+  const isIndividual = !user.organizationId;
+  if (isIndividual && body.provider) {
+    if (!isProviderAllowedForIndividual(body.provider)) {
+      return c.json({
+        error: {
+          message: 'This integration requires an organization account. Create or join an organization to access ATS and other team integrations.',
+          code: 'INDIVIDUAL_ACCOUNT_RESTRICTION',
+        },
+      }, 403);
+    }
+  }
+
+  // Also check allowedIntegrations array for restricted providers
+  if (isIndividual && body.allowedIntegrations) {
+    const blockedProviders = body.allowedIntegrations.filter(p => !isProviderAllowedForIndividual(p));
+    if (blockedProviders.length > 0) {
+      return c.json({
+        error: {
+          message: `These integrations require an organization account: ${blockedProviders.join(', ')}`,
+          code: 'INDIVIDUAL_ACCOUNT_RESTRICTION',
+        },
+      }, 403);
+    }
+  }
+
   // Validate accessLevel if provided
   if (body.accessLevel && !['read-write', 'read-only'].includes(body.accessLevel)) {
     return c.json(
@@ -229,6 +256,18 @@ integrationsRoutes.post('/connect', async (c) => {
 
   if (!body.provider) {
     return c.json({ error: { message: 'Provider is required' } }, 400);
+  }
+
+  // Check if individual user is trying to connect a restricted provider
+  const isIndividual = !user.organizationId;
+  const providerToCheck = body.subProvider || body.provider;
+  if (isIndividual && !isProviderAllowedForIndividual(providerToCheck)) {
+    return c.json({
+      error: {
+        message: 'This integration requires an organization account. Create or join an organization to access ATS and other team integrations.',
+        code: 'INDIVIDUAL_ACCOUNT_RESTRICTION',
+      },
+    }, 403);
   }
 
   // Validate accessLevel if provided
