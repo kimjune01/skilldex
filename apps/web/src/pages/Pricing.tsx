@@ -441,7 +441,7 @@ export default function Pricing() {
             })}
           </div>
           <p className="text-sm text-[hsl(220_15%_55%)] text-center mt-8">
-            Pricing subject to change. <span className="text-primary font-semibold">1-year price lock guarantee</span> for all customers—if prices go up, yours won't.
+            Only active users each month count towards billing. Pricing subject to change. <span className="text-primary font-semibold">1-year price lock guarantee</span> for all customers—if prices go up, yours won't.
           </p>
         </div>
       </section>

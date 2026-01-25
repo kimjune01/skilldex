@@ -194,7 +194,8 @@ authRoutes.get('/google', (c) => {
   }
 
   // Determine the redirect URI based on the request origin
-  const host = c.req.header('host') || 'localhost:3000';
+  // Use X-Forwarded-Host for CloudFront/API Gateway, fallback to host header
+  const host = c.req.header('x-forwarded-host') || c.req.header('host') || 'localhost:3000';
   const protocol = host.includes('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${host}`;
   const redirectUri = `${baseUrl}/auth/google/callback`;
@@ -217,7 +218,8 @@ authRoutes.get('/google/callback', async (c) => {
   const error = c.req.query('error');
 
   // Determine URLs
-  const host = c.req.header('host') || 'localhost:3000';
+  // Use X-Forwarded-Host for CloudFront/API Gateway, fallback to host header
+  const host = c.req.header('x-forwarded-host') || c.req.header('host') || 'localhost:3000';
   const protocol = host.includes('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${host}`;
   // In prod: api.skillomatic.technology -> skillomatic.technology
