@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Bot, ArrowLeft, Users } from 'lucide-react';
+import { AlertCircle, Bot, ArrowLeft } from 'lucide-react';
 
 // Google icon component
 function GoogleIcon({ className }: { className?: string }) {
@@ -42,25 +42,9 @@ export default function Login() {
   const [password, setPassword] = useState(isDev ? DEMO_PASSWORD : '');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [totalUsers, setTotalUsers] = useState<number | null>(null);
   const { login, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  // Fetch total user count
-  useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    fetch(`${apiUrl}/auth/stats`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.data?.totalUsers) {
-          setTotalUsers(data.data.totalUsers);
-        }
-      })
-      .catch(() => {
-        // Silently fail - stats are not critical
-      });
-  }, []);
 
   // Handle OAuth callback with token in URL
   useEffect(() => {
@@ -131,8 +115,8 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
-      {/* Back to home link and user count */}
-      <div className="w-full max-w-md mb-6 flex items-center justify-between">
+      {/* Back to home link */}
+      <div className="w-full max-w-md mb-6">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-sm font-medium text-[hsl(220_15%_50%)] hover:text-primary transition-colors"
@@ -140,12 +124,6 @@ export default function Login() {
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
-        {totalUsers !== null && (
-          <span className="inline-flex items-center gap-1.5 text-sm text-[hsl(220_15%_50%)]">
-            <Users className="h-4 w-4" />
-            {totalUsers.toLocaleString()} users signed up so far
-          </span>
-        )}
       </div>
 
       <Card className="w-full max-w-md card-robot rounded-2xl overflow-hidden">

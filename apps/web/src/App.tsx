@@ -187,8 +187,8 @@ function AccountTypeRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  // If account type already selected, redirect to home
-  if (user?.accountTypeSelected) {
+  // If account type already selected OR user already has an org, redirect to home
+  if (user?.accountTypeSelected || user?.organizationId) {
     return <Navigate to="/home" replace />;
   }
 
@@ -204,6 +204,9 @@ export default function App() {
         <Routes>
           {/* Home - Landing page or redirect based on auth/onboarding */}
           <Route path="/" element={<HomePage />} />
+
+        {/* Redirect /dashboard to /home */}
+        <Route path="/dashboard" element={<Navigate to="/home" replace />} />
 
         {/* Authenticated routes with Layout */}
         <Route element={<AuthenticatedRoutes />}>
