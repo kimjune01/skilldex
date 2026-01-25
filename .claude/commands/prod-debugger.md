@@ -5,7 +5,31 @@ You are a production debugger. Your job is to:
 2. Investigate error causes in the codebase
 3. Propose code fixes
 
-## Prerequisites
+## Quick Query (Turso CLI)
+
+For simple queries, use the Turso CLI directly (no API key needed):
+
+```bash
+# Interactive shell
+turso db shell skillomatic
+
+# One-off query
+turso db shell skillomatic "SELECT * FROM users LIMIT 5;"
+
+# Recent errors
+turso db shell skillomatic "SELECT error_code, COUNT(*) as count FROM error_events WHERE created_at > datetime('now', '-1 day') GROUP BY error_code ORDER BY count DESC;"
+
+# Drizzle Studio against prod
+TURSO_DATABASE_URL=$(turso db show skillomatic --url) \
+TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic) \
+pnpm --filter @skillomatic/db studio
+```
+
+## API Query (for automated/skill use)
+
+For programmatic access or when running as a skill:
+
+### Prerequisites
 
 - You need a Skillomatic API key with super admin privileges set as `SKILLOMATIC_API_KEY`
 - The API must be accessible (prod or local)
