@@ -83,7 +83,13 @@ describe('Stripe Integration', () => {
       };
       expect(withProvider.triggerProvider).toBe('airtable');
 
-      const withoutProvider = {
+      const withoutProvider: {
+        userId: string;
+        email: string;
+        payIntentionId: string;
+        triggerType: string;
+        triggerProvider?: string;
+      } = {
         userId: 'user_123',
         email: 'test@example.com',
         payIntentionId: 'pi_123',

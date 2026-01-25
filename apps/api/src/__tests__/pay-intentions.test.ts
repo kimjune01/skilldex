@@ -54,7 +54,7 @@ describe('Pay Intentions API', () => {
 
     it('should optionally include triggerProvider', () => {
       const withProvider = { triggerType: 'premium_integration', triggerProvider: 'airtable' };
-      const withoutProvider = { triggerType: 'individual_ats' };
+      const withoutProvider: { triggerType: string; triggerProvider?: string } = { triggerType: 'individual_ats' };
 
       expect(withProvider.triggerProvider).toBe('airtable');
       expect(withoutProvider.triggerProvider).toBeUndefined();
