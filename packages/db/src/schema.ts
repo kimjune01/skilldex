@@ -97,6 +97,7 @@ export const organizations = sqliteTable('organizations', {
   id: text('id').primaryKey(), // UUID
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(), // URL-friendly identifier
+  description: text('description'), // Optional org description
   logoUrl: text('logo_url'),
 
   // LLM Configuration (ephemeral architecture)
