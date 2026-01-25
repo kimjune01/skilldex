@@ -94,9 +94,12 @@ export default function Layout() {
           aria-hidden="true"
         />
       )}
-      {/* Mobile hamburger button */}
+      {/* Mobile hamburger button - hidden on /chat since Chat has its own full-screen header */}
       <button
-        className="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-background border shadow-md"
+        className={cn(
+          "fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-background border shadow-md",
+          location.pathname === '/chat' && "hidden"
+        )}
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         aria-label="Toggle menu"
       >

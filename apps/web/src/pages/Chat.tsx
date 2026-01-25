@@ -210,28 +210,24 @@ function ChatContent() {
     )}>
       {/* Header - minimal floating on mobile, full on desktop */}
       {isMobile ? (
-        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-2 pt-safe bg-gradient-to-b from-background via-background/90 to-transparent">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10"
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 pt-safe bg-gradient-to-b from-background via-background/90 to-transparent">
+          <button
+            className="p-2 rounded-lg bg-background border shadow-md"
             onClick={openLayoutMenu}
             title="Menu"
           >
             <Menu className="h-5 w-5" />
-          </Button>
+          </button>
           <span className="text-sm font-medium truncate flex-1 text-center px-2">
             {currentConversation?.title || 'New Chat'}
           </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10"
+          <button
+            className="p-2 rounded-lg bg-background border shadow-md"
             onClick={() => setSidebarOpen(true)}
             title="Chat history"
           >
             <MessageSquare className="h-5 w-5" />
-          </Button>
+          </button>
         </div>
       ) : (
         <div className="px-4 py-3 border-b flex items-center justify-between">
@@ -259,7 +255,7 @@ function ChatContent() {
               onClick={() => setSidebarOpen(true)}
               title="Chat history & tools"
             >
-              <Menu className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" />
             </Button>
           </div>
         </div>
