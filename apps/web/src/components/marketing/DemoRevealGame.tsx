@@ -345,18 +345,18 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
       return (
         <div className="flex items-center gap-8">
           {/* Placeholder to prevent layout shift */}
-          <div className="w-28 h-28 relative">
+          <div className="w-36 h-36 relative">
             <div
               onPointerDown={handleCoinPointerDown}
               onPointerMove={handleCoinPointerMove}
               onPointerUp={handleCoinPointerUp}
-              className={`draggable-coin w-28 h-28 touch-none ${isDragging ? 'dragging' : ''}`}
+              className={`draggable-coin w-36 h-36 touch-none ${isDragging ? 'dragging' : ''}`}
               style={
                 coinPosition
                   ? {
                       position: 'fixed',
-                      left: coinPosition.x - 56,
-                      top: coinPosition.y - 56,
+                      left: coinPosition.x - 72,
+                      top: coinPosition.y - 72,
                       zIndex: 1000,
                     }
                   : {
@@ -366,13 +366,13 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
                     }
               }
             >
-              <span className="text-2xl font-black text-amber-800">API</span>
+              <span className="text-3xl font-black text-amber-800">API</span>
             </div>
           </div>
           <ArrowDown className="h-10 w-10 text-primary rotate-[-90deg]" />
           <div
             ref={coinSlotRef}
-            className={`w-32 h-8 rounded-lg bg-[hsl(220_20%_20%)] border-3 border-[hsl(220_15%_30%)] ${isOverSlot ? 'drop-target' : ''}`}
+            className={`w-40 h-10 rounded-lg bg-[hsl(220_20%_20%)] border-3 border-[hsl(220_15%_30%)] ${isOverSlot ? 'drop-target' : ''}`}
           />
         </div>
       );
