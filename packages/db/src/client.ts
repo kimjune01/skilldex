@@ -3,12 +3,33 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { LibSQLDatabase } from 'drizzle-orm/libsql';
 import * as schema from './schema.js';
 
+// Get Turso credentials - prefer SST Resource (runtime), fall back to env vars (local/scripts)
+let tursoUrl: string | undefined;
+let tursoToken: string | undefined;
+
+// In Lambda, SST injects secrets via Resource. Try to import it.
+const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+if (isLambda) {
+  try {
+    // Dynamic import to avoid bundling sst in local dev
+    const { Resource } = await import('sst');
+    tursoUrl = (Resource as unknown as Record<string, { value: string }>).TursoDatabaseUrl?.value;
+    tursoToken = (Resource as unknown as Record<string, { value: string }>).TursoAuthToken?.value;
+  } catch {
+    // SST Resource not available, fall through to env vars
+  }
+}
+
+// Fall back to env vars (local dev, seed scripts, etc.)
+tursoUrl = tursoUrl || process.env.TURSO_DATABASE_URL;
+tursoToken = tursoToken || process.env.TURSO_AUTH_TOKEN;
+
 // Determine which database to use based on environment
 // Local dev uses SQLite even if Turso vars are present (for testing prod configs locally)
 // Only use Turso when NODE_ENV=production OR USE_TURSO=true is explicitly set
 const isProduction = process.env.NODE_ENV === 'production';
 const forceTurso = process.env.USE_TURSO === 'true';
-const hasTursoConfig = !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
+const hasTursoConfig = !!(tursoUrl && tursoToken);
 const isTurso = hasTursoConfig && (isProduction || forceTurso);
 
 type DbType = BetterSQLite3Database<typeof schema> | LibSQLDatabase<typeof schema>;
@@ -21,17 +42,17 @@ if (isTurso) {
   const { createClient } = await import('@libsql/client');
 
   const client = createClient({
-    url: process.env.TURSO_DATABASE_URL!,
-    authToken: process.env.TURSO_AUTH_TOKEN!,
+    url: tursoUrl!,
+    authToken: tursoToken!,
   });
 
   db = drizzleLibsql(client, { schema });
   console.log('Connected to Turso database');
 } else if (isProduction) {
   // Production but missing Turso vars - this is an error
-  console.error('ERROR: Production environment but TURSO_DATABASE_URL or TURSO_AUTH_TOKEN not set!');
-  console.error('TURSO_DATABASE_URL:', process.env.TURSO_DATABASE_URL ? 'set' : 'missing');
-  console.error('TURSO_AUTH_TOKEN:', process.env.TURSO_AUTH_TOKEN ? 'set' : 'missing');
+  console.error('ERROR: Production environment but Turso credentials not set!');
+  console.error('TURSO_DATABASE_URL:', tursoUrl ? 'set' : 'missing');
+  console.error('TURSO_AUTH_TOKEN:', tursoToken ? 'set' : 'missing');
   throw new Error('Production requires Turso database configuration');
 } else {
   // Local development: Use better-sqlite3

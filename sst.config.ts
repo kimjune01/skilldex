@@ -61,12 +61,6 @@ export default $config({
       environment: {
         NODE_ENV: "production",
         NANGO_HOST: "https://api.nango.dev",
-        // Set DB env vars directly so they're available at module load time
-        TURSO_DATABASE_URL: tursoUrl.value,
-        TURSO_AUTH_TOKEN: tursoToken.value,
-        // Google OAuth
-        GOOGLE_CLIENT_ID: googleClientId.value,
-        GOOGLE_CLIENT_SECRET: googleClientSecret.value,
         // Web URL for email links
         WEB_URL: useCustomDomain ? `https://${domain}` : "",
       },
