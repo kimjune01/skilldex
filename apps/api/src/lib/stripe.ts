@@ -53,10 +53,23 @@ export interface CheckoutResult {
 }
 
 /**
+ * Validate UUID format to prevent injection in Stripe queries
+ */
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+/**
  * Find or create a Stripe customer for the user
  */
 async function findOrCreateCustomer(email: string, userId: string): Promise<Stripe.Customer> {
   const stripe = getStripe();
+
+  // Validate userId format to prevent query injection
+  if (!isValidUUID(userId)) {
+    throw new Error('Invalid user ID format');
+  }
 
   // Search for existing customer by metadata
   const existing = await stripe.customers.search({

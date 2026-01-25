@@ -4,7 +4,7 @@ import { integrations, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
 import type { IntegrationPublic, IntegrationAccessLevel } from '@skillomatic/shared';
-import { isProviderAllowedForIndividual, isPremiumProvider } from '@skillomatic/shared';
+import { isProviderAllowedForIndividual, isPremiumProvider, getProviderCategory } from '@skillomatic/shared';
 import { hasPayIntention } from '../lib/integration-permissions.js';
 import {
   getNangoClient,
@@ -167,8 +167,11 @@ integrationsRoutes.post('/session', async (c) => {
   // Check if premium provider requires pay intention
   const providerToCheck = body.provider || body.allowedIntegrations?.[0];
   if (providerToCheck && isPremiumProvider(providerToCheck)) {
-    // Determine trigger type
-    const triggerType = isIndividual ? 'individual_ats' : 'premium_integration';
+    // Determine trigger type based on provider category and account type
+    // individual_ats: Individual users accessing ATS providers
+    // premium_integration: All other premium providers (Outlook, Airtable, etc.)
+    const isAtsProvider = getProviderCategory(providerToCheck) === 'ats';
+    const triggerType = isIndividual && isAtsProvider ? 'individual_ats' : 'premium_integration';
 
     // Check if user has confirmed pay intention
     const hasConfirmed = await hasPayIntention(user.sub, triggerType);
@@ -296,7 +299,9 @@ integrationsRoutes.post('/connect', async (c) => {
 
   // Check if premium provider requires pay intention
   if (isPremiumProvider(providerToCheck)) {
-    const triggerType = isIndividual ? 'individual_ats' : 'premium_integration';
+    // Determine trigger type based on provider category and account type
+    const isAtsProvider = getProviderCategory(providerToCheck) === 'ats';
+    const triggerType = isIndividual && isAtsProvider ? 'individual_ats' : 'premium_integration';
     const hasConfirmed = await hasPayIntention(user.sub, triggerType);
 
     if (!hasConfirmed) {

@@ -44,7 +44,7 @@ payIntentionsRoutes.post('/', async (c) => {
   const body = await c.req.json<CreatePayIntentionRequest>();
 
   // Validate trigger type
-  if (!['individual_ats', 'premium_integration'].includes(body.triggerType)) {
+  if (!VALID_TRIGGER_TYPES.includes(body.triggerType)) {
     return c.json({ error: { message: 'Invalid trigger type' } }, 400);
   }
 
@@ -147,16 +147,23 @@ payIntentionsRoutes.post('/', async (c) => {
   }
 });
 
+// Valid trigger types for validation
+const VALID_TRIGGER_TYPES: PayIntentionTrigger[] = ['individual_ats', 'premium_integration'];
+
 /**
  * GET /pay-intentions/status
  * Check if user has confirmed pay intention for a feature
  */
 payIntentionsRoutes.get('/status', async (c) => {
   const user = c.get('user');
-  const triggerType = c.req.query('triggerType') as PayIntentionTrigger | undefined;
+  const triggerType = c.req.query('triggerType');
 
   if (!triggerType) {
     return c.json({ error: { message: 'triggerType query param required' } }, 400);
+  }
+
+  if (!VALID_TRIGGER_TYPES.includes(triggerType as PayIntentionTrigger)) {
+    return c.json({ error: { message: 'Invalid triggerType' } }, 400);
   }
 
   const intention = await db
@@ -278,11 +285,9 @@ payIntentionsRoutes.get('/admin/list', superAdminOnly, async (c) => {
     .limit(limit)
     .offset(offset);
 
-  // Get total count
-  const countResult = await db
-    .select()
-    .from(payIntentions);
-  const totalCount = countResult.length;
+  // Get total count (simple approach - acceptable for pay intentions table size)
+  const allIntentions = await db.select().from(payIntentions);
+  const totalCount = allIntentions.length;
 
   return c.json({
     data: intentions.map((i) => ({
