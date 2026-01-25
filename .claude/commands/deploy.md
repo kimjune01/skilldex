@@ -3,14 +3,15 @@ Deploy Skillomatic to production using SST.
 ## Quick Deploy
 
 ```bash
+git diff --quiet && git diff --cached --quiet || (echo "ERROR: Uncommitted changes. Commit or stash first." && exit 1) && \
 pnpm typecheck && \
 pnpm db:push:prod && \
 pnpm sst deploy --stage production && \
 curl -sf "https://api.skillomatic.technology/health" && \
-echo "✓ Deploy complete"
+echo "✓ Deploy complete ($(git rev-parse --short HEAD))"
 ```
 
-Stops on first failure. Uses `drizzle-kit push` to sync schema to Turso.
+Stops on first failure. Requires clean git state so deployed version matches commit hash. Uses `drizzle-kit push` to sync schema to Turso.
 
 ## First-Time Setup
 
