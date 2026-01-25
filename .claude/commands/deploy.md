@@ -2,33 +2,39 @@ Deploy Skillomatic to production using SST.
 
 ## Quick Deploy
 
+Run these commands in sequence. Stop if any fails.
+
+1. Check git is clean and get hash:
 ```bash
-export GIT_HASH=$(git rev-parse --short HEAD)
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "ERROR: Uncommitted changes. Commit or stash first." && exit 1
-fi
-pnpm typecheck && \
-pnpm db:push:prod && \
-pnpm sst deploy --stage production
-
-# Verify API hash
-API_HASH=$(curl -sf "https://api.skillomatic.technology/health" | grep -o '"gitHash":"[^"]*' | cut -d'"' -f4)
-if [ "$GIT_HASH" != "$API_HASH" ]; then
-  echo "ERROR: API hash mismatch! Expected $GIT_HASH, got $API_HASH" && exit 1
-fi
-
-# Verify web hash with exponential backoff for CDN
-for DELAY in 2 4 8 16 32 64; do
-  sleep $DELAY
-  WEB_HASH=$(curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*' | cut -d'"' -f3)
-  if [ "$GIT_HASH" = "$WEB_HASH" ]; then
-    echo "✓ Deploy complete (api=$API_HASH, web=$WEB_HASH)"
-    exit 0
-  fi
-  echo "Waiting for CDN... (expected $GIT_HASH, got $WEB_HASH)"
-done
-echo "ERROR: Web hash mismatch after retries! Expected $GIT_HASH, got $WEB_HASH" && exit 1
+git diff --quiet && git diff --cached --quiet || echo "ERROR: Uncommitted changes"
 ```
+
+2. Run typecheck:
+```bash
+pnpm typecheck
+```
+
+3. Push schema to prod:
+```bash
+pnpm db:push:prod
+```
+
+4. Deploy with git hash:
+```bash
+GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production
+```
+
+5. Verify API hash:
+```bash
+curl -s "https://api.skillomatic.technology/health"
+```
+
+6. Wait for CDN and verify web hash (retry with delays 2, 4, 8, 16, 32, 64 seconds until match):
+```bash
+curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*'
+```
+
+7. Report success with both hashes when they match the expected commit.
 
 Stops on first failure. Verifies both API and web git hashes match local commit. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
