@@ -14,6 +14,12 @@
  * stop using in code) before dropping. This ensures rollbacks to older code
  * versions can still run against the current schema. See /rollback command.
  *
+ * AFTER MODIFYING THIS FILE:
+ * - Local: Run `pnpm db:push` to apply changes
+ * - Production: Run `pnpm db:push:prod` (or include in /deploy)
+ * - If db:push fails with index conflicts, delete local db and reseed:
+ *   `rm packages/db/data/skillomatic.db && pnpm db:push && pnpm db:seed`
+ *
  * @see docs/ADMIN_GUIDE.md for admin operations
  * @see docs/IT_DEPLOYMENT.md for database deployment
  */
