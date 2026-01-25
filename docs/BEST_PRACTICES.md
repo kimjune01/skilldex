@@ -240,6 +240,45 @@ Helper functions available:
 
 ---
 
+## 12. SST Secrets via Resource, Not Environment
+
+In Lambda, access SST secrets via `Resource` import, not `process.env`. Environment variables are baked at deploy time and won't update when you run `sst secret set`.
+
+```typescript
+// ✅ Runtime access - updates when secrets change
+import { Resource } from 'sst';
+const dbUrl = Resource.TursoDatabaseUrl.value;
+
+// ❌ Baked at deploy time - stale after secret rotation
+// In sst.config.ts:
+environment: {
+  TURSO_DATABASE_URL: tursoUrl.value,  // DON'T do this
+}
+```
+
+**How SST secrets work:**
+1. Define secret: `const secret = new sst.Secret("MySecret")`
+2. Link to function: `link: [secret]`
+3. Set value: `sst secret set MySecret "value" --stage production`
+4. Access at runtime: `Resource.MySecret.value`
+
+When you update a secret with `sst secret set`, SST automatically restarts Lambda containers via the `SST_ADMIN_SECRET_UPDATED_AT` timestamp.
+
+**For local dev/scripts:** Fall back to `process.env` since SST Resource isn't available:
+
+```typescript
+const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+let value: string | undefined;
+
+if (isLambda) {
+  const { Resource } = await import('sst');
+  value = (Resource as any).MySecret?.value;
+}
+value = value || process.env.MY_SECRET;  // Fallback for local
+```
+
+---
+
 ## Quick Reference: What NOT to Do
 
 | Don't | Why | Do Instead |
@@ -254,3 +293,4 @@ Helper functions available:
 | Use raw console.log/error | Inconsistent format | Use centralized logger |
 | Hardcode free/premium providers | Logic scattered | Use `isPremiumProvider()` from providers.ts |
 | Hardcode individual restrictions | Logic scattered | Use `isProviderAllowedForIndividual()` |
+| Put secrets in SST `environment:` | Baked at deploy | Use `link:` + `Resource` import |
