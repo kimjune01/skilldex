@@ -28,6 +28,12 @@ export function MarketingFooter() {
             <Link to="/terms" className="hover:text-white transition-colors">
               Terms
             </Link>
+            <Link to="/sharks" className="hover:text-white transition-colors">
+              Sharks
+            </Link>
+            <Link to="/jerbs" className="hover:text-white transition-colors">
+              Jerbs
+            </Link>
           </div>
           <div className="text-sm text-[hsl(220_15%_50%)]">
             © 2025 Skillomatic. All rights reserved.
