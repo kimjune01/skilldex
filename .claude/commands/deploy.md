@@ -4,15 +4,15 @@ Deploy Skillomatic to production using SST.
 
 ```bash
 pnpm typecheck && \
-pnpm sst deploy --stage production && \
 TURSO_DATABASE_URL=$(turso db show skillomatic --url) \
 TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic) \
-pnpm --filter @skillomatic/db seed:prod && \
+pnpm --filter @skillomatic/db push && \
+pnpm sst deploy --stage production && \
 curl -sf "$(cat .sst/outputs.json | jq -r .api)/health" && \
 echo "✓ Deploy complete"
 ```
 
-Stops on first failure. If health check fails, investigate manually.
+Stops on first failure. Uses `drizzle-kit push` to sync schema (non-interactive).
 
 ## First-Time Setup
 
@@ -23,14 +23,17 @@ pnpm sst secret set TURSO_DATABASE_URL "$(turso db show skillomatic --url)" --st
 pnpm sst secret set TURSO_AUTH_TOKEN "$(turso db tokens create skillomatic)" --stage production
 ```
 
-## Schema Changes
+## Manual Schema Sync
 
-If you changed `packages/db/src/schema.ts`:
+If schema gets out of sync, push directly to Turso:
 
 ```bash
-pnpm --filter @skillomatic/db generate  # Create migration
-pnpm --filter @skillomatic/db migrate   # Apply to prod (needs TURSO_* env vars)
+TURSO_DATABASE_URL=$(turso db show skillomatic --url) \
+TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic) \
+pnpm --filter @skillomatic/db push
 ```
+
+For complex migrations requiring data transforms, use turso db shell directly.
 
 ## Debugging
 
@@ -56,7 +59,8 @@ Test credentials: `superadmin@skillomatic.technology` / `Skillomatic2024!`
 
 | Error | Fix |
 |-------|-----|
-| "Invalid email or password" | `pnpm --filter @skillomatic/db seed:prod` |
-| User not found | `pnpm --filter @skillomatic/db seed:prod` |
-| Skills missing | `pnpm --filter @skillomatic/db seed:prod` |
-| Schema out of sync | `pnpm --filter @skillomatic/db generate && migrate` |
+| "Invalid email or password" | `TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... pnpm --filter @skillomatic/db seed:prod` |
+| User not found | Same as above |
+| Skills missing | Same as above |
+| Schema out of sync / Failed query | Run manual schema sync (see above) |
+| Column not found | Run `turso db shell skillomatic "PRAGMA table_info(TABLE_NAME);"` to check |
