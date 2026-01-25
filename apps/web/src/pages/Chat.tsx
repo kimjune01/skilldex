@@ -260,7 +260,7 @@ function ChatContent() {
       )}
 
       {/* Input */}
-      <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} />
+      <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} sidebarOpen={sidebarOpen} />
 
       {/* Instructions Dialog */}
       <Dialog

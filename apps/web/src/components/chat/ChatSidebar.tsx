@@ -56,6 +56,7 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   const {
     conversations,
     currentConversationId,
+    currentConversation,
     createConversation,
     switchConversation,
     deleteConversation,
@@ -89,6 +90,11 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   }, [toolsOpen, skillsList.length]);
 
   const handleNewChat = async () => {
+    // If current chat is empty, just close the sidebar
+    if (currentConversation?.messageCount === 0) {
+      onClose();
+      return;
+    }
     await createConversation();
   };
 
@@ -97,8 +103,13 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
     switchConversation(id);
   };
 
-  const handleDeleteClick = (conv: Conversation, e: React.MouseEvent) => {
+  const handleDeleteClick = async (conv: Conversation, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Skip confirmation for empty chats
+    if (conv.messageCount === 0) {
+      await deleteConversation(conv.id);
+      return;
+    }
     setConversationToDelete(conv);
     setDeleteDialogOpen(true);
   };
@@ -184,7 +195,7 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
       <div className="fixed right-0 top-0 bottom-0 w-72 bg-background border-l shadow-lg z-50 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h2 className="font-semibold text-sm">Chat History</h2>
+          <h2 className="font-semibold text-sm">Your Chats</h2>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
@@ -220,6 +231,11 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
                 </span>
               </button>
             </CollapsibleTrigger>
+            {!conversationsOpen && (
+              <p className="px-4 pb-2 text-xs text-muted-foreground">
+                Stored locally in this browser only
+              </p>
+            )}
             <CollapsibleContent>
               <div className="px-2 pb-2">
                 {conversations.length === 0 ? (

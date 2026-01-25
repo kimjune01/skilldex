@@ -6,9 +6,10 @@ interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  sidebarOpen?: boolean;
 }
 
-export function ChatInput({ onSend, disabled, placeholder = 'Ask about skills or recruiting tasks...' }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, placeholder = 'Ask about skills or recruiting tasks...', sidebarOpen }: ChatInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -37,7 +38,7 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about skills or
   };
 
   return (
-    <div className="flex items-end gap-2 p-4 border-t bg-background">
+    <div className={`flex items-end gap-2 p-4 border-t bg-background transition-[margin] duration-200 ${sidebarOpen ? 'mr-72' : ''}`}>
       <textarea
         ref={textareaRef}
         value={value}
