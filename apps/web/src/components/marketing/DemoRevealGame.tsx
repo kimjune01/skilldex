@@ -480,11 +480,14 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
             onPointerDown={handleLinkPointerDown}
             onPointerUp={handleLinkPointerUp}
             onPointerLeave={handleLinkPointerUp}
-            className="relative w-48 h-12 rounded-lg cursor-pointer overflow-hidden"
+            onContextMenu={(e) => e.preventDefault()}
+            className="relative w-48 h-12 rounded-lg cursor-pointer overflow-hidden select-none touch-none"
             style={{
               background: 'linear-gradient(180deg, #374151 0%, #1f2937 100%)',
               boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2)',
               border: '2px solid #4b5563',
+              WebkitUserSelect: 'none',
+              WebkitTouchCallout: 'none',
             }}
             aria-label={STEPS[4].instruction}
           >
