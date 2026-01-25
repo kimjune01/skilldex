@@ -3,15 +3,19 @@ Deploy Skillomatic to production using SST.
 ## Quick Deploy
 
 ```bash
+EXPECTED_HASH=$(git rev-parse --short HEAD) && \
 git diff --quiet && git diff --cached --quiet || (echo "ERROR: Uncommitted changes. Commit or stash first." && exit 1) && \
 pnpm typecheck && \
 pnpm db:push:prod && \
 pnpm sst deploy --stage production && \
 curl -sf "https://api.skillomatic.technology/health" && \
-echo "✓ Deploy complete ($(git rev-parse --short HEAD))"
+DEPLOYED_HASH=$(curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*' | cut -d'"' -f3) && \
+[ "$EXPECTED_HASH" = "$DEPLOYED_HASH" ] && \
+echo "✓ Deploy complete ($DEPLOYED_HASH)" || \
+(echo "ERROR: Hash mismatch! Expected $EXPECTED_HASH, got $DEPLOYED_HASH" && exit 1)
 ```
 
-Stops on first failure. Requires clean git state so deployed version matches commit hash. Uses `drizzle-kit push` to sync schema to Turso.
+Stops on first failure. Verifies deployed git hash matches local commit. Uses `drizzle-kit push` to sync schema to Turso.
 
 ## First-Time Setup
 
