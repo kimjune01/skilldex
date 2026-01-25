@@ -14,7 +14,7 @@ const STEPS = [
   { label: 'Connect ATS', instruction: 'Click to connect your ATS' },
   { label: 'Allow Email', instruction: 'Flip the switch to allow' },
   { label: 'Insert AI API Key', instruction: 'Drag your API token into the slot' },
-  { label: 'Hook up Calendar', instruction: 'Spin it to hook it!' },
+  { label: 'Hook up Calendar', instruction: 'Spin it to hook up calendar!' },
   { label: 'Install Browser Addon', instruction: 'Hold to install addon' },
   { label: 'Prompt AI Playbook', instruction: 'Hit the jackpot to activate!' },
 ] as const;
@@ -464,10 +464,11 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
               </div>
             </button>
           </div>
-          <span className="text-xs font-mono font-bold text-green-400 tracking-wider">
-            {STEPS[3].label.toUpperCase()}
-            {cumulativeRotation !== 0 && ` • ${Math.round(progress)}%`}
-          </span>
+          {cumulativeRotation !== 0 && (
+            <span className="text-xs font-mono font-bold text-green-400 tracking-wider">
+              {Math.round(progress)}%
+            </span>
+          )}
         </div>
       );
     }
