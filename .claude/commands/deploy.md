@@ -3,21 +3,31 @@ Deploy Skillomatic to production using SST.
 ## Quick Deploy
 
 ```bash
-EXPECTED_HASH=$(git rev-parse --short HEAD) && \
-git diff --quiet && git diff --cached --quiet || (echo "ERROR: Uncommitted changes. Commit or stash first." && exit 1) && \
+export GIT_HASH=$(git rev-parse --short HEAD)
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "ERROR: Uncommitted changes. Commit or stash first." && exit 1
+fi
 pnpm typecheck && \
 pnpm db:push:prod && \
-pnpm sst deploy --stage production && \
-API_HASH=$(curl -sf "https://api.skillomatic.technology/health" | grep -o '"gitHash":"[^"]*' | cut -d'"' -f4) && \
-[ "$EXPECTED_HASH" = "$API_HASH" ] || (echo "ERROR: API hash mismatch! Expected $EXPECTED_HASH, got $API_HASH" && exit 1) && \
-for DELAY in 2 4 8 16 32 64; do \
-  sleep $DELAY && \
-  WEB_HASH=$(curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*' | cut -d'"' -f3) && \
-  [ "$EXPECTED_HASH" = "$WEB_HASH" ] && \
-  echo "✓ Deploy complete (api=$API_HASH, web=$WEB_HASH)" && exit 0 || \
-  echo "Waiting for CDN... (expected $EXPECTED_HASH, got $WEB_HASH)"; \
-done && \
-echo "ERROR: Web hash mismatch after retries! Expected $EXPECTED_HASH, got $WEB_HASH" && exit 1
+pnpm sst deploy --stage production
+
+# Verify API hash
+API_HASH=$(curl -sf "https://api.skillomatic.technology/health" | grep -o '"gitHash":"[^"]*' | cut -d'"' -f4)
+if [ "$GIT_HASH" != "$API_HASH" ]; then
+  echo "ERROR: API hash mismatch! Expected $GIT_HASH, got $API_HASH" && exit 1
+fi
+
+# Verify web hash with exponential backoff for CDN
+for DELAY in 2 4 8 16 32 64; do
+  sleep $DELAY
+  WEB_HASH=$(curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*' | cut -d'"' -f3)
+  if [ "$GIT_HASH" = "$WEB_HASH" ]; then
+    echo "✓ Deploy complete (api=$API_HASH, web=$WEB_HASH)"
+    exit 0
+  fi
+  echo "Waiting for CDN... (expected $GIT_HASH, got $WEB_HASH)"
+done
+echo "ERROR: Web hash mismatch after retries! Expected $GIT_HASH, got $WEB_HASH" && exit 1
 ```
 
 Stops on first failure. Verifies both API and web git hashes match local commit. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.

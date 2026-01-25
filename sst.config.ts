@@ -63,6 +63,8 @@ export default $config({
         NANGO_HOST: "https://api.nango.dev",
         // Web URL for email links
         WEB_URL: useCustomDomain ? `https://${domain}` : "",
+        // Git hash for version tracking
+        GIT_HASH: process.env.GIT_HASH || "unknown",
       },
     });
 

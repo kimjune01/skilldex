@@ -93,7 +93,7 @@ if (!isLambda) {
 }
 
 // Health check
-import { GIT_HASH } from './version.js';
+const GIT_HASH = process.env.GIT_HASH || 'dev';
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString(), gitHash: GIT_HASH }));
 
 // ============ PUBLIC ROUTES ============
