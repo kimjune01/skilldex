@@ -8,7 +8,7 @@ import { jwtAuth, orgAdminOnly } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
 import { createToken } from '../lib/jwt.js';
 import { sendInviteEmail, sendWelcomeEmail } from '../lib/email.js';
-import type { UserPublic } from '@skillomatic/shared';
+import { validatePassword, type UserPublic } from '@skillomatic/shared';
 
 export interface InvitePublic {
   id: string;
@@ -239,8 +239,9 @@ invitesRoutes.post('/accept', async (c) => {
     return c.json({ error: { message: 'Token, password, and name are required' } }, 400);
   }
 
-  if (body.password.length < 8) {
-    return c.json({ error: { message: 'Password must be at least 8 characters' } }, 400);
+  const passwordCheck = validatePassword(body.password);
+  if (!passwordCheck.valid) {
+    return c.json({ error: { message: passwordCheck.error } }, 400);
   }
 
   // Find valid invite

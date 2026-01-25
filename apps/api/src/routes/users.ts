@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import { hashSync } from 'bcrypt-ts';
 import { jwtAuth, adminOnly } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
-import type { UserPublic } from '@skillomatic/shared';
+import { validatePassword, type UserPublic } from '@skillomatic/shared';
 
 export const usersRoutes = new Hono();
 
@@ -111,6 +111,11 @@ usersRoutes.post('/', async (c) => {
 
   if (!body.email || !body.password || !body.name) {
     return c.json({ error: { message: 'Email, password, and name are required' } }, 400);
+  }
+
+  const passwordCheck = validatePassword(body.password);
+  if (!passwordCheck.valid) {
+    return c.json({ error: { message: passwordCheck.error } }, 400);
   }
 
   // Determine target organization

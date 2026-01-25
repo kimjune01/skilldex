@@ -166,7 +166,7 @@ or on error:
                 required: ['email', 'password', 'name'],
                 properties: {
                   email: { type: 'string', format: 'email' },
-                  password: { type: 'string', minLength: 6 },
+                  password: { type: 'string', minLength: 8 },
                   name: { type: 'string' },
                   isAdmin: { type: 'boolean', default: false },
                 },
