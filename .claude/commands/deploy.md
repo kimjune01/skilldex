@@ -24,17 +24,16 @@ pnpm db:push:prod
 GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production
 ```
 
-5. Verify API hash:
+5. Verify API and web hashes match (call both curl commands in parallel):
 ```bash
 curl -s "https://api.skillomatic.technology/health"
 ```
-
-6. Wait for CDN and verify web hash (retry with delays 2, 4, 8, 16, 32, 64 seconds until match):
 ```bash
 curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*'
 ```
+Retry web check with exponential backoff (2-64s) if CDN hasn't propagated yet.
 
-7. Create and push incremented version tag:
+6. Create and push incremented version tag:
 ```bash
 # Get last numeric tag (default to 0 if none exist)
 LAST_TAG=$(git tag --list '[0-9]*' --sort=-v:refname | head -1)
@@ -42,7 +41,7 @@ NEW_TAG=$((${LAST_TAG:-0} + 1))
 git tag "$NEW_TAG" && git push origin "$NEW_TAG"
 ```
 
-8. Report success with both hashes and the new version tag.
+7. Report success with both hashes and the new version tag.
 
 Stops on first failure. Verifies both API and web git hashes match local commit. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
