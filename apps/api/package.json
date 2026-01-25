@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/index.ts",
-    "build": "tsc",
+    "build": "echo \"export const GIT_HASH = '$(git rev-parse --short HEAD)';\" > src/version.ts && tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },

@@ -93,7 +93,8 @@ if (!isLambda) {
 }
 
 // Health check
-app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
+import { GIT_HASH } from './version.js';
+app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString(), gitHash: GIT_HASH }));
 
 // ============ PUBLIC ROUTES ============
 // No authentication required

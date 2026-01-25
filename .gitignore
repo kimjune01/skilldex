@@ -10,6 +10,7 @@ dist/
 build/
 .output/
 *.tsbuildinfo
+apps/api/src/version.ts
 
 # Environment
 .env

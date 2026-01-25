@@ -8,18 +8,19 @@ git diff --quiet && git diff --cached --quiet || (echo "ERROR: Uncommitted chang
 pnpm typecheck && \
 pnpm db:push:prod && \
 pnpm sst deploy --stage production && \
-curl -sf "https://api.skillomatic.technology/health" && \
+API_HASH=$(curl -sf "https://api.skillomatic.technology/health" | grep -o '"gitHash":"[^"]*' | cut -d'"' -f4) && \
+[ "$EXPECTED_HASH" = "$API_HASH" ] || (echo "ERROR: API hash mismatch! Expected $EXPECTED_HASH, got $API_HASH" && exit 1) && \
 for DELAY in 2 4 8 16 32 64; do \
   sleep $DELAY && \
-  DEPLOYED_HASH=$(curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*' | cut -d'"' -f3) && \
-  [ "$EXPECTED_HASH" = "$DEPLOYED_HASH" ] && \
-  echo "✓ Deploy complete ($DEPLOYED_HASH)" && exit 0 || \
-  echo "Waiting for CDN... (expected $EXPECTED_HASH, got $DEPLOYED_HASH)"; \
+  WEB_HASH=$(curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*' | cut -d'"' -f3) && \
+  [ "$EXPECTED_HASH" = "$WEB_HASH" ] && \
+  echo "✓ Deploy complete (api=$API_HASH, web=$WEB_HASH)" && exit 0 || \
+  echo "Waiting for CDN... (expected $EXPECTED_HASH, got $WEB_HASH)"; \
 done && \
-echo "ERROR: Hash mismatch after retries! Expected $EXPECTED_HASH, got $DEPLOYED_HASH" && exit 1
+echo "ERROR: Web hash mismatch after retries! Expected $EXPECTED_HASH, got $WEB_HASH" && exit 1
 ```
 
-Stops on first failure. Verifies deployed git hash matches local commit with exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
+Stops on first failure. Verifies both API and web git hashes match local commit. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
 ## First-Time Setup
 
