@@ -8,6 +8,8 @@ process.env.TURSO_DATABASE_URL = Resource.TursoDatabaseUrl.value;
 process.env.TURSO_AUTH_TOKEN = Resource.TursoAuthToken.value;
 process.env.NANGO_SECRET_KEY = Resource.NangoSecretKey.value;
 process.env.NANGO_PUBLIC_KEY = Resource.NangoPublicKey.value;
+process.env.GOOGLE_CLIENT_ID = Resource.GoogleClientId.value;
+process.env.GOOGLE_CLIENT_SECRET = Resource.GoogleClientSecret.value;
 
 // Export the Lambda handler
 export const handler = handle(app);
