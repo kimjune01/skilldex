@@ -342,21 +342,26 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
 
     // Round 3: Insert Token
     if (currentRound === 2) {
+      // Responsive coin size: 80px on mobile, 144px on desktop
+      const coinSize = typeof window !== 'undefined' && window.innerWidth < 640 ? 80 : 144;
+      const coinOffset = coinSize / 2;
       return (
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4 md:gap-8">
           {/* Placeholder to prevent layout shift */}
-          <div className="w-36 h-36 relative">
+          <div className="w-20 h-20 md:w-36 md:h-36 relative">
             <div
               onPointerDown={handleCoinPointerDown}
               onPointerMove={handleCoinPointerMove}
               onPointerUp={handleCoinPointerUp}
-              className={`draggable-coin w-36 h-36 touch-none ${isDragging ? 'dragging' : ''}`}
+              className={`draggable-coin w-20 h-20 md:w-36 md:h-36 touch-none ${isDragging ? 'dragging' : ''}`}
               style={
                 coinPosition
                   ? {
                       position: 'fixed',
-                      left: coinPosition.x - 72,
-                      top: coinPosition.y - 72,
+                      left: coinPosition.x - coinOffset,
+                      top: coinPosition.y - coinOffset,
+                      width: coinSize,
+                      height: coinSize,
                       zIndex: 1000,
                     }
                   : {
@@ -366,13 +371,13 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
                     }
               }
             >
-              <span className="text-3xl font-black text-amber-800">API</span>
+              <span className="text-xl md:text-3xl font-black text-amber-800">API</span>
             </div>
           </div>
-          <ArrowDown className="h-10 w-10 text-primary rotate-[-90deg]" />
+          <ArrowDown className="h-6 w-6 md:h-10 md:w-10 text-primary rotate-[-90deg]" />
           <div
             ref={coinSlotRef}
-            className={`w-40 h-10 rounded-lg bg-[hsl(220_20%_20%)] border-3 border-[hsl(220_15%_30%)] ${isOverSlot ? 'drop-target' : ''}`}
+            className={`w-24 h-6 md:w-40 md:h-10 rounded-lg bg-[hsl(220_20%_20%)] border-2 md:border-3 border-[hsl(220_15%_30%)] ${isOverSlot ? 'drop-target' : ''}`}
           />
         </div>
       );
