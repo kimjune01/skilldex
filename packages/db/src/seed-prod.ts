@@ -53,7 +53,7 @@ const SUPER_ADMIN_API_KEY_ID = 'apikey-super-admin';
 const SUPER_ADMIN_API_KEY = 'sk_live_prod_super_admin_debug_key_2024';
 
 // Default password for all seed users
-const DEFAULT_PASSWORD = 'Skillomatic2024!';
+const DEFAULT_PASSWORD = 'Skillomatic2024';
 
 // Parse YAML-like frontmatter from SKILL.md files
 function parseSkillFrontmatter(slug: string): {

@@ -46,14 +46,14 @@ curl -s "$API_URL/health" | jq .
 # Login
 curl -s -X POST "$API_URL/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"superadmin@skillomatic.technology","password":"Skillomatic2024!"}' | jq .
+  -d '{"email":"superadmin@skillomatic.technology","password":"Skillomatic2024"}' | jq .
 
 # API key
 curl -s -H "Authorization: Bearer sk_live_prod_super_admin_debug_key_2024" \
   "$API_URL/v1/me" | jq .
 ```
 
-Test credentials: `superadmin@skillomatic.technology` / `Skillomatic2024!`
+Test credentials: `superadmin@skillomatic.technology` / `Skillomatic2024`
 
 ## Troubleshooting
 
