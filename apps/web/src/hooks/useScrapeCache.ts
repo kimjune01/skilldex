@@ -2,7 +2,11 @@
  * Scrape Cache Hook
  *
  * Provides a React hook for the ephemeral scrape cache.
- * Handles cache lookup, WebSocket integration, and multi-tab sync.
+ * Handles cache lookup and multi-tab sync.
+ *
+ * Note: WebSocket support was removed for Lambda compatibility.
+ * Adding WebSocket (via API Gateway WebSocket API) would be a performance
+ * optimization - enabling instant updates instead of polling.
  *
  * @see docs/EPHEMERAL_ARCHITECTURE.md
  */
@@ -24,12 +28,13 @@ import {
 export interface UseScrapeOptions {
   onScrapeComplete?: (url: string, content: string) => void;
   onScrapeError?: (url: string, error: string) => void;
+  pollIntervalMs?: number;
 }
 
 export interface UseScrapeReturn {
   /**
    * Request a scrape for a URL
-   * Returns cached result if available, otherwise initiates scrape via WebSocket
+   * Returns cached result if available, otherwise initiates scrape via polling
    */
   scrape: (url: string) => Promise<ScrapeCacheEntry | null>;
 
@@ -55,14 +60,19 @@ export interface UseScrapeReturn {
 }
 
 const API_BASE = import.meta.env.VITE_API_URL;
+const DEFAULT_POLL_INTERVAL = 3000; // 3 seconds
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /**
- * Hook for using the scrape cache with WebSocket integration
+ * Hook for using the scrape cache with polling
  */
 export function useScrapeCache(options: UseScrapeOptions = {}): UseScrapeReturn {
+  const { pollIntervalMs = DEFAULT_POLL_INTERVAL } = options;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const initPromiseRef = useRef<Promise<void> | null>(null);
 
   // Initialize cache on mount
@@ -78,82 +88,8 @@ export function useScrapeCache(options: UseScrapeOptions = {}): UseScrapeReturn 
 
     return () => {
       clearInterval(cleanupInterval);
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
     };
   }, []);
-
-  // Connect to WebSocket for scrape results
-  const connectWebSocket = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return wsRef.current;
-    }
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No auth token for WebSocket connection');
-      return null;
-    }
-
-    // Build WebSocket URL
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = import.meta.env.VITE_API_URL
-      ? new URL(import.meta.env.VITE_API_URL).host
-      : window.location.host;
-    const wsUrl = `${wsProtocol}//${wsHost}/ws/scrape?token=${token}`;
-
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log('WebSocket connected for scrape results');
-    };
-
-    ws.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        switch (data.type) {
-          case 'task_completed': {
-            const { url, result } = data;
-            // Cache the result
-            await completePendingScrape(url, result.content, {
-              title: result.title,
-              source: 'extension',
-            });
-            options.onScrapeComplete?.(url, result.content);
-            break;
-          }
-
-          case 'task_failed': {
-            const { url, error: errorMsg } = data;
-            failPendingScrape(url, errorMsg);
-            options.onScrapeError?.(url, errorMsg);
-            break;
-          }
-
-          case 'task_progress': {
-            // Could update UI with progress
-            break;
-          }
-        }
-      } catch (err) {
-        console.error('Failed to parse WebSocket message:', err);
-      }
-    };
-
-    ws.onerror = (event) => {
-      console.error('WebSocket error:', event);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      wsRef.current = null;
-    };
-
-    wsRef.current = ws;
-    return ws;
-  }, [options]);
 
   // Check cache for a URL
   const checkCache = useCallback(async (url: string): Promise<ScrapeCacheEntry | null> => {
@@ -219,24 +155,49 @@ export function useScrapeCache(options: UseScrapeOptions = {}): UseScrapeReturn 
         // Mark as pending
         markScrapePending(url, taskId);
 
-        // Connect WebSocket to receive results
-        connectWebSocket();
+        // Poll for completion
+        const startTime = Date.now();
+        const timeoutMs = 60000; // 60 seconds
 
-        // Wait for result via subscription
-        return new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
+        while (true) {
+          if (Date.now() - startTime > timeoutMs) {
             failPendingScrape(url, 'Scrape timed out');
             setIsLoading(false);
-            reject(new Error('Scrape request timed out'));
-          }, 60000); // 60 second timeout
+            throw new Error('Scrape request timed out');
+          }
 
-          const unsubscribe = subscribeToScrape(url, (entry) => {
-            clearTimeout(timeout);
-            unsubscribe();
-            setIsLoading(false);
-            resolve(entry);
+          // Poll task status
+          const statusResponse = await fetch(`${API_BASE}/v1/scrape/tasks/${taskId}`, {
+            headers: {
+              Authorization: token ? `Bearer ${token}` : '',
+            },
           });
-        });
+
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json();
+            const task = statusData.data || statusData;
+
+            if (task.status === 'completed' && task.result) {
+              const entry = await completePendingScrape(url, task.result, {
+                title: task.title,
+                source: 'extension',
+              });
+              options.onScrapeComplete?.(url, task.result);
+              setIsLoading(false);
+              return entry;
+            }
+
+            if (task.status === 'failed' || task.status === 'expired') {
+              const errorMsg = task.errorMessage || 'Scrape failed';
+              failPendingScrape(url, errorMsg);
+              options.onScrapeError?.(url, errorMsg);
+              setIsLoading(false);
+              throw new Error(errorMsg);
+            }
+          }
+
+          await sleep(pollIntervalMs);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Scrape request failed';
         setError(message);
@@ -245,7 +206,7 @@ export function useScrapeCache(options: UseScrapeOptions = {}): UseScrapeReturn 
         return null;
       }
     },
-    [connectWebSocket]
+    [options, pollIntervalMs]
   );
 
   return {
