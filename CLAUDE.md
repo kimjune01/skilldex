@@ -53,7 +53,7 @@ pnpm db:studio    # Open Drizzle Studio
 pnpm db:seed      # Reset and seed database with test data
 pnpm typecheck    # Run TypeScript check
 pnpm test         # Run tests
-pnpm deploy       # Push schema to prod + SST deploy
+pnpm deploy       # (deprecated - prints reminder to use /deploy)
 ```
 
 ## Test Accounts
@@ -76,6 +76,12 @@ sqlite3 packages/db/data/skillomatic.db "SELECT * FROM users LIMIT 3;"
 - Meeting platform OAuth (Zoom, Fireflies, Otter.ai)
 - RBAC enforcement (tables ready, not enforced)
 - Admin query skills
+
+## Deployment
+
+**Always use the `/deploy` slash command** for deployments. This ensures proper verification steps are followed.
+
+Do NOT run `pnpm deploy` directly.
 
 ## Testing
 

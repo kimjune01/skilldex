@@ -21,7 +21,7 @@
     "sst:dev": "sst dev",
     "sst:deploy": "sst deploy --stage production",
     "sst:remove": "sst remove",
-    "deploy": "pnpm db:push:prod && pnpm sst:deploy"
+    "deploy": "echo '⚠️  Use the /deploy slash command in Claude Code instead of pnpm deploy' && exit 1"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
