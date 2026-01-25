@@ -412,11 +412,11 @@ export default function Landing() {
       <MarketingNav />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
+      <section className="pt-32 pb-20 px-0 min-[480px]:px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             {/* Left content */}
-            <div className="flex-1 text-center lg:text-left">
+            <div className="flex-1 text-center lg:text-left px-6 min-[480px]:px-0">
               <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
                 <Sparkles className="h-3 w-3 mr-1" />
                 Works with Any AI Chat App
@@ -442,7 +442,7 @@ export default function Landing() {
             </div>
 
             {/* Right - Interactive Demo Reveal Game */}
-            <div className="flex-1 flex justify-center">
+            <div className="flex-1 flex justify-center w-full">
               <DemoRevealGame />
             </div>
           </div>

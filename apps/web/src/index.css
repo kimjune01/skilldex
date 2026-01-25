@@ -756,7 +756,7 @@
 }
 
 .jackpot-fruit {
-  animation: jackpot-flash 0.3s ease-in-out 5;
+  animation: jackpot-flash 0.5s ease-in-out infinite;
 }
 
 /* Skeuomorphic SPIN button */
@@ -793,7 +793,6 @@
   box-shadow: 0 0 8px hsl(25 95% 50%);
 }
 .progress-led-orange.current {
-  animation: blink-light 0.5s ease-in-out infinite;
   background: radial-gradient(circle at 30% 30%, hsl(25 95% 60%), hsl(25 85% 45%));
   box-shadow: 0 0 8px hsl(25 95% 50%);
 }
@@ -803,7 +802,6 @@
   box-shadow: 0 0 8px hsl(210 95% 50%);
 }
 .progress-led-blue.current {
-  animation: blink-light 0.5s ease-in-out infinite;
   background: radial-gradient(circle at 30% 30%, hsl(210 95% 60%), hsl(210 85% 45%));
   box-shadow: 0 0 8px hsl(210 95% 50%);
 }
@@ -813,7 +811,6 @@
   box-shadow: 0 0 8px hsl(45 95% 50%);
 }
 .progress-led-amber.current {
-  animation: blink-light 0.5s ease-in-out infinite;
   background: radial-gradient(circle at 30% 30%, hsl(45 95% 55%), hsl(45 85% 40%));
   box-shadow: 0 0 8px hsl(45 95% 50%);
 }
@@ -823,7 +820,6 @@
   box-shadow: 0 0 8px hsl(145 70% 45%);
 }
 .progress-led-green.current {
-  animation: blink-light 0.5s ease-in-out infinite;
   background: radial-gradient(circle at 30% 30%, hsl(145 90% 50%), hsl(145 70% 35%));
   box-shadow: 0 0 8px hsl(145 70% 45%);
 }
@@ -833,7 +829,6 @@
   box-shadow: 0 0 8px hsl(270 70% 55%);
 }
 .progress-led-purple.current {
-  animation: blink-light 0.5s ease-in-out infinite;
   background: radial-gradient(circle at 30% 30%, hsl(270 90% 65%), hsl(270 70% 50%));
   box-shadow: 0 0 8px hsl(270 70% 55%);
 }
@@ -843,7 +838,6 @@
   box-shadow: 0 0 8px hsl(0 70% 50%);
 }
 .progress-led-red.current {
-  animation: blink-light 0.5s ease-in-out infinite;
   background: radial-gradient(circle at 30% 30%, hsl(0 90% 60%), hsl(0 70% 45%));
   box-shadow: 0 0 8px hsl(0 70% 50%);
 }
