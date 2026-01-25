@@ -12,6 +12,7 @@
   },
   "scripts": {
     "push": "drizzle-kit push",
+    "push:prod": "TURSO_DATABASE_URL=$(turso db show skillomatic --url) TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic) drizzle-kit push",
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",

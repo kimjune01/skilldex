@@ -47,11 +47,13 @@ Skillomatic is a Claude Code skills platform for recruiters. Recruiters download
 
 ```bash
 pnpm dev          # Start all services (web:5173, api:3000, mock-ats:3001)
-pnpm db:push      # Apply schema changes
+pnpm db:push      # Apply schema changes (local)
+pnpm db:push:prod # Apply schema changes (production Turso)
 pnpm db:studio    # Open Drizzle Studio
 pnpm db:seed      # Reset and seed database with test data
 pnpm typecheck    # Run TypeScript check
 pnpm test         # Run tests
+pnpm deploy       # Push schema to prod + SST deploy
 ```
 
 ## Test Accounts
