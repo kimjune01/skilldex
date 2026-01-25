@@ -3,6 +3,7 @@
  *
  * Provides a hook for ephemeral architecture client-side chat.
  * Uses the LLM client directly from the browser instead of proxying through the server.
+ * Now with IndexedDB persistence for conversation history.
  *
  * @see docs/EPHEMERAL_ARCHITECTURE.md
  */
@@ -19,6 +20,15 @@ import {
   getLLMConfig,
   buildSystemPrompt,
 } from '@/lib/skills-client';
+import {
+  getMessages,
+  addMessage,
+  updateMessage,
+  createConversation,
+  updateConversationTitle,
+  clearConversationMessages,
+  generateTitleFromMessage,
+} from '@/lib/chat-storage';
 
 export interface UseClientChatOptions {
   onActionRequest?: (action: string, params: Record<string, unknown>) => Promise<string>;
@@ -27,12 +37,26 @@ export interface UseClientChatOptions {
    * Anthropic uses metadata.user_id, OpenAI/Groq use the user parameter.
    */
   userContext?: LLMUserContext;
+  /**
+   * Current conversation ID for persistence. If null, messages won't be persisted
+   * until a conversation is created (on first message).
+   */
+  conversationId?: string | null;
+  /**
+   * Callback when a new conversation is created (on first message when conversationId is null).
+   */
+  onConversationCreated?: (conversationId: string) => void;
+  /**
+   * Callback when conversations should be refreshed (after message added).
+   */
+  onConversationsChanged?: () => void;
 }
 
 export interface UseClientChatReturn {
   messages: ChatMessage[];
   isStreaming: boolean;
   isLoading: boolean;
+  isLoadingMessages: boolean;
   error: string | null;
   llmConfig: LLMConfig | null;
   send: (content: string) => void;
@@ -49,12 +73,20 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [llmConfig, setLLMConfig] = useState<LLMConfig | null>(null);
   const [systemPrompt, setSystemPrompt] = useState<string>('');
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const currentAssistantIdRef = useRef<string | null>(null);
+  const currentConversationIdRef = useRef<string | null>(options.conversationId ?? null);
+  const isFirstMessageRef = useRef(true);
+
+  // Keep ref in sync with prop
+  useEffect(() => {
+    currentConversationIdRef.current = options.conversationId ?? null;
+  }, [options.conversationId]);
 
   // Initialize LLM config and system prompt on mount
   useEffect(() => {
@@ -79,6 +111,31 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     }
     init();
   }, []);
+
+  // Load messages when conversationId changes
+  useEffect(() => {
+    async function loadMessages() {
+      if (!options.conversationId) {
+        setMessages([]);
+        isFirstMessageRef.current = true;
+        return;
+      }
+
+      setIsLoadingMessages(true);
+      try {
+        const storedMessages = await getMessages(options.conversationId);
+        setMessages(storedMessages);
+        isFirstMessageRef.current = storedMessages.length === 0;
+      } catch (err) {
+        console.error('Failed to load messages:', err);
+        setMessages([]);
+        isFirstMessageRef.current = true;
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    }
+    loadMessages();
+  }, [options.conversationId]);
 
   // Parse action blocks from LLM response
   const parseActions = useCallback((content: string): Array<{ action: string; params: Record<string, unknown> }> => {
@@ -122,6 +179,32 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     return results.join('\n\n');
   }, [options]);
 
+  // Helper to persist a message to IndexedDB
+  const persistMessage = useCallback(async (message: ChatMessage) => {
+    const convId = currentConversationIdRef.current;
+    if (!convId) return;
+
+    try {
+      await addMessage(convId, message);
+      options.onConversationsChanged?.();
+    } catch (err) {
+      console.error('Failed to persist message:', err);
+    }
+  }, [options]);
+
+  // Helper to update a persisted message
+  const persistMessageUpdate = useCallback(async (message: ChatMessage) => {
+    const convId = currentConversationIdRef.current;
+    if (!convId) return;
+
+    try {
+      await updateMessage(convId, message);
+      options.onConversationsChanged?.();
+    } catch (err) {
+      console.error('Failed to update persisted message:', err);
+    }
+  }, [options]);
+
   // Internal send function that handles streaming and action execution
   const sendInternal = useCallback(async (
     content: string,
@@ -129,6 +212,17 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
   ): Promise<{ response: string; actions: Array<{ action: string; params: Record<string, unknown> }> }> => {
     if (!llmConfig) {
       throw new Error('LLM not configured');
+    }
+
+    // Create conversation if this is the first message and we don't have one
+    if (!currentConversationIdRef.current && !isToolResult) {
+      try {
+        const conv = await createConversation();
+        currentConversationIdRef.current = conv.id;
+        options.onConversationCreated?.(conv.id);
+      } catch (err) {
+        console.error('Failed to create conversation:', err);
+      }
     }
 
     // Add user message (or tool result as user message)
@@ -144,6 +238,16 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     // They're included in conversation history but displayed with the action
     if (!isToolResult) {
       setMessages((prev) => [...prev, userMessage]);
+      // Persist user message and auto-title on first message
+      if (currentConversationIdRef.current) {
+        persistMessage(userMessage);
+        if (isFirstMessageRef.current) {
+          isFirstMessageRef.current = false;
+          const title = generateTitleFromMessage(content);
+          updateConversationTitle(currentConversationIdRef.current, title).catch(console.error);
+          options.onConversationsChanged?.();
+        }
+      }
     }
 
     // Create placeholder for assistant message
@@ -205,6 +309,14 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
           onComplete: (response) => {
             fullResponse = response;
             const actions = parseActions(response);
+            // Persist the completed assistant message
+            const completedMessage: ChatMessage = {
+              id: assistantId,
+              role: 'assistant',
+              content: response,
+              timestamp: assistantMessage.timestamp,
+            };
+            persistMessage(completedMessage);
             resolve({ response, actions });
           },
           onError: (err) => {
@@ -217,7 +329,7 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
         }
       ).catch(reject);
     });
-  }, [llmConfig, messages, systemPrompt, parseActions, options.userContext]);
+  }, [llmConfig, messages, systemPrompt, parseActions, options.userContext, options, persistMessage]);
 
   const send = useCallback(async (content: string) => {
     if (!llmConfig) {
@@ -241,6 +353,7 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
 
         if (actionResults) {
           // Update the last assistant message with action results
+          let updatedMessage: ChatMessage | null = null;
           setMessages((prev) => {
             // Find last assistant message index (ES2023 findLastIndex not available)
             let lastAssistantIdx = -1;
@@ -259,10 +372,16 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
                   result: actionResults,
                 },
               };
+              updatedMessage = updated[lastAssistantIdx];
               return updated;
             }
             return prev;
           });
+
+          // Persist the updated message with action results
+          if (updatedMessage) {
+            persistMessageUpdate(updatedMessage);
+          }
 
           // Send tool results back to LLM for continuation
           result = await sendInternal(`[Tool Result]\n${actionResults}`, true);
@@ -278,7 +397,7 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
       }
       setIsStreaming(false);
     }
-  }, [llmConfig, sendInternal, executeActions, options.onActionRequest]);
+  }, [llmConfig, sendInternal, executeActions, options.onActionRequest, persistMessageUpdate]);
 
   const abort = useCallback(() => {
     if (abortControllerRef.current) {
@@ -292,9 +411,20 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     setError(null);
   }, []);
 
-  const clearMessages = useCallback(() => {
+  const clearMessages = useCallback(async () => {
     setMessages([]);
-  }, []);
+    isFirstMessageRef.current = true;
+    // Also clear from IndexedDB if we have a conversation
+    const convId = currentConversationIdRef.current;
+    if (convId) {
+      try {
+        await clearConversationMessages(convId);
+        options.onConversationsChanged?.();
+      } catch (err) {
+        console.error('Failed to clear messages from storage:', err);
+      }
+    }
+  }, [options]);
 
   const updateMessageActionResult = useCallback((messageId: string, action: string, result: string) => {
     setMessages((prev) =>
@@ -310,6 +440,7 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     messages,
     isStreaming,
     isLoading,
+    isLoadingMessages,
     error,
     llmConfig,
     send,

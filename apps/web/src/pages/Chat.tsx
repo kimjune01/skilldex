@@ -1,10 +1,8 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import { MessageList, ChatInput } from '@/components/chat';
+import { useState, useCallback, useMemo } from 'react';
+import { MessageList, ChatInput, ChatSidebar } from '@/components/chat';
 import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Download, Wrench, ChevronRight, Lock, KeyRound, Settings, ExternalLink } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { isSkillExecutable } from '@/lib/skills-client';
+import { AlertCircle, Loader2, Download, Menu, ChevronRight, KeyRound, Settings, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,18 +13,25 @@ import {
 import { Button } from '@/components/ui/button';
 import type { SkillPublic } from '@skillomatic/shared';
 import { useClientChat } from '@/hooks/useClientChat';
+import { ConversationProvider, useConversations } from '@/hooks/useConversations';
 import { executeAction, formatActionResult, type ActionType } from '@/lib/action-executor';
 import { useAuth } from '@/hooks/useAuth';
 
-export default function Chat() {
+function ChatContent() {
   const { user, organizationId } = useAuth();
+  const {
+    currentConversationId,
+    currentConversation,
+    switchConversation,
+    refreshConversations,
+  } = useConversations();
 
   const [instructionsDialog, setInstructionsDialog] = useState<{
     open: boolean;
     skill: SkillPublic | null;
     instructions: string;
   }>({ open: false, skill: null, instructions: '' });
-  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Action handler for client-side execution
   const handleActionRequest = useCallback(
@@ -46,9 +51,27 @@ export default function Chat() {
     };
   }, [user?.id, organizationId]);
 
-  const { messages, isStreaming, isLoading, error, llmConfig, send, clearError } = useClientChat({
+  // Handle conversation created callback
+  const handleConversationCreated = useCallback((newConversationId: string) => {
+    switchConversation(newConversationId);
+    refreshConversations();
+  }, [switchConversation, refreshConversations]);
+
+  const {
+    messages,
+    isStreaming,
+    isLoading,
+    isLoadingMessages,
+    error,
+    llmConfig,
+    send,
+    clearError,
+  } = useClientChat({
     onActionRequest: handleActionRequest,
     userContext,
+    conversationId: currentConversationId,
+    onConversationCreated: handleConversationCreated,
+    onConversationsChanged: refreshConversations,
   });
 
   const handleRunSkill = useCallback(async (skillSlug: string) => {
@@ -176,21 +199,15 @@ export default function Chat() {
     <div className="flex flex-col h-[calc(100vh-2rem)]">
       {/* Header */}
       <div className="px-4 py-3 border-b flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Web Chat</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg font-semibold truncate">
+            {currentConversation?.title || 'New Chat'}
+          </h1>
           <p className="text-sm text-muted-foreground">
             For a better experience, try <a href="/desktop-chat" className="text-primary hover:underline">Desktop Chat</a>.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setToolsPanelOpen(true)}
-            title="View tools & skills"
-          >
-            <Wrench className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -199,6 +216,14 @@ export default function Chat() {
             title="Download chat"
           >
             <Download className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(true)}
+            title="Chat history & tools"
+          >
+            <Menu className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -219,17 +244,23 @@ export default function Chat() {
       )}
 
       {/* Messages */}
-      <MessageList
-        messages={messages}
-        onRunSkill={handleRunSkill}
-        onShowInstructions={handleShowInstructions}
-        onSuggestionClick={send}
-        onRefreshAction={handleRefreshAction}
-        llmLabel={llmConfig ? `${llmConfig.provider}/${llmConfig.model}` : undefined}
-      />
+      {isLoadingMessages ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <MessageList
+          messages={messages}
+          onRunSkill={handleRunSkill}
+          onShowInstructions={handleShowInstructions}
+          onSuggestionClick={send}
+          onRefreshAction={handleRefreshAction}
+          llmLabel={llmConfig ? `${llmConfig.provider}/${llmConfig.model}` : undefined}
+        />
+      )}
 
       {/* Input */}
-      <ChatInput onSend={send} disabled={isStreaming} />
+      <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} />
 
       {/* Instructions Dialog */}
       <Dialog
@@ -249,134 +280,16 @@ export default function Chat() {
         </DialogContent>
       </Dialog>
 
-      {/* Tools & Skills Panel */}
-      <ToolsSkillsPanel open={toolsPanelOpen} onOpenChange={setToolsPanelOpen} />
+      {/* Chat Sidebar (conversations + tools/skills) */}
+      <ChatSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   );
 }
 
-/**
- * Tools & Skills Panel - shows available capabilities
- */
-function ToolsSkillsPanel({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const [skillsList, setSkillsList] = useState<SkillPublic[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'skills' | 'tools'>('skills');
-
-  useEffect(() => {
-    if (open) {
-      setLoading(true);
-      skills
-        .list({ includeAccess: true })
-        .then((data) => setSkillsList(data))
-        .catch(() => setSkillsList([]))
-        .finally(() => setLoading(false));
-    }
-  }, [open]);
-
-  const actions = [
-    { name: 'search_candidates', description: 'Search ATS for candidates' },
-    { name: 'get_candidate', description: 'Get candidate details' },
-    { name: 'create_candidate', description: 'Create a new candidate' },
-    { name: 'update_candidate', description: 'Update candidate info' },
-    { name: 'list_jobs', description: 'List open jobs' },
-    { name: 'get_job', description: 'Get job details' },
-    { name: 'update_application_stage', description: 'Move candidate through pipeline' },
-    { name: 'scrape_url', description: 'Scrape content from a URL' },
-  ];
-
+export default function Chat() {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[70vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Available Capabilities</DialogTitle>
-          <DialogDescription>Tools and skills the assistant can use</DialogDescription>
-        </DialogHeader>
-        <div className="flex gap-2 border-b pb-2">
-          <Button
-            variant={tab === 'skills' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setTab('skills')}
-          >
-            Skills ({skillsList.length})
-          </Button>
-          <Button
-            variant={tab === 'tools' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setTab('tools')}
-          >
-            Tools ({actions.length})
-          </Button>
-        </div>
-        <div className="overflow-y-auto flex-1 -mx-2 px-2">
-          {tab === 'skills' ? (
-            loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : skillsList.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No skills available</p>
-            ) : (
-              <div className="space-y-1">
-                {skillsList.map((skill) => {
-                  const executable = isSkillExecutable(skill);
-                  const isLimited = skill.accessInfo?.status === 'limited';
-
-                  return (
-                    <a
-                      key={skill.slug}
-                      href={`/skills/${skill.slug}`}
-                      className={`flex items-center justify-between p-2 rounded-md transition-colors group ${
-                        executable
-                          ? 'hover:bg-muted'
-                          : 'opacity-50 cursor-default'
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm font-medium truncate ${!executable ? 'text-muted-foreground' : ''}`}>
-                            {skill.name}
-                          </p>
-                          {isLimited && (
-                            <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-300 flex-shrink-0">
-                              <Lock className="h-3 w-3 mr-1" />
-                              Limited
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">{skill.description}</p>
-                        {isLimited && skill.accessInfo?.limitations?.[0] && (
-                          <p className="text-xs text-yellow-600 truncate mt-0.5">
-                            {skill.accessInfo.limitations[0]}
-                          </p>
-                        )}
-                      </div>
-                      <ChevronRight className={`h-4 w-4 text-muted-foreground flex-shrink-0 ml-2 ${
-                        executable ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
-                      } transition-opacity`} />
-                    </a>
-                  );
-                })}
-              </div>
-            )
-          ) : (
-            <div className="space-y-1">
-              {actions.map((action) => (
-                <div key={action.name} className="p-2 rounded-md">
-                  <p className="text-sm font-medium font-mono">{action.name}</p>
-                  <p className="text-xs text-muted-foreground">{action.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ConversationProvider>
+      <ChatContent />
+    </ConversationProvider>
   );
 }
