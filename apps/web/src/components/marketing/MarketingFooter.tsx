@@ -36,7 +36,7 @@ export function MarketingFooter() {
             </Link>
           </div>
           <div className="text-sm text-[hsl(220_15%_50%)]">
-            © 2025 Skillomatic. All rights reserved.
+            © 2026 Skillomatic. All rights reserved.
           </div>
         </div>
       </div>

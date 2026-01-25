@@ -121,7 +121,7 @@ export default function Jerbs() {
             <div className="grid md:grid-cols-2 gap-3">
               {[
                 { emoji: '🧘', text: '"Unlimited" PTO (please don\'t actually use it)' },
-                { emoji: '📈', text: 'Vane promises for equity until you get fired before the 1-year cliff' },
+                { emoji: '📈', text: 'Vain promises for equity until you get fired before the 1-year cliff' },
                 { emoji: '🤖', text: 'Work alongside AI that\'s coming for all our jobs anyway' },
                 { emoji: '💻', text: 'Work from anywhere (as long as you\'re always online)' },
                 { emoji: '🕐', text: 'Flexible hours (meaning we\'ll Slack you at midnight)' },
