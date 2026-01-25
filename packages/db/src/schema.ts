@@ -10,6 +10,10 @@
  * - API keys stored in full (not hashed) so users can retrieve them
  * - RBAC tables (roles, permissions) are ready but not fully enforced yet
  *
+ * IMPORTANT: When removing columns, deprecate them first (mark as optional,
+ * stop using in code) before dropping. This ensures rollbacks to older code
+ * versions can still run against the current schema. See /rollback command.
+ *
  * @see docs/ADMIN_GUIDE.md for admin operations
  * @see docs/IT_DEPLOYMENT.md for database deployment
  */

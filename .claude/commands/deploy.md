@@ -45,6 +45,8 @@ git tag "$NEW_TAG" && git push origin "$NEW_TAG"
 
 Stops on first failure. Verifies both API and web git hashes match local commit. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
+Note: Schema changes should deprecate columns before removing them to support rollbacks. See `/rollback` command.
+
 ## First-Time Setup
 
 Set secrets as SST secrets (one-time). Note: names must match `sst.config.ts`:
