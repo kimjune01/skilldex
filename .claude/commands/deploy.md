@@ -20,6 +20,8 @@ Set secrets as SST secrets (one-time). Note: names must match `sst.config.ts`:
 pnpm sst secret set TursoDatabaseUrl "$(turso db show skillomatic --url)" --stage production
 pnpm sst secret set TursoAuthToken "$(turso db tokens create skillomatic)" --stage production
 pnpm sst secret set JwtSecret "$(openssl rand -hex 32)" --stage production
+pnpm sst secret set GoogleClientId "$GOOGLE_CLIENT_ID" --stage production
+pnpm sst secret set GoogleClientSecret "$GOOGLE_CLIENT_SECRET" --stage production
 ```
 
 ## Seed Production Database
