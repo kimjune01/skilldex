@@ -9,13 +9,17 @@ pnpm typecheck && \
 pnpm db:push:prod && \
 pnpm sst deploy --stage production && \
 curl -sf "https://api.skillomatic.technology/health" && \
-DEPLOYED_HASH=$(curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*' | cut -d'"' -f3) && \
-[ "$EXPECTED_HASH" = "$DEPLOYED_HASH" ] && \
-echo "✓ Deploy complete ($DEPLOYED_HASH)" || \
-(echo "ERROR: Hash mismatch! Expected $EXPECTED_HASH, got $DEPLOYED_HASH" && exit 1)
+for DELAY in 2 4 8 16 32 64; do \
+  sleep $DELAY && \
+  DEPLOYED_HASH=$(curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*' | cut -d'"' -f3) && \
+  [ "$EXPECTED_HASH" = "$DEPLOYED_HASH" ] && \
+  echo "✓ Deploy complete ($DEPLOYED_HASH)" && exit 0 || \
+  echo "Waiting for CDN... (expected $EXPECTED_HASH, got $DEPLOYED_HASH)"; \
+done && \
+echo "ERROR: Hash mismatch after retries! Expected $EXPECTED_HASH, got $DEPLOYED_HASH" && exit 1
 ```
 
-Stops on first failure. Verifies deployed git hash matches local commit. Uses `drizzle-kit push` to sync schema to Turso.
+Stops on first failure. Verifies deployed git hash matches local commit with exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
 ## First-Time Setup
 
