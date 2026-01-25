@@ -5,7 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
 import type { IntegrationPublic, IntegrationAccessLevel } from '@skillomatic/shared';
 import { isProviderAllowedForIndividual, isPremiumProvider, getProviderCategory } from '@skillomatic/shared';
-import { hasPayIntention } from '../lib/integration-permissions.js';
+import { hasPayIntention, parseIntegrationMetadata } from '../lib/integration-permissions.js';
 import {
   getNangoClient,
   generateConnectionId,
@@ -96,15 +96,7 @@ integrationsRoutes.get('/', async (c) => {
     .where(eq(integrations.userId, user.sub));
 
   const publicIntegrations: IntegrationPublic[] = userIntegrations.map((int) => {
-    // Parse metadata to get access level
-    let metadata: Record<string, unknown> = {};
-    if (int.metadata) {
-      try {
-        metadata = JSON.parse(int.metadata);
-      } catch {
-        // Ignore malformed metadata
-      }
-    }
+    const metadata = parseIntegrationMetadata(int.metadata);
     // Validate and default access level
     const rawAccessLevel = metadata.accessLevel;
     const accessLevel: IntegrationAccessLevel =
@@ -234,14 +226,7 @@ integrationsRoutes.post('/session', async (c) => {
         });
       } else {
         // Update existing record with pending access level
-        let existingMetadata: Record<string, unknown> = {};
-        if (existingIntegration[0].metadata) {
-          try {
-            existingMetadata = JSON.parse(existingIntegration[0].metadata);
-          } catch {
-            // Ignore malformed metadata
-          }
-        }
+        const existingMetadata = parseIntegrationMetadata(existingIntegration[0].metadata);
         await db
           .update(integrations)
           .set({
@@ -380,14 +365,7 @@ integrationsRoutes.post('/connect', async (c) => {
     });
   } else {
     // Update existing to pending, preserve existing metadata and add new fields
-    let existingMetadata: Record<string, unknown> = {};
-    if (existingIntegration[0].metadata) {
-      try {
-        existingMetadata = JSON.parse(existingIntegration[0].metadata);
-      } catch {
-        // Ignore malformed metadata
-      }
-    }
+    const existingMetadata = parseIntegrationMetadata(existingIntegration[0].metadata);
     const mergedMetadata = { ...existingMetadata, ...metadata };
 
     await db
@@ -445,15 +423,8 @@ integrationsRoutes.get('/callback', async (c) => {
     const int = integration[0];
 
     // Build updated metadata - convert pendingAccessLevel to accessLevel
-    let existingMetadata: Record<string, unknown> = {};
-    if (int.metadata) {
-      try {
-        existingMetadata = JSON.parse(int.metadata);
-      } catch {
-        // Ignore malformed metadata
-      }
-    }
-    const updatedMetadata = { ...existingMetadata };
+    const existingMetadata = parseIntegrationMetadata(int.metadata);
+    const updatedMetadata = { ...existingMetadata } as Record<string, unknown>;
 
     // Apply pending access level if available, otherwise default to 'read-write'
     if (updatedMetadata.pendingAccessLevel) {
@@ -658,15 +629,8 @@ integrationsRoutes.patch('/:id/access-level', async (c) => {
   const int = integration[0];
 
   // Update metadata with new access level
-  let existingMetadata: Record<string, unknown> = {};
-  if (int.metadata) {
-    try {
-      existingMetadata = JSON.parse(int.metadata);
-    } catch {
-      // Ignore malformed metadata
-    }
-  }
-  const previousLevel = (existingMetadata.accessLevel as string) || 'read-write';
+  const existingMetadata = parseIntegrationMetadata(int.metadata);
+  const previousLevel = existingMetadata.accessLevel || 'read-write';
   const updatedMetadata = { ...existingMetadata, accessLevel: body.accessLevel };
 
   await db
@@ -755,14 +719,7 @@ integrationsRoutes.get('/status/:provider', async (c) => {
   }
 
   // Parse metadata to get access level
-  let metadata: Record<string, unknown> = {};
-  if (int.metadata) {
-    try {
-      metadata = JSON.parse(int.metadata);
-    } catch {
-      // Ignore malformed metadata
-    }
-  }
+  const metadata = parseIntegrationMetadata(int.metadata);
   // Validate and default access level
   const rawAccessLevel = metadata.accessLevel;
   const accessLevel: IntegrationAccessLevel =

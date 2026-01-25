@@ -613,3 +613,32 @@ export async function hasAnyPayIntention(userId: string): Promise<boolean> {
 
   return result[0]?.hasConfirmedPayIntention ?? false;
 }
+
+/**
+ * Safely parse integration metadata JSON string.
+ * Returns empty object for null, undefined, or invalid JSON.
+ */
+export function parseIntegrationMetadata(
+  metadataString: string | null | undefined
+): IntegrationMetadata {
+  if (!metadataString) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(metadataString) as IntegrationMetadata;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Type-safe helper to get a specific metadata field.
+ */
+export function getMetadataField<K extends keyof IntegrationMetadata>(
+  metadataString: string | null | undefined,
+  field: K
+): IntegrationMetadata[K] | undefined {
+  const metadata = parseIntegrationMetadata(metadataString);
+  return metadata[field];
+}

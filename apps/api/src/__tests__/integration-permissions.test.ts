@@ -4,6 +4,8 @@ import {
   providerToCategory,
   canRead,
   canWrite,
+  parseIntegrationMetadata,
+  getMetadataField,
   type OrgIntegrationPermissions,
 } from '../lib/integration-permissions.js';
 import { isProviderAllowedForIndividual } from '@skillomatic/shared';
@@ -262,6 +264,77 @@ describe('integration-permissions', () => {
       it('should correctly categorize blocked database providers', () => {
         expect(providerToCategory('airtable')).toBe('database');
       });
+    });
+  });
+
+  describe('parseIntegrationMetadata', () => {
+    it('should parse valid JSON metadata', () => {
+      const result = parseIntegrationMetadata('{"accessLevel":"read-only","subProvider":"gmail"}');
+
+      expect(result).toEqual({
+        accessLevel: 'read-only',
+        subProvider: 'gmail',
+      });
+    });
+
+    it('should return empty object for null', () => {
+      expect(parseIntegrationMetadata(null)).toEqual({});
+    });
+
+    it('should return empty object for undefined', () => {
+      expect(parseIntegrationMetadata(undefined)).toEqual({});
+    });
+
+    it('should return empty object for invalid JSON', () => {
+      expect(parseIntegrationMetadata('not-valid-json')).toEqual({});
+    });
+
+    it('should return empty object for empty string', () => {
+      expect(parseIntegrationMetadata('')).toEqual({});
+    });
+
+    it('should handle metadata with all fields', () => {
+      const result = parseIntegrationMetadata(
+        '{"subProvider":"greenhouse","accessLevel":"read-write","isOrgWide":true}'
+      );
+
+      expect(result).toEqual({
+        subProvider: 'greenhouse',
+        accessLevel: 'read-write',
+        isOrgWide: true,
+      });
+    });
+  });
+
+  describe('getMetadataField', () => {
+    it('should get accessLevel field', () => {
+      const result = getMetadataField('{"accessLevel":"read-only"}', 'accessLevel');
+      expect(result).toBe('read-only');
+    });
+
+    it('should get subProvider field', () => {
+      const result = getMetadataField('{"subProvider":"greenhouse"}', 'subProvider');
+      expect(result).toBe('greenhouse');
+    });
+
+    it('should get isOrgWide field', () => {
+      const result = getMetadataField('{"isOrgWide":true}', 'isOrgWide');
+      expect(result).toBe(true);
+    });
+
+    it('should return undefined for missing field', () => {
+      const result = getMetadataField('{"accessLevel":"read-only"}', 'subProvider');
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined for null metadata', () => {
+      const result = getMetadataField(null, 'accessLevel');
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined for invalid JSON', () => {
+      const result = getMetadataField('invalid-json', 'accessLevel');
+      expect(result).toBeUndefined();
     });
   });
 });
