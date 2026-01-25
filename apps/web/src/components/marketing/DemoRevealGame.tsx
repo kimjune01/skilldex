@@ -383,41 +383,87 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
       );
     }
 
-    // Round 4: Spin 360° (Green) - Dial/knob style
+    // Round 4: Spin 360° (Green) - Skeuomorphic volume knob
     if (currentRound === 3) {
       const progress = Math.min((Math.abs(cumulativeRotation) / 360) * 100, 100);
       return (
-        <div className="flex flex-col items-center gap-2">
-          <button
-            ref={spinButtonRef}
-            onPointerDown={handleSpinPointerDown}
-            onPointerMove={handleSpinPointerMove}
-            onPointerUp={handleSpinPointerUp}
-            onPointerLeave={handleSpinPointerUp}
-            className="w-24 h-24 rounded-full cursor-grab active:cursor-grabbing touch-none select-none relative"
+        <div className="flex flex-col items-center gap-3">
+          {/* Knob housing/bezel */}
+          <div
+            className="relative w-28 h-28 md:w-32 md:h-32 rounded-full"
             style={{
-              background: 'radial-gradient(circle at 30% 30%, #4ade80, #16a34a 60%, #15803d)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.4), inset 0 -4px 8px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.2)',
-              border: '4px solid #166534',
-              transform: `rotate(${rotationAngle}deg)`,
+              background: 'linear-gradient(145deg, #2a2a2a, #1a1a1a)',
+              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.5)',
+              border: '3px solid #333',
             }}
-            aria-label={`${STEPS[3].label} - ${Math.round(progress)}%`}
           >
-            {/* Knob indicator line */}
-            <div
-              className="absolute top-3 left-1/2 w-1 h-4 bg-white rounded-full shadow-md"
-              style={{ transform: 'translateX(-50%)' }}
-            />
-            {/* Center cap */}
-            <div
-              className="absolute top-1/2 left-1/2 w-8 h-8 rounded-full"
+            {/* Tick marks around the knob */}
+            {[...Array(11)].map((_, i) => {
+              const angle = -135 + (i * 27); // From -135° to +135°
+              return (
+                <div
+                  key={i}
+                  className="absolute w-0.5 h-2 bg-gray-500"
+                  style={{
+                    top: '8px',
+                    left: '50%',
+                    transformOrigin: '50% 48px',
+                    transform: `translateX(-50%) rotate(${angle}deg)`,
+                    opacity: i <= Math.floor(progress / 10) ? 1 : 0.3,
+                    backgroundColor: i <= Math.floor(progress / 10) ? '#22c55e' : '#666',
+                  }}
+                />
+              );
+            })}
+            {/* The actual knob */}
+            <button
+              ref={spinButtonRef}
+              onPointerDown={handleSpinPointerDown}
+              onPointerMove={handleSpinPointerMove}
+              onPointerUp={handleSpinPointerUp}
+              onPointerLeave={handleSpinPointerUp}
+              className="absolute top-1/2 left-1/2 w-20 h-20 md:w-24 md:h-24 rounded-full cursor-grab active:cursor-grabbing touch-none select-none"
               style={{
-                transform: 'translate(-50%, -50%)',
-                background: 'radial-gradient(circle at 30% 30%, #86efac, #22c55e)',
-                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)',
+                transform: `translate(-50%, -50%) rotate(${rotationAngle}deg)`,
+                background: 'linear-gradient(135deg, #4a4a4a 0%, #2d2d2d 50%, #1a1a1a 100%)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.3)',
+                border: '2px solid #555',
               }}
-            />
-          </button>
+              aria-label={`${STEPS[3].label} - ${Math.round(progress)}%`}
+            >
+              {/* Knurled texture (ridges) */}
+              <div
+                className="absolute inset-2 rounded-full"
+                style={{
+                  background: `repeating-conic-gradient(from 0deg, #3a3a3a 0deg 3deg, #2a2a2a 3deg 6deg)`,
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(255,255,255,0.05)',
+                }}
+              />
+              {/* Indicator notch */}
+              <div
+                className="absolute top-2 left-1/2 w-1.5 h-3 rounded-full"
+                style={{
+                  transform: 'translateX(-50%)',
+                  background: 'linear-gradient(180deg, #22c55e, #16a34a)',
+                  boxShadow: '0 0 6px rgba(34,197,94,0.6)',
+                }}
+              />
+              {/* Center screw */}
+              <div
+                className="absolute top-1/2 left-1/2 w-4 h-4 rounded-full"
+                style={{
+                  transform: 'translate(-50%, -50%)',
+                  background: 'linear-gradient(135deg, #555 0%, #333 100%)',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5)',
+                }}
+              >
+                <div
+                  className="absolute top-1/2 left-1/2 w-2 h-0.5 bg-gray-600 rounded-full"
+                  style={{ transform: 'translate(-50%, -50%)' }}
+                />
+              </div>
+            </button>
+          </div>
           <span className="text-xs font-mono font-bold text-green-400 tracking-wider">
             {STEPS[3].label.toUpperCase()}
             {cumulativeRotation !== 0 && ` • ${Math.round(progress)}%`}
