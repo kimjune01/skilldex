@@ -464,11 +464,6 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
               </div>
             </button>
           </div>
-          {cumulativeRotation !== 0 && (
-            <span className="text-xs font-mono font-bold text-green-400 tracking-wider">
-              {Math.round(progress)}%
-            </span>
-          )}
         </div>
       );
     }
