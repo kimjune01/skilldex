@@ -510,7 +510,7 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
   return (
     <div
       ref={gameContainerRef}
-      className={`relative mt-24 lg:mt-0 ${className}`}
+      className={`relative mt-24 ${className}`}
       role="region"
       aria-label="Interactive demo unlock game"
     >
@@ -521,10 +521,9 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
           : `Step ${currentRound + 1} of 6: ${STEPS[currentRound].instruction}`}
       </div>
 
-      {/* Carnival Sign - Above on mobile, left side on larger screens */}
-      {/* Mobile: centered above, arrow points down */}
+      {/* Carnival Sign - Always above, arrow points down */}
       <div
-        className={`absolute -top-20 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center lg:hidden transition-all duration-700 ease-in pointer-events-none ${
+        className={`absolute -top-20 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center transition-all duration-700 ease-in pointer-events-none ${
           isRevealed ? 'sign-exit-up' : ''
         }`}
       >
@@ -532,31 +531,13 @@ export function DemoRevealGame({ className = '' }: DemoRevealGameProps) {
           <div className="absolute inset-0 rounded-2xl overflow-hidden">
             <div className="marquee-lights absolute inset-0" />
           </div>
-          <div className="carnival-sign relative px-4 py-3 rounded-xl">
-            <span className="text-sm font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] tracking-wide">
+          <div className="carnival-sign relative px-4 py-3 lg:px-6 lg:py-4 rounded-xl">
+            <span className="text-sm lg:text-xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] tracking-wide">
               DEMO VIDEO HERE
             </span>
           </div>
         </div>
-        <ArrowDown className="carnival-arrow h-10 w-10 text-primary -mt-1 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" strokeWidth={3} />
-      </div>
-      {/* Desktop: left side, arrow points right */}
-      <div
-        className={`absolute top-12 -left-52 z-10 hidden lg:flex items-center transition-all duration-700 ease-in pointer-events-none ${
-          isRevealed ? 'sign-exit-up' : ''
-        }`}
-      >
-        <div className="carnival-sign-wrapper relative p-1 rounded-2xl transform rotate-3">
-          <div className="absolute inset-0 rounded-2xl overflow-hidden">
-            <div className="marquee-lights absolute inset-0" />
-          </div>
-          <div className="carnival-sign relative px-6 py-4 rounded-xl">
-            <span className="text-xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] tracking-wide">
-              DEMO VIDEO HERE
-            </span>
-          </div>
-        </div>
-        <ArrowDown className="carnival-arrow h-12 w-12 text-primary -ml-2 rotate-[-135deg] drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" strokeWidth={3} />
+        <ArrowDown className="carnival-arrow h-10 w-10 lg:h-12 lg:w-12 text-primary -mt-1 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" strokeWidth={3} />
       </div>
 
       {/* Vending Machine Body with Lever */}
