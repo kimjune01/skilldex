@@ -4,29 +4,26 @@ Check what version is currently running in production.
 
 1. Get current production git hash:
 ```bash
-curl -s "https://api.skillomatic.technology/health" | grep -o '"gitHash":"[^"]*"' | cut -d'"' -f4
+curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 ```
 
-2. Find which tag contains that commit:
+2. Fetch tags and find matching tag:
 ```bash
 git fetch --tags
-git tag --list '[0-9]*' --sort=-v:refname | while read tag; do
-  TAG_HASH=$(git rev-parse --short "$tag")
-  if [ "$TAG_HASH" = "$PROD_HASH" ]; then
-    echo "Production is running tag $tag ($TAG_HASH)"
-    git log -1 --format='  %s' "$tag"
-    exit 0
-  fi
-done
 ```
 
-If no tag matches, production is running an untagged commit (deployed but not tagged, or deployed from a branch).
-
-3. Show recent tags for context:
+3. For each recent tag, check if it matches the production hash. Report which tag is running:
 ```bash
-echo ""
-echo "Recent tags:"
-git tag --list '[0-9]*' --sort=-v:refname | head -5 | while read tag; do
-  echo "  $tag: $(git log -1 --format='%h %s' $tag)"
-done
+git log -1 --format='%h %s' <tag>
 ```
+
+4. Show recent tags for context:
+```bash
+git tag --list '[0-9]*' --sort=-v:refname | head -5
+```
+Then for each tag show its commit info.
+
+5. Report:
+- Which tag is running in production (if any)
+- If no tag matches, note that production is running an untagged commit
+- List recent tags with their commit messages
