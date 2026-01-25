@@ -215,6 +215,31 @@ console.log('[ATS] Something happened', someData);
 
 ---
 
+## 11. Provider Registry is Single Source of Truth
+
+All provider configuration lives in `packages/shared/src/providers.ts`. Don't duplicate provider logic elsewhere.
+
+```typescript
+// ✅ Use the registry
+import { isPremiumProvider, isProviderAllowedForIndividual, getProvider } from '@skillomatic/shared';
+
+if (isPremiumProvider(providerId) && !user.hasConfirmedPayIntention) {
+  return { error: 'Pay intention required' };
+}
+
+// ❌ Don't hardcode provider lists
+if (['greenhouse', 'lever', 'ashby'].includes(providerId)) { ... }
+```
+
+Helper functions available:
+- `isPremiumProvider(id)` - Requires pay intention confirmation
+- `isProviderAllowedForIndividual(id)` - Available to free individual accounts
+- `getProvider(id)` - Get full provider config
+- `isPathBlocked(id, path)` - Check if API path is blocked
+- `buildAuthHeader(id, token)` - Build provider-specific auth header
+
+---
+
 ## Quick Reference: What NOT to Do
 
 | Don't | Why | Do Instead |
@@ -227,3 +252,5 @@ console.log('[ATS] Something happened', someData);
 | Add ATS routes manually | Bypasses blocklist | Add to manifest |
 | Renumber ONBOARDING_STEPS | Breaks existing users | Use floats between |
 | Use raw console.log/error | Inconsistent format | Use centralized logger |
+| Hardcode free/premium providers | Logic scattered | Use `isPremiumProvider()` from providers.ts |
+| Hardcode individual restrictions | Logic scattered | Use `isProviderAllowedForIndividual()` |

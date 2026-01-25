@@ -130,10 +130,11 @@ Located in `packages/db/src/schema.ts`:
 
 | Table | Purpose |
 |-------|---------|
-| `users` | User accounts, password hashes, org membership |
+| `users` | User accounts, password hashes, org membership, pay intention status |
 | `organizations` | Multi-tenant orgs, LLM/ATS config, integration permissions |
 | `sessions` | JWT sessions with expiration |
 | `apiKeys` | API keys for skills (`sk_live_xxx`), soft-deleted via `revokedAt` |
+| `payIntentions` | Tracks user intent to pay for premium features (Stripe checkout) |
 
 ### Integration Tables
 
@@ -141,6 +142,19 @@ Located in `packages/db/src/schema.ts`:
 |-------|---------|
 | `integrations` | OAuth connections (provider, status, Nango connection ID) |
 | `systemSettings` | Key-value config (LLM API keys, default provider) |
+
+### Account Types
+
+Users fall into two categories:
+
+| Type | Description | Integrations Allowed |
+|------|-------------|---------------------|
+| **Individual** | Personal email users (gmail, outlook, etc.) | Email, Calendar, Google Sheets |
+| **Organization** | Company domain users | All integrations (ATS, Airtable, etc.) |
+
+Individual accounts are free but limited. Organization accounts have full access.
+
+See `packages/shared/src/providers.ts` for `INDIVIDUAL_ALLOWED_PROVIDERS`.
 
 ### Skill Tables
 
@@ -224,14 +238,23 @@ WS   /ws/scrape               # Real-time scrape task updates
 |----------|--------|-------|
 | Gmail | Supported | Direct OAuth, send/draft/search |
 | Google Calendar | Supported | Direct OAuth, event management |
+| Calendly | Supported | Via Nango, scheduling links |
 | Outlook/365 | Planned | Via Nango |
-| Calendly | Planned | Via Nango |
 
 ### Other
 | Integration | Status | Notes |
 |-------------|--------|-------|
 | LinkedIn | Supported | Via browser extension (user's session) |
 | AWS SES | Supported | Transactional emails (invites, verification) |
+
+### Premium vs Free Integrations
+
+| Type | Providers | Pay Intention Required |
+|------|-----------|----------------------|
+| **Free** | Gmail, Google Calendar, Calendly, Google Sheets | No |
+| **Premium** | ATS providers, Outlook, Outlook Calendar, Airtable | Yes |
+
+Premium providers require users to complete a Stripe checkout flow ($0 setup) to confirm willingness to pay before connecting. See `packages/shared/src/providers.ts` for `FREE_PROVIDERS` and `isPremiumProvider()`.
 
 ---
 
@@ -483,7 +506,7 @@ The following features are stubbed or planned but not yet built:
 | **Meeting platform OAuth** (Zoom, Fireflies) | Not started | - |
 | **Admin query skills** | Not started | See `docs/EPHEMERAL_ARCHITECTURE.md` Phase 4 |
 | **RBAC enforcement** | Tables ready | `packages/db/src/schema.ts` |
-| **Calendly integration** | Planned | - |
+| **Org-wide integrations** | Planned | See `docs/INTEGRATION_AUTH_PLAN.md` |
 | **Outlook/365 integration** | Planned | - |
 
 ---
