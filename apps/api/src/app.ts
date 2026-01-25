@@ -16,6 +16,10 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+
+// CORS is handled by Lambda Function URL in production (see sst.config.ts)
+// Only enable Hono CORS middleware in local development
+const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 import { createNodeWebSocket } from '@hono/node-ws';
 import { createLogger } from './lib/logger.js';
 
@@ -68,21 +72,24 @@ app.use('*', async (c, next) => {
 
 app.use('*', logger());
 
-// CORS - allow both local dev and production origins
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:4173',
-];
+// CORS - only apply in local development
+// In production, CORS is handled by Lambda Function URL (see sst.config.ts)
+if (!isLambda) {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:4173',
+  ];
 
-// Add production origin if set
-if (process.env.WEB_URL) {
-  allowedOrigins.push(process.env.WEB_URL);
+  // Add production origin if set (for testing prod config locally)
+  if (process.env.WEB_URL) {
+    allowedOrigins.push(process.env.WEB_URL);
+  }
+
+  app.use('*', cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }));
 }
-
-app.use('*', cors({
-  origin: allowedOrigins,
-  credentials: true,
-}));
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
