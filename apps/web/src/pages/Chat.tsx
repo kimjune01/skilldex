@@ -2,7 +2,9 @@ import { useState, useCallback, useMemo } from 'react';
 import { MessageList, ChatInput, ChatSidebar } from '@/components/chat';
 import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Download, Menu, ChevronRight, KeyRound, Settings, ExternalLink } from 'lucide-react';
+import { AlertCircle, Loader2, Download, Menu, ChevronRight, KeyRound, Settings, ExternalLink, MessageSquare } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +27,7 @@ function ChatContent() {
     switchConversation,
     refreshConversations,
   } = useConversations();
+  const isMobile = useIsMobile();
 
   const [instructionsDialog, setInstructionsDialog] = useState<{
     open: boolean;
@@ -32,6 +35,11 @@ function ChatContent() {
     instructions: string;
   }>({ open: false, skill: null, instructions: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Open the layout's mobile menu via custom event
+  const openLayoutMenu = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('open-mobile-menu'));
+  }, []);
 
   // Action handler for client-side execution
   const handleActionRequest = useCallback(
@@ -196,41 +204,70 @@ function ChatContent() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)]">
-      {/* Header */}
-      <div className="px-4 py-3 border-b flex items-center justify-between">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-semibold truncate">
+    <div className={cn(
+      "flex flex-col",
+      isMobile ? "fixed inset-0 z-30 bg-background" : "h-[calc(100vh-2rem)]"
+    )}>
+      {/* Header - minimal floating on mobile, full on desktop */}
+      {isMobile ? (
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-2 pt-safe bg-gradient-to-b from-background via-background/90 to-transparent">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10"
+            onClick={openLayoutMenu}
+            title="Menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <span className="text-sm font-medium truncate flex-1 text-center px-2">
             {currentConversation?.title || 'New Chat'}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            For a better experience, try <a href="/desktop-chat" className="text-primary hover:underline">Desktop Chat</a>.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+          </span>
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleDownloadChat}
-            disabled={messages.length === 0}
-            title="Download chat"
-          >
-            <Download className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
+            className="h-10 w-10"
             onClick={() => setSidebarOpen(true)}
-            title="Chat history & tools"
+            title="Chat history"
           >
-            <Menu className="h-4 w-4" />
+            <MessageSquare className="h-5 w-5" />
           </Button>
         </div>
-      </div>
+      ) : (
+        <div className="px-4 py-3 border-b flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-semibold truncate">
+              {currentConversation?.title || 'New Chat'}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              For a better experience, try <a href="/desktop-chat" className="text-primary hover:underline">Desktop Chat</a>.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDownloadChat}
+              disabled={messages.length === 0}
+              title="Download chat"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(true)}
+              title="Chat history & tools"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Error alert */}
       {error && (
-        <div className="px-4 pt-4">
+        <div className={cn("px-4 pt-4", isMobile && "pt-16")}>
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -256,11 +293,12 @@ function ChatContent() {
           onSuggestionClick={send}
           onRefreshAction={handleRefreshAction}
           llmLabel={llmConfig ? `${llmConfig.provider}/${llmConfig.model}` : undefined}
+          isMobile={isMobile}
         />
       )}
 
       {/* Input */}
-      <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} sidebarOpen={sidebarOpen} />
+      <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} sidebarOpen={sidebarOpen} isMobile={isMobile} />
 
       {/* Instructions Dialog */}
       <Dialog

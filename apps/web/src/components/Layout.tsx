@@ -15,7 +15,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { apiKeys } from '../lib/api';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard, Menu, X } from 'lucide-react';
 import { getOnboardingStepRoute } from '@skillomatic/shared';
 
 // Main navigation - visible to all authenticated users
@@ -50,6 +50,14 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [extensionApiKey, setExtensionApiKey] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Listen for open-mobile-menu events from Chat page
+  useEffect(() => {
+    const handler = () => setMobileMenuOpen(true);
+    window.addEventListener('open-mobile-menu', handler);
+    return () => window.removeEventListener('open-mobile-menu', handler);
+  }, []);
 
   // Fetch API key for browser extension auto-config
   useEffect(() => {
@@ -86,8 +94,31 @@ export default function Layout() {
           aria-hidden="true"
         />
       )}
+      {/* Mobile hamburger button */}
+      <button
+        className="fixed top-4 left-4 z-[60] md:hidden p-2 rounded-lg bg-background border shadow-md"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        aria-label="Toggle menu"
+      >
+        {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
+
+      {/* Mobile backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Left Sidebar - Robot Vending Machine Panel */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-64 robot-panel flex flex-col">
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 w-64 robot-panel flex flex-col",
+        "transition-transform duration-300 ease-in-out",
+        "-translate-x-full md:translate-x-0",
+        mobileMenuOpen && "translate-x-0"
+      )}>
         {/* Corner screws decoration */}
         <div className="absolute top-3 left-3 screw" />
         <div className="absolute top-3 right-3 screw" />
@@ -136,6 +167,7 @@ export default function Layout() {
               <Link
                 key={item.href}
                 to={item.href}
+                onClick={() => setMobileMenuOpen(false)}
                 className={cn(
                   "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical",
                   isActive
@@ -185,6 +217,7 @@ export default function Layout() {
                   <Link
                     key={item.href}
                     to={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical",
                       isActive
@@ -231,6 +264,7 @@ export default function Layout() {
                   <Link
                     key={item.href}
                     to={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical",
                       isActive
@@ -311,7 +345,7 @@ export default function Layout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 ml-64">
+      <main className="flex-1 md:ml-64">
         <div className="container py-8 px-8">
           <Outlet />
         </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
 import type { ChatMessage as ChatMessageType } from '@skillomatic/shared';
+import { cn } from '@/lib/utils';
 
 interface MessageListProps {
   messages: ChatMessageType[];
@@ -9,6 +10,7 @@ interface MessageListProps {
   onSuggestionClick?: (suggestion: string) => void;
   onRefreshAction?: (action: string, params: Record<string, unknown>) => void;
   llmLabel?: string;
+  isMobile?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -36,6 +38,7 @@ export function MessageList({
   onSuggestionClick,
   onRefreshAction,
   llmLabel,
+  isMobile,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -46,18 +49,26 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        <div className="text-center space-y-4">
+      <div className={cn(
+        "flex-1 flex items-center justify-center text-muted-foreground",
+        isMobile && "pt-14 pb-24"
+      )}>
+        <div className={cn("text-center space-y-4", isMobile && "px-4")}>
           <div className="space-y-2">
-            <p className="text-lg font-medium">Welcome to Skillomatic Chat</p>
+            <p className={cn("text-lg font-medium", isMobile && "text-base")}>
+              Welcome to Skillomatic Chat
+            </p>
             {llmLabel && <p className="text-xs">{llmLabel}</p>}
           </div>
-          <div className="flex flex-col gap-3 mt-6 max-w-md mx-auto">
+          <div className={cn("flex flex-col gap-3 mt-6 max-w-md mx-auto", isMobile && "gap-2")}>
             {SUGGESTIONS.map((suggestion, i) => (
               <button
                 key={i}
                 onClick={() => onSuggestionClick?.(suggestion.text)}
-                className="text-left p-3 rounded-lg border border-border hover:border-primary hover:bg-accent transition-colors"
+                className={cn(
+                  "text-left p-3 rounded-lg border border-border hover:border-primary hover:bg-accent transition-colors",
+                  isMobile && "p-4 rounded-xl active:scale-[0.98] transition-transform"
+                )}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-medium text-muted-foreground">
@@ -75,7 +86,10 @@ export function MessageList({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4">
+    <div className={cn(
+      "flex-1 overflow-y-auto",
+      isMobile ? "px-3 pt-14 pb-24" : "px-4"
+    )}>
       {messages.map((message) => (
         <ChatMessage
           key={message.id}
