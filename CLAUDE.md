@@ -108,7 +108,7 @@ sqlite3 packages/db/data/skillomatic.db "SELECT * FROM users LIMIT 3;"
 
 **Always use the `/deploy` slash command** for deployments. Do NOT run `pnpm deploy` directly.
 
-- `/deploy` - Deploy with change detection and selective targeting
+- `/deploy` - Full deploy to production (MCP Docker cached when unchanged)
 - `/rollback` - Revert to a previous tagged version
 - `/prod-status` - Check what's currently running
 
