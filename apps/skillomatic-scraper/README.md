@@ -26,7 +26,7 @@ You can use any image editor or online tool to create these. Recommended: Simple
 ## Configuration
 
 1. Click the extension icon in Chrome toolbar
-2. Enter your Skillomatic API URL (default: `http://localhost:3000`)
+2. Enter your Skillomatic API URL (default: `https://api.skillomatic.technology`)
 3. Enter your Skillomatic API key (starts with `sk_`)
 4. Click "Save & Connect"
 

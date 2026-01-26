@@ -21,33 +21,98 @@ const apiKeyInput = document.getElementById('apiKey');
 const saveBtn = document.getElementById('saveBtn');
 const readFromPageBtn = document.getElementById('readFromPageBtn');
 
+// Error banner elements
+const errorBanner = document.getElementById('errorBanner');
+const errorTitle = document.getElementById('errorTitle');
+const errorMessage = document.getElementById('errorMessage');
+const errorHint = document.getElementById('errorHint');
+const dismissError = document.getElementById('dismissError');
+
+// Connection details
+const connectionDetails = document.getElementById('connectionDetails');
+const connectionDetailsText = document.getElementById('connectionDetailsText');
+
 const messageEl = document.getElementById('message');
 
 let currentStatus = null;
+
+// ============ Error Analysis ============
+
+function analyzeError(error, status) {
+  // Default values
+  let title = 'Connection Error';
+  let message = error || 'Unknown error occurred';
+  let hint = '';
+
+  const apiUrl = status?.apiUrl || apiUrlInput.value.trim();
+
+  // Check for common issues
+  if (error?.includes('Invalid or expired API key')) {
+    title = 'Invalid API Key';
+    message = 'Your API key was rejected by the server.';
+    hint = 'Go to <code>skillomatic.technology</code> → Settings → API Keys to get a valid key. Make sure it starts with <code>sk_live_</code> or <code>sk_test_</code>.';
+  } else if (error?.includes('Connection lost unexpectedly') || error?.includes('WebSocket connection error')) {
+    title = 'Connection Lost';
+    message = 'Could not connect to the Skillomatic server.';
+
+    // Check if they're using the wrong URL
+    if (apiUrl && !apiUrl.includes('api.skillomatic.technology') && apiUrl.includes('skillomatic.technology')) {
+      hint = '⚠️ <strong>Wrong URL detected!</strong> You\'re connecting to <code>' + apiUrl + '</code> but the API is at <code>https://api.skillomatic.technology</code>. Update your API URL.';
+    } else if (apiUrl?.includes('localhost')) {
+      hint = 'Make sure your local Skillomatic API server is running on <code>' + apiUrl + '</code>.';
+    } else {
+      hint = 'Check your internet connection. The API URL should be <code>https://api.skillomatic.technology</code>.';
+    }
+  } else if (error?.includes('Max reconnection attempts')) {
+    title = 'Connection Failed';
+    message = 'Could not establish connection after multiple attempts.';
+    hint = 'Click "Save & Connect" to try again, or check the API URL is correct: <code>https://api.skillomatic.technology</code>';
+  } else if (error?.includes('Failed to fetch') || error?.includes('NetworkError') || error?.includes('net::')) {
+    title = 'Network Error';
+    message = 'Could not reach the server.';
+
+    if (apiUrl && !apiUrl.includes('api.skillomatic.technology') && apiUrl.includes('skillomatic.technology')) {
+      hint = '⚠️ <strong>Wrong URL!</strong> Change <code>' + apiUrl + '</code> to <code>https://api.skillomatic.technology</code>';
+    } else {
+      hint = 'Check your internet connection and verify the API URL is correct.';
+    }
+  } else if (error?.includes('not reachable')) {
+    title = 'Server Unreachable';
+    message = 'The API server could not be reached.';
+
+    if (apiUrl && !apiUrl.includes('api.skillomatic.technology') && apiUrl.includes('skillomatic.technology')) {
+      hint = '⚠️ <strong>Wrong URL!</strong> The API is at <code>https://api.skillomatic.technology</code>, not <code>' + apiUrl + '</code>';
+    } else {
+      hint = 'Verify the API URL and check if the server is online.';
+    }
+  } else if (error?.includes('HTML') || error?.includes('<!DOCTYPE')) {
+    title = 'Wrong Server';
+    message = 'Connected to a web page instead of the API.';
+    hint = 'You\'re connecting to a website, not the API. Change your URL to <code>https://api.skillomatic.technology</code>';
+  }
+
+  return { title, message, hint };
+}
 
 // ============ UI Updates ============
 
 function updateUI(status) {
   currentStatus = status;
 
-  // Get or create error display element
-  let errorDisplay = document.getElementById('errorDisplay');
-  if (!errorDisplay) {
-    errorDisplay = document.createElement('div');
-    errorDisplay.id = 'errorDisplay';
-    errorDisplay.className = 'error-banner';
-    errorDisplay.style.cssText = 'display: none; background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; line-height: 1.4;';
-    // Insert at top of body
-    document.body.insertBefore(errorDisplay, document.body.firstChild);
+  // Show error banner if present
+  if (status.lastError) {
+    const { title, message, hint } = analyzeError(status.lastError, status);
+    errorTitle.textContent = title;
+    errorMessage.textContent = message;
+    errorHint.innerHTML = hint;
+    errorHint.style.display = hint ? 'block' : 'none';
+    errorBanner.classList.add('visible');
+  } else {
+    errorBanner.classList.remove('visible');
   }
 
-  // Show error if present
-  if (status.lastError) {
-    errorDisplay.textContent = status.lastError;
-    errorDisplay.style.display = 'block';
-  } else {
-    errorDisplay.style.display = 'none';
-  }
+  // Update connection details for debugging
+  updateConnectionDetails(status);
 
   if (status.connected && status.apiKey) {
     // Show connected view
@@ -133,7 +198,7 @@ async function loadStatus() {
 }
 
 async function saveConfig() {
-  const apiUrl = apiUrlInput.value.trim() || 'http://localhost:3000';
+  let apiUrl = apiUrlInput.value.trim() || 'https://api.skillomatic.technology';
   const apiKey = apiKeyInput.value.trim();
 
   if (!apiKey) {
@@ -147,19 +212,52 @@ async function saveConfig() {
     return;
   }
 
+  // Auto-correct common URL mistakes
+  if (apiUrl.includes('skillomatic.technology') && !apiUrl.includes('api.skillomatic.technology')) {
+    const correctedUrl = apiUrl.replace('skillomatic.technology', 'api.skillomatic.technology');
+    console.log(`[Config] Auto-correcting URL from ${apiUrl} to ${correctedUrl}`);
+    apiUrl = correctedUrl;
+    apiUrlInput.value = correctedUrl;
+    showMessage('URL auto-corrected to api.skillomatic.technology', 'success');
+  }
+
   saveBtn.disabled = true;
-  saveBtn.textContent = 'Saving...';
+  saveBtn.textContent = 'Testing connection...';
 
   try {
     // Test the API connection first
-    const testResponse = await fetch(`${apiUrl}/v1/me`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
-    });
+    let testResponse;
+    try {
+      testResponse = await fetch(`${apiUrl}/v1/me`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+        },
+      });
+    } catch (fetchError) {
+      // Network error - provide helpful message
+      if (apiUrl.includes('localhost')) {
+        throw new Error(`Cannot reach ${apiUrl}. Is your local API server running?`);
+      } else {
+        throw new Error(`Cannot reach ${apiUrl}. Check your internet connection.`);
+      }
+    }
 
     if (!testResponse.ok) {
-      throw new Error('Invalid API key or API not reachable');
+      // Check response content type to detect wrong server
+      const contentType = testResponse.headers.get('content-type') || '';
+      if (contentType.includes('text/html')) {
+        throw new Error(`${apiUrl} returned HTML instead of JSON. You may be connecting to the wrong server.`);
+      }
+
+      if (testResponse.status === 401) {
+        throw new Error('Invalid API key. Check that it starts with sk_live_ or sk_test_');
+      } else if (testResponse.status === 403) {
+        throw new Error('API key is valid but access is forbidden. Contact support.');
+      } else if (testResponse.status === 404) {
+        throw new Error(`API endpoint not found at ${apiUrl}. Is this the correct API URL?`);
+      } else {
+        throw new Error(`API returned error ${testResponse.status}. Check your configuration.`);
+      }
     }
 
     // Save config
@@ -169,11 +267,22 @@ async function saveConfig() {
       apiUrl,
     });
 
+    // Clear any previous errors
+    errorBanner.classList.remove('visible');
     showMessage('Connected successfully!', 'success');
     await loadStatus();
   } catch (err) {
     console.error('Failed to save config:', err);
     showMessage(err.message || 'Failed to connect', 'error');
+
+    // Also show in the error banner for persistence
+    errorTitle.textContent = 'Connection Test Failed';
+    errorMessage.textContent = err.message;
+    errorHint.innerHTML = apiUrl.includes('skillomatic.technology') && !apiUrl.includes('api.skillomatic.technology')
+      ? 'Try using <code>https://api.skillomatic.technology</code> as your API URL.'
+      : 'Double-check your API URL and API key.';
+    errorHint.style.display = 'block';
+    errorBanner.classList.add('visible');
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = 'Save & Connect';
@@ -348,11 +457,48 @@ async function readFromPage() {
   }
 }
 
+// ============ Connection Details (for debugging) ============
+
+function updateConnectionDetails(status) {
+  if (!status) {
+    connectionDetails.style.display = 'none';
+    return;
+  }
+
+  // Show connection details when there's an error or when disconnected with config
+  const shouldShow = status.lastError || (!status.connected && status.apiKey);
+
+  if (shouldShow) {
+    connectionDetails.style.display = 'block';
+    const wsUrl = status.apiUrl ?
+      `${status.apiUrl.replace('https:', 'wss:').replace('http:', 'ws:')}/ws/scrape` :
+      'Not configured';
+
+    connectionDetailsText.textContent = [
+      `API URL: ${status.apiUrl || 'Not set'}`,
+      `WebSocket: ${wsUrl}`,
+      `API Key: ${status.apiKey || 'Not set'}`,
+      `Status: ${status.connected ? 'Connected' : status.connecting ? 'Connecting...' : 'Disconnected'}`,
+      `Reconnect attempts: ${status.reconnectAttempts || 0}`,
+      status.lastError ? `Last error: ${status.lastError}` : null
+    ].filter(Boolean).join('\n');
+  } else {
+    connectionDetails.style.display = 'none';
+  }
+}
+
 // ============ Event Listeners ============
 
 saveBtn.addEventListener('click', saveConfig);
 readFromPageBtn.addEventListener('click', readFromPage);
 disconnectBtn.addEventListener('click', reconnect);
+
+// Dismiss error banner
+dismissError.addEventListener('click', async () => {
+  errorBanner.classList.remove('visible');
+  // Clear the error in background script
+  await chrome.runtime.sendMessage({ type: 'CLEAR_ERROR' });
+});
 
 // Handle enter key in inputs
 apiKeyInput.addEventListener('keypress', (e) => {

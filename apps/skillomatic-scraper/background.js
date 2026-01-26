@@ -1,7 +1,7 @@
 // Skillomatic Scraper - Background Service Worker
 // Connects via WebSocket to receive scrape tasks in real-time
 
-const DEFAULT_API_URL = 'https://skillomatic.technology';
+const DEFAULT_API_URL = 'https://api.skillomatic.technology';
 const RECONNECT_DELAY_MS = 3000;
 const PING_INTERVAL_MS = 20000; // Keep alive every 20s (Chrome official recommendation)
 const THROTTLE_MIN_MS = 150;
@@ -82,11 +82,17 @@ function connect() {
       isConnecting = false;
       console.log('[WS] Closed:', event.code, event.reason);
 
-      // Map close codes to user-friendly error messages
+      // Map close codes to user-friendly error messages with context
       if (event.code === 4001) {
         lastError = 'Invalid or expired API key. Please check your API key in the extension settings.';
       } else if (event.code === 1006) {
-        lastError = 'Connection lost unexpectedly. Check your network connection.';
+        // 1006 = abnormal closure - often means we couldn't connect at all
+        // Check if we might be connecting to the wrong URL
+        if (apiUrl && !apiUrl.includes('api.skillomatic.technology') && apiUrl.includes('skillomatic.technology')) {
+          lastError = `Connection failed. You may be using the wrong URL (${apiUrl}). The API is at api.skillomatic.technology`;
+        } else {
+          lastError = `Connection lost unexpectedly to ${apiUrl}. Check your network connection.`;
+        }
       } else if (event.code === 1001) {
         lastError = 'Server is shutting down. Will reconnect automatically.';
       } else if (event.code === 1008) {
@@ -96,7 +102,7 @@ function connect() {
       } else if (event.reason) {
         lastError = event.reason;
       } else if (event.code !== 1000) {
-        lastError = `Connection closed (code: ${event.code}). Will retry...`;
+        lastError = `Connection closed (code: ${event.code}) to ${apiUrl}. Will retry...`;
       }
 
       cleanup();
@@ -105,7 +111,7 @@ function connect() {
       if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
         scheduleReconnect();
       } else {
-        lastError = 'Max reconnection attempts reached. Please reconnect manually.';
+        lastError = `Max reconnection attempts reached for ${apiUrl}. Please check your settings and reconnect manually.`;
         console.error('[WS] Max reconnect attempts reached');
       }
     };
@@ -113,7 +119,12 @@ function connect() {
     ws.onerror = (event) => {
       isConnecting = false;
       console.error('[WS] Error:', event);
-      lastError = 'WebSocket connection error. Check if the API server is running.';
+      // Check for common URL mistakes
+      if (apiUrl && !apiUrl.includes('api.skillomatic.technology') && apiUrl.includes('skillomatic.technology')) {
+        lastError = `WebSocket connection error. Wrong URL? Use api.skillomatic.technology instead of ${new URL(apiUrl).host}`;
+      } else {
+        lastError = `WebSocket connection error to ${apiUrl}. Check if the API server is running.`;
+      }
       cleanup();
     };
   } catch (err) {

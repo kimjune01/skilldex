@@ -315,9 +315,113 @@
     .footer a:hover {
       text-decoration: underline;
     }
+
+    /* Error banner - prominent and persistent */
+    .error-banner {
+      display: none;
+      background: linear-gradient(180deg, hsl(0 70% 97%) 0%, hsl(0 60% 94%) 100%);
+      border: 2px solid hsl(0 60% 70%);
+      border-left: 4px solid hsl(0 70% 50%);
+      color: hsl(0 70% 30%);
+      padding: 12px 14px;
+      margin: 12px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.5;
+      box-shadow: 0 2px 8px hsl(0 50% 50% / 0.15);
+    }
+
+    .error-banner.visible {
+      display: block;
+    }
+
+    .error-banner-title {
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .error-banner-title::before {
+      content: '⚠';
+      font-size: 14px;
+    }
+
+    .error-banner-message {
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .error-banner-hint {
+      font-size: 11px;
+      color: hsl(0 50% 40%);
+      background: hsl(0 50% 90%);
+      padding: 8px 10px;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+
+    .error-banner-hint code {
+      background: hsl(0 40% 85%);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    .error-banner-dismiss {
+      float: right;
+      background: none;
+      border: none;
+      color: hsl(0 50% 50%);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0;
+      margin-left: 8px;
+    }
+
+    .error-banner-dismiss:hover {
+      color: hsl(0 70% 40%);
+    }
+
+    /* Connection details (collapsible) */
+    .connection-details {
+      font-size: 11px;
+      color: hsl(220 10% 50%);
+      background: hsl(220 15% 96%);
+      padding: 8px 10px;
+      border-radius: 4px;
+      margin-top: 12px;
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    .connection-details summary {
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 500;
+      color: hsl(220 20% 40%);
+    }
+
+    .connection-details pre {
+      margin-top: 8px;
+      white-space: pre-wrap;
+      font-size: 10px;
+    }
   </style>
 </head>
 <body>
+  <!-- Error banner - always at top -->
+  <div id="errorBanner" class="error-banner">
+    <button class="error-banner-dismiss" id="dismissError" title="Dismiss">×</button>
+    <div class="error-banner-title" id="errorTitle">Connection Error</div>
+    <div class="error-banner-message" id="errorMessage"></div>
+    <div class="error-banner-hint" id="errorHint"></div>
+  </div>
+
   <div class="header">
     <h1>Skillomatic Scraper</h1>
     <p>LinkedIn scraping for Skillomatic skills</p>
@@ -377,6 +481,12 @@
     </div>
 
     <div id="message" class="message" style="display: none;"></div>
+
+    <!-- Connection debug details -->
+    <details class="connection-details" id="connectionDetails" style="display: none;">
+      <summary>Connection Details</summary>
+      <pre id="connectionDetailsText"></pre>
+    </details>
   </div>
 
   <div class="footer">
