@@ -54,19 +54,19 @@ Based on the changed files from step 2, use `--target` to deploy only affected s
 
 ```bash
 # If ALL services need deployment (sst.config.ts changed, or first deploy):
-GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production
+SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production
 
 # If only API needs deployment (apps/api/, packages/mcp/ changes):
-GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production --target Api --target ApiRouter
+SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production --target Api --target ApiRouter
 
 # If only Web needs deployment (apps/web/ changes):
-GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production --target Web
+SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production --target Web
 
 # If only MCP needs deployment (apps/mcp-server/ changes):
-GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production --target McpService
+SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production --target McpService
 
 # Combine targets as needed, e.g., API + Web (no MCP):
-GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production --target Api --target ApiRouter --target Web
+SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production --target Api --target ApiRouter --target Web
 ```
 
 **Target mapping:**
