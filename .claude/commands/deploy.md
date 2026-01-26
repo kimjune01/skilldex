@@ -24,14 +24,17 @@ pnpm db:push:prod
 GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production
 ```
 
-5. Verify API and web hashes match (call both curl commands in parallel):
+5. Verify API, MCP, and web are responding (call all curl commands in parallel):
 ```bash
 curl -s "https://api.skillomatic.technology/health"
 ```
 ```bash
+curl -s "https://mcp.skillomatic.technology/health"
+```
+```bash
 curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*'
 ```
-Retry web check with exponential backoff (2-64s) if CDN hasn't propagated yet.
+Retry web check with exponential backoff (2-64s) if CDN hasn't propagated yet. MCP server may take up to 2 minutes to update (ECS rolling deployment).
 
 6. Create and push incremented version tag:
 ```bash
@@ -73,8 +76,11 @@ pnpm --filter @skillomatic/db seed:prod
 ## Debugging
 
 ```bash
-# Health
+# API Health
 curl -s "https://api.skillomatic.technology/health" | jq .
+
+# MCP Server Health
+curl -s "https://mcp.skillomatic.technology/health" | jq .
 
 # Login
 curl -s -X POST "https://api.skillomatic.technology/auth/login" \

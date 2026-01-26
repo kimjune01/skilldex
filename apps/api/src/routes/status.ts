@@ -31,6 +31,7 @@ interface StatusResponse {
   services: {
     api: ServiceStatus;
     database: ServiceStatus;
+    mcp: ServiceStatus;
     integrations: ServiceStatus;
   };
   deploy: {
@@ -72,13 +73,27 @@ statusRoutes.get('/', async (c) => {
     dbStatus = 'outage';
   }
 
+  // Check MCP server health
+  let mcpStatus: ServiceStatus = 'operational';
+  try {
+    const mcpUrl = process.env.NODE_ENV === 'production'
+      ? 'https://mcp.skillomatic.technology/health'
+      : 'http://localhost:3001/health';
+    const mcpRes = await fetch(mcpUrl, { signal: AbortSignal.timeout(5000) });
+    if (!mcpRes.ok) {
+      mcpStatus = 'degraded';
+    }
+  } catch {
+    mcpStatus = 'outage';
+  }
+
   // For now, API and integrations status are derived from basic checks
   // TODO: Extend with actual health metrics once systemMetrics table is added
   const apiStatus: ServiceStatus = 'operational'; // If we're responding, API is up
   const integrationsStatus: ServiceStatus = dbStatus; // Integrations depend on DB
 
   // Overall status is the worst of all services
-  const statuses: ServiceStatus[] = [dbStatus, apiStatus, integrationsStatus];
+  const statuses: ServiceStatus[] = [dbStatus, apiStatus, mcpStatus, integrationsStatus];
   const overallStatus: ServiceStatus = statuses.includes('outage')
     ? 'outage'
     : statuses.includes('degraded')
@@ -91,6 +106,7 @@ statusRoutes.get('/', async (c) => {
     services: {
       api: apiStatus,
       database: dbStatus,
+      mcp: mcpStatus,
       integrations: integrationsStatus,
     },
     deploy: {

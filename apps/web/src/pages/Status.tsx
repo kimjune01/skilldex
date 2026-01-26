@@ -24,6 +24,7 @@ interface StatusResponse {
   services: {
     api: ServiceStatus;
     database: ServiceStatus;
+    mcp: ServiceStatus;
     integrations: ServiceStatus;
   };
   deploy: {
@@ -195,6 +196,11 @@ export default function Status() {
               <div className="p-4 flex items-center justify-between">
                 <span className="font-medium text-slate-900">Database</span>
                 <StatusBadge status={status.services.database} />
+              </div>
+
+              <div className="p-4 flex items-center justify-between">
+                <span className="font-medium text-slate-900">MCP Server</span>
+                <StatusBadge status={status.services.mcp} />
               </div>
 
               <div className="p-4 flex items-center justify-between">
