@@ -180,6 +180,9 @@ app.use('*', cors({
   allowHeaders: ['Authorization', 'Content-Type'],
 }));
 
+// Root handler (for ALB health checks that may hit /)
+app.get('/', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION }));
+
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION }));
 
