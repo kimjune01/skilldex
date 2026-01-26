@@ -9,7 +9,7 @@
  * - Rename functionality
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   MessageSquare,
@@ -22,10 +22,22 @@ import {
   X,
   Lock,
   Loader2,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Collapsible,
   CollapsibleContent,
@@ -46,13 +58,37 @@ import { skills } from '@/lib/api';
 import { isSkillExecutable } from '@/lib/skills-client';
 import type { SkillPublic } from '@skillomatic/shared';
 import { type Conversation, downloadConversationAsMarkdown } from '@/lib/chat-storage';
+import {
+  loadUserLLMConfig,
+  saveUserLLMConfig,
+  clearUserLLMConfig,
+  getAvailableModels,
+  getDefaultModel,
+  PROVIDER_LABELS,
+  PROVIDER_API_KEY_URLS,
+  type UserLLMConfig,
+} from '@/lib/user-llm-config';
+import type { LLMProvider, LLMConfig } from '@/lib/llm-client';
+import { streamChat } from '@/lib/llm-client';
 
 interface ChatSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Whether org has LLM configured (if false, show API key setup) */
+  hasOrgLLM?: boolean;
+  /** Current user LLM config (if using BYOAK) */
+  userLLMConfig?: LLMConfig | null;
+  /** Callback when user configures their API key */
+  onUserLLMConfigChange?: (config: LLMConfig | null) => void;
 }
 
-export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
+export function ChatSidebar({
+  isOpen,
+  onClose,
+  hasOrgLLM = true,
+  userLLMConfig,
+  onUserLLMConfigChange,
+}: ChatSidebarProps) {
   const {
     conversations,
     currentConversationId,
@@ -77,6 +113,21 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
+  // API Key settings state (for non-org users)
+  const [apiKeyOpen, setApiKeyOpen] = useState(!hasOrgLLM && !userLLMConfig);
+  const [apiKeyProvider, setApiKeyProvider] = useState<LLMProvider>(
+    userLLMConfig?.provider || loadUserLLMConfig()?.provider || 'anthropic'
+  );
+  const [apiKeyValue, setApiKeyValue] = useState(
+    userLLMConfig?.apiKey || loadUserLLMConfig()?.apiKey || ''
+  );
+  const [apiKeyModel, setApiKeyModel] = useState(
+    userLLMConfig?.model || loadUserLLMConfig()?.model || getDefaultModel('anthropic')
+  );
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeyValidating, setApiKeyValidating] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+
   // Load skills when tools section is opened
   useEffect(() => {
     if (toolsOpen && skillsList.length === 0) {
@@ -88,6 +139,86 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
         .finally(() => setSkillsLoading(false));
     }
   }, [toolsOpen, skillsList.length]);
+
+  // Handle provider change
+  const handleApiKeyProviderChange = useCallback((newProvider: LLMProvider) => {
+    setApiKeyProvider(newProvider);
+    setApiKeyModel(getDefaultModel(newProvider));
+    setApiKeyError(null);
+  }, []);
+
+  // Validate and save API key
+  const handleApiKeySave = useCallback(async () => {
+    if (!apiKeyValue.trim()) {
+      setApiKeyError('Please enter an API key');
+      return;
+    }
+
+    setApiKeyValidating(true);
+    setApiKeyError(null);
+
+    const config: LLMConfig = {
+      provider: apiKeyProvider,
+      apiKey: apiKeyValue.trim(),
+      model: apiKeyModel,
+    };
+
+    // Validate by making a test request
+    try {
+      const testMessages = [
+        { role: 'user' as const, content: 'Say "OK" in exactly one word.' },
+      ];
+
+      let validated = false;
+      let errorMessage: string | null = null;
+
+      await new Promise<void>((resolve) => {
+        streamChat(config, testMessages, {
+          onToken: () => {
+            validated = true;
+          },
+          onComplete: () => {
+            validated = true;
+            resolve();
+          },
+          onError: (err) => {
+            errorMessage = err.message;
+            resolve();
+          },
+        });
+      });
+
+      if (!validated || errorMessage) {
+        setApiKeyError(errorMessage || 'Failed to validate API key');
+        setApiKeyValidating(false);
+        return;
+      }
+
+      // Save configuration
+      const userConfig: UserLLMConfig = {
+        provider: apiKeyProvider,
+        apiKey: apiKeyValue.trim(),
+        model: apiKeyModel,
+      };
+      saveUserLLMConfig(userConfig);
+      onUserLLMConfigChange?.(config);
+      setApiKeyOpen(false);
+    } catch (err) {
+      setApiKeyError(err instanceof Error ? err.message : 'Failed to validate API key');
+    } finally {
+      setApiKeyValidating(false);
+    }
+  }, [apiKeyProvider, apiKeyValue, apiKeyModel, onUserLLMConfigChange]);
+
+  // Clear API key
+  const handleApiKeyClear = useCallback(() => {
+    clearUserLLMConfig();
+    setApiKeyValue('');
+    setApiKeyProvider('anthropic');
+    setApiKeyModel(getDefaultModel('anthropic'));
+    onUserLLMConfigChange?.(null);
+    setApiKeyOpen(true);
+  }, [onUserLLMConfigChange]);
 
   const handleNewChat = async () => {
     // If current chat is empty, just close the sidebar
@@ -407,6 +538,152 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
               </div>
             </CollapsibleContent>
           </Collapsible>
+
+          {/* API Key Settings Section (only for non-org users) */}
+          {!hasOrgLLM && (
+            <Collapsible open={apiKeyOpen} onOpenChange={setApiKeyOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 w-full px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-t">
+                  {apiKeyOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <KeyRound className="h-4 w-4" />
+                  API Key
+                  {userLLMConfig && (
+                    <Badge variant="secondary" className="ml-auto text-[10px]">
+                      {userLLMConfig.provider}
+                    </Badge>
+                  )}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-3 pb-3 space-y-3">
+                  {/* Provider Selection */}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Provider</Label>
+                    <Select
+                      value={apiKeyProvider}
+                      onValueChange={(v) => handleApiKeyProviderChange(v as LLMProvider)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.entries(PROVIDER_LABELS) as [LLMProvider, string][]).map(
+                          ([value, label]) => (
+                            <SelectItem key={value} value={value} className="text-xs">
+                              {label}
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* API Key Input */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">API Key</Label>
+                      <a
+                        href={PROVIDER_API_KEY_URLS[apiKeyProvider]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5"
+                      >
+                        Get key
+                        <ExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        type={showApiKey ? 'text' : 'password'}
+                        value={apiKeyValue}
+                        onChange={(e) => {
+                          setApiKeyValue(e.target.value);
+                          setApiKeyError(null);
+                        }}
+                        placeholder="Enter API key..."
+                        className="h-8 text-xs pr-8"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showApiKey ? (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Model Selection */}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Model</Label>
+                    <Select value={apiKeyModel} onValueChange={setApiKeyModel}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAvailableModels(apiKeyProvider).map((m) => (
+                          <SelectItem key={m} value={m} className="text-xs">
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Error Message */}
+                  {apiKeyError && (
+                    <p className="text-[10px] text-destructive bg-destructive/10 rounded p-2">
+                      {apiKeyError}
+                    </p>
+                  )}
+
+                  {/* Buttons */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 h-7 text-xs"
+                      onClick={handleApiKeySave}
+                      disabled={apiKeyValidating || !apiKeyValue.trim()}
+                    >
+                      {apiKeyValidating ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Validating
+                        </>
+                      ) : userLLMConfig ? (
+                        'Update'
+                      ) : (
+                        'Save'
+                      )}
+                    </Button>
+                    {userLLMConfig && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={handleApiKeyClear}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Info text */}
+                  <p className="text-[10px] text-muted-foreground">
+                    Your key is stored locally and never sent to our servers.
+                  </p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       </div>
 

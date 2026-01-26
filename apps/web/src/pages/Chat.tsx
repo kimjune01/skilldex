@@ -1,8 +1,8 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { MessageList, ChatInput, ChatSidebar } from '@/components/chat';
 import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Download, Menu, ChevronRight, KeyRound, Settings, ExternalLink, MessageSquare } from 'lucide-react';
+import { AlertCircle, Loader2, Download, Menu, KeyRound, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
@@ -18,6 +18,9 @@ import { useClientChat } from '@/hooks/useClientChat';
 import { ConversationProvider, useConversations } from '@/hooks/useConversations';
 import { executeAction, formatActionResult, type ActionType } from '@/lib/action-executor';
 import { useAuth } from '@/hooks/useAuth';
+import { loadUserLLMConfig, toFullLLMConfig } from '@/lib/user-llm-config';
+import type { LLMConfig } from '@/lib/llm-client';
+import { getLLMConfig } from '@/lib/skills-client';
 
 function ChatContent() {
   const { user, organizationId } = useAuth();
@@ -35,6 +38,36 @@ function ChatContent() {
     instructions: string;
   }>({ open: false, skill: null, instructions: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Track whether org has LLM configured (separate from user config)
+  const [hasOrgLLM, setHasOrgLLM] = useState<boolean | null>(null);
+
+  // User-provided LLM config (loaded from localStorage on mount)
+  const [userLLMConfig, setUserLLMConfig] = useState<LLMConfig | null>(() => {
+    const stored = loadUserLLMConfig();
+    return stored ? toFullLLMConfig(stored) : null;
+  });
+
+  // Check if org has LLM configured on mount
+  useEffect(() => {
+    getLLMConfig().then((orgConfig) => {
+      setHasOrgLLM(!!orgConfig);
+      // If org has LLM and user doesn't have their own, we're good
+      // If org doesn't have LLM and user doesn't have their own, open sidebar
+      if (!orgConfig && !userLLMConfig) {
+        setSidebarOpen(true);
+      }
+    });
+  }, []);
+
+  // Handle user LLM config change from sidebar
+  const handleUserLLMConfigChange = useCallback((config: LLMConfig | null) => {
+    setUserLLMConfig(config);
+    // Close sidebar after saving config
+    if (config) {
+      setSidebarOpen(false);
+    }
+  }, []);
 
   // Open the layout's mobile menu via custom event
   const openLayoutMenu = useCallback(() => {
@@ -80,6 +113,7 @@ function ChatContent() {
     conversationId: currentConversationId,
     onConversationCreated: handleConversationCreated,
     onConversationsChanged: refreshConversations,
+    userLLMConfig,
   });
 
   const handleRunSkill = useCallback(async (skillSlug: string) => {
@@ -133,7 +167,8 @@ function ChatContent() {
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  if (isLoading) {
+  // Show loading while checking org LLM status
+  if (isLoading || hasOrgLLM === null) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -142,66 +177,8 @@ function ChatContent() {
     );
   }
 
-  // Show setup message if no LLM configured
-  if (!llmConfig) {
-    const isAdmin = user?.isAdmin || false;
-
-    return (
-      <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center p-8">
-        <div className="max-w-lg w-full">
-          {/* Main alert card */}
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
-              <KeyRound className="h-8 w-8 text-amber-600" />
-            </div>
-            <h2 className="text-xl font-bold text-amber-900 mb-2">LLM API Key Required</h2>
-            <p className="text-amber-700 mb-6">
-              Web Chat needs an LLM API key (Anthropic, OpenAI, or Groq) to work.
-              {isAdmin
-                ? " You can configure this in the admin settings."
-                : " Please ask your organization admin to set this up."}
-            </p>
-
-            {isAdmin ? (
-              <a
-                href="/admin/settings"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-amber-600 text-white font-semibold hover:bg-amber-700 transition-colors"
-              >
-                <Settings className="h-4 w-4" />
-                Configure LLM Settings
-              </a>
-            ) : (
-              <div className="text-sm text-amber-600 bg-amber-100 rounded-lg p-3">
-                Contact your admin to add an LLM API key in Admin Settings
-              </div>
-            )}
-          </div>
-
-          {/* Alternative: Desktop Chat */}
-          <div className="mt-6 p-4 bg-muted/50 rounded-xl border">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <ExternalLink className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">Alternative: Use Desktop Chat</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Desktop apps like Claude Desktop use your own API keys and don't require org configuration.
-                </p>
-                <a
-                  href="/desktop-chat"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-                >
-                  Set up Desktop Chat
-                  <ChevronRight className="h-3 w-3" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Determine if chat is usable (has org or user LLM config)
+  const canChat = !!llmConfig;
 
   return (
     <div className={cn(
@@ -236,10 +213,24 @@ function ChatContent() {
               {currentConversation?.title || 'New Chat'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              For a better experience, try <a href="/desktop-chat" className="text-primary hover:underline">Desktop Chat</a>.
+              {userLLMConfig ? (
+                <>Using your {llmConfig?.provider} API key.</>
+              ) : (
+                <>For a better experience, try <a href="/desktop-chat" className="text-primary hover:underline">Desktop Chat</a>.</>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {userLLMConfig && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                title="API key settings"
+              >
+                <KeyRound className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -294,7 +285,20 @@ function ChatContent() {
       )}
 
       {/* Input */}
-      <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} sidebarOpen={sidebarOpen} isMobile={isMobile} />
+      {canChat ? (
+        <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} sidebarOpen={sidebarOpen} isMobile={isMobile} />
+      ) : (
+        <div className="px-4 py-3 border-t">
+          <Button
+            variant="outline"
+            className="w-full justify-center gap-2"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <KeyRound className="h-4 w-4" />
+            Configure API Key to Start Chatting
+          </Button>
+        </div>
+      )}
 
       {/* Instructions Dialog */}
       <Dialog
@@ -314,8 +318,14 @@ function ChatContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Chat Sidebar (conversations + tools/skills) */}
-      <ChatSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Chat Sidebar (conversations + tools/skills + API key settings) */}
+      <ChatSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        hasOrgLLM={hasOrgLLM ?? true}
+        userLLMConfig={userLLMConfig}
+        onUserLLMConfigChange={handleUserLLMConfigChange}
+      />
     </div>
   );
 }

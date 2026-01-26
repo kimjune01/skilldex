@@ -50,6 +50,11 @@ export interface UseClientChatOptions {
    * Callback when conversations should be refreshed (after message added).
    */
   onConversationsChanged?: () => void;
+  /**
+   * Optional user-provided LLM config. When provided, this overrides the org-level config.
+   * Used for "bring your own API key" functionality.
+   */
+  userLLMConfig?: LLMConfig | null;
 }
 
 export interface UseClientChatReturn {
@@ -93,14 +98,17 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
     async function init() {
       setIsLoading(true);
       try {
-        const [config, prompt] = await Promise.all([
-          getLLMConfig(),
+        // If user provided their own LLM config, use that instead of org config
+        const [orgConfig, prompt] = await Promise.all([
+          options.userLLMConfig ? Promise.resolve(null) : getLLMConfig(),
           buildSystemPrompt(),
         ]);
-        setLLMConfig(config);
+
+        const finalConfig = options.userLLMConfig || orgConfig;
+        setLLMConfig(finalConfig);
         setSystemPrompt(prompt);
 
-        if (!config) {
+        if (!finalConfig) {
           setError('LLM not configured. Please set up your organization\'s LLM API key.');
         }
       } catch (err) {
@@ -110,7 +118,7 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
       }
     }
     init();
-  }, []);
+  }, [options.userLLMConfig]);
 
   // Load messages when conversationId changes
   useEffect(() => {
