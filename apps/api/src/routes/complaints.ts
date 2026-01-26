@@ -14,9 +14,9 @@ export const complaintsRoutes = new Hono();
 // All routes require JWT auth
 complaintsRoutes.use('*', jwtAuth);
 
-// GitHub config - uses skillomatic repo
-const GITHUB_OWNER = 'junekim-rippling';
-const GITHUB_REPO = 'skillomatic';
+// GitHub config - uses skilldex repo
+const GITHUB_OWNER = 'kimjune01';
+const GITHUB_REPO = 'skilldex';
 
 // Get GitHub token from SST secret (production) or env var (development)
 function getGithubToken(): string | undefined {
