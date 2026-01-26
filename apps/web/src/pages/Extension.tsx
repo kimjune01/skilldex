@@ -49,7 +49,7 @@ export default function Extension() {
               </Button>
             </a>
             <p className="text-sm text-slate-500 mt-4">
-              Version 1.0.0 • Chrome 116+
+              Version 1.0.1 • Chrome 116+
             </p>
           </CardContent>
         </Card>

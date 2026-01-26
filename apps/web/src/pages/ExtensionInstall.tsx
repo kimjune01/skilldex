@@ -107,7 +107,7 @@ export default function ExtensionInstall() {
                 Skillomatic Scraper Extension
               </CardTitle>
               <p className="text-sm text-[hsl(220_15%_50%)]">
-                Version 1.0.0 - Chrome 116+
+                Version 1.0.1 - Chrome 116+
               </p>
             </div>
           </div>
