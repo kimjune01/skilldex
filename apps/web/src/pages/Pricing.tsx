@@ -5,7 +5,7 @@
  * Easter eggs throughout for the curious.
  */
 import { useState, useEffect } from 'react';
-import { CheckCircle, Calendar, ArrowRight, Zap, Users, Building2, Bot } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Zap, Users, Bot } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
@@ -61,21 +61,22 @@ const consultingServices = [
       'Documentation and training',
       'Done in 1-2 days',
       "You don't pay until you're using it",
+      'Then $29/mo to run it (Pro plan)',
     ],
     cta: 'Book a Call',
     ctaHref: 'https://cal.com/june-kim-mokzq0/30min',
     highlight: true,
   },
   {
-    name: 'Ongoing Support',
-    price: '$200',
-    priceNote: '/month',
-    description: 'Ongoing support, tweaks, and new automations as your needs evolve.',
+    name: 'Multiple Automations',
+    price: '$500',
+    priceNote: 'per automation',
+    description: 'Need more than one workflow automated? Same deal, same guarantee.',
     features: [
-      'Priority support',
-      'Adjustments and improvements',
-      'One new automation per month',
-      'Cancel anytime',
+      'Each automation built to spec',
+      'Bundle discount for 3+',
+      'Team plan ($99/mo) for heavy usage',
+      'Priority support included',
     ],
     cta: 'Book a Call',
     ctaHref: 'https://cal.com/june-kim-mokzq0/30min',
@@ -88,7 +89,7 @@ const selfServeTiers = [
     name: 'Free',
     price: '$0',
     period: '/month',
-    description: 'Try it out',
+    description: 'Try before you buy',
     features: [
       '500 tool calls/month',
       'Basic integrations',
@@ -102,7 +103,7 @@ const selfServeTiers = [
     name: 'Pro',
     price: '$29',
     period: '/month',
-    description: 'For power users',
+    description: 'Most consulting clients',
     features: [
       '5,000 tool calls/month',
       'All integrations',
@@ -112,21 +113,7 @@ const selfServeTiers = [
     cta: 'Get Started',
     ctaHref: '/login',
     icon: Users,
-  },
-  {
-    name: 'Team',
-    price: '$99',
-    period: '/month',
-    description: 'For small teams',
-    features: [
-      '25,000 tool calls/month',
-      'Multiple users',
-      'Priority support',
-      '$0.005/call after limit',
-    ],
-    cta: 'Get Started',
-    ctaHref: '/login',
-    icon: Building2,
+    recommended: true,
   },
 ];
 
@@ -230,11 +217,11 @@ export default function Pricing() {
           <h2 className="text-2xl font-black text-[hsl(220_30%_15%)] mb-8 text-center">
             Done-for-You Consulting
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-6 items-stretch">
             {consultingServices.map((service) => (
               <div
                 key={service.name}
-                className={`rounded-2xl p-6 ${
+                className={`rounded-2xl p-6 flex flex-col ${
                   service.highlight
                     ? 'robot-panel ring-2 ring-primary'
                     : 'card-robot'
@@ -256,7 +243,7 @@ export default function Pricing() {
                 <p className="text-sm text-[hsl(220_15%_45%)] mb-6">
                   {service.description}
                 </p>
-                <ul className="space-y-2 mb-6">
+                <ul className="space-y-2 mb-6 flex-1">
                   {service.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-[hsl(220_15%_40%)]">
                       <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
@@ -317,7 +304,7 @@ export default function Pricing() {
             </div>
             <div className="flex-1 h-px bg-[hsl(220_15%_85%)]" />
           </div>
-          <span className="text-sm font-bold text-[hsl(220_15%_50%)] mt-2 block">OR DO IT YOURSELF</span>
+          <span className="text-sm font-bold text-[hsl(220_15%_50%)] mt-2 block">THEN PAY FOR WHAT YOU USE</span>
         </div>
       </section>
 
@@ -325,22 +312,29 @@ export default function Pricing() {
       <section className="py-12 px-6 bg-[hsl(220_20%_97%)]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-black text-[hsl(220_30%_15%)] mb-2 text-center">
-            Self-Serve Platform
+            Usage Plans
           </h2>
           <p className="text-center text-[hsl(220_15%_45%)] mb-8">
-            Connect your tools and use it with Claude Desktop, ChatGPT, or any MCP-compatible app.
+            After setup, you pay for usage. Same plans whether I built it or you did.
           </p>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {selfServeTiers.map((tier) => {
               const Icon = tier.icon;
               return (
-                <div key={tier.name} className="card-robot rounded-2xl p-6">
+                <div key={tier.name} className={`card-robot rounded-2xl p-6 ${tier.recommended ? 'ring-2 ring-primary' : ''}`}>
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="text-lg font-black text-[hsl(220_30%_15%)] mb-1">
-                    {tier.name}
-                  </h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-black text-[hsl(220_30%_15%)]">
+                      {tier.name}
+                    </h3>
+                    {tier.recommended && (
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                        RECOMMENDED
+                      </span>
+                    )}
+                  </div>
                   <div className="mb-2">
                     <span className="text-2xl font-black text-[hsl(220_30%_15%)]">
                       {tier.price}

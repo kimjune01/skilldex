@@ -25,19 +25,27 @@ The platform handles OAuth token management, tool execution, and usage tracking.
 
 ## Documentation Index
 
-**Start here:**
-- `docs/ARCHITECTURE.md` - Tech stack, directory structure, API endpoints, database schema
-- `docs/BEST_PRACTICES.md` - Critical guardrails, common mistakes to avoid
+```
+docs/
+├── architecture/          # How the system works
+│   ├── ARCHITECTURE.md    # Tech stack, API endpoints, DB schema (start here)
+│   ├── EPHEMERAL_ARCHITECTURE.md   # Privacy/security model
+│   ├── DYNAMIC_TOOLS_ARCHITECTURE.md # MCP tool system
+│   ├── SKILLS_AND_CAPABILITIES.md  # Skill system
+│   └── SECURITY.md        # Security considerations
+├── guides/                # How to do things
+│   ├── BEST_PRACTICES.md  # Guardrails, common mistakes
+│   ├── DEPLOYMENT.md      # AWS/SST/Turso setup
+│   ├── INTEGRATION_GUIDE.md # Adding integrations
+│   ├── GOOGLE_OAUTH_CONFIG.md # Google OAuth setup
+│   ├── ADMIN_GUIDE.md     # Admin operations
+│   └── MCP_MANUAL_TESTS.md # Testing MCP server
+└── future/                # Planned features (not implemented)
+    ├── AUTOMATIONS_EXPLORATION.md # Cron/event triggers
+    └── INTEGRATION_AUTH_PLAN.md   # Org-wide integrations
+```
 
-**Then read based on your task:**
-
-| Task | Doc |
-|------|-----|
-| Working with integrations | `docs/INTEGRATION_GUIDE.md` |
-| Modifying ATS/MCP tools | `docs/DYNAMIC_TOOLS_ARCHITECTURE.md` |
-| Security/privacy changes | `docs/EPHEMERAL_ARCHITECTURE.md` |
-| Adding/modifying skills | `docs/SKILLS_AND_CAPABILITIES.md` |
-| Testing MCP server | `docs/MCP_MANUAL_TESTS.md` |
+**Start here:** `docs/architecture/ARCHITECTURE.md` then `docs/guides/BEST_PRACTICES.md`
 
 ## Tech Stack Summary
 
@@ -104,7 +112,7 @@ sqlite3 packages/db/data/skillomatic.db "SELECT * FROM users LIMIT 3;"
 - `/rollback` - Revert to a previous tagged version
 - `/prod-status` - Check what's currently running
 
-For first-time setup (AWS, Turso, SST secrets), see `docs/DEPLOYMENT.md`.
+For first-time setup (AWS, Turso, SST secrets), see `docs/guides/DEPLOYMENT.md`.
 
 ## Testing
 
@@ -112,4 +120,4 @@ Always verify changes work before completing:
 - Run `pnpm typecheck` for type errors
 - Test API endpoints with `curl`
 - Check browser console for frontend errors
-- See `docs/MCP_MANUAL_TESTS.md` for MCP testing scenarios
+- See `docs/guides/MCP_MANUAL_TESTS.md` for MCP testing scenarios
