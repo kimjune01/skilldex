@@ -56,7 +56,7 @@ They have:
 | Discovery call booked + showed | $25 |
 | Call converts to barter deal | $50 + "I'll be your reference" |
 | **First paid deal** | **100% of first payment ($500)** |
-| Subsequent paid deals | 20% of first payment ($100) |
+| Subsequent paid deals | 50% of first payment ($250) |
 
 **Why 100% on first sale:**
 - Gets them hungry — $500 is real money for an unemployed grad
