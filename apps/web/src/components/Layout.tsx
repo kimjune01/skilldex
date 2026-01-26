@@ -294,13 +294,8 @@ export default function Layout() {
           )}
         </nav>
 
-        {/* User section at bottom - Dispenser slot style */}
+        {/* User section at bottom */}
         <div className="border-t-2 border-[hsl(220_15%_75%)] p-3 bg-[hsl(220_15%_90%)]">
-          {/* Coin slot decoration */}
-          <div className="flex justify-center mb-3">
-            <div className="coin-slot" />
-          </div>
-
           {organizationName && (
             <div className="robot-display rounded-md p-2 mb-3">
               <div className="flex items-center gap-2">
