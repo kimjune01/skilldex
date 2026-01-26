@@ -134,6 +134,8 @@ pnpm db:seed
 
 ```
 skillomatic/
+├── .claude/
+│   └── commands/         # Claude Code slash commands (/deploy, /dev-env, etc.)
 ├── apps/
 │   ├── web/              # React frontend
 │   ├── api/              # Hono API backend
@@ -149,15 +151,9 @@ skillomatic/
 │   ├── ats-candidate-search/
 │   ├── skill-builder/
 │   └── ...
-├── deploy/
-│   └── scripts/          # IT deployment scripts
-│       ├── skillomatic-deploy.sh    # macOS/Linux
-│       └── Deploy-Skillomatic.ps1   # Windows
 ├── docs/                 # Documentation
-│   ├── INSTALLATION.md   # Setup guide for recruiters
-│   ├── IT_DEPLOYMENT.md  # Enterprise deployment guide
-│   ├── RECRUITER_GUIDE.md
-│   └── ADMIN_GUIDE.md
+├── deploy/               # IT deployment scripts
+├── CLAUDE.md             # Project instructions for Claude Code
 └── docker-compose.yml
 ```
 
@@ -366,6 +362,45 @@ When demo mode is enabled, the following mock data is available:
 - **Usage Analytics** - 7 days of simulated skill execution logs
 
 Demo mode is indicated in API responses with `"demo": true` and in the web UI with a visual indicator.
+
+## Working with Claude Code
+
+This repo is optimized for development with [Claude Code](https://claude.com/claude-code). Key files:
+
+- **`CLAUDE.md`** - Project instructions that Claude reads automatically. Contains tech stack, key files, dev commands, and coding guidelines.
+- **`.claude/commands/`** - Slash commands for common tasks
+
+### Slash Commands
+
+Use these in Claude Code by typing `/command-name`:
+
+| Command | Description |
+|---------|-------------|
+| `/deploy` | Deploy to production (use this, not `pnpm deploy`) |
+| `/dev-env` | Start the development environment |
+| `/local-db` | Query the local SQLite database |
+| `/load-mcp` | Load and test the MCP server for a user |
+| `/prod-status` | Check what's running in production |
+| `/prod-debugger` | Fetch and investigate production errors |
+| `/rollback` | Rollback to a previous deployment |
+
+### For Humans
+
+When working on this repo:
+
+1. **Read `CLAUDE.md` first** - It has the project overview and points to relevant docs
+2. **Use Claude Code** - The slash commands handle common workflows (deploy, debug, etc.)
+3. **Check `docs/`** - Detailed documentation for specific topics (architecture, integrations, security)
+4. **Run `pnpm typecheck`** - Always verify before committing
+
+### For AI Assistants
+
+The `CLAUDE.md` file provides:
+- Project context and business model
+- Documentation index by task type
+- Key file locations
+- Development commands
+- Testing requirements
 
 ## Contributing
 
