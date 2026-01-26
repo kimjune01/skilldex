@@ -43,10 +43,40 @@ pnpm typecheck
 pnpm db:push:prod
 ```
 
-5. Deploy with git hash:
+5. Deploy with git hash using selective targeting:
+
+Based on the changed files from step 2, use `--target` to deploy only affected services:
+
 ```bash
+# If ALL services need deployment (sst.config.ts changed, or first deploy):
 GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production
+
+# If only API needs deployment (apps/api/, packages/mcp/ changes):
+GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production --target Api --target ApiRouter
+
+# If only Web needs deployment (apps/web/ changes):
+GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production --target Web
+
+# If only MCP needs deployment (apps/mcp-server/ changes):
+GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production --target McpService
+
+# Combine targets as needed, e.g., API + Web (no MCP):
+GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production --target Api --target ApiRouter --target Web
 ```
+
+**Target mapping:**
+| Service | SST Targets |
+|---------|-------------|
+| API | `--target Api --target ApiRouter` |
+| Web | `--target Web` |
+| MCP | `--target McpService` (slow ~2min, skip when possible) |
+
+**Decision logic:**
+- `sst.config.ts` changed → deploy all (no --target)
+- `packages/db/` or `packages/shared/` changed → deploy all affected services
+- Only `apps/api/` or `packages/mcp/` → target Api + ApiRouter
+- Only `apps/web/` → target Web
+- Only `apps/mcp-server/` → target McpService
 
 6. Verify services are responding and git hashes match (call in parallel):
 ```bash
@@ -75,7 +105,7 @@ git tag "$NEW_TAG" && git push origin "$NEW_TAG"
 
 8. Report success with deployed services, git hashes, and the new version tag.
 
-Stops on first failure. Uses change detection to skip unnecessary deployments. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
+Stops on first failure. **Uses `--target` flag for selective deployment to skip slow MCP builds when possible.** Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
 Note: Schema changes should deprecate columns before removing them to support rollbacks. See `/rollback` command.
 
