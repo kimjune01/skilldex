@@ -199,9 +199,110 @@ Longer content (2-5 min videos, blog posts):
 4. "Good enough" (don't need all-in-one)
 5. Compliance/IT requirements (enterprise)
 
+## Founder Angle
+
+### Why Founders
+
+- **Influential** - Share tools they use, built-in distribution
+- **High willingness to pay** - Value time savings highly
+- **Less crowded** - Not as many players as recruiting/sales
+- **Lighthouse customers** - A few happy founders > chasing founder market at scale
+
+### Positioning for Founders
+
+**"Claude that knows your whole business"**
+
+Not another AI assistant app - Claude connected to YOUR tools. Each founder's stack is different, but common elements:
+- Gmail/Calendar for scheduling + communication
+- Sheets/Airtable for metrics + data
+- Notion for docs (limited API)
+- Slack (restricted - see below)
+
+### Competition: Lindy AI
+
+Lindy is the main player in AI executive assistant space:
+- 3000+ integrations
+- "AI employee" positioning
+- No-code workflow builder
+- Pricing: expensive, custom quotes
+- Reviews: powerful but inconsistent, steep learning curve
+
+**Our angle vs Lindy:**
+- Claude-native (better reasoning than GPT-4 for complex tasks)
+- Simpler - not trying to be everything
+- Consulting model - we build it for you, not DIY
+
+### Founder-Specific Demos
+
+#### Demo F1: "Morning Briefing"
+- **Hook:** "My AI knows what I need to know before I check anything"
+- **Show:** One prompt → calendar summary + priority emails + key metrics
+- **Integrations:** Gmail + Google Calendar + Sheets/Airtable
+- **Platform:** Twitter/X, LinkedIn
+
+#### Demo F2: "Prep Me for This Meeting"
+- **Hook:** "I walked into every meeting this week fully prepared"
+- **Show:** "Prep me for my 2pm" → pulls email history, past notes, company context
+- **Integrations:** Gmail + Calendar + Airtable
+- **Platform:** Twitter/X
+
+#### Demo F3: "Investor Update Draft"
+- **Hook:** "Monthly investor updates used to take 2 hours"
+- **Show:** "Draft investor update" → pulls metrics from Sheets, writes email
+- **Integrations:** Gmail + Sheets
+- **Platform:** LinkedIn, Twitter/X
+
+#### Demo F4: "What Fell Through the Cracks"
+- **Hook:** "Nothing slips through anymore"
+- **Show:** "What emails need responses this week" → surfaces unanswered threads
+- **Integrations:** Gmail
+- **Platform:** Twitter/X
+
+### Integration Constraints
+
+| Tool | API Status | Feasibility |
+|------|------------|-------------|
+| Gmail | Open, good scopes | Yes |
+| Google Calendar | Open | Yes |
+| Google Sheets | Open | Yes |
+| Airtable | Open | Yes |
+| Notion | Limited API | Partial |
+| Slack | Locked down May 2025 | No (15 msg/min rate limit) |
+| Linear | Open | Yes |
+| Figma | Read-only | Partial |
+
+**Slack note:** As of May 2025, Slack severely rate-limited `conversations.history` for non-Marketplace apps (15 messages/min). Not viable without Marketplace approval. Skip for now.
+
+**Focus on:** Gmail + Calendar + Sheets/Airtable. These cover 80% of founder workflows.
+
+### Founder Content Strategy
+
+**Goal:** Lighthouse customers, not primary market
+
+1. Create 2-3 founder demos (F1, F2, F3)
+2. Post on Twitter/X where founders hang out
+3. Target founders who post about productivity/tools
+4. Convert a few to happy users
+5. Get them to share (organic distribution)
+6. Use as case studies for consulting pitch
+
+**Don't:** Try to scale founder market. Each founder needs custom setup. Use them for credibility, not volume.
+
+### Founder Messaging
+
+**Don't say:**
+- "AI assistant" (too generic, Lindy territory)
+- "Automate your day" (oversells)
+
+**Do say:**
+- "Claude connected to your tools"
+- "One conversation, all your context"
+- "Stop context-switching between apps"
+
 ## Notes
 
 - Gem does NOT have a public API that enables third-party AI tools - their AI is proprietary
 - Gem API requires contacting sales for access (not self-serve)
 - Traditional ATS (Greenhouse, Lever) have more open APIs
 - This is our moat: we can integrate with the ATS that Gem competes against
+- Slack locked down API in May 2025 - not a viable integration target without Marketplace approval
