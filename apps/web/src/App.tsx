@@ -57,6 +57,9 @@ import ForIT from './pages/ForIT';
 import ForRecruiters from './pages/ForRecruiters';
 import Pricing from './pages/Pricing';
 import HowItWorks from './pages/HowItWorks';
+import About from './pages/About';
+import Examples from './pages/Examples';
+import SelfServe from './pages/SelfServe';
 import LinkedInAutomation from './pages/LinkedInAutomation';
 import IntegrationsLanding from './pages/Integrations-landing';
 import Security from './pages/Security';
@@ -318,6 +321,9 @@ export default function App() {
         <Route path="/for-recruiters" element={<ForRecruiters />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/examples" element={<Examples />} />
+        <Route path="/self-serve" element={<SelfServe />} />
         <Route path="/linkedin-automation" element={<LinkedInAutomation />} />
         <Route path="/supported-integrations" element={<IntegrationsLanding />} />
         <Route path="/security" element={<Security />} />

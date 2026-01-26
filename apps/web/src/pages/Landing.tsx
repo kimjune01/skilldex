@@ -1,46 +1,85 @@
 /**
  * Landing Page
  *
- * Public landing page for Skillomatic with robot vending machine theme.
- * Shows features, pricing, and call-to-action for login/signup.
+ * Consulting-first landing page for Skillomatic.
+ * "I build AI automations for your business"
+ * Includes easter eggs for the curious.
  */
 import { useState, useRef } from 'react';
-import { Shield, Rocket, ArrowRight, CheckCircle, Sparkles, Database, Target } from 'lucide-react';
+import { ArrowRight, Zap, Clock, CheckCircle, Calendar, Mail, Database, Bot, Workflow, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter, DemoRevealGame } from '@/components/marketing';
 
-const vendingItems = [
+const workflowExamples = [
   {
-    id: 'data',
-    label: 'YOUR OWN LIVE DATA',
-    description: 'Connected to your ATS, LinkedIn, and email in real-time. No stale training data.',
+    category: 'Recruiting',
     icon: Database,
+    color: 'cyan',
+    tasks: [
+      'Source candidates from LinkedIn',
+      'Sync to your ATS (Greenhouse, Lever, etc.)',
+      'Send personalized outreach',
+      'Schedule interviews automatically',
+    ],
+  },
+  {
+    category: 'Sales',
+    icon: Mail,
+    color: 'green',
+    tasks: [
+      'Enrich leads from your CRM',
+      'Draft follow-up sequences',
+      'Update deal stages automatically',
+      'Send meeting reminders',
+    ],
+  },
+  {
+    category: 'Operations',
+    icon: Workflow,
+    color: 'amber',
+    tasks: [
+      'Chase overdue invoices',
+      'Generate weekly reports',
+      'Sync data between tools',
+      'Automate repetitive admin',
+    ],
+  },
+];
+
+// Interactive flip cards data
+const benefitCards = [
+  {
+    id: 'work',
+    label: 'ACTUALLY DOES THE WORK',
+    description: 'Not just suggestions. Real actions in your real systems.',
+    icon: Zap,
     color: 'cyan',
     led: 'led-cyan',
     rotation: -0.75,
   },
   {
-    id: 'precision',
-    label: 'UNPARALLELED PRECISION',
-    description: 'Every action executed exactly as requested. No retries. No corrections needed.',
-    icon: Target,
+    id: 'fast',
+    label: 'DONE IN DAYS',
+    description: 'Not a 6-month IT project. Working automation in 1-2 days.',
+    icon: Clock,
     color: 'green',
     led: 'led-green',
     rotation: 0.5,
   },
   {
-    id: 'truth',
-    label: 'TOTALLY GROUNDED',
-    description: 'Every fact verified against your real systems. Zero hallucinations.',
-    icon: CheckCircle,
+    id: 'ai',
+    label: 'WORKS WITH YOUR AI',
+    description: 'Claude Desktop, ChatGPT, or any MCP-compatible app.',
+    icon: Bot,
     color: 'amber',
     led: 'led-amber',
     rotation: 0.5,
   },
   {
     id: 'control',
-    label: 'ABSOLUTE CONTROL',
-    description: 'AI suggests, you decide. Review and approve every action before it happens.',
+    label: 'YOU STAY IN CONTROL',
+    description: 'Review and approve actions before they happen.',
     icon: Shield,
     color: 'purple',
     led: 'led-purple',
@@ -50,7 +89,16 @@ const vendingItems = [
 
 const flipAxes = ['X', '-X', 'Y', '-Y'] as const;
 
-function DifferentiatorSection() {
+// Interactive How It Works steps with growing buttons
+const setupSteps = [
+  { id: 'start-here', number: '0', title: '', description: '', color: 'gray', size: 72 },
+  { id: 'discovery', number: '1', title: 'Discovery Call', description: "You tell me what's painful. I ask questions.", color: 'cyan', size: 100 },
+  { id: 'build', number: '2', title: 'I Build It', description: 'Automation connected to your real tools.', color: 'green', size: 140 },
+  { id: 'use', number: '3', title: 'You Use It', description: 'Works in Claude Desktop, ChatGPT, any AI app.', color: 'amber', size: 200 },
+  { id: 'go', number: "LET'S GO", title: "Ready to Automate?", description: 'Book a free discovery call', color: 'primary', size: 280, isLink: true },
+];
+
+function BenefitsSection() {
   const [flipped, setFlipped] = useState<string | null>(null);
   const [discovered, setDiscovered] = useState<Set<string>>(new Set());
   const [flipAxisMap, setFlipAxisMap] = useState<Record<string, string>>({});
@@ -65,7 +113,7 @@ function DifferentiatorSection() {
       setFlipAxisMap(prev => ({ ...prev, [id]: randomAxis }));
       setFlipped(id);
 
-      // Check if this is the last card (Absolute Control)
+      // Check if this is the last card
       const isLastCard = id === 'control' && discovered.size === 3;
 
       if (isLastCard) {
@@ -89,7 +137,7 @@ function DifferentiatorSection() {
   const allDiscovered = discovered.size === 4;
 
   // Find the first undiscovered card to entice the user
-  const nextToDiscover = vendingItems.find(item => !discovered.has(item.id))?.id;
+  const nextToDiscover = benefitCards.find(item => !discovered.has(item.id))?.id;
 
   return (
     <section className="py-16 md:py-24 px-4 md:px-6 bg-[hsl(220_25%_12%)]">
@@ -108,14 +156,14 @@ function DifferentiatorSection() {
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse pointer-events-none" />
 
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-center digital-text tracking-tight">
-              <span className="bg-gradient-to-r from-cyan-400 to-primary bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]">Vibe</span>
-              <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"> Recruiting</span>
+              <span className="bg-gradient-to-r from-cyan-400 to-primary bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]">Why</span>
+              <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"> Skillomatic?</span>
             </h2>
           </div>
 
           {/* Product slots - 1 column on mobile, 2x2 grid on larger screens */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3 md:gap-5">
-            {vendingItems.map((item) => {
+            {benefitCards.map((item) => {
               const Icon = item.icon;
               const isFlipped = flipped === item.id;
               const colorStyles = {
@@ -229,9 +277,9 @@ function DifferentiatorSection() {
           <div className="dispense-slot rounded-lg md:rounded-xl p-3 md:p-4 mt-4 md:mt-6 text-center min-h-[44px] md:min-h-[52px]">
             {allDiscovered ? (
               <p className="text-white/50 text-xs sm:text-sm font-mono animate-reveal-ltr">
-                Other AI locks you in. We connect to{' '}
-                <span className="text-cyan-400">everything</span> and work with{' '}
-                <span className="text-primary">any AI</span>.
+                AI that actually{' '}
+                <span className="text-cyan-400">does the work</span>, connected to{' '}
+                <span className="text-primary">your tools</span>.
               </p>
             ) : (
               <p className="text-white/30 text-[10px] sm:text-xs font-mono">
@@ -245,14 +293,6 @@ function DifferentiatorSection() {
     </section>
   );
 }
-
-const setupSteps = [
-  { id: 'start-here', number: '0', title: '', description: '', color: 'gray', size: 72 },
-  { id: 'connect', number: '1', title: 'Connect Your Tools', description: 'Link your ATS, email, calendar, and browser extension', color: 'cyan', size: 100 },
-  { id: 'choose', number: '2', title: 'Choose Your AI', description: 'Use our web chat or your favorite desktop app', color: 'green', size: 140 },
-  { id: 'start', number: '3', title: 'Start Recruiting', description: 'Chat naturally to automate your workflow', color: 'amber', size: 200 },
-  { id: 'go', number: "LET'S GO", title: "You're Ready!", description: 'Start recruiting smarter today', color: 'primary', size: 280, isLink: true },
-];
 
 function HowItWorksSection() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -277,7 +317,12 @@ function HowItWorksSection() {
       setExtraOs(count);
       if (count >= 40) {
         clearInterval(interval);
-        window.location.href = '/login';
+        window.open('https://cal.com/june-kim-mokzq0/30min', '_blank');
+        // Reset after redirect
+        setTimeout(() => {
+          setCurrentStep(0);
+          setExtraOs(0);
+        }, 500);
       }
     }, 60);
   };
@@ -294,15 +339,21 @@ function HowItWorksSection() {
   };
 
   return (
-    <section id="how-it-works" className="py-20 px-6">
+    <section id="how-it-works" className="py-20 px-6 bg-[hsl(220_20%_97%)]">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h2
             className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4 transition-opacity duration-500"
-            style={{ opacity: Math.pow(0.5, currentStep) }}
+            style={{ opacity: Math.max(0.2, Math.pow(0.6, currentStep)) }}
           >
-            Up and Running in just a few minutes
+            How It Works
           </h2>
+          <p
+            className="text-[hsl(220_15%_45%)] max-w-2xl mx-auto transition-opacity duration-500"
+            style={{ opacity: Math.max(0.2, Math.pow(0.6, currentStep)) }}
+          >
+            Simple process. Fast delivery. Real results.
+          </p>
         </div>
 
         {/* Single button area */}
@@ -412,69 +463,140 @@ export default function Landing() {
       <MarketingNav />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-0 min-[480px]:px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
-            {/* Left content */}
-            <div className="flex-1 text-center lg:text-left px-6 min-[480px]:px-0">
-              <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Works with Any AI Chat App
-              </Badge>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
-                Recruiting Skills,{' '}
-                <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
-                  Dispensed on Demand
-                </span>
-              </h1>
-              <p className="text-lg text-[hsl(220_15%_45%)] mb-8 max-w-xl mx-auto lg:mx-0">
-                Pre-built recruiting playbooks (we call them Skills) that work with your favorite AI. Use our web chatbot,
-                Claude Desktop, ChatGPT, or any BYOAI app to search candidates, sync with your ATS, and send personalized outreach.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[hsl(220_15%_92%)] border-2 border-[hsl(220_15%_82%)] text-[hsl(220_20%_35%)] font-bold tracking-wide text-lg hover:bg-[hsl(220_15%_88%)] transition-colors"
-                >
-                  See How It Works
-                </a>
-              </div>
-            </div>
-
-            {/* Right - Interactive Demo Reveal Game */}
-            <div className="flex-1 flex justify-center w-full">
-              <DemoRevealGame />
-            </div>
+      <section className="pt-32 pb-20 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
+            <Zap className="h-3 w-3 mr-1" />
+            AI Automation Consulting
+          </Badge>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
+            I Build AI Automations
+            <br />
+            <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
+              for Your Business
+            </span>
+          </h1>
+          <p className="text-lg text-[hsl(220_15%_45%)] mb-8 max-w-2xl mx-auto">
+            You tell me what's repetitive and painful. I build an automation that actually does it —
+            connected to your real tools, running in your AI assistant.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="https://cal.com/june-kim-mokzq0/30min"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl robot-button text-white font-black tracking-wide text-lg border-0"
+            >
+              <Calendar className="h-5 w-5" />
+              Book a Discovery Call
+            </a>
+            <Link
+              to="/self-serve"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[hsl(220_15%_92%)] border-2 border-[hsl(220_15%_82%)] text-[hsl(220_20%_35%)] font-bold tracking-wide text-lg hover:bg-[hsl(220_15%_88%)] transition-colors"
+            >
+              Or Set It Up Yourself
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Bold Differentiator Section */}
-      <DifferentiatorSection />
+      {/* Interactive Demo Game - Easter Egg */}
+      <section className="py-12 px-6 bg-[hsl(220_25%_12%)]">
+        <div className="max-w-4xl mx-auto">
+          <DemoRevealGame />
+        </div>
+      </section>
 
-      {/* How It Works - Interactive Boot Sequence */}
+      {/* Interactive Benefits Cards */}
+      <BenefitsSection />
+
+      {/* What I Can Automate */}
+      <section className="py-20 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
+              What Can I Automate?
+            </h2>
+            <p className="text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
+              If it's repetitive and involves your business tools, I can probably automate it.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {workflowExamples.map((workflow) => {
+              const Icon = workflow.icon;
+              const colorStyles = {
+                cyan: { border: 'border-cyan-400/40', icon: 'text-cyan-400', bg: 'bg-cyan-400/10' },
+                green: { border: 'border-green-400/40', icon: 'text-green-400', bg: 'bg-green-400/10' },
+                amber: { border: 'border-amber-400/40', icon: 'text-amber-400', bg: 'bg-amber-400/10' },
+              }[workflow.color];
+
+              return (
+                <div
+                  key={workflow.category}
+                  className={`card-robot rounded-2xl p-6 border ${colorStyles?.border}`}
+                >
+                  <div className={`h-12 w-12 rounded-xl ${colorStyles?.bg} flex items-center justify-center mb-4`}>
+                    <Icon className={`h-6 w-6 ${colorStyles?.icon}`} />
+                  </div>
+                  <h3 className="text-xl font-black text-[hsl(220_30%_15%)] mb-4">{workflow.category}</h3>
+                  <ul className="space-y-2">
+                    {workflow.tasks.map((task, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-[hsl(220_15%_45%)]">
+                        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        {task}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-center text-[hsl(220_15%_50%)] mt-8">
+            Don't see your workflow?{' '}
+            <a
+              href="https://cal.com/june-kim-mokzq0/30min"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Let's talk about it
+            </a>
+          </p>
+        </div>
+      </section>
+
+      {/* Interactive How It Works with growing buttons */}
       <HowItWorksSection />
 
       {/* CTA Section */}
       <section className="py-20 px-6 bg-gradient-to-br from-primary to-amber-500">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <Rocket className="h-8 w-8 text-white" />
-          </div>
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-            Ready to Supercharge Your Recruiting?
+            Let's Talk About What You Want to Automate
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            We're looking for design partners to shape the future of recruiting automation.
-            Get early access and help us build the product you need.
+            30-minute call. No commitment. I'll tell you if I can help — and if I can't, I'll point you in the right direction.
           </p>
-          <a
-            href="mailto:email@skillomatic.technology?subject=Demo%20Request&body=Hi%2C%20I%27d%20like%20to%20see%20a%20demo%20of%20Skillomatic."
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-primary font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
-          >
-            Request Live Demo
-            <ArrowRight className="h-5 w-5" />
-          </a>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="https://cal.com/june-kim-mokzq0/30min"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-primary font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
+            >
+              <Calendar className="h-5 w-5" />
+              Book a Discovery Call
+            </a>
+            <Link
+              to="/self-serve"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/10 text-white font-bold tracking-wide text-lg hover:bg-white/20 transition-colors border border-white/20"
+            >
+              Prefer DIY? Try Self-Serve
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </div>
         </div>
       </section>
 

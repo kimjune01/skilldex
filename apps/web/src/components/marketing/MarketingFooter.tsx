@@ -16,11 +16,20 @@ export function MarketingFooter() {
             <span className="text-lg font-black text-white">SKILLOMATIC</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-[hsl(220_15%_60%)]">
+            <Link to="/how-it-works" className="hover:text-white transition-colors">
+              How It Works
+            </Link>
+            <Link to="/examples" className="hover:text-white transition-colors">
+              Examples
+            </Link>
             <Link to="/pricing" className="hover:text-white transition-colors">
               Pricing
             </Link>
-            <Link to="/for-it" className="hover:text-white transition-colors">
-              Security
+            <Link to="/about" className="hover:text-white transition-colors">
+              About
+            </Link>
+            <Link to="/self-serve" className="hover:text-white transition-colors">
+              Self-Serve
             </Link>
             <Link to="/privacy" className="hover:text-white transition-colors">
               Privacy

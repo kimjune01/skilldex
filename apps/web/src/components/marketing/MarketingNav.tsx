@@ -15,9 +15,10 @@ interface MarketingNavProps {
 }
 
 const defaultLinks: NavLink[] = [
-  { to: '/for-recruiters', label: 'For Recruiters' },
-  { to: '/for-it', label: 'For IT' },
+  { to: '/how-it-works', label: 'How It Works' },
+  { to: '/examples', label: 'Examples' },
   { to: '/pricing', label: 'Pricing' },
+  { to: '/about', label: 'About' },
 ];
 
 export function MarketingNav({ links = defaultLinks }: MarketingNavProps) {
@@ -46,12 +47,14 @@ export function MarketingNav({ links = defaultLinks }: MarketingNavProps) {
           >
             Log In
           </Link>
-          <Link
-            to="/login"
+          <a
+            href="https://cal.com/june-kim-mokzq0/30min"
+            target="_blank"
+            rel="noopener noreferrer"
             className="px-4 py-2 rounded-lg robot-button text-white text-sm font-bold tracking-wide border-0"
           >
-            Get Started
-          </Link>
+            Book a Call
+          </a>
         </div>
       </div>
     </nav>
