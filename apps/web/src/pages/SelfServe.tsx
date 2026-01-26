@@ -91,23 +91,27 @@ const steps = [
 const faqs = [
   {
     q: 'What is MCP?',
-    a: 'MCP (Model Context Protocol) is a standard that lets AI apps like Claude Desktop connect to external tools. Skillomatic is an MCP server that gives your AI access to your business tools.',
+    a: 'MCP (Model Context Protocol) is an open standard created by Anthropic that lets AI assistants connect to external tools and data. Think of it like USB for AI — a universal way to plug capabilities into your AI. Skillomatic is an MCP server, meaning it gives your AI the ability to interact with your business tools (ATS, CRM, email, etc.).',
   },
   {
     q: 'Which AI apps work with Skillomatic?',
-    a: 'Claude Desktop, ChatGPT (with plugins), Cursor, and any other MCP-compatible app. We also have a browser extension for web-based AI tools.',
+    a: 'Claude Desktop is the main one right now — it has native MCP support. ChatGPT works via our browser extension. Other MCP-compatible apps like Cursor and Continue also work. As more AI apps adopt MCP, they\'ll work with Skillomatic automatically.',
   },
   {
     q: 'What counts as a "tool call"?',
-    a: 'Each action Skillomatic takes on your behalf — searching LinkedIn, adding a candidate to your ATS, sending an email — is one tool call.',
+    a: 'Each action Skillomatic takes on your behalf — searching LinkedIn, adding a candidate to your ATS, sending an email — is one tool call. Reading data and writing data each count as separate calls.',
   },
   {
     q: 'Can I switch between self-serve and consulting?',
-    a: 'Absolutely. Many people start with self-serve and then reach out for consulting when they want custom workflows or more complex automation.',
+    a: 'Yes. Many people start with self-serve to try things out, then reach out for consulting when they want custom workflows or need help with complex automation. You can also go the other way — start with consulting, then manage it yourself.',
   },
   {
     q: 'Is my data secure?',
-    a: "We don't store candidate data or message content. Your OAuth tokens are encrypted, and we only access what you explicitly authorize. See our privacy policy for details.",
+    a: "We don't store candidate data or message content. Your OAuth tokens are encrypted at rest. We only access what you explicitly authorize, and you can disconnect integrations anytime. See our privacy policy for details.",
+  },
+  {
+    q: 'Do I need to be technical to use this?',
+    a: "For self-serve, you'll need to copy-paste a config snippet into Claude Desktop — it takes about 2 minutes. After that, you just chat in plain English. No coding required.",
   },
 ];
 

@@ -51,14 +51,14 @@ const consultingServices = [
   },
   {
     name: 'Automation Build',
-    price: '$5-10K',
+    price: 'Custom',
     description: 'I build a complete automation for one workflow, connected to your tools.',
     features: [
       'End-to-end workflow automation',
       'Connected to your real systems',
       'Works in Claude Desktop, ChatGPT, etc.',
       'Documentation and training',
-      'Done in 1-2 days',
+      'Typically done in 1-2 days',
     ],
     cta: 'Book a Call',
     ctaHref: 'https://cal.com/june-kim-mokzq0/30min',
@@ -66,7 +66,7 @@ const consultingServices = [
   },
   {
     name: 'Ongoing Retainer',
-    price: '$1-3K/mo',
+    price: 'Custom',
     description: 'Ongoing support, tweaks, and new automations as your needs evolve.',
     features: [
       'Priority support',

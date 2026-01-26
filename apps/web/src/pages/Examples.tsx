@@ -222,10 +222,10 @@ export default function Examples() {
       <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl font-black text-[hsl(220_30%_15%)] mb-2 text-center">
-            Tools I Can Connect To
+            Tools I Work With
           </h2>
           <p className="text-center text-[hsl(220_15%_45%)] mb-8">
-            If it has an API, I can connect to it.
+            These are common ones. If your tool has an API, I can probably connect to it.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {integrations.map((integration) => (
