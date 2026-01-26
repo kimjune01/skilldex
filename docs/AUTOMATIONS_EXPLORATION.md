@@ -581,6 +581,191 @@ vs. ATS built-in automations (Greenhouse, Lever):
 
 ---
 
+## Part 4: Automation CRUD via Chat
+
+Following the existing pattern for user-generated skills (see `apps/api/src/routes/skills.ts`), automations should be creatable, editable, and deletable via natural language in chat.
+
+### Conversation Flow Examples
+
+**Create:**
+```
+User: "Every Monday at 9am, email me a pipeline summary"
+
+Claude: I'll create an automation for you:
+  - Name: Weekly Pipeline Summary
+  - Trigger: Every Monday at 9:00 AM (America/Los_Angeles)
+  - Skill: daily-report
+  - Output: Email to you@company.com
+
+Creating automation...
+
+POST /v1/automations
+{
+  "name": "Weekly Pipeline Summary",
+  "skillSlug": "daily-report",
+  "triggerType": "cron",
+  "cronExpression": "0 9 * * MON",
+  "cronTimezone": "America/Los_Angeles",
+  "outputDestination": "email",
+  "outputConfig": { "to": "you@company.com" }
+}
+
+Done! Your automation is now active. It will run next Monday at 9:00 AM.
+You can manage it at skillomatic.com/automations
+```
+
+**List:**
+```
+User: "What automations do I have?"
+
+Claude: Let me check...
+
+GET /v1/automations
+
+You have 2 active automations:
+
+1. Weekly Pipeline Summary
+   - Runs: Every Monday at 9:00 AM
+   - Last run: Jan 20, 2026 (success)
+   - Next run: Jan 27, 2026
+
+2. New Candidate Alert
+   - Trigger: When candidate created in Greenhouse
+   - Last run: Jan 25, 2026 (success)
+```
+
+**Update:**
+```
+User: "Change my pipeline summary to run on Fridays instead"
+
+Claude: I'll update your "Weekly Pipeline Summary" automation:
+  - Before: Every Monday at 9:00 AM
+  - After: Every Friday at 9:00 AM
+
+PUT /v1/automations/:id
+{ "cronExpression": "0 9 * * FRI" }
+
+Done! It will now run on Fridays.
+```
+
+**Pause/Resume:**
+```
+User: "Pause my pipeline summary"
+
+Claude: PUT /v1/automations/:id { "isEnabled": false }
+
+Paused. It won't run until you resume it.
+```
+
+**Delete:**
+```
+User: "Delete the new candidate alert automation"
+
+Claude: Are you sure you want to delete "New Candidate Alert"?
+This cannot be undone.
+
+User: "Yes"
+
+Claude: DELETE /v1/automations/:id
+
+Deleted.
+```
+
+**Test/Run Now:**
+```
+User: "Test my pipeline summary"
+
+Claude: I'll run it now (this won't affect the schedule).
+
+POST /v1/automations/:id/run
+
+Running... done!
+Output sent to you@company.com. Check your inbox.
+```
+
+### API Routes (Following Skills Pattern)
+
+```typescript
+// apps/api/src/routes/v1/automations.ts
+// API key auth (same as other /v1/* routes)
+
+// List user's automations
+GET    /v1/automations
+
+// Create automation (from natural language or structured)
+POST   /v1/automations
+// Body: { name, skillSlug, triggerType, cronExpression?, eventType?, outputDestination, outputConfig }
+
+// Get single automation
+GET    /v1/automations/:id
+
+// Update automation
+PUT    /v1/automations/:id
+// Body: partial update fields
+
+// Delete automation
+DELETE /v1/automations/:id
+
+// Manually trigger (for testing)
+POST   /v1/automations/:id/run
+
+// Get run history
+GET    /v1/automations/:id/runs
+```
+
+### Permission Model (Mirroring Skills)
+
+| Actor | Can Do |
+|-------|--------|
+| **Creator** | Full CRUD on own automations |
+| **Org Admin** | View all org automations, disable any, delete org-wide |
+| **Super Admin** | Full access to all automations |
+
+### Visibility (Simpler Than Skills)
+
+Automations are always **private to the creator** - no org-wide sharing needed for MVP.
+
+Future: "Automation templates" could be shared org-wide, similar to skills.
+
+### Validation
+
+Before creating/updating, validate:
+1. **Skill exists** and user has access to it
+2. **Cron expression** is valid (use `cron-parser` library)
+3. **Timezone** is valid IANA timezone
+4. **Output destination** is configured (email verified, webhook URL valid)
+5. **Rate limits** not exceeded (max automations per user)
+
+### Natural Language Parsing
+
+For MVP, Claude extracts structured data from user intent. The skill's `_config` endpoint already provides user context (email, timezone, connected integrations).
+
+Pattern recognition:
+- "every Monday" → `0 9 * * MON` (default 9am)
+- "daily at 8am" → `0 8 * * *`
+- "every hour" → `0 * * * *`
+- "when candidate moves to interview" → `eventType: 'ats.candidate.stage_changed'`, `eventFilter: { newStage: 'interview' }`
+
+### Web UI (Secondary to Chat)
+
+Following the hybrid pattern from Part 1:
+- `/automations` page lists all automations
+- Click to view details, pause/resume, delete
+- "Create" button opens form (but chat is primary creation path)
+- Run history with status indicators
+
+This mirrors `/skills` page pattern in existing codebase.
+
+### Code Reference
+
+The implementation should follow patterns from:
+- `apps/api/src/routes/skills.ts:460-534` - POST create with validation
+- `apps/api/src/routes/skills.ts:536-615` - PUT update with permission checks
+- `apps/api/src/routes/skills.ts:693-740` - DELETE with permission checks
+- `apps/api/src/routes/v1/ats.ts` - API key auth middleware pattern
+
+---
+
 ## Open Questions
 
 1. **Billing model** - Per-automation, per-run, or bundled?
