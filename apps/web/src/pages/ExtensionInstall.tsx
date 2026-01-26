@@ -21,6 +21,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { onboarding } from '@/lib/api';
+import { EXTENSION_VERSION, EXTENSION_MIN_CHROME_VERSION } from '@skillomatic/shared';
 
 const steps = [
   {
@@ -107,7 +108,7 @@ export default function ExtensionInstall() {
                 Skillomatic Scraper Extension
               </CardTitle>
               <p className="text-sm text-[hsl(220_15%_50%)]">
-                Version 1.0.1 - Chrome 116+
+                Version {EXTENSION_VERSION} - Chrome {EXTENSION_MIN_CHROME_VERSION}+
               </p>
             </div>
           </div>

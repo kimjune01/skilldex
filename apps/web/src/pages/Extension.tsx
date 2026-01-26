@@ -1,4 +1,5 @@
 import { ArrowLeft, Download, Chrome, Shield, Zap, Settings } from 'lucide-react';
+import { EXTENSION_VERSION, EXTENSION_MIN_CHROME_VERSION } from '@skillomatic/shared';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +50,7 @@ export default function Extension() {
               </Button>
             </a>
             <p className="text-sm text-slate-500 mt-4">
-              Version 1.0.1 • Chrome 116+
+              Version {EXTENSION_VERSION} • Chrome {EXTENSION_MIN_CHROME_VERSION}+
             </p>
           </CardContent>
         </Card>
