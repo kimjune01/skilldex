@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { getUrlsFromRequest } from '../lib/google-oauth.js';
 
 export const extensionRoutes = new Hono();
 
@@ -9,7 +10,7 @@ export const extensionRoutes = new Hono();
  * the Skillomatic Scraper Chrome extension.
  */
 extensionRoutes.get('/', (c) => {
-  const apiUrl = process.env.API_URL || c.req.header('host') || 'http://localhost:3000';
+  const { baseUrl: apiUrl } = getUrlsFromRequest(c);
 
   const markdown = `# Skillomatic Scraper Browser Extension
 

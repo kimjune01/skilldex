@@ -23,6 +23,7 @@ import {
   ensureUniqueSlug,
   extractInstructions,
 } from '../lib/skill-validator.js';
+import { getUrlsFromRequest } from '../lib/google-oauth.js';
 import { randomUUID } from 'crypto';
 
 export const skillsRoutes = new Hono();
@@ -30,9 +31,7 @@ export const skillsRoutes = new Hono();
 // Public routes (no auth required for downloads)
 // GET /skills/install.sh - Download install script for all skills
 skillsRoutes.get('/install.sh', async (c) => {
-  const host = c.req.header('host') || 'localhost:3000';
-  const protocol = c.req.header('x-forwarded-proto') || 'http';
-  const baseUrl = `${protocol}://${host}`;
+  const { baseUrl } = getUrlsFromRequest(c);
 
   const enabledSkills = await db
     .select()

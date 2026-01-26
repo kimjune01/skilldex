@@ -6,6 +6,7 @@ import { compareSync } from 'bcrypt-ts';
 import { randomUUID } from 'crypto';
 import { createToken, verifyToken } from '../lib/jwt.js';
 import { sendWelcomeEmail } from '../lib/email.js';
+import { getUrlsFromRequest } from '../lib/google-oauth.js';
 import type { LoginResponse, UserPublic } from '@skillomatic/shared';
 import { loginRateLimit } from '../middleware/rate-limit.js';
 import { loginRequestSchema, validateBody, ValidationError } from '../lib/validation.js';
@@ -208,11 +209,7 @@ authRoutes.get('/google', (c) => {
     return c.json({ error: { message: 'Google OAuth not configured' } }, 500);
   }
 
-  // Determine the redirect URI based on the request origin
-  // Use X-Forwarded-Host for CloudFront/API Gateway, fallback to host header
-  const host = c.req.header('x-forwarded-host') || c.req.header('host') || 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const baseUrl = `${protocol}://${host}`;
+  const { baseUrl } = getUrlsFromRequest(c);
   const redirectUri = `${baseUrl}/auth/google/callback`;
 
   const params = new URLSearchParams({
@@ -232,16 +229,7 @@ authRoutes.get('/google/callback', async (c) => {
   const code = c.req.query('code');
   const error = c.req.query('error');
 
-  // Determine URLs
-  // Use X-Forwarded-Host for CloudFront/API Gateway, fallback to host header
-  const host = c.req.header('x-forwarded-host') || c.req.header('host') || 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const baseUrl = `${protocol}://${host}`;
-  // In prod: api.skillomatic.technology -> skillomatic.technology
-  // In dev: localhost:3000 -> localhost:5173
-  const webUrl = host.includes('localhost')
-    ? baseUrl.replace(':3000', ':5173')
-    : baseUrl.replace('api.', '');
+  const { baseUrl, webUrl } = getUrlsFromRequest(c);
   const redirectUri = `${baseUrl}/auth/google/callback`;
 
   if (error) {

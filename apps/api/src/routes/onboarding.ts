@@ -3,6 +3,7 @@ import { db } from '@skillomatic/db';
 import { users, ONBOARDING_STEPS, MAX_ONBOARDING_STEP } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import { jwtAuth } from '../middleware/auth.js';
+import { getUrlsFromRequest } from '../lib/google-oauth.js';
 import type { OnboardingStatus } from '@skillomatic/shared';
 import { getNextOnboardingStep, getOnboardingStepName } from '@skillomatic/shared';
 
@@ -207,9 +208,7 @@ onboardingRoutes.post('/reset', jwtAuth, async (c) => {
  * that already has Skillomatic set up.
  */
 onboardingRoutes.get('/', (c) => {
-  const host = c.req.header('host') || 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const baseUrl = `${protocol}://${host}`;
+  const { baseUrl } = getUrlsFromRequest(c);
 
   const markdown = `# Welcome to Skillomatic
 

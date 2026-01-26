@@ -107,14 +107,29 @@ export function isGoogleTokenExpired(expiresAt: string | undefined): boolean {
   return expiryTime < now + fiveMinutes; // Refresh 5 min before expiry
 }
 
-// Helper to determine URLs from request
-function getUrlsFromRequest(c: Context) {
+/**
+ * Helper to determine canonical URLs from request.
+ * In production, always uses canonical domain names for consistent OAuth redirect URIs.
+ */
+export function getUrlsFromRequest(c: Context) {
   const host = c.req.header('host') || 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const baseUrl = `${protocol}://${host}`;
-  const webUrl = host.includes('localhost')
-    ? baseUrl.replace(':3000', ':5173')
-    : baseUrl.replace('api.', '');
+  const isLocal = host.includes('localhost');
+  const protocol = isLocal ? 'http' : 'https';
+
+  // In production, always use the canonical domain names
+  // The Lambda may be hit directly but we need consistent redirect URIs for OAuth
+  let baseUrl: string;
+  let webUrl: string;
+
+  if (isLocal) {
+    baseUrl = `${protocol}://${host}`;
+    webUrl = baseUrl.replace(':3000', ':5173');
+  } else {
+    // Production: use canonical domains regardless of how the request arrived
+    baseUrl = 'https://api.skillomatic.technology';
+    webUrl = 'https://skillomatic.technology';
+  }
+
   return { host, protocol, baseUrl, webUrl };
 }
 
