@@ -540,6 +540,16 @@ export interface SkillProposalReviewRequest {
   feedback?: string;
 }
 
+// ============ Complaint Types ============
+
+/** Request to create a complaint (creates GitHub issue) */
+export interface ComplaintCreateRequest {
+  message: string;
+  pageUrl?: string;
+  userAgent?: string;
+  screenSize?: string;
+}
+
 // ============ Chat Types ============
 
 export interface ChatMessage {

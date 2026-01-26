@@ -44,3 +44,6 @@ export { onboarding } from './onboarding';
 
 // Account Type Selection
 export { accountType } from './account-type';
+
+// Complaints (bug reports)
+export { complaints } from './complaints';

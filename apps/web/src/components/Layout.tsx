@@ -14,9 +14,12 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { apiKeys } from '../lib/api';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard, Menu, X, Smartphone } from 'lucide-react';
+import { apiKeys, complaints } from '../lib/api';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard, Menu, X, Smartphone, Bug, Loader2 } from 'lucide-react';
 import { getOnboardingStepRoute } from '@skillomatic/shared';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 
 // Main navigation - visible to all authenticated users
 const navigation = [
@@ -50,8 +53,14 @@ export default function Layout() {
   const { user, logout, isAdmin, isSuperAdmin, isOnboarded, organizationName } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [extensionApiKey, setExtensionApiKey] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [complainDialogOpen, setComplainDialogOpen] = useState(false);
+  const [complainMessage, setComplainMessage] = useState('');
+  const [isSubmittingComplaint, setIsSubmittingComplaint] = useState(false);
+  const [complaintsCount, setComplaintsCount] = useState(0);
+  const [complaintsUrl, setComplaintsUrl] = useState<string | null>(null);
 
   // Listen for open-mobile-menu events from Chat page
   useEffect(() => {
@@ -75,9 +84,45 @@ export default function Layout() {
     fetchApiKey();
   }, []);
 
+  // Fetch complaints count for superadmins
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    const fetchComplaintsCount = async () => {
+      try {
+        const data = await complaints.getCount();
+        setComplaintsCount(data.count);
+        setComplaintsUrl(data.url);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchComplaintsCount();
+  }, [isSuperAdmin]);
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleComplainSubmit = async () => {
+    if (!complainMessage.trim()) return;
+
+    setIsSubmittingComplaint(true);
+    try {
+      await complaints.create({
+        message: complainMessage.trim(),
+        pageUrl: window.location.href,
+        userAgent: navigator.userAgent,
+        screenSize: `${window.innerWidth}x${window.innerHeight}`,
+      });
+      toast('Bug report submitted! Thanks for the feedback.', 'success');
+      setComplainMessage('');
+      setComplainDialogOpen(false);
+    } catch (error) {
+      toast('Failed to submit bug report. Please try again.', 'error');
+    } finally {
+      setIsSubmittingComplaint(false);
+    }
   };
 
   // API URL for the extension (web is 5173, API is 3000 in dev)
@@ -291,6 +336,28 @@ export default function Layout() {
                   </Link>
                 );
               })}
+              {/* Complaints link - opens GitHub issues */}
+              {complaintsUrl && (
+                <a
+                  href={complaintsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all duration-150 animate-mechanical bg-[hsl(220_15%_88%)] text-[hsl(220_20%_35%)] border-2 border-[hsl(220_15%_78%)] hover:bg-amber-100 hover:border-amber-300 hover:text-amber-700"
+                >
+                  <div className="relative">
+                    <div className="h-6 w-6 rounded flex items-center justify-center transition-all bg-[hsl(220_15%_80%)] group-hover:bg-amber-200">
+                      <Bug className="h-3.5 w-3.5" />
+                    </div>
+                    {complaintsCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">
+                        {complaintsCount > 9 ? '9+' : complaintsCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs tracking-wide">Complaints</span>
+                </a>
+              )}
             </>
           )}
         </nav>
@@ -334,6 +401,14 @@ export default function Layout() {
           </div>
 
           <button
+            onClick={() => setComplainDialogOpen(true)}
+            className="w-full py-2 px-3 mb-2 rounded-lg bg-amber-100 border-2 border-amber-300 text-amber-700 text-xs font-bold tracking-wider uppercase hover:bg-amber-200 hover:border-amber-400 transition-all animate-mechanical flex items-center justify-center gap-2"
+          >
+            <Bug className="h-3.5 w-3.5" />
+            Complain
+          </button>
+
+          <button
             onClick={handleLogout}
             className="w-full py-2 px-3 rounded-lg bg-[hsl(220_15%_85%)] border-2 border-[hsl(220_15%_75%)] text-[hsl(220_20%_40%)] text-xs font-bold tracking-wider uppercase hover:bg-red-100 hover:border-red-300 hover:text-red-600 transition-all animate-mechanical flex items-center justify-center gap-2"
           >
@@ -342,6 +417,53 @@ export default function Layout() {
           </button>
         </div>
       </aside>
+
+      {/* Complain Dialog */}
+      <Dialog open={complainDialogOpen} onOpenChange={setComplainDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bug className="h-5 w-5 text-amber-600" />
+              Report a Bug
+            </DialogTitle>
+            <DialogDescription>
+              Tell us what's wrong and we'll fix it. Your message and current page context will be sent.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <textarea
+              value={complainMessage}
+              onChange={(e) => setComplainMessage(e.target.value)}
+              placeholder="Describe the issue you're experiencing..."
+              className="w-full h-32 px-3 py-2 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setComplainDialogOpen(false)}
+              disabled={isSubmittingComplaint}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleComplainSubmit}
+              disabled={!complainMessage.trim() || isSubmittingComplaint}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isSubmittingComplaint ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                'Submit Bug Report'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Main content */}
       <main className="flex-1 md:ml-64">

@@ -47,6 +47,7 @@ import { capabilityProfilesRoutes } from './routes/capability-profiles.js';
 import { scrapeRoutes } from './routes/scrape.js';
 import { payIntentionsRoutes } from './routes/pay-intentions.js';
 import { statusRoutes } from './routes/status.js';
+import { complaintsRoutes } from './routes/complaints.js';
 
 // Skill API routes (API key auth) - called by Claude Code skills
 import { v1AtsRoutes } from './routes/v1/ats.js';
@@ -133,6 +134,7 @@ app.use('/invites/*', generalRateLimit);
 app.use('/capability-profiles/*', generalRateLimit);
 app.use('/scrape/*', generalRateLimit);
 app.use('/pay-intentions/*', generalRateLimit);
+app.use('/complaints/*', generalRateLimit);
 
 app.route('/skills', skillsRoutes);       // Browse/download skills
 app.route('/api-keys', apiKeysRoutes);    // Manage API keys
@@ -146,6 +148,7 @@ app.route('/invites', invitesRoutes);     // Organization invites
 app.route('/capability-profiles', capabilityProfilesRoutes); // Capability profile management
 app.route('/scrape', scrapeRoutes);   // Web scraping (for web chat)
 app.route('/pay-intentions', payIntentionsRoutes); // Pay intention tracking (billing signals)
+app.route('/complaints', complaintsRoutes);       // Bug reports from users
 
 // ============ SKILL API ROUTES (API Key Auth) ============
 // Called by Claude Code skills - requires Authorization: Bearer sk_live_xxx
