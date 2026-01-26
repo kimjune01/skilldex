@@ -259,7 +259,8 @@ export interface SkillPublic {
   description: string;
   category: SkillCategory;
   version: string;
-  requiredIntegrations: string[];
+  /** Required integrations with access levels: {"ats": "read-write", "email": "read-only"} */
+  requiredIntegrations: Record<string, SkillAccessLevel>;
   requiredScopes: string[];
   intent: string;
   capabilities: string[];

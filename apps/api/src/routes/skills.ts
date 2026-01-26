@@ -125,12 +125,10 @@ function toSkillPublic(
 ): SkillPublic {
   const isOwner = options?.userId ? skill.userId === options.userId : false;
 
-  // Parse requiredIntegrations - stored as object {"ats": "read-only"}, convert to array ["ats"]
-  let requiredIntegrations: string[] = [];
-  if (skill.requiredIntegrations) {
-    const parsed = JSON.parse(skill.requiredIntegrations);
-    requiredIntegrations = Object.keys(parsed);
-  }
+  // Parse requiredIntegrations - stored as object {"ats": "read-only"}
+  const requiredIntegrations = skill.requiredIntegrations
+    ? JSON.parse(skill.requiredIntegrations)
+    : {};
 
   return {
     id: skill.id,

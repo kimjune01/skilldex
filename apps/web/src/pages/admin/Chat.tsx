@@ -249,7 +249,7 @@ function generateMetaResponse(input: string, existingSkills: SkillPublic[]): str
 
     if (matchedIntegration) {
       const matchingSkills = existingSkills.filter(s =>
-        s.requiredIntegrations.some(i => i.toLowerCase().includes(matchedIntegration))
+        Object.keys(s.requiredIntegrations).some(i => i.toLowerCase().includes(matchedIntegration))
       );
 
       if (matchingSkills.length === 0) {
@@ -289,7 +289,7 @@ ${skillMatch.description}
 ${skillMatch.intent}
 
 ### Required Integrations
-${skillMatch.requiredIntegrations.map(i => `- ${i}`).join('\n')}
+${Object.entries(skillMatch.requiredIntegrations).map(([i, level]) => `- ${i} (${level})`).join('\n')}
 
 ### Required Scopes
 ${skillMatch.requiredScopes.map(s => `- \`${s}\``).join('\n')}

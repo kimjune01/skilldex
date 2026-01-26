@@ -444,11 +444,11 @@ export default function Skills() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
-                        {skill.requiredIntegrations.length > 0 ? (
-                          skill.requiredIntegrations.map((int) => (
-                            <Badge key={int} variant="secondary" className="gap-1">
+                        {Object.keys(skill.requiredIntegrations).length > 0 ? (
+                          Object.entries(skill.requiredIntegrations).map(([integration, accessLevel]) => (
+                            <Badge key={integration} variant="secondary" className="gap-1">
                               <Plug className="h-3 w-3" />
-                              {int}
+                              {integration} ({accessLevel})
                             </Badge>
                           ))
                         ) : (

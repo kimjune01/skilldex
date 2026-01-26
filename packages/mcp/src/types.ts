@@ -3,6 +3,8 @@
  * These match the Skillomatic API response shapes.
  */
 
+export type SkillAccessLevel = 'read-write' | 'read-only' | 'disabled' | 'none';
+
 export interface SkillPublic {
   id: string;
   slug: string;
@@ -10,7 +12,8 @@ export interface SkillPublic {
   description: string;
   category: string;
   version: string;
-  requiredIntegrations: string[];
+  /** Required integrations with access levels: {"ats": "read-write", "email": "read-only"} */
+  requiredIntegrations: Record<string, SkillAccessLevel>;
   requiredScopes: string[];
   intent: string;
   capabilities: string[];

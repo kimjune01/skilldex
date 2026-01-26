@@ -267,9 +267,9 @@ export default function SkillDetail() {
                 Required Integrations
               </div>
               <div className="flex flex-wrap gap-2">
-                {skill.requiredIntegrations.length > 0 ? (
-                  skill.requiredIntegrations.map((int) => (
-                    <Badge key={int} variant="secondary">{int}</Badge>
+                {Object.keys(skill.requiredIntegrations).length > 0 ? (
+                  Object.entries(skill.requiredIntegrations).map(([integration, accessLevel]) => (
+                    <Badge key={integration} variant="secondary">{integration} ({accessLevel})</Badge>
                   ))
                 ) : (
                   <span className="text-sm text-muted-foreground">None</span>

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { SkillAccessLevel } from '@skillomatic/shared';
 
 /**
  * Tests for requiredIntegrations parsing
@@ -6,73 +7,57 @@ import { describe, it, expect } from 'vitest';
  * The database stores requiredIntegrations as a JSON object:
  *   {"ats": "read-write", "email": "read-only"}
  *
- * The SkillPublic interface expects an array of integration names:
- *   ["ats", "email"]
+ * The SkillPublic interface expects the same object format:
+ *   {"ats": "read-write", "email": "read-only"}
  *
  * This test file verifies the parsing logic works correctly.
  */
 
 // Helper function that mirrors the parsing logic in skills.ts
-function parseRequiredIntegrations(dbValue: string | null): string[] {
+function parseRequiredIntegrations(dbValue: string | null): Record<string, SkillAccessLevel> {
   if (!dbValue) {
-    return [];
+    return {};
   }
-  const parsed = JSON.parse(dbValue);
-  return Object.keys(parsed);
-}
-
-// Helper function that mirrors the requirements parsing logic
-function parseRequirementsFromIntegrations(dbValue: string | null): Record<string, string> {
-  const requirements: Record<string, string> = {};
-  if (!dbValue) {
-    return requirements;
-  }
-  const parsed = JSON.parse(dbValue) as Record<string, string>;
-  for (const [key, value] of Object.entries(parsed)) {
-    if (['ats', 'email', 'calendar'].includes(key)) {
-      requirements[key] = value;
-    }
-  }
-  return requirements;
+  return JSON.parse(dbValue);
 }
 
 describe('requiredIntegrations parsing', () => {
-  describe('parseRequiredIntegrations (object to array)', () => {
-    it('should convert object format to array of keys', () => {
+  describe('parseRequiredIntegrations (preserves object format)', () => {
+    it('should preserve object format with access levels', () => {
       const dbValue = '{"ats": "read-write", "email": "read-only"}';
       const result = parseRequiredIntegrations(dbValue);
 
-      expect(result).toEqual(['ats', 'email']);
+      expect(result).toEqual({ ats: 'read-write', email: 'read-only' });
     });
 
     it('should handle single integration', () => {
       const dbValue = '{"ats": "read-only"}';
       const result = parseRequiredIntegrations(dbValue);
 
-      expect(result).toEqual(['ats']);
+      expect(result).toEqual({ ats: 'read-only' });
     });
 
     it('should handle empty object', () => {
       const dbValue = '{}';
       const result = parseRequiredIntegrations(dbValue);
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({});
     });
 
     it('should handle null value', () => {
       const result = parseRequiredIntegrations(null);
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({});
     });
 
-    it('should handle all integration types', () => {
-      const dbValue = '{"ats": "read-write", "email": "read-write", "calendar": "read-only"}';
+    it('should handle all integration types with different access levels', () => {
+      const dbValue = '{"ats": "read-write", "email": "read-only", "calendar": "disabled"}';
       const result = parseRequiredIntegrations(dbValue);
 
-      expect(result).toContain('ats');
-      expect(result).toContain('email');
-      expect(result).toContain('calendar');
-      expect(result).toHaveLength(3);
+      expect(result.ats).toBe('read-write');
+      expect(result.email).toBe('read-only');
+      expect(result.calendar).toBe('disabled');
+      expect(Object.keys(result)).toHaveLength(3);
     });
 
     it('should throw on invalid JSON', () => {
@@ -132,55 +117,54 @@ describe('requiredIntegrations parsing', () => {
       const dbValue = '{}';
       const integrations = parseRequiredIntegrations(dbValue);
 
-      expect(integrations).toEqual([]);
+      expect(integrations).toEqual({});
     });
 
     it('should parse ats-candidate-search', () => {
       const dbValue = '{"ats":"read-only"}';
       const integrations = parseRequiredIntegrations(dbValue);
-      const requirements = parseRequirementsFromIntegrations(dbValue);
 
-      expect(integrations).toEqual(['ats']);
-      expect(requirements).toEqual({ ats: 'read-only' });
+      expect(integrations).toEqual({ ats: 'read-only' });
     });
 
     it('should parse ats-candidate-crud', () => {
       const dbValue = '{"ats":"read-write"}';
       const integrations = parseRequiredIntegrations(dbValue);
-      const requirements = parseRequirementsFromIntegrations(dbValue);
 
-      expect(integrations).toEqual(['ats']);
-      expect(requirements).toEqual({ ats: 'read-write' });
+      expect(integrations).toEqual({ ats: 'read-write' });
     });
 
     it('should parse candidate-pipeline-builder', () => {
       const dbValue = '{"ats":"read-write","email":"read-write"}';
       const integrations = parseRequiredIntegrations(dbValue);
-      const requirements = parseRequirementsFromIntegrations(dbValue);
 
-      expect(integrations).toEqual(['ats', 'email']);
-      expect(requirements).toEqual({ ats: 'read-write', email: 'read-write' });
+      expect(integrations).toEqual({ ats: 'read-write', email: 'read-write' });
     });
 
     it('should parse daily-report', () => {
       const dbValue = '{"ats":"read-only"}';
       const integrations = parseRequiredIntegrations(dbValue);
 
-      expect(integrations).toEqual(['ats']);
+      expect(integrations).toEqual({ ats: 'read-only' });
     });
   });
 
-  describe('regression: array input should throw', () => {
-    // This documents the expected behavior - we only support object format
-    // Array format was legacy and should not be used
+  describe('frontend consumption', () => {
+    it('should support Object.keys() for iteration', () => {
+      const integrations = parseRequiredIntegrations('{"ats":"read-write","email":"read-only"}');
+      const keys = Object.keys(integrations);
 
-    it('should NOT work with legacy array format (throws on Object.keys)', () => {
-      // Legacy format that was incorrectly stored in some local DBs
-      const legacyDbValue = '["ats", "email"]';
+      expect(keys).toEqual(['ats', 'email']);
+    });
 
-      // Object.keys on an array returns indices ["0", "1"], not the values
-      const result = parseRequiredIntegrations(legacyDbValue);
-      expect(result).toEqual(['0', '1']); // This is wrong behavior - documents why we need object format
+    it('should support Object.entries() for access level display', () => {
+      const integrations = parseRequiredIntegrations('{"ats":"read-write","email":"read-only"}');
+      const entries = Object.entries(integrations);
+
+      expect(entries).toEqual([
+        ['ats', 'read-write'],
+        ['email', 'read-only'],
+      ]);
     });
   });
 });

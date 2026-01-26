@@ -1,119 +1,205 @@
 /**
  * Examples Page
  *
- * Workflow examples across different verticals (recruiting, sales, ops)
+ * Workflow examples across different use cases - based on real MCP patterns
  */
-import { CheckCircle, Calendar, ArrowRight, Database, Mail, Workflow, FileText, MessageSquare } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Users, Mail, Workflow, FileText, MessageSquare, Code, Headphones, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
 
 const examples = [
   {
-    category: 'Recruiting',
-    icon: Database,
-    color: 'cyan',
-    description: 'Automate candidate sourcing, outreach, and pipeline management.',
-    workflows: [
-      {
-        title: 'LinkedIn to ATS Pipeline',
-        description: 'Find candidates on LinkedIn, add them to your ATS with enriched data, and send personalized outreach — all from a single request.',
-        tools: ['LinkedIn', 'Greenhouse/Lever', 'Gmail'],
-        example: '"Find 20 senior engineers in NYC with React experience and add them to my pipeline"',
-      },
-      {
-        title: 'Automated Follow-ups',
-        description: 'Identify candidates who haven\'t responded and send personalized follow-up sequences based on their background.',
-        tools: ['Gmail', 'ATS'],
-        example: '"Send follow-ups to everyone in my pipeline who hasn\'t replied in 5 days"',
-      },
-      {
-        title: 'Interview Scheduling',
-        description: 'Check interviewer availability, find overlapping time slots, and send calendar invites to candidates.',
-        tools: ['Google Calendar', 'ATS', 'Gmail'],
-        example: '"Schedule phone screens for my shortlist this week"',
-      },
-    ],
-  },
-  {
-    category: 'Sales',
+    category: 'Sales & CRM',
     icon: Mail,
     color: 'green',
-    description: 'Streamline lead enrichment, outreach sequences, and CRM updates.',
+    description: 'Keep your pipeline clean, follow up automatically, and stop copy-pasting between tools.',
     workflows: [
       {
         title: 'Lead Enrichment',
-        description: 'Take a list of companies or contacts and automatically enrich with firmographic and contact data.',
-        tools: ['CRM', 'Data Providers'],
+        description: 'Take a list of companies or contacts and automatically enrich with firmographic data, LinkedIn profiles, and contact info.',
+        tools: ['HubSpot/Salesforce', 'Apollo', 'LinkedIn'],
         example: '"Enrich my leads from the conference with company info and decision-maker contacts"',
       },
       {
-        title: 'Outreach Sequences',
-        description: 'Draft personalized cold emails based on company news, recent funding, or job postings.',
-        tools: ['Gmail', 'CRM'],
-        example: '"Draft outreach emails for leads who recently raised Series A"',
+        title: 'Automated Follow-ups',
+        description: 'Draft personalized follow-up emails based on previous conversations, deal stage, and how long since last contact.',
+        tools: ['CRM', 'Gmail/Outlook'],
+        example: '"Send follow-ups to everyone who hasn\'t responded in 5 days"',
       },
       {
         title: 'CRM Hygiene',
-        description: 'Automatically update deal stages, log activities, and flag stale opportunities.',
+        description: 'Automatically update deal stages, log activities, and flag stale opportunities that need attention.',
         tools: ['Salesforce/HubSpot'],
-        example: '"Update all deals that haven\'t had activity in 30 days to \'At Risk\'"',
+        example: '"Flag all deals that haven\'t had activity in 30 days as At Risk"',
       },
     ],
   },
   {
-    category: 'Operations',
+    category: 'Customer Support',
+    icon: Headphones,
+    color: 'purple',
+    description: 'Handle support queries faster with AI that has access to your real customer data.',
+    workflows: [
+      {
+        title: 'Ticket Triage',
+        description: 'Automatically categorize incoming tickets, check customer history, and route to the right team.',
+        tools: ['Zendesk/Intercom', 'CRM'],
+        example: '"Categorize new tickets and flag any from enterprise customers"',
+      },
+      {
+        title: 'Response Drafting',
+        description: 'Draft responses based on customer history, previous tickets, and your knowledge base.',
+        tools: ['Support Platform', 'Notion/Docs'],
+        example: '"Draft a response to this billing question using our refund policy"',
+      },
+      {
+        title: 'Customer Health Checks',
+        description: 'Identify customers who might be at risk based on support volume, sentiment, or usage patterns.',
+        tools: ['Support Platform', 'CRM', 'Analytics'],
+        example: '"Which customers have submitted 3+ tickets this week?"',
+      },
+    ],
+  },
+  {
+    category: 'Recruiting',
+    icon: Users,
+    color: 'cyan',
+    description: 'Source candidates, manage pipelines, and schedule interviews without the tab-switching.',
+    workflows: [
+      {
+        title: 'Candidate Sourcing',
+        description: 'Find candidates on LinkedIn, enrich with contact info, and add to your ATS with notes.',
+        tools: ['LinkedIn', 'Greenhouse/Lever', 'Apollo'],
+        example: '"Find 20 senior engineers in NYC with React experience and add them to my pipeline"',
+      },
+      {
+        title: 'Outreach Sequences',
+        description: 'Draft personalized outreach based on each candidate\'s background, experience, and interests.',
+        tools: ['ATS', 'Gmail'],
+        example: '"Draft personalized outreach for my shortlist based on their LinkedIn profiles"',
+      },
+      {
+        title: 'Interview Scheduling',
+        description: 'Check interviewer availability, find overlapping slots, and send calendar invites.',
+        tools: ['Google Calendar', 'ATS', 'Gmail'],
+        example: '"Schedule phone screens for candidates who passed the take-home"',
+      },
+    ],
+  },
+  {
+    category: 'Operations & Admin',
     icon: Workflow,
     color: 'amber',
-    description: 'Handle repetitive admin tasks, reporting, and cross-tool syncing.',
+    description: 'Automate the repetitive admin work that eats up your day.',
     workflows: [
       {
         title: 'Invoice Follow-up',
-        description: 'Identify overdue invoices and send polite reminder emails to clients.',
-        tools: ['Accounting Software', 'Gmail'],
+        description: 'Identify overdue invoices and send polite reminder emails to clients automatically.',
+        tools: ['QuickBooks/Stripe', 'Gmail'],
         example: '"Send reminders for all invoices overdue by more than 7 days"',
       },
       {
-        title: 'Weekly Reports',
-        description: 'Pull data from multiple sources and compile into formatted reports.',
-        tools: ['Various Data Sources'],
-        example: '"Generate a weekly pipeline summary and send it to the team"',
+        title: 'Report Generation',
+        description: 'Pull data from multiple sources and compile into formatted reports or Slack summaries.',
+        tools: ['Various Sources', 'Slack/Email'],
+        example: '"Generate a weekly pipeline summary and post it to #sales"',
       },
       {
         title: 'Cross-Tool Sync',
-        description: 'Keep data in sync between different systems without manual copy-paste.',
-        tools: ['Any Systems with APIs'],
+        description: 'Keep data in sync between systems without manual copy-paste.',
+        tools: ['Any APIs'],
         example: '"When a deal closes in Salesforce, create a project in Notion"',
+      },
+    ],
+  },
+  {
+    category: 'Development & DevOps',
+    icon: Code,
+    color: 'blue',
+    description: 'Automate GitHub workflows, deployments, and documentation tasks.',
+    workflows: [
+      {
+        title: 'PR Management',
+        description: 'Summarize pull requests, check for issues, and post updates to Slack when PRs are merged.',
+        tools: ['GitHub', 'Slack'],
+        example: '"Summarize the changes in this PR and post to #engineering"',
+      },
+      {
+        title: 'Issue Triage',
+        description: 'Categorize new issues, check for duplicates, and assign based on labels or content.',
+        tools: ['GitHub/Linear', 'Slack'],
+        example: '"Label and assign new issues from the last 24 hours"',
+      },
+      {
+        title: 'Documentation Updates',
+        description: 'Generate or update documentation based on code changes or new features.',
+        tools: ['GitHub', 'Notion/Confluence'],
+        example: '"Update the API docs based on the changes in this branch"',
+      },
+    ],
+  },
+  {
+    category: 'Analytics & Reporting',
+    icon: BarChart3,
+    color: 'rose',
+    description: 'Get insights without writing SQL or switching between dashboards.',
+    workflows: [
+      {
+        title: 'Ad-hoc Queries',
+        description: 'Ask questions about your data in plain English and get answers from your database or analytics tools.',
+        tools: ['Database', 'Sheets'],
+        example: '"How many new signups did we get last week by source?"',
+      },
+      {
+        title: 'Scheduled Reports',
+        description: 'Generate daily or weekly reports and send them to Slack or email automatically.',
+        tools: ['Analytics', 'Slack/Email'],
+        example: '"Every Monday, send a revenue summary to the exec team"',
+      },
+      {
+        title: 'Anomaly Alerts',
+        description: 'Monitor metrics and get notified when something looks unusual.',
+        tools: ['Analytics', 'Slack'],
+        example: '"Alert me if daily signups drop more than 20% from average"',
       },
     ],
   },
 ];
 
 const integrations = [
-  { name: 'Greenhouse', category: 'ATS' },
-  { name: 'Lever', category: 'ATS' },
-  { name: 'Ashby', category: 'ATS' },
-  { name: 'Workday', category: 'ATS' },
+  // CRM
   { name: 'Salesforce', category: 'CRM' },
   { name: 'HubSpot', category: 'CRM' },
   { name: 'Pipedrive', category: 'CRM' },
+  // ATS
+  { name: 'Greenhouse', category: 'ATS' },
+  { name: 'Lever', category: 'ATS' },
+  { name: 'Ashby', category: 'ATS' },
+  // Email
   { name: 'Gmail', category: 'Email' },
   { name: 'Outlook', category: 'Email' },
+  // Calendar
   { name: 'Google Calendar', category: 'Calendar' },
   { name: 'Calendly', category: 'Calendar' },
-  { name: 'LinkedIn', category: 'Sourcing' },
-  { name: 'Apollo', category: 'Sourcing' },
-  { name: 'ZoomInfo', category: 'Sourcing' },
+  // Support
+  { name: 'Zendesk', category: 'Support' },
+  { name: 'Intercom', category: 'Support' },
+  // Dev
+  { name: 'GitHub', category: 'Dev' },
+  { name: 'Linear', category: 'Dev' },
+  { name: 'Jira', category: 'Dev' },
+  // Data
+  { name: 'Apollo', category: 'Data' },
+  { name: 'LinkedIn', category: 'Data' },
+  // Productivity
   { name: 'Notion', category: 'Productivity' },
   { name: 'Slack', category: 'Productivity' },
   { name: 'Airtable', category: 'Productivity' },
   { name: 'Google Sheets', category: 'Productivity' },
-  { name: 'Stripe', category: 'Payments' },
-  { name: 'QuickBooks', category: 'Accounting' },
-  { name: 'Jira', category: 'Project Mgmt' },
-  { name: 'Linear', category: 'Project Mgmt' },
-  { name: 'Zendesk', category: 'Support' },
-  { name: 'Intercom', category: 'Support' },
+  // Finance
+  { name: 'Stripe', category: 'Finance' },
+  { name: 'QuickBooks', category: 'Finance' },
 ];
 
 export default function Examples() {
@@ -121,6 +207,9 @@ export default function Examples() {
     cyan: { bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-400/40' },
     green: { bg: 'bg-green-500/10', text: 'text-green-500', border: 'border-green-400/40' },
     amber: { bg: 'bg-amber-500/10', text: 'text-amber-500', border: 'border-amber-400/40' },
+    purple: { bg: 'bg-purple-500/10', text: 'text-purple-500', border: 'border-purple-400/40' },
+    blue: { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-400/40' },
+    rose: { bg: 'bg-rose-500/10', text: 'text-rose-500', border: 'border-rose-400/40' },
   };
 
   return (
@@ -141,18 +230,20 @@ export default function Examples() {
             </span>
           </h1>
           <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
-            If it's repetitive and involves your business tools, I can probably automate it. Here are some examples.
+            If it's repetitive and involves your business tools, I can probably automate it.
+            Here's what people are building.
           </p>
         </div>
       </section>
 
       {/* Examples by Category */}
-      {examples.map((category) => {
+      {examples.map((category, idx) => {
         const Icon = category.icon;
         const colors = colorStyles[category.color as keyof typeof colorStyles];
+        const isAlt = idx % 2 === 1;
 
         return (
-          <section key={category.category} className="py-12 px-6">
+          <section key={category.category} className={`py-12 px-6 ${isAlt ? 'bg-[hsl(220_20%_97%)]' : ''}`}>
             <div className="max-w-5xl mx-auto">
               <div className="flex items-center gap-4 mb-8">
                 <div className={`h-12 w-12 rounded-xl ${colors.bg} flex items-center justify-center`}>
