@@ -832,3 +832,691 @@ When running these scenarios:
    - Returns data in wrong format
    - Doesn't handle "not found" cases well
    - Loses context in follow-up questions
+
+---
+
+## Mock Service Technical Requirements
+
+To run these scenarios with realistic responses, you need mock services that simulate each integration. Below are the technical requirements for each service.
+
+### Architecture Overview
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   AI Assistant  │────▶│  MCP Server      │────▶│  Mock Services  │
+│  (Claude/GPT)   │     │  (Skillomatic)   │     │  (localhost)    │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                                                         │
+                              ┌───────────────────────────┼───────────────────────────┐
+                              │           │               │               │           │
+                              ▼           ▼               ▼               ▼           ▼
+                         Mock CRM    Mock Support    Mock Calendar   Mock GitHub   Mock Analytics
+```
+
+**Option A: Single unified mock server** (recommended for testing)
+- One Express/Hono server with routes for each service type
+- Shared in-memory data store
+- Single port (e.g., `localhost:3001`)
+
+**Option B: Separate mock services per integration**
+- More realistic but more complex to manage
+- Each service runs on its own port
+- Better for testing service isolation
+
+---
+
+### Mock CRM (Salesforce/HubSpot)
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/crm/contacts` | List contacts with filters |
+| GET | `/crm/contacts/:id` | Get single contact |
+| POST | `/crm/contacts` | Create contact |
+| PATCH | `/crm/contacts/:id` | Update contact |
+| GET | `/crm/deals` | List deals/opportunities |
+| GET | `/crm/deals/:id` | Get single deal |
+| POST | `/crm/deals` | Create deal |
+| PATCH | `/crm/deals/:id` | Update deal (stage, etc.) |
+| GET | `/crm/activities` | List activities (calls, emails, meetings) |
+| POST | `/crm/activities` | Log activity |
+
+**Query parameters to support:**
+- `?stage=Active` - Filter deals by stage
+- `?lastActivityBefore=2026-01-10` - Filter by activity date
+- `?owner=userId` - Filter by owner
+- `?tag=SaaStr2026` - Filter by tag
+- `?limit=50&offset=0` - Pagination
+
+**Sample data structure:**
+
+```json
+{
+  "contacts": [
+    {
+      "id": "contact_001",
+      "name": "Sarah Chen",
+      "email": "sarah.chen@acme.com",
+      "company": "Acme Corp",
+      "title": "VP Sales",
+      "phone": "+1-555-0101",
+      "linkedinUrl": "https://linkedin.com/in/sarahchen",
+      "tags": ["SaaStr2026", "Enterprise"],
+      "ownerId": "user_001",
+      "createdAt": "2026-01-20T10:00:00Z",
+      "lastActivityAt": "2026-01-15T14:30:00Z"
+    }
+  ],
+  "deals": [
+    {
+      "id": "deal_001",
+      "name": "Acme Corp - Enterprise",
+      "contactId": "contact_001",
+      "amount": 85000,
+      "stage": "Active",
+      "probability": 60,
+      "ownerId": "user_001",
+      "createdAt": "2025-12-01T10:00:00Z",
+      "lastActivityAt": "2025-12-20T14:30:00Z",
+      "expectedCloseDate": "2026-02-15"
+    }
+  ],
+  "activities": [
+    {
+      "id": "activity_001",
+      "type": "email",
+      "contactId": "contact_001",
+      "dealId": "deal_001",
+      "subject": "Proposal sent",
+      "notes": "Sent enterprise proposal, waiting for review",
+      "createdAt": "2025-12-20T14:30:00Z"
+    }
+  ]
+}
+```
+
+**Seed data needed:**
+- 20-30 contacts across various companies
+- 10-15 deals in different stages (Active, At Risk, Closed Won, Closed Lost)
+- Activity history going back 60 days
+- Some deals intentionally "stale" (no activity in 14-30 days)
+
+---
+
+### Mock Support Platform (Zendesk/Intercom)
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/support/tickets` | List tickets with filters |
+| GET | `/support/tickets/:id` | Get single ticket |
+| POST | `/support/tickets` | Create ticket |
+| PATCH | `/support/tickets/:id` | Update ticket (status, assignee, labels) |
+| POST | `/support/tickets/:id/comments` | Add comment/reply |
+| GET | `/support/customers/:id/tickets` | Get customer's ticket history |
+
+**Query parameters:**
+- `?status=open` - Filter by status
+- `?createdAfter=2026-01-25` - Filter by date
+- `?assignee=unassigned` - Find unassigned tickets
+- `?priority=high` - Filter by priority
+- `?customerId=cust_001` - Filter by customer
+
+**Sample data structure:**
+
+```json
+{
+  "tickets": [
+    {
+      "id": "ticket_4521",
+      "subject": "API returning 500 errors",
+      "description": "We're getting 500 errors on the /api/v2/sync endpoint since 6am this morning...",
+      "status": "open",
+      "priority": "high",
+      "category": "technical",
+      "customerId": "cust_001",
+      "customerEmail": "jennifer@acme.com",
+      "customerCompany": "Acme Corp",
+      "customerTier": "enterprise",
+      "customerArr": 50000,
+      "assigneeId": null,
+      "labels": [],
+      "createdAt": "2026-01-26T06:15:00Z",
+      "updatedAt": "2026-01-26T06:15:00Z"
+    }
+  ],
+  "comments": [
+    {
+      "id": "comment_001",
+      "ticketId": "ticket_4521",
+      "authorType": "customer",
+      "authorName": "Jennifer",
+      "body": "This is urgent - our integration is completely down.",
+      "createdAt": "2026-01-26T06:20:00Z"
+    }
+  ]
+}
+```
+
+**Seed data needed:**
+- 25-30 tickets in various states
+- Mix of categories (technical, billing, feature request, question)
+- Some enterprise customers, some free tier
+- Related tickets (3 tickets about same issue)
+- Customer history (some customers with many tickets)
+
+---
+
+### Mock Calendar (Google Calendar)
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/calendar/events` | List events in date range |
+| GET | `/calendar/events/:id` | Get single event |
+| POST | `/calendar/events` | Create event |
+| PATCH | `/calendar/events/:id` | Update event |
+| DELETE | `/calendar/events/:id` | Delete event |
+| GET | `/calendar/freebusy` | Check availability for users |
+
+**Query parameters:**
+- `?calendarId=user_001` - Specific calendar
+- `?timeMin=2026-01-27T00:00:00Z` - Start of range
+- `?timeMax=2026-01-31T23:59:59Z` - End of range
+- `?userIds=user_001,user_002` - For freebusy check
+
+**Sample data structure:**
+
+```json
+{
+  "events": [
+    {
+      "id": "event_001",
+      "calendarId": "user_001",
+      "title": "Team standup",
+      "start": "2026-01-27T09:00:00Z",
+      "end": "2026-01-27T09:30:00Z",
+      "recurring": true,
+      "recurrenceRule": "FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR",
+      "attendees": ["user_001", "user_002", "user_003"],
+      "meetingLink": "https://meet.google.com/abc-defg-hij"
+    }
+  ],
+  "users": [
+    {
+      "id": "user_001",
+      "name": "You",
+      "email": "you@company.com",
+      "timezone": "America/Los_Angeles"
+    },
+    {
+      "id": "user_002",
+      "name": "Jamie",
+      "email": "jamie@company.com",
+      "timezone": "America/Los_Angeles"
+    }
+  ]
+}
+```
+
+**Seed data needed:**
+- 2-3 user calendars
+- Realistic work week with meetings (not too full, not empty)
+- Some overlapping availability for scheduling scenarios
+- Recurring events (standups, 1:1s)
+
+**Freebusy response format:**
+
+```json
+{
+  "calendars": {
+    "user_001": {
+      "busy": [
+        {"start": "2026-01-27T09:00:00Z", "end": "2026-01-27T09:30:00Z"},
+        {"start": "2026-01-27T14:00:00Z", "end": "2026-01-27T15:00:00Z"}
+      ]
+    },
+    "user_002": {
+      "busy": [
+        {"start": "2026-01-27T10:00:00Z", "end": "2026-01-27T11:00:00Z"}
+      ]
+    }
+  }
+}
+```
+
+---
+
+### Mock Email (Gmail/Outlook)
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/email/messages` | List emails with filters |
+| GET | `/email/messages/:id` | Get single email with thread |
+| POST | `/email/messages` | Send email |
+| GET | `/email/drafts` | List drafts |
+| POST | `/email/drafts` | Create draft |
+| GET | `/email/threads/:id` | Get full email thread |
+
+**Query parameters:**
+- `?folder=sent` - Filter by folder
+- `?from=sarah@acme.com` - Filter by sender
+- `?to=sarah@acme.com` - Filter by recipient
+- `?after=2026-01-20` - Filter by date
+- `?q=proposal` - Full text search
+
+**Sample data structure:**
+
+```json
+{
+  "messages": [
+    {
+      "id": "msg_001",
+      "threadId": "thread_001",
+      "from": {"name": "You", "email": "you@company.com"},
+      "to": [{"name": "Sarah Chen", "email": "sarah@acme.com"}],
+      "cc": [],
+      "subject": "Acme Corp Proposal",
+      "body": "Hi Sarah,\n\nAttached is the proposal we discussed...",
+      "snippet": "Hi Sarah, Attached is the proposal we discussed...",
+      "folder": "sent",
+      "read": true,
+      "starred": false,
+      "sentAt": "2026-01-10T14:30:00Z"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread_001",
+      "subject": "Acme Corp Proposal",
+      "participants": ["you@company.com", "sarah@acme.com"],
+      "messageIds": ["msg_001"],
+      "lastMessageAt": "2026-01-10T14:30:00Z"
+    }
+  ]
+}
+```
+
+**Seed data needed:**
+- Sent emails to various contacts (matching CRM contacts)
+- Some threads with multiple replies
+- Mix of responded and non-responded
+- Recent outreach with no reply (for follow-up scenarios)
+
+---
+
+### Mock GitHub
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/github/repos/:owner/:repo/pulls` | List PRs |
+| GET | `/github/repos/:owner/:repo/pulls/:number` | Get PR details |
+| GET | `/github/repos/:owner/:repo/pulls/:number/files` | Get PR diff |
+| GET | `/github/repos/:owner/:repo/issues` | List issues |
+| GET | `/github/repos/:owner/:repo/issues/:number` | Get issue details |
+| POST | `/github/repos/:owner/:repo/issues` | Create issue |
+| PATCH | `/github/repos/:owner/:repo/issues/:number` | Update issue |
+| POST | `/github/repos/:owner/:repo/issues/:number/labels` | Add labels |
+| POST | `/github/repos/:owner/:repo/issues/:number/assignees` | Assign issue |
+
+**Query parameters:**
+- `?state=open` - Filter by state
+- `?labels=bug,priority:high` - Filter by labels
+- `?assignee=username` - Filter by assignee
+- `?created=>=2026-01-25` - Filter by creation date
+
+**Sample data structure:**
+
+```json
+{
+  "pullRequests": [
+    {
+      "number": 247,
+      "title": "Add rate limiting to API endpoints",
+      "body": "This PR adds rate limiting using Redis...",
+      "state": "open",
+      "author": "sarahdev",
+      "branch": "feature/rate-limiting",
+      "baseBranch": "main",
+      "additions": 340,
+      "deletions": 45,
+      "changedFiles": 12,
+      "reviews": [
+        {"user": "marcus", "state": "approved"},
+        {"user": "alex", "state": "approved"}
+      ],
+      "createdAt": "2026-01-22T10:00:00Z",
+      "updatedAt": "2026-01-25T14:00:00Z"
+    }
+  ],
+  "issues": [
+    {
+      "number": 892,
+      "title": "Login fails on Safari",
+      "body": "When trying to login on Safari 17.2, the page just refreshes...",
+      "state": "open",
+      "author": "external-user",
+      "labels": [],
+      "assignees": [],
+      "createdAt": "2026-01-25T18:00:00Z"
+    }
+  ]
+}
+```
+
+**Seed data needed:**
+- 5-10 open PRs in various states (waiting for review, approved, changes requested)
+- 15-20 issues (mix of bugs, features, questions)
+- Some PRs waiting for review for 2+ days
+- Some issues that look like duplicates
+- Realistic commit messages and diff summaries
+
+---
+
+### Mock Analytics / Database
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/analytics/signups` | Signup metrics |
+| GET | `/analytics/revenue` | Revenue metrics |
+| GET | `/analytics/usage` | Usage metrics |
+| POST | `/analytics/query` | Ad-hoc SQL-like query |
+
+**Query parameters:**
+- `?startDate=2026-01-20` - Start of range
+- `?endDate=2026-01-26` - End of range
+- `?groupBy=source` - Group results
+- `?compare=previousPeriod` - Include comparison
+
+**Sample data structure:**
+
+```json
+{
+  "signups": {
+    "total": 287,
+    "bySource": {
+      "organic": 112,
+      "direct": 68,
+      "twitter": 43,
+      "linkedin": 31,
+      "producthunt": 18,
+      "referral": 15
+    },
+    "byDay": [
+      {"date": "2026-01-20", "count": 38},
+      {"date": "2026-01-21", "count": 42},
+      {"date": "2026-01-22", "count": 95},
+      {"date": "2026-01-23", "count": 35},
+      {"date": "2026-01-24", "count": 28},
+      {"date": "2026-01-25", "count": 31},
+      {"date": "2026-01-26", "count": 18}
+    ],
+    "previousPeriod": {
+      "total": 243,
+      "percentChange": 18.1
+    }
+  },
+  "revenue": {
+    "yesterday": 2847,
+    "mrr": 48500,
+    "newMrr": 1200,
+    "churnedMrr": 0,
+    "netMrr": 1200
+  },
+  "activations": {
+    "bySource": {
+      "organic": {"signups": 112, "activated": 67, "rate": 0.60},
+      "twitter": {"signups": 43, "activated": 31, "rate": 0.72},
+      "linkedin": {"signups": 31, "activated": 16, "rate": 0.52}
+    }
+  }
+}
+```
+
+**Seed data needed:**
+- 30 days of historical signup/revenue data
+- Realistic patterns (weekday vs weekend, growth trend)
+- Source attribution data
+- Cohort activation rates
+- A few anomaly points (for alert testing)
+
+---
+
+### Mock Slack
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/slack/chat.postMessage` | Send message to channel |
+| POST | `/slack/conversations.open` | Open DM |
+| GET | `/slack/users.list` | List workspace users |
+| GET | `/slack/channels.list` | List channels |
+
+**Sample data structure:**
+
+```json
+{
+  "channels": [
+    {"id": "C001", "name": "general"},
+    {"id": "C002", "name": "sales"},
+    {"id": "C003", "name": "engineering"},
+    {"id": "C004", "name": "support"}
+  ],
+  "users": [
+    {"id": "U001", "name": "you", "email": "you@company.com"},
+    {"id": "U002", "name": "jamie", "email": "jamie@company.com"},
+    {"id": "U003", "name": "sarah", "email": "sarah@company.com"}
+  ]
+}
+```
+
+---
+
+### Mock LinkedIn / Apollo (Data Enrichment)
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/enrichment/people/search` | Search for people |
+| GET | `/enrichment/people/:id` | Get person details |
+| GET | `/enrichment/companies/:domain` | Get company info |
+
+**Query parameters:**
+- `?title=VP Sales` - Filter by title
+- `?company=Acme Corp` - Filter by company
+- `?location=Austin, TX` - Filter by location
+- `?skills=Go,Kubernetes` - Filter by skills
+
+**Sample data structure:**
+
+```json
+{
+  "people": [
+    {
+      "id": "person_001",
+      "name": "Alex Rivera",
+      "title": "Staff Engineer",
+      "company": "Cloudflare",
+      "location": "Austin, TX",
+      "email": "alex.rivera@email.com",
+      "linkedinUrl": "https://linkedin.com/in/alexrivera",
+      "skills": ["Go", "Rust", "Distributed Systems"],
+      "experience": [
+        {"company": "Cloudflare", "title": "Staff Engineer", "years": 4},
+        {"company": "DigitalOcean", "title": "Senior Engineer", "years": 3}
+      ],
+      "education": [{"school": "UT Austin", "degree": "BS Computer Science"}]
+    }
+  ],
+  "companies": [
+    {
+      "domain": "acme.com",
+      "name": "Acme Corp",
+      "industry": "Technology",
+      "size": "201-500",
+      "location": "San Francisco, CA",
+      "description": "Enterprise software company..."
+    }
+  ]
+}
+```
+
+**Seed data needed:**
+- 50-100 people profiles with realistic backgrounds
+- 20-30 company profiles
+- Mix of seniority levels
+- Various locations (Austin, NYC, SF, remote)
+
+---
+
+### Mock Invoicing (QuickBooks/Stripe)
+
+**Endpoints required:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/invoices` | List invoices |
+| GET | `/invoices/:id` | Get invoice details |
+| PATCH | `/invoices/:id` | Update invoice |
+| GET | `/customers` | List customers |
+| GET | `/customers/:id` | Get customer with contact info |
+
+**Query parameters:**
+- `?status=overdue` - Filter by status
+- `?dueBefore=2026-01-19` - Filter by due date
+- `?customerId=cust_001` - Filter by customer
+
+**Sample data structure:**
+
+```json
+{
+  "invoices": [
+    {
+      "id": "INV-2024-089",
+      "customerId": "cust_001",
+      "customerName": "Acme Corp",
+      "contactEmail": "sarah@acme.com",
+      "amount": 4500,
+      "currency": "USD",
+      "status": "overdue",
+      "dueDate": "2026-01-15",
+      "createdAt": "2026-01-01",
+      "daysOverdue": 11
+    }
+  ]
+}
+```
+
+**Seed data needed:**
+- 15-20 invoices in various states
+- 5-8 overdue by different amounts (7, 14, 30 days)
+- Some paid, some pending
+- Varying amounts ($500 to $15,000)
+
+---
+
+### Implementation Recommendations
+
+**1. Use a single mock server with namespaced routes:**
+
+```
+/mock/crm/*
+/mock/support/*
+/mock/calendar/*
+/mock/email/*
+/mock/github/*
+/mock/analytics/*
+/mock/slack/*
+/mock/enrichment/*
+/mock/invoices/*
+```
+
+**2. Store data in JSON files for easy editing:**
+
+```
+mock-data/
+  crm.json
+  support.json
+  calendar.json
+  email.json
+  github.json
+  analytics.json
+  enrichment.json
+  invoices.json
+```
+
+**3. Add mutation logging:**
+
+Log all POST/PATCH/DELETE operations so you can see what actions the AI attempted:
+
+```json
+{
+  "mutations": [
+    {"timestamp": "2026-01-26T10:00:00Z", "method": "POST", "path": "/crm/contacts", "body": {...}},
+    {"timestamp": "2026-01-26T10:00:05Z", "method": "PATCH", "path": "/crm/deals/deal_001", "body": {"stage": "At Risk"}}
+  ]
+}
+```
+
+**4. Add realistic latency:**
+
+Real APIs have latency. Add 100-500ms delays to make the experience more realistic:
+
+```typescript
+app.use(async (c, next) => {
+  await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 400));
+  await next();
+});
+```
+
+**5. Add occasional errors:**
+
+Real APIs fail sometimes. Add a small chance of 500 errors or timeouts:
+
+```typescript
+app.use(async (c, next) => {
+  if (Math.random() < 0.02) { // 2% error rate
+    return c.json({ error: "Internal server error" }, 500);
+  }
+  await next();
+});
+```
+
+**6. Environment variable for mock mode:**
+
+```bash
+MOCK_SERVICES=true  # Use mock services
+MOCK_SERVICES=false # Use real integrations
+```
+
+---
+
+### Seed Data Generation Script
+
+Create a script that generates realistic, interconnected seed data:
+
+```bash
+pnpm mock:seed      # Generate fresh seed data
+pnpm mock:start     # Start mock server on :3001
+pnpm mock:reset     # Reset to original seed data
+pnpm mock:logs      # View mutation log
+```
+
+The seed data should be interconnected:
+- CRM contacts should match email recipients
+- Support tickets should reference CRM customers
+- Calendar events should involve known users
+- GitHub PRs should have consistent authors
+
+This makes conversations feel realistic when the AI cross-references data between systems.
