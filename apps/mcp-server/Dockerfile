@@ -1,6 +1,5 @@
 FROM node:20-slim
 
-# Cache bust: 2026-01-26-v2
 # Install pnpm and curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
@@ -9,6 +8,10 @@ WORKDIR /app
 
 # Copy workspace config
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+
+# Force cache bust for package.json changes - change this value to force rebuild
+ARG CACHEBUST=v4
+RUN echo "Cache bust: $CACHEBUST"
 
 # Copy package.json files for needed workspaces
 COPY packages/db/package.json packages/db/
