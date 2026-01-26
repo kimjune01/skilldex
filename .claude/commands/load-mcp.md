@@ -22,27 +22,16 @@ Load and test the Skillomatic MCP server for a specific user.
    turso db shell skillomatic "SELECT key FROM api_keys WHERE user_id = (SELECT id FROM users WHERE email = 'USER_EMAIL');"
    ```
 
-4. **Build MCP** (if local):
+4. **Test MCP web endpoint** - verify connection:
    ```bash
-   pnpm --filter @skillomatic/mcp build
-   ```
-
-5. **Test MCP server** - list tools:
-   ```bash
-   # Local
-   echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
-     SKILLOMATIC_API_URL=http://localhost:3000 \
-     SKILLOMATIC_API_KEY=API_KEY \
-     node packages/mcp/dist/index.js 2>&1
+   # Local - test the MCP endpoint is accessible (port 3001)
+   curl -i -H "Authorization: Bearer API_KEY" http://localhost:3001/mcp
 
    # Prod
-   echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
-     SKILLOMATIC_API_URL=https://api.skillomatic.technology \
-     SKILLOMATIC_API_KEY=API_KEY \
-     node packages/mcp/dist/index.js 2>&1
+   curl -i -H "Authorization: Bearer API_KEY" https://mcp.skillomatic.technology/mcp
    ```
 
-6. **Check integrations** for user:
+5. **Check integrations** for user:
    ```bash
    # Local
    sqlite3 packages/db/data/skillomatic.db "SELECT provider, status, nango_connection_id FROM integrations WHERE user_id = 'USER_ID';" -header
@@ -51,16 +40,42 @@ Load and test the Skillomatic MCP server for a specific user.
    turso db shell skillomatic "SELECT provider, status, nango_connection_id FROM integrations WHERE user_id = 'USER_ID';"
    ```
 
-7. **Output MCP config** for Claude Desktop:
+6. **Output MCP config** for Claude Desktop:
    ```json
    {
      "mcpServers": {
        "skillomatic": {
-         "command": "node",
-         "args": ["FULL_PATH/packages/mcp/dist/index.js"],
-         "env": {
-           "SKILLOMATIC_API_URL": "API_URL",
-           "SKILLOMATIC_API_KEY": "API_KEY"
+         "url": "MCP_ENDPOINT",
+         "headers": {
+           "Authorization": "Bearer API_KEY"
+         }
+       }
+     }
+   }
+   ```
+
+   Example for local:
+   ```json
+   {
+     "mcpServers": {
+       "skillomatic": {
+         "url": "http://localhost:3001/mcp",
+         "headers": {
+           "Authorization": "Bearer sk_test_xxx"
+         }
+       }
+     }
+   }
+   ```
+
+   Example for production:
+   ```json
+   {
+     "mcpServers": {
+       "skillomatic": {
+         "url": "https://mcp.skillomatic.technology/mcp",
+         "headers": {
+           "Authorization": "Bearer sk_live_xxx"
          }
        }
      }
@@ -69,13 +84,14 @@ Load and test the Skillomatic MCP server for a specific user.
 
 ## Quick Reference
 
-| Environment | API URL |
-|-------------|---------|
-| Local | http://localhost:3000 |
-| Production | https://api.skillomatic.technology |
+| Environment | MCP Endpoint |
+|-------------|--------------|
+| Local | http://localhost:3001/mcp |
+| Production | https://mcp.skillomatic.technology/mcp |
 
 ## Troubleshooting
 
 - **Calendar=false**: Check integration has `status='connected'` and valid `nango_connection_id`
 - **No tools**: Verify API key is valid and not revoked
 - **Connection refused**: Ensure local API is running (`pnpm dev`)
+- **401 Unauthorized**: Check API key format (should start with `sk_live_` or `sk_test_`)

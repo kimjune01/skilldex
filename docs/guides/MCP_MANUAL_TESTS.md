@@ -4,17 +4,29 @@ Manual tests to verify the Skillomatic MCP server works correctly in Claude Desk
 
 ## Prerequisites
 
-1. API server running: `pnpm dev`
-2. MCP server configured in Claude Desktop:
+1. Dev servers running: `pnpm dev` (this starts the MCP server on port 3001)
+2. MCP server configured in Claude Desktop (using web endpoint):
    ```json
    {
      "mcpServers": {
        "skillomatic": {
-         "command": "node",
-         "args": ["/path/to/skillomatic/packages/mcp/dist/index.js"],
-         "env": {
-           "SKILLOMATIC_API_KEY": "sk_test_demo_api_key",
-           "SKILLOMATIC_API_URL": "http://localhost:3000"
+         "url": "http://localhost:3001/mcp",
+         "headers": {
+           "Authorization": "Bearer sk_test_demo_api_key"
+         }
+       }
+     }
+   }
+   ```
+
+   For production:
+   ```json
+   {
+     "mcpServers": {
+       "skillomatic": {
+         "url": "https://mcp.skillomatic.technology/mcp",
+         "headers": {
+           "Authorization": "Bearer sk_live_YOUR_API_KEY"
          }
        }
      }

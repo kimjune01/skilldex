@@ -140,17 +140,21 @@ export default function ApiKeys() {
     },
   ];
 
-  // API URL for MCP server (web is 5173, API is 3000 in dev)
-  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+  // MCP endpoint URL - different in dev vs prod
+  // In dev: localhost:3001 (standalone MCP server)
+  // In prod: mcp.skillomatic.technology
+  const isLocalDev = window.location.hostname === 'localhost';
+  const mcpEndpoint = isLocalDev
+    ? 'http://localhost:3001/mcp'
+    : 'https://mcp.skillomatic.technology/mcp';
 
+  // Web endpoint config (for Claude Desktop, ChatGPT, etc.)
   const getMcpConfig = (key: string) => JSON.stringify({
     mcpServers: {
       skillomatic: {
-        command: "npx",
-        args: ["@skillomatic/mcp"],
-        env: {
-          SKILLOMATIC_API_KEY: key,
-          SKILLOMATIC_API_URL: apiUrl
+        url: mcpEndpoint,
+        headers: {
+          Authorization: `Bearer ${key}`
         }
       }
     }
