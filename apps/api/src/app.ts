@@ -46,6 +46,7 @@ import { accountTypeRoutes } from './routes/account-type.js';
 import { capabilityProfilesRoutes } from './routes/capability-profiles.js';
 import { scrapeRoutes } from './routes/scrape.js';
 import { payIntentionsRoutes } from './routes/pay-intentions.js';
+import { statusRoutes } from './routes/status.js';
 
 // Skill API routes (API key auth) - called by Claude Code skills
 import { v1AtsRoutes } from './routes/v1/ats.js';
@@ -112,6 +113,7 @@ app.route('/extension', extensionRoutes);  // Browser extension installation gui
 app.route('/onboarding', onboardingRoutes); // New user getting started guide
 app.route('/webhooks', webhooksRoutes);    // External service webhooks (Nango, etc.)
 app.route('/account-type', accountTypeRoutes); // Account type selection (individual vs org)
+app.route('/status', statusRoutes);        // Public system status (no auth)
 
 // ============ PROTECTED ROUTES (JWT Auth) ============
 // Used by the web UI - requires Authorization: Bearer <jwt-token>

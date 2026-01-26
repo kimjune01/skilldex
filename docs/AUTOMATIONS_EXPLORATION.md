@@ -520,126 +520,22 @@ new Cron(stack, "AutomationWorker", {
 
 ### Observability & Admin Monitoring
 
-#### Health Metrics to Track
+Automation health metrics feed into the system-wide admin health dashboard.
 
-**Automation System Health:**
-| Metric | Description | Alert Threshold |
-|--------|-------------|-----------------|
-| `automations.queue_depth` | Jobs due but not yet processed | > 100 |
-| `automations.avg_latency_ms` | Time from `nextRunAt` to execution start | > 60000 (1 min late) |
-| `automations.failure_rate` | % of runs ending in failure (rolling 1h) | > 10% |
-| `automations.stuck_jobs` | Jobs with status='running' for > 5 min | > 0 |
-| `worker.last_tick` | Timestamp of last worker invocation | > 2 min ago |
+See **[ADMIN_HEALTH_DASHBOARD.md](./ADMIN_HEALTH_DASHBOARD.md)** for:
+- Full metrics spec (API, DB, integrations, LLM, scrape, automations)
+- `/admin/health` UI mockup
+- Implementation approach (DB-backed vs CloudWatch)
+- Alerting design
 
-**System-wide Health:**
-| Metric | Description | Alert Threshold |
-|--------|-------------|-----------------|
-| `api.error_rate` | 5xx responses / total (rolling 5m) | > 1% |
-| `api.p95_latency_ms` | 95th percentile response time | > 2000 |
-| `db.connection_errors` | Failed DB connections (rolling 1h) | > 0 |
-| `nango.token_refresh_failures` | OAuth refresh failures | > 0 |
-| `llm.rate_limit_hits` | LLM provider rate limits hit | > 10/hour |
-| `scrape.pending_tasks` | Scrape tasks waiting > 5 min | > 20 |
-
-#### Super Admin Health Dashboard (`/admin/health`)
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  SYSTEM HEALTH                                          🟢 Healthy  │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  AUTOMATIONS                                                         │
-│  ├─ Queue depth: 3 jobs                                    🟢       │
-│  ├─ Avg latency: 1.2s                                      🟢       │
-│  ├─ Failure rate (1h): 2.1%                                🟢       │
-│  ├─ Stuck jobs: 0                                          🟢       │
-│  └─ Last worker tick: 23s ago                              🟢       │
-│                                                                      │
-│  API                                                                 │
-│  ├─ Error rate (5m): 0.1%                                  🟢       │
-│  ├─ P95 latency: 340ms                                     🟢       │
-│  └─ Requests (1h): 12,847                                           │
-│                                                                      │
-│  INTEGRATIONS                                                        │
-│  ├─ Nango token refreshes (1h): 47 success, 0 failed       🟢       │
-│  ├─ ATS API errors (1h): 3                                 🟢       │
-│  └─ Connected integrations: 284                                     │
-│                                                                      │
-│  LLM                                                                 │
-│  ├─ Provider: anthropic                                    🟢       │
-│  ├─ Rate limit hits (1h): 0                                🟢       │
-│  └─ Avg tokens/request: 1,247                                       │
-│                                                                      │
-│  DATABASE                                                            │
-│  ├─ Connection pool: 8/20 active                           🟢       │
-│  ├─ Query p95: 12ms                                        🟢       │
-│  └─ Size: 142 MB                                                    │
-│                                                                      │
-├─────────────────────────────────────────────────────────────────────┤
-│  RECENT ALERTS                                                       │
-│  └─ (none in last 24h)                                              │
-│                                                                      │
-│  AUTOMATION RUNS (last 24h)                                         │
-│  ├─ Total: 1,284                                                    │
-│  ├─ Completed: 1,251 (97.4%)                                        │
-│  ├─ Failed: 33 (2.6%)                                               │
-│  └─ [View details →]                                                │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-#### Implementation Approach
-
-**Option A: Lightweight (Recommended for MVP)**
-- Store metrics in `system_metrics` table (time-series-ish)
-- Worker Lambda writes metrics each tick
-- `/admin/health` API endpoint aggregates recent metrics
-- Frontend polls every 30s
-
-```typescript
-// packages/db/src/schema.ts
-export const systemMetrics = sqliteTable('system_metrics', {
-  id: text('id').primaryKey(),
-  metric: text('metric').notNull(),      // 'automations.queue_depth'
-  value: real('value').notNull(),         // 3
-  tags: text('tags'),                     // JSON: {"worker_id": "xxx"}
-  timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
-}, (table) => ({
-  metricTimestampIdx: index('system_metrics_metric_ts_idx')
-    .on(table.metric, table.timestamp),
-}));
-
-// Cleanup: DELETE WHERE timestamp < NOW() - 7 days
-```
-
-**Option B: CloudWatch (Production-grade)**
-- Worker publishes metrics to CloudWatch
-- CloudWatch alarms for thresholds
-- Embed CloudWatch dashboard or pull via API
-- Better for alerting (SNS → email/Slack)
-
-**Option C: Hybrid**
-- Critical metrics → CloudWatch (alerting)
-- Detailed metrics → DB (debugging, UI)
-
-#### API Endpoints
-
-```
-GET /admin/health              # Overall health summary (super admin only)
-GET /admin/health/automations  # Automation system details
-GET /admin/health/api          # API metrics
-GET /admin/health/integrations # OAuth/Nango health
-GET /admin/metrics             # Raw metrics (for graphing)
-POST /admin/alerts/test        # Trigger test alert
-```
-
-#### Alerting
-
-For MVP, keep it simple:
-1. Health check Lambda runs every 5 minutes
-2. Queries metrics, checks thresholds
-3. If threshold breached → send email via SES to super admins
-4. Later: Slack webhook, PagerDuty integration
+**Automation-specific metrics** this system would provide:
+| Metric | Description |
+|--------|-------------|
+| `automations.queue_depth` | Jobs due but not yet processed |
+| `automations.avg_latency_ms` | Time from `nextRunAt` to execution |
+| `automations.failure_rate` | % of runs failing (rolling 1h) |
+| `automations.stuck_jobs` | Jobs stuck in 'running' > 5 min |
+| `worker.last_tick` | Last worker invocation timestamp |
 
 ### Implementation Phases
 

@@ -67,6 +67,7 @@ import Deployment from './pages/Deployment';
 import ITFaq from './pages/ITFaq';
 import Sharks from './pages/Sharks';
 import Jerbs from './pages/Jerbs';
+import Status from './pages/Status';
 import NotFound from './pages/NotFound';
 import AccountType from './pages/onboarding/AccountType';
 
@@ -329,6 +330,7 @@ export default function App() {
         <Route path="/it-faq" element={<ITFaq />} />
         <Route path="/sharks" element={<Sharks />} />
         <Route path="/jerbs" element={<Jerbs />} />
+        <Route path="/status" element={<Status />} />
 
         {/* 404 catch-all */}
         <Route path="*" element={<NotFound />} />
