@@ -155,25 +155,42 @@ Call this to see what tables exist and their columns.`,
     `Create a new table in your database for tracking a data type.
 
 Examples:
-- "Contacts" for CRM contacts
-- "Jobs" for job applications
-- "Inventory" for product tracking
+- "Contacts" for CRM contacts (primaryKey: "Email")
+- "Jobs" for job applications (primaryKey: "Company")
+- "Inventory" for product tracking (primaryKey: "SKU")
 
-After creating a table, new tools will be available: {tablename}_add, {tablename}_list, etc.`,
+Set primaryKey to enable automatic deduplication with upsert.
+After creating a table, new tools will be available: {tablename}_add, {tablename}_upsert, etc.`,
     {
       title: z.string().describe('Table name (e.g., "Contacts", "Jobs")'),
       purpose: z.string().describe('What this table tracks (for context)'),
       columns: z.array(z.string()).describe('Column headers (all treated as text)'),
+      primaryKey: z.string().optional().describe('Column to use as unique key for upsert (e.g., "Email")'),
     },
     async (args) => {
       try {
+        // Validate primaryKey is in columns
+        if (args.primaryKey && !args.columns.includes(args.primaryKey)) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Invalid primaryKey "${args.primaryKey}". Must be one of the columns: ${args.columns.join(', ')}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
         const tab = await client.createTab({
           title: args.title,
           purpose: args.purpose,
           columns: args.columns,
+          primaryKey: args.primaryKey,
         });
 
         const slug = toSlug(tab.title);
+        const pkInfo = tab.primaryKey ? `\nPrimary key: ${tab.primaryKey} (used for upsert)` : '';
         return {
           content: [
             {
@@ -183,12 +200,13 @@ After creating a table, new tools will be available: {tablename}_add, {tablename
                 '',
                 `**New tools will be available after restart:**`,
                 `- ${slug}_add: Add a new row`,
+                `- ${slug}_upsert: Find and update, or create if not found`,
                 `- ${slug}_list: List rows`,
                 `- ${slug}_search: Search rows`,
                 `- ${slug}_update: Update a row`,
                 `- ${slug}_delete: Delete a row`,
                 '',
-                `Columns: ${tab.columns.join(', ')}`,
+                `Columns: ${tab.columns.join(', ')}${pkInfo}`,
                 '',
                 `⚠️ **Restart required:** Please restart your MCP connection (or Claude Code) to use the new ${slug}_* tools.`,
               ].join('\n'),
@@ -377,18 +395,34 @@ Columns: ${tab.columns.join(', ')}`,
   registeredTools.push(`${slug}_add`);
 
   // {slug}_upsert - Find or create (upsert)
+  // If tab has primaryKey, match_field is optional (defaults to primaryKey)
   const upsertSchema: Record<string, z.ZodTypeAny> = {
-    match_field: z.string().describe(`Column to match on (e.g., "Email", "Name")`),
-    match_value: z.string().describe('Value to search for in the match field'),
+    match_value: z.string().describe(`Value to search for${tab.primaryKey ? ` in ${tab.primaryKey}` : ''}`),
   };
+  // match_field is optional if primaryKey is set, required otherwise
+  if (tab.primaryKey) {
+    upsertSchema.match_field = z.string().optional().describe(`Column to match on (default: "${tab.primaryKey}")`);
+  } else {
+    upsertSchema.match_field = z.string().describe('Column to match on (e.g., "Email", "Name")');
+  }
   for (const col of tab.columns) {
     const fieldName = fieldMap.get(col)!;
     upsertSchema[fieldName] = z.string().optional().describe(col);
   }
 
-  server.tool(
-    `${slug}_upsert`,
-    `Find and update an existing row, or create a new one if not found.
+  const upsertDescription = tab.primaryKey
+    ? `Find and update an existing row, or create a new one if not found.
+
+Matches by ${tab.primaryKey} (primary key) by default. Just provide the ${tab.primaryKey} value.
+
+Example: match_value="john@example.com" will:
+- If found: update that row with the provided fields
+- If not found: create a new row with all provided fields
+
+Purpose: ${tab.purpose}
+Columns: ${tab.columns.join(', ')}
+Primary key: ${tab.primaryKey}`
+    : `Find and update an existing row, or create a new one if not found.
 
 Use this to avoid duplicates. Searches by the match_field, updates if found, creates if not.
 
@@ -397,12 +431,29 @@ Example: match_field="Email", match_value="john@example.com" will:
 - If not found: create a new row with all provided fields
 
 Purpose: ${tab.purpose}
-Columns: ${tab.columns.join(', ')}`,
+Columns: ${tab.columns.join(', ')}`;
+
+  server.tool(
+    `${slug}_upsert`,
+    upsertDescription,
     upsertSchema,
     async (args) => {
       try {
-        const matchField = args.match_field as string;
+        // Use primaryKey as default match_field if available
+        const matchField = (args.match_field as string | undefined) || tab.primaryKey;
         const matchValue = args.match_value as string;
+
+        if (!matchField) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: 'match_field is required (no primary key configured for this table)',
+              },
+            ],
+            isError: true,
+          };
+        }
 
         // Validate match_field is a valid column
         if (!tab.columns.includes(matchField)) {

@@ -148,6 +148,8 @@ export interface TabConfig {
   purpose: string;
   /** Column headers (all treated as strings) */
   columns: string[];
+  /** Optional: column to use as primary key for upsert operations */
+  primaryKey?: string;
   /** ISO timestamp when tab was created */
   createdAt: string;
 }
@@ -175,6 +177,8 @@ export interface CreateTabRequest {
   purpose: string;
   /** Column headers to initialize */
   columns: string[];
+  /** Optional: column to use as primary key for upsert (e.g., "Email") */
+  primaryKey?: string;
 }
 
 /**
@@ -185,6 +189,8 @@ export interface UpdateTabSchemaRequest {
   columns: string[];
   /** Optional: update the purpose */
   purpose?: string;
+  /** Optional: set or change the primary key column */
+  primaryKey?: string;
 }
 
 /**

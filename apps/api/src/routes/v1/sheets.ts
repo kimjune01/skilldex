@@ -41,6 +41,7 @@ interface TabConfig {
   title: string;
   purpose: string;
   columns: string[];
+  primaryKey?: string;
   createdAt: string;
 }
 
@@ -206,10 +207,15 @@ v1SheetsRoutes.get('/tabs', async (c) => {
 // POST /v1/sheets/tabs - Create a new tab
 v1SheetsRoutes.post('/tabs', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<{ title: string; purpose: string; columns: string[] }>();
+  const body = await c.req.json<{ title: string; purpose: string; columns: string[]; primaryKey?: string }>();
 
   if (!body.title || !body.purpose || !body.columns?.length) {
     return c.json({ error: { message: 'title, purpose, and columns are required' } }, 400);
+  }
+
+  // Validate primaryKey is in columns
+  if (body.primaryKey && !body.columns.includes(body.primaryKey)) {
+    return c.json({ error: { message: `primaryKey "${body.primaryKey}" must be one of the columns` } }, 400);
   }
 
   const result = await getGoogleSheetsIntegration(user.sub);
@@ -274,6 +280,7 @@ v1SheetsRoutes.post('/tabs', async (c) => {
     title: body.title,
     purpose: body.purpose,
     columns: body.columns,
+    primaryKey: body.primaryKey,
     createdAt: new Date().toISOString(),
   };
 
@@ -294,10 +301,10 @@ v1SheetsRoutes.post('/tabs', async (c) => {
 v1SheetsRoutes.put('/tabs/:tabName', async (c) => {
   const user = c.get('user');
   const tabName = c.req.param('tabName');
-  const body = await c.req.json<{ columns?: string[]; purpose?: string }>();
+  const body = await c.req.json<{ columns?: string[]; purpose?: string; primaryKey?: string | null }>();
 
-  if (!body.columns && !body.purpose) {
-    return c.json({ error: { message: 'columns or purpose is required' } }, 400);
+  if (!body.columns && !body.purpose && body.primaryKey === undefined) {
+    return c.json({ error: { message: 'columns, purpose, or primaryKey is required' } }, 400);
   }
 
   const result = await getGoogleSheetsIntegration(user.sub);
@@ -341,6 +348,21 @@ v1SheetsRoutes.put('/tabs/:tabName', async (c) => {
 
   if (body.purpose) {
     tab.purpose = body.purpose;
+  }
+
+  // Handle primaryKey update (can be set, changed, or removed with null)
+  if (body.primaryKey !== undefined) {
+    if (body.primaryKey === null) {
+      // Remove primary key
+      delete tab.primaryKey;
+    } else {
+      // Validate primaryKey is in columns
+      const columnsToCheck = body.columns || tab.columns;
+      if (!columnsToCheck.includes(body.primaryKey)) {
+        return c.json({ error: { message: `primaryKey "${body.primaryKey}" must be one of the columns` } }, 400);
+      }
+      tab.primaryKey = body.primaryKey;
+    }
   }
 
   metadata.tabs[tabIndex] = tab;
