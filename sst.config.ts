@@ -50,6 +50,7 @@ export default $config({
     const nangoPublicKey = new sst.Secret("NangoPublicKey");
     const googleClientId = new sst.Secret("GoogleClientId");
     const googleClientSecret = new sst.Secret("GoogleClientSecret");
+    const githubToken = new sst.Secret("GithubToken");
 
     // Email - AWS SES for transactional emails
     const email = new sst.aws.Email("Email", {
@@ -81,7 +82,7 @@ export default $config({
         // Install native deps for Lambda (Linux x64)
         install: ["@libsql/linux-x64-gnu", "@libsql/client", "better-sqlite3"],
       },
-      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey, googleClientId, googleClientSecret, email],
+      link: [jwtSecret, tursoUrl, tursoToken, nangoSecretKey, nangoPublicKey, googleClientId, googleClientSecret, githubToken, email],
       environment: {
         NODE_ENV: "production",
         NANGO_HOST: "https://api.nango.dev",

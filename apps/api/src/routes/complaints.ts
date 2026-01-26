@@ -5,6 +5,7 @@
  * with the complaint message and auto-captured context (URL, browser info).
  */
 import { Hono } from 'hono';
+import { Resource } from 'sst';
 import { jwtAuth, superAdminOnly } from '../middleware/auth.js';
 import type { ComplaintCreateRequest } from '@skillomatic/shared';
 
@@ -16,12 +17,21 @@ complaintsRoutes.use('*', jwtAuth);
 // GitHub config - uses skillomatic repo
 const GITHUB_OWNER = 'junekim-rippling';
 const GITHUB_REPO = 'skillomatic';
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+
+// Get GitHub token from SST secret (production) or env var (development)
+function getGithubToken(): string | undefined {
+  try {
+    return (Resource as any).GithubToken?.value;
+  } catch {
+    return process.env.GITHUB_TOKEN;
+  }
+}
 const GITHUB_ISSUES_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues?q=is%3Aissue+is%3Aopen+label%3Auser-reported`;
 
 // GET /complaints/count - Get count of open user-reported issues (superadmin only)
 complaintsRoutes.get('/count', superAdminOnly, async (c) => {
-  if (!GITHUB_TOKEN) {
+  const githubToken = getGithubToken();
+  if (!githubToken) {
     return c.json({ data: { count: 0, url: GITHUB_ISSUES_URL } });
   }
 
@@ -32,7 +42,7 @@ complaintsRoutes.get('/count', superAdminOnly, async (c) => {
       `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}`,
       {
         headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
+          'Authorization': `Bearer ${githubToken}`,
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
         },
@@ -66,7 +76,8 @@ complaintsRoutes.post('/', async (c) => {
     return c.json({ error: { message: 'Message is required' } }, 400);
   }
 
-  if (!GITHUB_TOKEN) {
+  const githubToken = getGithubToken();
+  if (!githubToken) {
     console.error('GITHUB_TOKEN not configured');
     return c.json({ error: { message: 'Bug reporting is not configured' } }, 500);
   }
@@ -94,7 +105,7 @@ ${body.message.trim()}
     const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Authorization': `Bearer ${githubToken}`,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
