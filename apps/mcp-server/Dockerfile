@@ -1,5 +1,6 @@
 FROM node:20-slim
 
+# Cache bust: 2026-01-26-v2
 # Install pnpm and curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
