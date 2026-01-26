@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { MessageList, ChatInput, ChatSidebar } from '@/components/chat';
 import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Download, Menu, KeyRound, MessageSquare } from 'lucide-react';
+import { AlertCircle, Loader2, Download, Menu, KeyRound, MessageSquare, ExternalLink, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
@@ -177,8 +177,65 @@ function ChatContent() {
     );
   }
 
-  // Determine if chat is usable (has org or user LLM config)
-  const canChat = !!llmConfig;
+  // Show setup UI for non-org users without API key configured
+  if (!hasOrgLLM && !userLLMConfig) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center p-8">
+        <div className="max-w-md w-full">
+          {/* Main setup card */}
+          <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
+              <KeyRound className="h-8 w-8 text-amber-600" />
+            </div>
+            <h2 className="text-xl font-bold text-amber-900 mb-2">LLM API Key Required</h2>
+            <p className="text-amber-700 mb-6">
+              Web Chat needs an LLM API key (Anthropic, OpenAI, or Groq) to work.
+              You can configure this in the sidebar.
+            </p>
+
+            <Button
+              onClick={() => setSidebarOpen(true)}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              <KeyRound className="h-4 w-4 mr-2" />
+              Configure API Key
+            </Button>
+          </div>
+
+          {/* Alternative: Desktop Chat */}
+          <div className="mt-6 p-4 bg-muted/50 rounded-xl border">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <ExternalLink className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Alternative: Use Desktop Chat</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Desktop apps like Claude Desktop use your own API keys and don't require org configuration.
+                </p>
+                <a
+                  href="/desktop-chat"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                >
+                  Set up Desktop Chat
+                  <ChevronRight className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar for API key configuration */}
+        <ChatSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          hasOrgLLM={false}
+          userLLMConfig={userLLMConfig}
+          onUserLLMConfigChange={handleUserLLMConfigChange}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
@@ -285,20 +342,7 @@ function ChatContent() {
       )}
 
       {/* Input */}
-      {canChat ? (
-        <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} sidebarOpen={sidebarOpen} isMobile={isMobile} />
-      ) : (
-        <div className="px-4 py-3 border-t">
-          <Button
-            variant="outline"
-            className="w-full justify-center gap-2"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <KeyRound className="h-4 w-4" />
-            Configure API Key to Start Chatting
-          </Button>
-        </div>
-      )}
+      <ChatInput onSend={send} disabled={isStreaming || isLoadingMessages} sidebarOpen={sidebarOpen} isMobile={isMobile} />
 
       {/* Instructions Dialog */}
       <Dialog
