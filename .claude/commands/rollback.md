@@ -1,14 +1,20 @@
 Rollback to a previous production deployment by tag number.
 
+<!-- RELATED: This command is paired with /deploy. Keep deployment logic in sync. -->
+<!-- When updating: check /deploy for target mapping, health endpoints, verification steps -->
+
 ## Usage
 - `/rollback` - Rollback to previous version (one before current production)
 - `/rollback <tag>` - Rollback to specific tag (e.g., `/rollback 3`)
 
 ## Steps
 
-1. Get current production hash and find what tag is running:
+1. Get current production hashes and find what tag is running:
 ```bash
 curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
+```
+```bash
+curl -s "https://mcp.skillomatic.technology/health" | jq -r '.gitHash'
 ```
 ```bash
 git fetch --tags
@@ -42,21 +48,27 @@ git checkout <target_tag>
 pnpm typecheck
 ```
 
-7. Deploy (NO db:push - schema stays current):
+7. Deploy all services (NO db:push - schema stays current):
 ```bash
 GIT_HASH=<target_hash> pnpm sst deploy --stage production
 ```
-Note: Skipping db:push:prod intentionally. Schema development should deprecate
-columns before dropping them, ensuring old code can run against newer schemas.
 
-8. Verify deployment (call both in parallel):
+**Note:** Rollback deploys ALL services (no `--target` flag) because we're reverting to a known-good state. Skipping db:push:prod intentionally - schema development should deprecate columns before dropping them, ensuring old code can run against newer schemas.
+
+8. Verify all services are responding and hashes match (call in parallel):
 ```bash
-curl -s "https://api.skillomatic.technology/health"
+curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 ```
 ```bash
-curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*'
+curl -s "https://mcp.skillomatic.technology/health" | jq -r '.gitHash'
 ```
-Retry web check with exponential backoff (2-64s) if CDN hasn't propagated yet.
+```bash
+curl -s "https://skillomatic.technology" | grep 'git-hash' | sed 's/.*content="\([^"]*\)".*/\1/'
+```
+
+All three hashes must match the target tag's commit hash.
+
+Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't rolled over (ECS rolling deployment can take up to 2 minutes).
 
 9. Return to main:
 ```bash
@@ -68,3 +80,11 @@ git checkout main
 ## Troubleshooting
 
 If rollback fails mid-deploy, you're in detached HEAD state. Run `git checkout main` to return.
+
+## Health Endpoints
+
+| Service | Endpoint |
+|---------|----------|
+| API | `https://api.skillomatic.technology/health` |
+| MCP | `https://mcp.skillomatic.technology/health` |
+| Web | `https://skillomatic.technology` (check `git-hash` meta tag) |

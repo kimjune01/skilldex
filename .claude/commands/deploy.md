@@ -1,5 +1,8 @@
 Deploy Skillomatic to production using SST.
 
+<!-- RELATED: This command is paired with /rollback. Keep deployment logic in sync. -->
+<!-- When updating: check /rollback for health endpoints, verification steps -->
+
 ## Quick Deploy
 
 Run these commands in sequence. Stop if any fails.
