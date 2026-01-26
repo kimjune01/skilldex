@@ -29,6 +29,9 @@ import {
 
 export const accountTypeRoutes = new Hono();
 
+// Default organization slug - users in this org shouldn't see the org name in UI
+const DEFAULT_ORG_SLUG = 'default';
+
 /**
  * Helper to find an organization by email domain
  */
@@ -68,7 +71,10 @@ async function buildUserPublic(dbUser: typeof users.$inferSelect): Promise<UserP
       .from(organizations)
       .where(eq(organizations.id, dbUser.organizationId))
       .limit(1);
-    organizationName = org?.name;
+    // Don't show org name for users in the default organization
+    if (org && org.slug !== DEFAULT_ORG_SLUG) {
+      organizationName = org.name;
+    }
   }
 
   // Check if individual user has an available org to join

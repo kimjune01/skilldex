@@ -10,6 +10,9 @@ import type { LoginResponse, UserPublic } from '@skillomatic/shared';
 import { loginRateLimit } from '../middleware/rate-limit.js';
 import { loginRequestSchema, validateBody, ValidationError } from '../lib/validation.js';
 
+// Default organization slug - users in this org shouldn't see the org name in UI
+const DEFAULT_ORG_SLUG = 'default';
+
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -94,7 +97,7 @@ authRoutes.post('/login', loginRateLimit, async (c) => {
     return c.json({ error: { message: 'Invalid email or password' } }, 401);
   }
 
-  // Get organization name if user has one
+  // Get organization name if user has one (hide for default org)
   let organizationName: string | undefined;
   if (user[0].organizationId) {
     const [org] = await db
@@ -102,7 +105,10 @@ authRoutes.post('/login', loginRateLimit, async (c) => {
       .from(organizations)
       .where(eq(organizations.id, user[0].organizationId))
       .limit(1);
-    organizationName = org?.name;
+    // Don't show org name for users in the default organization
+    if (org && org.slug !== DEFAULT_ORG_SLUG) {
+      organizationName = org.name;
+    }
   }
 
   const userPublic: UserPublic = {
@@ -154,7 +160,7 @@ authRoutes.get('/me', async (c) => {
     return c.json({ error: { message: 'User not found' } }, 404);
   }
 
-  // Get organization name if user has one
+  // Get organization name if user has one (hide for default org)
   let organizationName: string | undefined;
   if (user[0].organizationId) {
     const [org] = await db
@@ -162,7 +168,10 @@ authRoutes.get('/me', async (c) => {
       .from(organizations)
       .where(eq(organizations.id, user[0].organizationId))
       .limit(1);
-    organizationName = org?.name;
+    // Don't show org name for users in the default organization
+    if (org && org.slug !== DEFAULT_ORG_SLUG) {
+      organizationName = org.name;
+    }
   }
 
   // Check if individual user has an available org to join
@@ -343,15 +352,20 @@ authRoutes.get('/google/callback', async (c) => {
       }
     }
 
-    // Get organization name if user has one
+    // Get organization name if user has one (hide for default org)
     let organizationName: string | undefined;
+    let orgNameForEmail: string | undefined;
     if (dbUser.organizationId) {
       const [org] = await db
         .select()
         .from(organizations)
         .where(eq(organizations.id, dbUser.organizationId))
         .limit(1);
-      organizationName = org?.name;
+      // Don't show org name for users in the default organization
+      if (org && org.slug !== DEFAULT_ORG_SLUG) {
+        organizationName = org.name;
+        orgNameForEmail = org.name;
+      }
     }
 
     const userPublic: UserPublic = {
@@ -373,7 +387,7 @@ authRoutes.get('/google/callback', async (c) => {
     if (isNewUser) {
       sendWelcomeEmail(dbUser.email, {
         userName: dbUser.name,
-        organizationName: organizationName || 'Skillomatic',
+        organizationName: orgNameForEmail || 'Skillomatic',
         webUrl,
       }).catch((err) => {
         console.error('[Auth] Failed to send welcome email:', err);
