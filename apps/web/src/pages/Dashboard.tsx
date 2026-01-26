@@ -235,7 +235,9 @@ export default function Dashboard() {
                   {greeting}, {user?.name?.split(' ')[0]}!
                 </h1>
                 <p className="text-cyan-400/80 text-sm font-mono">
-                  &gt; Ready to dispense skills_
+                  &gt; {setupSteps.isFullyOnboarded
+                    ? 'Ready to dispense skills_'
+                    : `Next: ${setupSteps.steps.find(s => !s.done)?.label || 'Complete setup'}_`}
                 </p>
               </div>
             </div>
@@ -416,7 +418,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent Activity Section */}
+      {/* Recent Activity Section - only show when onboarded */}
+      {onboardingStatus?.isComplete && (
       <Card className="card-robot rounded-xl overflow-hidden animate-fade-in">
         <CardHeader className="bg-[hsl(220_15%_92%)] border-b-2 border-[hsl(220_15%_82%)]">
           <div className="flex items-center justify-between">
@@ -487,6 +490,7 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
