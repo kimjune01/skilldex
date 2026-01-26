@@ -35,9 +35,10 @@ Retry web check with exponential backoff (2-64s) if CDN hasn't propagated yet.
 
 6. Create and push incremented version tag:
 ```bash
-# Get last numeric tag (default to 0 if none exist)
 LAST_TAG=$(git tag --list '[0-9]*' --sort=-v:refname | head -1)
-NEW_TAG=$((${LAST_TAG:-0} + 1))
+```
+```bash
+NEW_TAG=$((LAST_TAG + 1))
 git tag "$NEW_TAG" && git push origin "$NEW_TAG"
 ```
 
