@@ -7,6 +7,7 @@ import { hashSync } from 'bcrypt-ts';
 import { jwtAuth, adminOnly } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
 import { validatePassword, type UserPublic } from '@skillomatic/shared';
+import { createDefaultApiKey } from '../lib/api-keys.js';
 
 export const usersRoutes = new Hono();
 
@@ -166,6 +167,9 @@ usersRoutes.post('/', async (c) => {
     isSuperAdmin: false, // Only super admins can create super admins via direct DB
     organizationId: targetOrgId,
   });
+
+  // Create default API key for extension auto-config
+  await createDefaultApiKey(id, targetOrgId);
 
   const publicUser: UserPublic = {
     id,

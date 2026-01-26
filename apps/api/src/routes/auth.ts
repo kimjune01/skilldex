@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { createToken, verifyToken } from '../lib/jwt.js';
 import { sendWelcomeEmail } from '../lib/email.js';
 import { getUrlsFromRequest } from '../lib/google-oauth.js';
+import { createDefaultApiKey } from '../lib/api-keys.js';
 import type { LoginResponse, UserPublic } from '@skillomatic/shared';
 import { loginRateLimit } from '../middleware/rate-limit.js';
 import { loginRequestSchema, validateBody, ValidationError } from '../lib/validation.js';
@@ -314,6 +315,9 @@ authRoutes.get('/google/callback', async (c) => {
       if (matchedOrg) {
         console.log(`[Auth] New user ${googleUser.email} auto-assigned to org ${matchedOrg.name}`);
       }
+
+      // Create default API key for extension auto-config
+      await createDefaultApiKey(newUserId, matchedOrg?.id ?? null);
 
       const [newUser] = await db
         .select()

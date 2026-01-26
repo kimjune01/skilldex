@@ -9,6 +9,7 @@ import { withOrganization } from '../middleware/organization.js';
 import { createToken } from '../lib/jwt.js';
 import { sendInviteEmail, sendWelcomeEmail } from '../lib/email.js';
 import { validatePassword, type UserPublic } from '@skillomatic/shared';
+import { createDefaultApiKey } from '../lib/api-keys.js';
 
 export interface InvitePublic {
   id: string;
@@ -292,6 +293,9 @@ invitesRoutes.post('/accept', async (c) => {
     createdAt: now,
     updatedAt: now,
   });
+
+  // Create default API key for extension auto-config
+  await createDefaultApiKey(userId, invite.organizationId);
 
   // Mark invite as accepted
   await db

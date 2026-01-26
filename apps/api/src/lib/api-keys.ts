@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { db } from '@skillomatic/db';
 import { apiKeys, users } from '@skillomatic/db/schema';
 import { eq, isNull } from 'drizzle-orm';
@@ -30,6 +30,23 @@ export function generateApiKey(isTest = false): string {
   const prefix = isTest ? API_KEY_PREFIX_TEST : API_KEY_PREFIX_LIVE;
   const randomPart = randomBytes(API_KEY_LENGTH).toString('hex');
   return `${prefix}${randomPart}`;
+}
+
+/**
+ * Create a default API key for a new user
+ * Called automatically on account creation for extension auto-config
+ */
+export async function createDefaultApiKey(userId: string, organizationId: string | null): Promise<void> {
+  const key = generateApiKey();
+  const encryptedKey = encryptApiKey(key);
+
+  await db.insert(apiKeys).values({
+    id: randomUUID(),
+    userId,
+    organizationId,
+    key: encryptedKey,
+    name: 'Default Key',
+  });
 }
 
 /**

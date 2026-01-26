@@ -299,6 +299,174 @@ Lindy is the main player in AI executive assistant space:
 - "One conversation, all your context"
 - "Stop context-switching between apps"
 
+## Solopreneur Angle (High Priority)
+
+### Why Solopreneurs
+
+**The market is exploding:**
+- 29.8 million solopreneurs in U.S. (rising dramatically)
+- 50.9% of workforce will be freelancers by 2027
+- $1.7 trillion economic contribution
+- 77% profitable in first year
+- 20% earn $100k-$300k with zero employees
+
+**Why it's growing:**
+- Corporate jobs disappearing (AI, downsizing)
+- Gen Z skipping traditional employment entirely
+- AI tools make one-person businesses viable
+- 95-98% cost reduction vs hiring (tech stack = $3k-12k/year)
+
+### The Pain Points (Our Opportunity)
+
+| Pain | Data | Current Solution |
+|------|------|------------------|
+| Admin overwhelm | 60% underestimated how many hats they'd wear | Fragmented tools |
+| Tool fragmentation | "Too many tools that don't talk to each other" | DIY with Zapier (complex) |
+| Role switching | 10-40% of day on manual admin tasks | Nothing - just suffer |
+| Decision fatigue | Constant context switching drains energy | Nothing |
+| Can't delegate | No team, VAs cost $2-5k/month | Do it yourself |
+
+**Key stat:** 90% of workers feel burdened by tasks they know could be automated.
+
+### What They Use Now
+
+Typical solopreneur stack ($150-300/month):
+- **Organization:** Notion, ClickUp, Asana
+- **Automation:** Zapier, Make (but complex to set up)
+- **AI:** ChatGPT, Claude (already paying for this)
+- **Design:** Canva
+- **Email marketing:** MailerLite, ConvertKit
+- **Scheduling:** Calendly, TidyCal
+- **Payments:** Stripe
+- **Data:** Airtable, Google Sheets
+
+**The gap:** These tools don't talk to each other. Zapier/Make require technical setup. They're doing manual glue work constantly.
+
+### Positioning for Solopreneurs
+
+**"Claude that runs your business ops"**
+
+Not another tool in the stack - the intelligent glue that connects everything they already use.
+
+**Key insight:** They already pay for Claude/ChatGPT. Skillomatic makes that subscription 10x more valuable by connecting it to their actual business data.
+
+### Solopreneur-Specific Demos
+
+#### Demo S1: "What's Overdue?"
+- **Hook:** "I stopped letting invoices slip through the cracks"
+- **Show:** "What invoices are overdue?" → pulls from Stripe + Sheets, lists clients to follow up
+- **Integrations:** Stripe + Google Sheets
+- **Platform:** Twitter/X, TikTok
+
+#### Demo S2: "Revive Cold Leads"
+- **Hook:** "I just found $10k in leads I forgot about"
+- **Show:** "Draft follow-ups for leads who went cold" → scans Airtable + Gmail, drafts personalized emails
+- **Integrations:** Gmail + Airtable
+- **Platform:** Twitter/X, LinkedIn
+
+#### Demo S3: "Prep My Day"
+- **Hook:** "I know exactly what to focus on before I open my laptop"
+- **Show:** "What's on my plate today?" → calendar + tasks + pending client items
+- **Integrations:** Google Calendar + Airtable + Gmail
+- **Platform:** Twitter/X, TikTok
+
+#### Demo S4: "Weekly Revenue Check"
+- **Hook:** "My Monday financial review takes 30 seconds"
+- **Show:** "How'd we do last week?" → revenue from Stripe, expenses, formatted summary
+- **Integrations:** Stripe + Sheets
+- **Platform:** Twitter/X, LinkedIn
+
+#### Demo S5: "Client Status Update"
+- **Hook:** "I never forget where things stand with a client"
+- **Show:** "What's the status with [client name]?" → pulls emails, invoices, project notes
+- **Integrations:** Gmail + Stripe + Airtable
+- **Platform:** Twitter/X
+
+### Competition for Solopreneurs
+
+| Competitor | Positioning | Weakness |
+|------------|-------------|----------|
+| Zapier/Make | Automation platform | Complex setup, not conversational |
+| Lindy AI | AI employee | Expensive, inconsistent, steep learning curve |
+| ChatGPT/Claude alone | General AI | No tool connections, manual copy-paste |
+| Virtual assistants | Human help | $2-5k/month, async, training required |
+
+**Our angle:**
+- Simpler than Zapier (just talk to it)
+- Cheaper than Lindy or VA
+- More powerful than raw ChatGPT (actually connected to your tools)
+
+### Solopreneur Pricing Strategy
+
+**Sweet spot:** $50-100/month
+- Less than a VA ($2-5k/month)
+- Comparable to their other tools
+- Justifiable if it saves 5+ hours/week
+- 6 hrs/week saved = $30/hr value = $720/month value
+
+**Positioning:** "Less than your Notion subscription, saves more time than all your other tools combined"
+
+### Solopreneur Distribution
+
+**Primary channels:**
+- **Twitter/X** - Solopreneur/indie hacker community is huge here
+- **TikTok** - "Day in my life as solopreneur" content does well
+- **YouTube** - "My tech stack" videos get views
+
+**Communities:**
+- r/solopreneur, r/Entrepreneur, r/freelance
+- Indie Hackers
+- Twitter communities around #buildinpublic, #solopreneur
+
+**Influencers to watch:**
+- Solopreneurs with 10k-100k followers who post about productivity
+- "Build in public" founders
+- Productivity/tools reviewers
+
+### Solopreneur Content Strategy
+
+**Goal:** Volume play - this is a scalable market unlike founders
+
+**Approach:**
+1. Create 3-4 punchy demos (S1-S4)
+2. Post consistently on Twitter/X and TikTok
+3. Target solopreneur hashtags and communities
+4. Build waitlist / early access list
+5. Offer simple onboarding (connect Gmail + Sheets + Stripe)
+6. Land-and-expand: start with one workflow, add more
+
+**Content themes:**
+- "I automated X" (specific task)
+- "My AI handles this now" (before/after)
+- "Stop doing this manually" (pain point callout)
+- "One-person business hack" (lifestyle angle)
+
+### Solopreneur Messaging
+
+**Don't say:**
+- "AI assistant" (generic, crowded)
+- "Automation platform" (sounds complex)
+- "Workflow builder" (they don't want to build)
+
+**Do say:**
+- "Claude for your business"
+- "Your tools, finally talking to each other"
+- "Ask questions, get answers from your actual data"
+- "The glue your tech stack is missing"
+
+### Solopreneur vs Founder Comparison
+
+| Aspect | Founders | Solopreneurs |
+|--------|----------|--------------|
+| Market size | Small | Large (30M in U.S.) |
+| Customization needed | High (each is unique) | Medium (common stacks) |
+| Willingness to pay | Very high | Medium-high |
+| Distribution | Word of mouth | Content marketing |
+| Scalability | Low (consulting) | High (self-serve) |
+| Role | Lighthouse/credibility | Volume/revenue |
+
+**Strategy:** Use founders for credibility and case studies. Use solopreneurs for scale and revenue.
+
 ## Notes
 
 - Gem does NOT have a public API that enables third-party AI tools - their AI is proprietary
@@ -306,3 +474,4 @@ Lindy is the main player in AI executive assistant space:
 - Traditional ATS (Greenhouse, Lever) have more open APIs
 - This is our moat: we can integrate with the ATS that Gem competes against
 - Slack locked down API in May 2025 - not a viable integration target without Marketplace approval
+- Solopreneur market is 29.8M in U.S. and growing - larger addressable market than recruiting
