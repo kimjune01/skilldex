@@ -2,7 +2,12 @@
 
 ## What This Project Is
 
-Skillomatic is a Claude Code skills platform for recruiters. Recruiters download markdown skill files that authenticate back to this API for ATS data, integration tokens, and usage tracking.
+Skillomatic connects AI assistants (Claude, ChatGPT) to business tools via MCP. Two offerings:
+
+1. **Consulting** (primary): I build custom MCP servers for clients' workflows
+2. **Self-serve** (secondary): Users connect their own integrations and use the platform directly
+
+The platform handles OAuth token management, tool execution, and usage tracking. Supports ATS, CRM, email, calendar, and other business tools.
 
 ## Documentation Index
 

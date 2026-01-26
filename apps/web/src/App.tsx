@@ -53,8 +53,6 @@ import Extension from './pages/Extension';
 import ExtensionInstall from './pages/ExtensionInstall';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
-import ForIT from './pages/ForIT';
-import ForRecruiters from './pages/ForRecruiters';
 import Pricing from './pages/Pricing';
 import HowItWorks from './pages/HowItWorks';
 import About from './pages/About';
@@ -317,8 +315,6 @@ export default function App() {
         <Route path="/extension" element={<Extension />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-        <Route path="/for-it" element={<ForIT />} />
-        <Route path="/for-recruiters" element={<ForRecruiters />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/about" element={<About />} />

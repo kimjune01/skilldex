@@ -2,193 +2,177 @@
 
 ## What is Skillomatic?
 
-Skillomatic brings recruiting tools directly into Claude. Instead of switching between LinkedIn, your ATS, email, and calendar, recruiters just talk to Claude: "Find senior engineers in Seattle" → "Add the top 3 to our ATS" → "Draft outreach emails."
+**Headline:** Claude/ChatGPT + Your Tools = Actual Automation
 
-**Ephemeral architecture:** Chat and candidate data never touch our servers. LLM calls happen directly from the browser. We're a SaaS you can trust with sensitive recruiting data because we architecturally can't see it.
+I build MCP servers that connect your AI assistant to your business tools. You tell me what's repetitive and painful, I connect your AI so it can actually do the work — on command, on a schedule, or triggered by events.
 
----
+**Target audience:** Early adopters who already use Claude Desktop or ChatGPT and want to connect them to their actual work tools (ATS, CRM, email, calendar, etc.)
 
-## The ROI Story
-
-Lead with this in every conversation:
-
-```
-Recruiter salary: $80,000/year ($40/hour)
-Time saved: 4 hours/week (conservative estimate)
-Annual savings: 4 × 52 × $40 = $8,320 per recruiter
-Skillomatic cost: $79 × 12 = $948/year
-ROI: 778%
-Payback period: 6 weeks
-```
-
-**One-liner:** "Skillomatic pays for itself if it saves each recruiter one hour per week. We typically see 4+."
+**Wedge:** MCP. The people who know what it is are actively looking for someone to help them use it.
 
 ---
 
-## Pricing Model
+## Business Model
 
-Ephemeral SaaS = we handle the platform, they keep their data. No infrastructure for them to manage, no PII for us to protect.
+### Consulting-First (Primary)
 
-### Per-Seat License
+| Offering | Price | Details |
+|----------|-------|---------|
+| **Discovery Call** | Free | 30 min. Understand workflow, assess feasibility, no commitment |
+| **Automation Build** | Custom | End-to-end workflow automation, connected to real systems, typically done in 1-2 days |
+| **Ongoing Retainer** | Custom | Priority support, adjustments, new automations as needed |
+
+**Why custom pricing:**
+- Lets me qualify leads on the call
+- Avoids scaring off small clients or leaving money on table with bigger ones
+- Each workflow is different in complexity
+
+### Self-Serve (Secondary)
+
+Always available, no gatekeeping. For DIY users who want to set it up themselves.
 
 | Tier | Price | Details |
 |------|-------|---------|
-| **Design Partner** | Free → $49/user/month | Free for 3 months, then discounted. Monthly feedback calls, case study rights |
-| **Standard** | $79/user/month | Min 5 seats ($395/month). All skills, updates, email support |
-| **Volume** | $59/user/month | 20+ seats. Priority support, quarterly custom skill development |
+| **Free** | $0/month | 500 tool calls/month, basic integrations |
+| **Pro** | $29/month | 5,000 tool calls/month, all integrations |
+| **Team** | $99/month | 25,000 tool calls/month, multiple users |
 
-**Why this works:**
-- $395/month floor closes without VP approval
-- Per-seat is familiar to HR buyers
-- No usage metering = simple billing
-- Healthy margins (minimal infra, no PII storage costs)
-
-**We handle:** Platform, skills, updates, support
-**They handle:** Their own LLM API keys, their own data (stays in browser)
-
-### Future Options
-
-- **Flat fee** ($500-$3k/month): For enterprises who hate counting seats
-- **Perpetual license** ($10-50k + 20% annual): For those who hate subscriptions
+**Why keep self-serve:**
+- Captures leads who aren't ready for consulting
+- Recurring revenue foundation
+- Some people prefer DIY
 
 ---
 
-## Competitive Positioning
+## Positioning
 
-| Tool | Skillomatic Advantage |
-|------|-------------------|
-| **LinkedIn Recruiter** | We integrate with it, not replace it. Add AI layer on top of their existing subscription |
-| **ChatGPT/generic AI** | We take actions (add to ATS, send emails). They just give advice |
-| **Gem, Fetcher, HireEZ** | We're workflow-first, not database-first. Works with their existing tools |
-| **ATS built-in AI** | We work across tools. ATS AI only works in that one system |
+### What Makes This Different
 
-**Positioning statement:** "Skillomatic is the AI layer that connects all your recruiting tools through natural language."
+| Traditional Consulting | Skillomatic |
+|------------------------|-------------|
+| Generic advice and a deck | Working automation you can use immediately |
+| Months of implementation | Delivered in 1-2 days |
+| Requires IT involvement | OAuth connections, no IT tickets |
+| You still do the work | AI does the work; you review and approve |
+
+### Competitive Landscape
+
+| Competitor | Skillomatic Advantage |
+|------------|----------------------|
+| **Zapier/Make** | AI-native, conversational, handles complex logic |
+| **Generic AI chatbots** | Actually takes actions, connected to real tools |
+| **Automation agencies** | Faster delivery, runs in user's own AI assistant |
+| **In-house development** | No hiring, no maintenance, done in days |
 
 ---
 
 ## Target Personas
 
-**Primary: Technical Recruiter**
-- Hires engineers/data scientists
-- Comfortable with Claude and CLI
-- Frustrated with tool-switching
-- Has budget autonomy for sub-$500/month tools
+### Primary: Technical Early Adopter
 
-**Secondary: Recruiting Ops Lead**
-- Manages tech stack
-- Cares about security, compliance, visibility
-- Needs ROI justification for leadership
+- Already uses Claude Desktop or ChatGPT daily
+- Has seen MCP, maybe tried to configure it
+- Frustrated that AI gives suggestions but doesn't do the work
+- Has budget authority for small consulting engagements
 
-**Tertiary: VP Recruiting**
-- Budget holder
-- Wants productivity gains
-- Interested in AI/innovation angle
+### Secondary: Ops/RevOps Lead
+
+- Manages business tool stack
+- Drowning in repetitive workflows
+- Interested in AI but doesn't know where to start
+- Needs ROI justification
+
+### Tertiary: Small Business Owner
+
+- Wears many hats
+- Doing tasks that should be automated
+- Would pay to get time back
 
 ---
 
-## Sales Playbook
+## Sales Motion
 
-### Hooks by Persona
+### Discovery Call Flow (30 min)
 
-| Persona | Hook |
-|---------|------|
-| Recruiter | "Stop switching between 5 tabs to do one task" |
-| Ops Lead | "Give recruiters AI superpowers without security headaches" |
-| VP | "10x productivity without 10x headcount" |
+1. **Understand pain** (10 min): "Walk me through a task you do repeatedly. How many tools do you touch?"
+2. **Explain solution** (5 min): Brief explanation of MCP, how it works
+3. **Scope the build** (10 min): What tools? What triggers? What outputs?
+4. **Next steps** (5 min): Quote or follow-up
 
-### The Killer Discovery Question
+### Qualification Questions
 
-> "Walk me through sourcing a candidate yesterday. How many tools did you touch, and how many times did you copy-paste something?"
-
-If they can't answer quickly, they've lost track—which proves the pain.
+- Do you already use Claude Desktop or ChatGPT?
+- What repetitive task takes the most time?
+- What tools are involved in that workflow?
+- Do you have admin access to those tools?
 
 ### Objection Handling
 
 | Objection | Response |
 |-----------|----------|
-| "We have an ATS" | "We make your ATS easier to use, not replace it" |
-| "Team isn't technical" | "If they can chat with Claude, they can use Skillomatic" |
-| "Data is sensitive" | "Ephemeral architecture - chat and candidate data never touch our servers. LLM calls go direct from browser to Anthropic" |
-| "Need security review" | "Happy to share architecture docs. Your data literally can't reach us - it's not a policy, it's the design" |
-| "No budget" | "It's $79/recruiter. Pays for itself if it saves 2 hours/month" |
-
-### Demo Flow (15 min)
-
-1. **Pain setup** (2 min): Open LinkedIn, ATS, Email tabs. "This is 50x/day."
-2. **Search** (3 min): "Find senior Python engineers in Seattle with AWS" → ranked results
-3. **Action** (3 min): "Add top candidate to ATS with notes" → done
-4. **Outreach** (2 min): "Draft personalized email" → ready to send
-5. **Admin** (2 min): Show usage logs, access controls
-6. **Close** (3 min): "5 minutes vs 30. Want to try with your data?"
-
-### First Customer Offers
-
-1. **Founder access** - "My cell number. Feedback shapes the product"
-2. **Free pilot** - "3 months free, then 40% off first year"
-3. **Custom skills** - "We'll build 3 skills for your specific workflow"
-4. **White-glove onboarding** - "I'll set up your team and train them personally"
+| "What's MCP?" | "It's a new standard that lets AI assistants connect to external tools. Think USB for AI." |
+| "Can't ChatGPT already do this?" | "It can suggest actions, but not take them. This actually clicks buttons and moves data." |
+| "Is my data secure?" | "Your data stays in your systems. The AI calls your tools directly via OAuth." |
+| "What if it breaks?" | "Retainer includes support. Or self-serve users can reach out for consulting." |
+| "Too expensive" | "What's your hourly rate? How many hours per week on this task?" |
 
 ---
 
-## Hypotheses to Validate
+## Marketing Channels
 
-### Must Prove (P0)
+### Where MCP early adopters hang out
 
-| # | Hypothesis | How to Validate | Success Criteria |
-|---|------------|-----------------|------------------|
-| 1 | Tool-switching is a top pain | 10 discovery calls | 8/10 rank it top-3 problem |
-| 2 | They'll try when shown | Demo to 20 recruiters | 50% agree to pilot |
-| 3 | They'll pay after trying | Track pilot conversions | 30% convert at $49+/user |
+1. **Twitter/X** - AI/dev community, Claude announcements
+2. **Discord** - Anthropic Discord, AI tool communities
+3. **Hacker News** - MCP posts get attention
+4. **LinkedIn** - For ops/business audience
+5. **Reddit** - r/ClaudeAI, r/ChatGPT, r/automation
 
-**If all three pass:** Go aggressive.
-**If any fail:** Pivot or kill.
+### Content Strategy
 
-### Should Validate (P1)
-
-| # | Hypothesis | Risk if Wrong |
-|---|------------|---------------|
-| 4 | Claude familiarity is high enough | Need to educate market, higher CAC |
-| 5 | Teams adopt virally (1 user → team) | Need enterprise sales motion |
-| 6 | Ephemeral architecture resonates with security teams | May need to educate on the model |
-
-### Can Defer (P2)
-
-| # | Hypothesis | Risk if Wrong |
-|---|------------|---------------|
-| 7 | ATS integrations generalize across systems | Need vendor-specific code |
-| 8 | Skill architecture scales to complex workflows | Need plugin system |
-| 9 | Technical recruiters are the right beachhead | Market may be broader |
+- "How I automated X with MCP" case studies
+- MCP tutorials and guides
+- Before/after workflow comparisons
+- Short demos on Twitter/LinkedIn
 
 ---
 
-## Next Steps
+## Metrics to Track
 
-### Week 1-2
-- [ ] List 20 technical recruiters to reach out to (LinkedIn, communities, warm intros)
-- [ ] Write cold outreach (lead with pain question)
-- [ ] Complete 10 discovery calls
-- [ ] Document: what resonates, what doesn't
+### Leading Indicators
 
-### Month 1
-- [ ] Sign 3-5 design partners
-- [ ] Deploy on their infrastructure
-- [ ] Weekly check-ins, gather feedback
-- [ ] Instrument basic usage tracking
+| Metric | Target |
+|--------|--------|
+| Discovery calls/week | 3+ |
+| Call → Quote rate | 50%+ |
+| Website → Call booking rate | 5%+ |
 
-### Month 2-3
-- [ ] Ask design partners to convert ($49/user)
-- [ ] Document first case study with real numbers
-- [ ] Decide: double down, pivot, or kill
+### Lagging Indicators
 
-### Go/No-Go Milestones
+| Metric | Target |
+|--------|--------|
+| Consulting revenue/month | $10K+ |
+| Self-serve MRR | $1K+ |
+| Retainer clients | 3+ |
 
-| Milestone | Target | Signal |
-|-----------|--------|--------|
-| Discovery calls | 10 | Pain validated |
-| Design partners | 5 | Product interest |
-| Weekly active users | 3+ partners | Retention |
-| Paid conversions | 30% | Willingness to pay |
-| Case study | 1 with ROI numbers | Sales asset |
+---
+
+## Immediate Next Steps
+
+1. **Launch updated site** (Done)
+2. **Post in MCP communities** - Anthropic Discord, Twitter
+3. **Write first case study** - Even if it's a personal workflow
+4. **Cold outreach** - People asking about MCP on Twitter/Reddit
+5. **Build in public** - Share what I'm building, attract inbound
+
+---
+
+## Open Questions
+
+- What's the right price range for automation builds? (Test in discovery calls)
+- Should I specialize in a vertical (recruiting, sales, ops) or stay general?
+- How to handle ongoing maintenance without retainer?
+- What happens when MCP becomes more mainstream and DIY is easier?
 
 ---
 
