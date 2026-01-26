@@ -102,9 +102,6 @@ importers:
       '@skillomatic/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@skillomatic/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@libsql/client@0.17.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
