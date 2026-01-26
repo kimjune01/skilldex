@@ -1,5 +1,19 @@
 # Skillomatic - Claude Code Instructions
 
+## Slash Commands
+
+Use these for common workflows (type `/command-name`):
+
+| Command | Use for |
+|---------|---------|
+| `/deploy` | Deploy to production |
+| `/rollback` | Revert to previous version |
+| `/prod-status` | Check what's running in production |
+| `/prod-debugger` | Investigate production errors |
+| `/dev-env` | Start development environment |
+| `/local-db` | Query local SQLite database |
+| `/load-mcp` | Test MCP server for a user |
+
 ## What This Project Is
 
 Skillomatic connects AI assistants (Claude, ChatGPT) to business tools via MCP. Two offerings:
@@ -84,9 +98,13 @@ sqlite3 packages/db/data/skillomatic.db "SELECT * FROM users LIMIT 3;"
 
 ## Deployment
 
-**Always use the `/deploy` slash command** for deployments. This ensures proper verification steps are followed.
+**Always use the `/deploy` slash command** for deployments. Do NOT run `pnpm deploy` directly.
 
-Do NOT run `pnpm deploy` directly.
+- `/deploy` - Deploy with change detection and selective targeting
+- `/rollback` - Revert to a previous tagged version
+- `/prod-status` - Check what's currently running
+
+For first-time setup (AWS, Turso, SST secrets), see `docs/DEPLOYMENT.md`.
 
 ## Testing
 
