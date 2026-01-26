@@ -50,6 +50,18 @@ function buildColumnFieldMap(columns: string[]): Map<string, string> {
 }
 
 /**
+ * Error message when Google Sheets is not connected.
+ */
+const NOT_CONNECTED_MESSAGE = `Google Sheets is not connected.
+
+To use spreadsheet features:
+1. Go to Skillomatic web app → Integrations
+2. Find "Google Sheets" under Other Integrations
+3. Click Connect and authorize access
+
+After connecting, you can create tabs to track any data (Contacts, Jobs, etc.) with dedicated tools for each.`;
+
+/**
  * Format tabs response for LLM context.
  */
 function formatTabsForLLM(response: TabsResponse): string {
@@ -112,6 +124,13 @@ Call this to see what tabs are available and their columns.`,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        // Check if it's a "not connected" error
+        if (message.includes('not connected') || message.includes('Google Sheets')) {
+          return {
+            content: [{ type: 'text' as const, text: NOT_CONNECTED_MESSAGE }],
+            isError: true,
+          };
+        }
         return {
           content: [{ type: 'text' as const, text: `Error listing tabs: ${message}` }],
           isError: true,
@@ -169,6 +188,12 @@ After creating a tab, new tools will be available: {tabname}_add, {tabname}_list
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        if (message.includes('not connected') || message.includes('Google Sheets')) {
+          return {
+            content: [{ type: 'text' as const, text: NOT_CONNECTED_MESSAGE }],
+            isError: true,
+          };
+        }
         return {
           content: [{ type: 'text' as const, text: `Error creating tab: ${message}` }],
           isError: true,
@@ -216,6 +241,12 @@ Note: Column changes only affect the header row. Existing data rows are NOT modi
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        if (message.includes('not connected') || message.includes('Google Sheets')) {
+          return {
+            content: [{ type: 'text' as const, text: NOT_CONNECTED_MESSAGE }],
+            isError: true,
+          };
+        }
         return {
           content: [{ type: 'text' as const, text: `Error updating tab schema: ${message}` }],
           isError: true,
@@ -252,6 +283,12 @@ WARNING: This permanently deletes the tab and all its data.`,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        if (message.includes('not connected') || message.includes('Google Sheets')) {
+          return {
+            content: [{ type: 'text' as const, text: NOT_CONNECTED_MESSAGE }],
+            isError: true,
+          };
+        }
         return {
           content: [{ type: 'text' as const, text: `Error deleting tab: ${message}` }],
           isError: true,

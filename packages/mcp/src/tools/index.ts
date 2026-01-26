@@ -206,14 +206,11 @@ export async function registerTools(
     log.info('Database tools registered (super admin)');
   }
 
-  // Google Sheets tools - only if Google Sheets is connected
-  if (profile.hasGoogleSheets) {
-    const sheetsTools = await registerSheetsTools(server, client);
-    registeredTools.push(...sheetsTools);
-    log.info(`Google Sheets tools registered: ${sheetsTools.length} tools`);
-  } else {
-    log.info('Google Sheets tools not registered (no Google Sheets integration connected)');
-  }
+  // Google Sheets tools - always register for all users
+  // Users without Google Sheets connected will be prompted to connect when they use the tools
+  const sheetsTools = await registerSheetsTools(server, client);
+  registeredTools.push(...sheetsTools);
+  log.info(`Google Sheets tools registered: ${sheetsTools.length} tools`);
 
   log.info(`Registered ${registeredTools.length} tools: ${registeredTools.join(', ')}`);
 }
