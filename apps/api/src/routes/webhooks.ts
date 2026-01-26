@@ -4,6 +4,8 @@
  * Currently handles:
  * - Nango auth webhooks (connection created, refresh failed)
  * - Stripe webhooks (checkout completed, payment method collected)
+ *
+ * SECURITY: All webhooks validate signatures to prevent spoofing attacks.
  */
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
@@ -11,6 +13,8 @@ import { integrations, users, payIntentions, ONBOARDING_STEPS } from '@skillomat
 import { eq } from 'drizzle-orm';
 import { handleWebhook as handleStripeWebhook, isStripeConfigured } from '../lib/stripe.js';
 import { createLogger } from '../lib/logger.js';
+import { verifyNangoSignature, parseNangoSignature } from '../lib/webhook-security.js';
+import { webhookRateLimit } from '../middleware/rate-limit.js';
 
 export const webhooksRoutes = new Hono();
 
@@ -44,12 +48,36 @@ type NangoWebhook = NangoAuthWebhook | NangoSyncWebhook;
 
 const log = createLogger('Webhooks');
 
+// Nango webhook secret for signature verification
+const NANGO_WEBHOOK_SECRET = process.env.NANGO_WEBHOOK_SECRET || process.env.NANGO_SECRET_KEY || '';
+
+// Apply rate limiting to all webhook routes
+webhooksRoutes.use('*', webhookRateLimit);
+
 // POST /webhooks/nango - Handle Nango webhooks
 webhooksRoutes.post('/nango', async (c) => {
   try {
-    const payload = await c.req.json<NangoWebhook>();
+    // Get raw body for signature verification
+    const rawBody = await c.req.text();
 
-    console.log('[Nango Webhook] Received:', JSON.stringify(payload, null, 2));
+    // Verify webhook signature (prevents spoofing attacks)
+    const signature = c.req.header('x-nango-signature');
+    const parsedSignature = signature ? parseNangoSignature(signature) : undefined;
+
+    if (!verifyNangoSignature(rawBody, parsedSignature, NANGO_WEBHOOK_SECRET)) {
+      log.warn('nango_webhook_rejected_invalid_signature', {
+        hasSignature: !!signature,
+      });
+      // Return 401 but don't reveal details
+      return c.json({ error: 'Invalid signature' }, 401);
+    }
+
+    // Parse the verified payload
+    const payload = JSON.parse(rawBody) as NangoWebhook;
+
+    log.info('nango_webhook_received', {
+      type: payload.type,
+    });
 
     if (payload.type === 'auth') {
       const authPayload = payload as NangoAuthWebhook;

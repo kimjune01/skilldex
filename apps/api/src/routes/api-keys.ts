@@ -4,7 +4,8 @@ import { apiKeys, users, organizations, ONBOARDING_STEPS } from '@skillomatic/db
 import { eq, and, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { jwtAuth } from '../middleware/auth.js';
-import { generateApiKey } from '../lib/api-keys.js';
+import { generateApiKey, encryptApiKey } from '../lib/api-keys.js';
+import { decryptApiKey } from '../lib/encryption.js';
 import type { ApiKeyPublic, ApiKeyCreateResponse } from '@skillomatic/shared';
 
 export const apiKeysRoutes = new Hono();
@@ -12,7 +13,7 @@ export const apiKeysRoutes = new Hono();
 // All routes require JWT auth
 apiKeysRoutes.use('*', jwtAuth);
 
-// GET /api-keys - List user's API keys (full key visible)
+// GET /api-keys - List user's API keys (full key visible, decrypted)
 apiKeysRoutes.get('/', async (c) => {
   const user = c.get('user');
 
@@ -26,18 +27,30 @@ apiKeysRoutes.get('/', async (c) => {
       )
     );
 
-  const publicKeys: ApiKeyPublic[] = keys.map((k) => ({
-    id: k.id,
-    name: k.name,
-    key: k.key, // Full key always visible
-    lastUsedAt: k.lastUsedAt ?? undefined,
-    createdAt: k.createdAt,
-  }));
+  const publicKeys: ApiKeyPublic[] = keys.map((k) => {
+    // Decrypt the stored key for display
+    let displayKey = k.key;
+    try {
+      displayKey = decryptApiKey(k.key);
+    } catch {
+      // If decryption fails, show a placeholder
+      displayKey = 'sk_live_[decryption_error]';
+    }
+
+    return {
+      id: k.id,
+      name: k.name,
+      key: displayKey,
+      lastUsedAt: k.lastUsedAt ?? undefined,
+      createdAt: k.createdAt,
+    };
+  });
 
   return c.json({ data: publicKeys });
 });
 
 // POST /api-keys - Create new API key
+// SECURITY: Key is encrypted before storage using AES-256-GCM
 apiKeysRoutes.post('/', async (c) => {
   const user = c.get('user');
   const body = await c.req.json<{ name?: string }>();
@@ -46,11 +59,14 @@ apiKeysRoutes.post('/', async (c) => {
   const key = generateApiKey();
   const id = randomUUID();
 
+  // Encrypt the key before storing
+  const encryptedKey = encryptApiKey(key);
+
   await db.insert(apiKeys).values({
     id,
     userId: user.sub,
-    organizationId: user.organizationId ?? null, // Add org context
-    key,
+    organizationId: user.organizationId ?? null,
+    key: encryptedKey,
     name,
   });
 

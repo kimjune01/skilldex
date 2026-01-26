@@ -6,7 +6,9 @@ import { compareSync } from 'bcrypt-ts';
 import { randomUUID } from 'crypto';
 import { createToken, verifyToken } from '../lib/jwt.js';
 import { sendWelcomeEmail } from '../lib/email.js';
-import type { LoginRequest, LoginResponse, UserPublic } from '@skillomatic/shared';
+import type { LoginResponse, UserPublic } from '@skillomatic/shared';
+import { loginRateLimit } from '../middleware/rate-limit.js';
+import { loginRequestSchema, validateBody, ValidationError } from '../lib/validation.js';
 
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -61,11 +63,18 @@ async function findOrgByEmailDomain(email: string): Promise<{ id: string; name: 
 export const authRoutes = new Hono();
 
 // POST /auth/login
-authRoutes.post('/login', async (c) => {
-  const body = await c.req.json<LoginRequest>();
-
-  if (!body.email || !body.password) {
-    return c.json({ error: { message: 'Email and password are required' } }, 400);
+// Rate limited: 5 attempts per 15 minutes per IP (prevents brute force)
+authRoutes.post('/login', loginRateLimit, async (c) => {
+  // Validate request body with Zod schema
+  let body;
+  try {
+    const rawBody = await c.req.json();
+    body = validateBody(loginRequestSchema, rawBody);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return c.json({ error: { message: error.message } }, 400);
+    }
+    return c.json({ error: { message: 'Invalid request body' } }, 400);
   }
 
   // Find user

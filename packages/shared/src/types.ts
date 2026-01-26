@@ -201,7 +201,8 @@ export interface OrganizationInvitePublic {
 export interface ApiKeyPublic {
   id: string;
   name: string;
-  key: string; // Full key, always visible
+  /** Full API key (decrypted from storage) */
+  key: string;
   lastUsedAt?: Date;
   createdAt: Date;
 }
@@ -209,7 +210,8 @@ export interface ApiKeyPublic {
 export interface ApiKeyCreateResponse {
   id: string;
   name: string;
-  key: string; // Full key
+  /** Full API key */
+  key: string;
   createdAt: Date;
 }
 

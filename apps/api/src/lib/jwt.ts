@@ -1,9 +1,37 @@
 import { SignJWT, jwtVerify } from 'jose';
 import type { UserPublic } from '@skillomatic/shared';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-jwt-secret-here-change-in-production'
-);
+/**
+ * Get JWT secret with production safety check.
+ *
+ * SECURITY: In production, JWT_SECRET must be explicitly set.
+ * Using a default secret would allow token forgery.
+ */
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+
+  // Fail fast in production if JWT_SECRET is not set
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'CRITICAL: JWT_SECRET environment variable must be set in production. ' +
+        'Refusing to start with default secret as this would allow token forgery.'
+    );
+  }
+
+  // Warn in development if using default secret
+  if (!secret) {
+    console.warn(
+      '[Security] JWT_SECRET not set - using default secret. ' +
+        'This is only acceptable in development.'
+    );
+  }
+
+  return new TextEncoder().encode(
+    secret || 'your-jwt-secret-here-change-in-production'
+  );
+}
+
+const JWT_SECRET = getJwtSecret();
 
 const JWT_ISSUER = 'skillomatic';
 const JWT_AUDIENCE = 'skillomatic-api';

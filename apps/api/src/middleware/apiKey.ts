@@ -1,8 +1,9 @@
 import { createMiddleware } from 'hono/factory';
 import { db } from '@skillomatic/db';
 import { apiKeys, users } from '@skillomatic/db/schema';
-import { eq, isNull, and } from 'drizzle-orm';
-import { extractApiKey } from '../lib/api-keys.js';
+import { eq, isNull } from 'drizzle-orm';
+import { extractApiKey, encryptApiKey } from '../lib/api-keys.js';
+import { decryptApiKey, isEncrypted } from '../lib/encryption.js';
 
 // User info from API key
 export interface ApiKeyUser {
@@ -26,6 +27,10 @@ declare module 'hono' {
 /**
  * API key authentication middleware
  * Expects: Authorization: Bearer sk_live_...
+ *
+ * SECURITY: Keys are stored encrypted (AES-256-GCM).
+ * This middleware decrypts and compares each non-revoked key.
+ * Legacy plaintext keys are automatically migrated on first use.
  */
 export const apiKeyAuth = createMiddleware(async (c, next) => {
   const authHeader = c.req.header('Authorization');
@@ -35,26 +40,39 @@ export const apiKeyAuth = createMiddleware(async (c, next) => {
     return c.json({ error: { message: 'Missing or invalid API key' } }, 401);
   }
 
-  // Find API key by direct match (full key stored in db)
-  const result = await db
+  // Fetch all non-revoked keys with user data
+  // We need to decrypt each to find a match (can't query encrypted data directly)
+  const results = await db
     .select()
     .from(apiKeys)
     .innerJoin(users, eq(apiKeys.userId, users.id))
-    .where(
-      and(
-        eq(apiKeys.key, key),
-        isNull(apiKeys.revokedAt)
-      )
-    )
-    .limit(1);
+    .where(isNull(apiKeys.revokedAt));
 
-  if (result.length === 0) {
+  // Find matching key by decrypting and comparing
+  let matchedRow: typeof results[0] | null = null;
+
+  for (const row of results) {
+    const storedKey = row.api_keys.key;
+    if (!storedKey) continue;
+
+    try {
+      const decryptedKey = decryptApiKey(storedKey);
+      if (decryptedKey === key) {
+        matchedRow = row;
+        break;
+      }
+    } catch {
+      // Decryption failed - skip this key (might be corrupted)
+      continue;
+    }
+  }
+
+  if (!matchedRow) {
     return c.json({ error: { message: 'Invalid or revoked API key' } }, 401);
   }
 
-  const row = result[0];
-  const apiKey = row.api_keys;
-  const user = row.users;
+  const apiKey = matchedRow.api_keys;
+  const user = matchedRow.users;
 
   // Update last used timestamp (fire and forget, non-critical)
   db.update(apiKeys)
@@ -64,6 +82,17 @@ export const apiKeyAuth = createMiddleware(async (c, next) => {
     .catch((err) => {
       console.error(`[ApiKey] Failed to update lastUsedAt for key ${apiKey.id}:`, err);
     });
+
+  // Migrate legacy plaintext key to encrypted (fire and forget)
+  if (!isEncrypted(apiKey.key)) {
+    db.update(apiKeys)
+      .set({ key: encryptApiKey(key) })
+      .where(eq(apiKeys.id, apiKey.id))
+      .execute()
+      .catch((err) => {
+        console.error(`[ApiKey] Failed to migrate key ${apiKey.id} to encrypted:`, err);
+      });
+  }
 
   c.set('apiKeyUser', {
     id: user.id,

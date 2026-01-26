@@ -149,7 +149,14 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
     .limit(1);
 
   if (apiKey) {
-    profile.skillomaticApiKey = apiKey.key;
+    // Decrypt the API key for embedding in skills
+    try {
+      const { decryptApiKey } = await import('./encryption.js');
+      profile.skillomaticApiKey = decryptApiKey(apiKey.key);
+    } catch {
+      // If decryption fails, key might be legacy plaintext
+      profile.skillomaticApiKey = apiKey.key;
+    }
   }
 
   // Get organization's LLM config

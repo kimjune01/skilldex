@@ -23,6 +23,10 @@ const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 import { createNodeWebSocket } from '@hono/node-ws';
 import { createLogger } from './lib/logger.js';
 
+// Security middleware
+import { apiSecurityHeaders } from './middleware/security-headers.js';
+import { apiKeyRateLimit, generalRateLimit } from './middleware/rate-limit.js';
+
 // Web UI routes (JWT auth)
 import { authRoutes } from './routes/auth.js';
 import { skillsRoutes } from './routes/skills.js';
@@ -63,6 +67,9 @@ const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 // Middleware
 
+// Security headers middleware - adds OWASP recommended headers
+app.use('*', apiSecurityHeaders);
+
 // Request ID middleware - assigns unique ID to each request for tracing
 app.use('*', async (c, next) => {
   const requestId = c.req.header('x-request-id') || crypto.randomUUID();
@@ -98,6 +105,7 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 
 // ============ PUBLIC ROUTES ============
 // No authentication required
+// Note: Auth routes have their own rate limiting applied within the route handlers
 app.route('/auth', authRoutes);
 app.route('/docs', docsRoutes);            // API documentation (OpenAPI spec, markdown)
 app.route('/extension', extensionRoutes);  // Browser extension installation guide
@@ -107,6 +115,19 @@ app.route('/account-type', accountTypeRoutes); // Account type selection (indivi
 
 // ============ PROTECTED ROUTES (JWT Auth) ============
 // Used by the web UI - requires Authorization: Bearer <jwt-token>
+// Apply general rate limiting to all protected routes
+app.use('/skills/*', generalRateLimit);
+app.use('/api-keys/*', generalRateLimit);
+app.use('/integrations/*', generalRateLimit);
+app.use('/users/*', generalRateLimit);
+app.use('/analytics/*', generalRateLimit);
+app.use('/settings/*', generalRateLimit);
+app.use('/organizations/*', generalRateLimit);
+app.use('/invites/*', generalRateLimit);
+app.use('/capability-profiles/*', generalRateLimit);
+app.use('/scrape/*', generalRateLimit);
+app.use('/pay-intentions/*', generalRateLimit);
+
 app.route('/skills', skillsRoutes);       // Browse/download skills
 app.route('/api-keys', apiKeysRoutes);    // Manage API keys
 app.route('/integrations', integrationsRoutes);  // OAuth connections
@@ -122,6 +143,9 @@ app.route('/pay-intentions', payIntentionsRoutes); // Pay intention tracking (bi
 
 // ============ SKILL API ROUTES (API Key Auth) ============
 // Called by Claude Code skills - requires Authorization: Bearer sk_live_xxx
+// Apply API key rate limiting to all v1 routes
+app.use('/v1/*', apiKeyRateLimit);
+
 app.route('/v1/ats', v1AtsRoutes);        // ATS operations (search, CRUD)
 app.route('/v1/me', v1MeRoutes);          // Get current user info
 app.route('/v1/scrape', v1ScrapeRoutes);  // Web scraping task management

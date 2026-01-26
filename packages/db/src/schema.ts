@@ -164,17 +164,19 @@ export const organizationInvites = sqliteTable('organization_invites', {
 /**
  * API Keys table - authentication tokens for skills
  *
- * Design: Full API key is stored (not hashed) so users can retrieve it.
- * This is intentional - users need to copy their key to use in Claude.
- * Keys are soft-deleted via revokedAt instead of hard deleted.
+ * SECURITY: API keys are encrypted at rest using AES-256-GCM.
+ * The encryption key is stored in environment variables, not the database.
+ * This provides defense-in-depth: database breach alone doesn't expose keys.
  *
- * Format: sk_live_xxxxxxxx (32 char random string)
+ * Keys are soft-deleted via revokedAt instead of hard deleted for audit trail.
+ *
+ * Format: sk_live_xxxxxxxx (32 char random string = 64 hex chars)
  */
 export const apiKeys = sqliteTable('api_keys', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
-  key: text('key').notNull(), // Full API key (sk_live_...) - retrievable anytime
+  key: text('key').notNull(), // Encrypted API key (AES-256-GCM)
   name: text('name').notNull(), // User-provided name like "My MacBook"
   lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
   revokedAt: integer('revoked_at', { mode: 'timestamp' }),
