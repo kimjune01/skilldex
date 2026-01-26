@@ -518,24 +518,14 @@ new Cron(stack, "AutomationWorker", {
 - Visual debugging/observability
 - Event fan-out (one event → many actions)
 
-### Observability & Admin Monitoring
+### Observability
 
-Automation health metrics feed into the system-wide admin health dashboard.
+For MVP, use existing infrastructure:
+- **CloudWatch Logs** - Lambda execution logs, errors
+- **`/status` endpoint** - Public health check (already implemented)
+- **`automationRuns` table** - Query for failure rates, stuck jobs
 
-See **[ADMIN_HEALTH_DASHBOARD.md](./ADMIN_HEALTH_DASHBOARD.md)** for:
-- Full metrics spec (API, DB, integrations, LLM, scrape, automations)
-- `/admin/health` UI mockup
-- Implementation approach (DB-backed vs CloudWatch)
-- Alerting design
-
-**Automation-specific metrics** this system would provide:
-| Metric | Description |
-|--------|-------------|
-| `automations.queue_depth` | Jobs due but not yet processed |
-| `automations.avg_latency_ms` | Time from `nextRunAt` to execution |
-| `automations.failure_rate` | % of runs failing (rolling 1h) |
-| `automations.stuck_jobs` | Jobs stuck in 'running' > 5 min |
-| `worker.last_tick` | Last worker invocation timestamp |
+Add dedicated monitoring later if needed. See `apps/api/src/routes/status.ts` for extending the status endpoint.
 
 ### Implementation Phases
 
