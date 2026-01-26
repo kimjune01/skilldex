@@ -31,6 +31,9 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "McpVpc": {
+      "type": "sst.aws.Vpc"
+    }
     "NangoPublicKey": {
       "type": "sst.sst.Secret"
       "value": string

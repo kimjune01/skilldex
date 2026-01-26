@@ -110,9 +110,10 @@ export default $config({
         ],
       },
       health: {
-        path: "/health",
+        command: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"],
         interval: "30 seconds",
         timeout: "5 seconds",
+        startPeriod: "60 seconds",
       },
     });
 
