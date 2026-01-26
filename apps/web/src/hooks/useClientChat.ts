@@ -109,7 +109,7 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
         setSystemPrompt(prompt);
 
         if (!finalConfig) {
-          setError('LLM not configured. Please set up your organization\'s LLM API key.');
+          setError('LLM not configured. Please set up your LLM API key.');
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to initialize chat');
