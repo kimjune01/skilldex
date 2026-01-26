@@ -15,7 +15,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { apiKeys } from '../lib/api';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard, Menu, X } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard, Menu, X, Smartphone } from 'lucide-react';
 import { getOnboardingStepRoute } from '@skillomatic/shared';
 
 // Main navigation - visible to all authenticated users
@@ -24,6 +24,7 @@ const navigation = [
   { name: 'Connections', href: '/integrations', icon: Plug },
   { name: 'Skills', href: '/skills', icon: Zap },
   { name: 'Desktop Chat', href: '/desktop-chat', icon: Key },
+  { name: 'Mobile Chat', href: '/mobile-chat', icon: Smartphone },
   { name: 'Extension', href: '/extension', icon: Chrome },
   { name: 'Web Chat', href: '/chat', icon: MessageSquare },
 ];

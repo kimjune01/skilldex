@@ -147,7 +147,7 @@ For automated workstation setup:
 # skillomatic-deploy.sh
 # Deploy Skillomatic client configuration via MDM
 
-SKILLOMATIC_API_URL="${1:-https://app.skillomatic.io}"
+SKILLOMATIC_API_URL="${1:-https://api.skillomatic.technology}"
 
 # Detect current user
 CURRENT_USER=$(stat -f "%Su" /dev/console 2>/dev/null || echo "$SUDO_USER")
@@ -204,7 +204,7 @@ Allow outbound HTTPS to:
 
 | Domain | Purpose |
 |--------|---------|
-| `app.skillomatic.io` | Skillomatic API |
+| `api.skillomatic.technology` | Skillomatic API |
 | `api.anthropic.com` | Claude API (if using Anthropic) |
 | `api.openai.com` | OpenAI API (if using OpenAI) |
 | Your ATS domain | ATS API calls |
@@ -259,7 +259,7 @@ Need help? Contact IT at {SUPPORT_EMAIL}
 ### Health Check
 
 ```bash
-curl -s https://app.skillomatic.io/api/health
+curl -s https://api.skillomatic.technology/health
 # Returns: {"status":"ok","timestamp":"..."}
 ```
 
@@ -298,7 +298,7 @@ All skill executions are logged (anonymized):
 
 ### "Skills not loading"
 
-1. Verify API connection: `curl -H "Authorization: Bearer $KEY" https://app.skillomatic.io/api/skills`
+1. Verify API connection: `curl -H "Authorization: Bearer $KEY" https://api.skillomatic.technology/skills`
 2. Check user has access to the skill (role-based)
 3. Ensure browser extension is configured
 

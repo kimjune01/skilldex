@@ -58,6 +58,9 @@ import { v1DatabaseRoutes } from './routes/v1/database.js';
 import { v1CalendarRoutes } from './routes/v1/calendar.js';
 import { v1DataRoutes } from './routes/v1/data.js';
 
+// MCP routes (hosted MCP server for ChatGPT web/mobile)
+import { mcpRoutes } from './routes/mcp.js';
+
 // WebSocket route handlers
 import { createWsScrapeHandler } from './routes/ws/scrape.js';
 
@@ -156,6 +159,11 @@ app.route('/v1/email', v1EmailRoutes);    // Email operations (Gmail/Outlook)
 app.route('/v1/calendar', v1CalendarRoutes);  // Calendar operations (Calendly, Google Calendar)
 app.route('/v1/data', v1DataRoutes);          // Data provider operations (Airtable, etc.)
 app.route('/v1/database', v1DatabaseRoutes);  // Database queries (super admin only)
+
+// ============ MCP ROUTES (API Key Auth) ============
+// Hosted MCP server for ChatGPT web/mobile connections
+app.use('/mcp/*', apiKeyRateLimit);
+app.route('/mcp', mcpRoutes);
 
 // ============ WEBSOCKET ROUTES ============
 // Real-time updates for long-running operations
