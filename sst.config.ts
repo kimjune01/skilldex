@@ -45,10 +45,11 @@ export default $config({
       memory: "1024 MB", // Increased for faster cold starts
       url: {
         cors: {
-          allowOrigins: useCustomDomain
-            ? [`https://${domain}`, "http://localhost:5173", "http://localhost:4173"]
-            : ["*"],
-          allowCredentials: true,
+          // Allow web app, localhost dev, and browser extensions
+          // Browser extensions use chrome-extension:// origin which requires "*" or explicit listing
+          // Since extension IDs vary per user, we use "*" for origins
+          allowOrigins: ["*"],
+          allowCredentials: false, // Must be false when allowOrigins is "*"
           allowMethods: ["*"],
           allowHeaders: ["*"],
         },
@@ -63,6 +64,8 @@ export default $config({
         NANGO_HOST: "https://api.nango.dev",
         // Web URL for email links
         WEB_URL: useCustomDomain ? `https://${domain}` : "",
+        // API URL for OAuth redirect URIs (behind CloudFront, host header is Lambda URL)
+        API_URL: useCustomDomain ? `https://${apiDomain}` : "",
         // Git hash for version tracking
         GIT_HASH: process.env.GIT_HASH || "unknown",
       },
