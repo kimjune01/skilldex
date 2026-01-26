@@ -5,8 +5,8 @@
  * "I build AI automations for your business"
  * Includes easter eggs for the curious.
  */
-import { useState, useRef } from 'react';
-import { ArrowRight, Zap, Clock, CheckCircle, Calendar, Mail, Database, Bot, Workflow, Shield } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ArrowRight, Zap, Clock, CheckCircle, Calendar, Mail, Database, Bot, Workflow, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter, DemoRevealGame } from '@/components/marketing';
@@ -294,6 +294,211 @@ function BenefitsSection() {
   );
 }
 
+// Use case carousel data from real scenarios
+const useCases = [
+  {
+    id: 'recruiting',
+    category: 'Recruiting',
+    color: 'cyan',
+    before: "I used to mass-email candidates from my ATS, then manually log responses in a spreadsheet, then copy-paste into Slack to update my team.",
+    after: "Follow up with everyone who hasn't replied.",
+    persona: "Recruiter",
+    animal: '🦁',
+    glasses: '👓',
+  },
+  {
+    id: 'sales',
+    category: 'Sales',
+    color: 'green',
+    before: "I'd spend 30 minutes before every call pulling data from Salesforce, checking LinkedIn, and reading through old email threads.",
+    after: "Prep me for my 2pm call with Acme Corp.",
+    persona: "Account Executive",
+    animal: '🐮',
+    glasses: '👓',
+  },
+  {
+    id: 'support',
+    category: 'Support',
+    color: 'amber',
+    before: "23 tickets overnight. I'd manually categorize each one, check if they're enterprise customers, and figure out who to assign them to.",
+    after: "Triage last night's tickets and flag any from enterprise accounts.",
+    persona: "Support Lead",
+    animal: '🐰',
+    glasses: '🕶️',
+  },
+  {
+    id: 'operations',
+    category: 'Operations',
+    color: 'purple',
+    before: "Every week I'd export from QuickBooks, filter for overdue invoices, look up contacts in the CRM, then draft individual reminder emails.",
+    after: "Send polite reminders for invoices overdue by more than 7 days.",
+    persona: "Operations Manager",
+    animal: '🐸',
+    glasses: '👓',
+  },
+];
+
+function UseCaseCarousel() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  const currentCase = useCases[currentIndex];
+
+  // Auto-advance carousel
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % useCases.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [isAutoPlaying]);
+
+  const goTo = (index: number) => {
+    setCurrentIndex(index);
+    setIsAutoPlaying(false);
+  };
+
+  const goNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % useCases.length);
+    setIsAutoPlaying(false);
+  };
+
+  const goPrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + useCases.length) % useCases.length);
+    setIsAutoPlaying(false);
+  };
+
+  const colorStyles = {
+    cyan: {
+      badge: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+      accent: 'text-cyan-500',
+      dot: 'bg-cyan-500',
+    },
+    green: {
+      badge: 'bg-green-100 text-green-700 border-green-200',
+      accent: 'text-green-500',
+      dot: 'bg-green-500',
+    },
+    amber: {
+      badge: 'bg-amber-100 text-amber-700 border-amber-200',
+      accent: 'text-amber-500',
+      dot: 'bg-amber-500',
+    },
+    purple: {
+      badge: 'bg-purple-100 text-purple-700 border-purple-200',
+      accent: 'text-purple-500',
+      dot: 'bg-purple-500',
+    },
+  }[currentCase.color];
+
+  return (
+    <section className="py-20 px-6 bg-gradient-to-b from-[hsl(220_25%_97%)] to-[hsl(220_20%_94%)]">
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-2xl md:text-3xl font-black text-[hsl(220_30%_15%)] mb-10 text-center">
+          Stop context switching. Just ask.
+        </h2>
+
+        <div className="relative">
+          {/* Navigation arrows */}
+          <button
+            onClick={goPrev}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 h-10 w-10 rounded-full bg-white border border-[hsl(220_20%_88%)] shadow-md flex items-center justify-center text-[hsl(220_15%_40%)] hover:bg-[hsl(220_20%_96%)] transition-colors z-10"
+            aria-label="Previous use case"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={goNext}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 h-10 w-10 rounded-full bg-white border border-[hsl(220_20%_88%)] shadow-md flex items-center justify-center text-[hsl(220_15%_40%)] hover:bg-[hsl(220_20%_96%)] transition-colors z-10"
+            aria-label="Next use case"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          {/* Card */}
+          <div className="bg-white rounded-3xl p-8 md:p-12 border-2 border-[hsl(220_20%_88%)] shadow-lg overflow-hidden">
+            {/* Category badge */}
+            <div className="flex justify-center mb-6">
+              <span className={`px-4 py-1.5 rounded-full text-sm font-bold border ${colorStyles?.badge}`}>
+                {currentCase.category}
+              </span>
+            </div>
+
+            {/* Before/After */}
+            <div className="space-y-8">
+              {/* Before */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="bg-red-100 text-red-600 text-xs font-bold px-2.5 py-1 rounded">BEFORE</span>
+                  <div className="h-px flex-1 bg-red-100"></div>
+                </div>
+                <p className="text-[hsl(220_15%_35%)] leading-relaxed pl-1">
+                  {currentCase.before}
+                </p>
+              </div>
+
+              {/* After */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="bg-green-100 text-green-600 text-xs font-bold px-2.5 py-1 rounded">NOW</span>
+                  <div className="h-px flex-1 bg-green-100"></div>
+                </div>
+                <p className="text-xl md:text-2xl font-bold text-[hsl(220_25%_20%)] leading-snug pl-1">
+                  "{currentCase.after}"
+                </p>
+              </div>
+            </div>
+
+            {/* Persona */}
+            <div className="flex items-center justify-center gap-4 mt-10 pt-6 border-t border-[hsl(220_20%_92%)]">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-sm relative">
+                <span className="text-4xl">{currentCase.animal}</span>
+                <span className="absolute top-3 text-2xl">{currentCase.glasses}</span>
+              </div>
+              <div className="text-left">
+                <div className="font-medium text-[hsl(220_20%_30%)]">Your Name Here</div>
+                <div className="text-sm text-[hsl(220_15%_50%)]">{currentCase.persona}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dots */}
+          <div className="flex justify-center gap-2 mt-6">
+            {useCases.map((uc, index) => (
+              <button
+                key={uc.id}
+                onClick={() => goTo(index)}
+                className={`h-2.5 rounded-full transition-all duration-300 ${
+                  index === currentIndex
+                    ? `w-8 ${colorStyles?.dot}`
+                    : 'w-2.5 bg-[hsl(220_15%_80%)] hover:bg-[hsl(220_15%_70%)]'
+                }`}
+                aria-label={`Go to ${uc.category} use case`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Honest CTA */}
+        <div className="text-center mt-10">
+          <p className="text-[hsl(220_15%_45%)] mb-3">
+            These are real workflows we can automate. We just need our first customers.
+          </p>
+          <a
+            href="https://cal.com/june-kim-mokzq0/30min"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-primary font-bold hover:underline"
+          >
+            Want to be featured here?
+            <ArrowRight className="h-4 w-4" />
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function HowItWorksSection() {
   const [currentStep, setCurrentStep] = useState(0);
   const [extraOs, setExtraOs] = useState(0);
@@ -500,6 +705,44 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Problem Agitation */}
+      <section className="py-20 px-6 bg-gradient-to-b from-[hsl(220_30%_97%)] to-[hsl(220_25%_93%)]">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-black text-[hsl(220_30%_15%)] mb-4 text-center">
+            Sound familiar?
+          </h2>
+          <p className="text-[hsl(220_15%_50%)] text-center mb-10 max-w-xl mx-auto">
+            You tried to automate. It didn't stick.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-5 text-left max-w-3xl mx-auto">
+            {[
+              { text: "You built 47 Zaps. Now you maintain 47 Zaps.", emoji: "🔧" },
+              { text: "Your 'automation' is a spreadsheet you update manually.", emoji: "📊" },
+              { text: "You have 12 browser tabs open just to do one task.", emoji: "🤯" },
+              { text: "Every task needs 3 logins and 5 clicks to even start.", emoji: "👻" },
+            ].map((pain, i) => (
+              <div
+                key={i}
+                className="group p-5 rounded-2xl bg-white border-2 border-[hsl(220_20%_90%)] hover:border-red-300 transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <div className="flex items-start gap-4">
+                  <span className="text-2xl flex-shrink-0 grayscale group-hover:grayscale-0 transition-all duration-200">{pain.emoji}</span>
+                  <p className="text-[hsl(220_15%_30%)] font-medium leading-relaxed">{pain.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-12 text-center">
+            <p className="text-lg text-[hsl(220_15%_40%)] mb-2">
+              Automation tools keep multiplying. Your work doesn't get easier.
+            </p>
+            <p className="text-xl font-black text-[hsl(220_30%_20%)]">
+              What if you could just ask?
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Interactive Demo Game - Easter Egg */}
       <section className="py-12 px-6 bg-[hsl(220_25%_12%)]">
         <div className="max-w-4xl mx-auto">
@@ -566,6 +809,9 @@ export default function Landing() {
 
       {/* Interactive Benefits Cards */}
       <BenefitsSection />
+
+      {/* Use Case Carousel */}
+      <UseCaseCarousel />
 
       {/* Interactive How It Works with growing buttons */}
       <HowItWorksSection />

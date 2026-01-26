@@ -71,6 +71,7 @@ import Sharks from './pages/Sharks';
 import Jerbs from './pages/Jerbs';
 import Status from './pages/Status';
 import NotFound from './pages/NotFound';
+import Debug from './pages/Debug';
 import AccountType from './pages/onboarding/AccountType';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -334,6 +335,7 @@ export default function App() {
         <Route path="/sharks" element={<Sharks />} />
         <Route path="/jerbs" element={<Jerbs />} />
         <Route path="/status" element={<Status />} />
+        <Route path="/debug" element={<Debug />} />
 
         {/* 404 catch-all */}
         <Route path="*" element={<NotFound />} />
