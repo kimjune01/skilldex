@@ -64,7 +64,7 @@ type ATSAction =
 
 // Determine if a skill requires browser extension
 function skillRequiresBrowser(skill: SkillMetadata): boolean {
-  const reqs = skill.requiredIntegrations || [];
+  const reqs = Object.keys(skill.requiredIntegrations || {});
   return reqs.includes('linkedin') || reqs.includes('browser');
 }
 

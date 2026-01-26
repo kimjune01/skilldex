@@ -12,8 +12,6 @@ import { db } from '@skillomatic/db';
 import { skills, roleSkills, userRoles } from '@skillomatic/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 
-import type { SkillRequirements } from './skill-access.js';
-
 // Skill metadata (Level 1) - always in context
 export interface SkillMetadata {
   id: string;
@@ -23,8 +21,8 @@ export interface SkillMetadata {
   category: string;
   intent: string | null;
   capabilities: string[];
-  requiredIntegrations: string[];
-  requires: SkillRequirements | null;
+  /** Required integrations with access levels: {"ats": "read-write", "email": "read-only"} */
+  requiredIntegrations: Record<string, string>;
 }
 
 // Full skill (Level 2) - loaded on demand
@@ -146,23 +144,10 @@ export async function userCanAccessSkill(userId: string, skillSlug: string): Pro
 
 // Convert DB record to SkillMetadata
 function toSkillMetadata(skill: typeof skills.$inferSelect): SkillMetadata {
-  // Parse requiredIntegrations - can be either:
-  // - New format: {"ats": "read-write", "email": "read-only"}
-  // - Old format: ["ats", "email"]
-  let requiredIntegrations: string[] = [];
-  let requires: SkillRequirements | null = null;
-
-  if (skill.requiredIntegrations) {
-    const parsed = JSON.parse(skill.requiredIntegrations);
-    if (Array.isArray(parsed)) {
-      // Old format - just provider names
-      requiredIntegrations = parsed;
-    } else if (typeof parsed === 'object') {
-      // New format - category: access-level mapping
-      requires = parsed as SkillRequirements;
-      requiredIntegrations = Object.keys(parsed);
-    }
-  }
+  // Parse requiredIntegrations - stored as {"ats": "read-write", "email": "read-only"}
+  const requiredIntegrations = skill.requiredIntegrations
+    ? JSON.parse(skill.requiredIntegrations)
+    : {};
 
   return {
     id: skill.id,
@@ -173,7 +158,6 @@ function toSkillMetadata(skill: typeof skills.$inferSelect): SkillMetadata {
     intent: skill.intent,
     capabilities: skill.capabilities ? JSON.parse(skill.capabilities) : [],
     requiredIntegrations,
-    requires,
   };
 }
 
@@ -209,7 +193,7 @@ export function buildSkillsPromptSection(
     ...s,
     statusInfo: getSkillStatus(
       s.slug,
-      s.requires,
+      s.requiredIntegrations,
       effectiveAccess || { ats: 'read-write', email: 'read-write', calendar: 'read-write', database: 'read-write' },
       disabledSkills || []
     ),
