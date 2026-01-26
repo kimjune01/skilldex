@@ -21,7 +21,7 @@ export default function Privacy() {
         <div className="prose prose-slate max-w-none">
           <h2>Overview</h2>
           <p>
-            Skillomatic ("we", "our", or "us") provides a skills platform for recruiters that integrates with Claude Code. This privacy policy explains how we collect, use, and protect your information when you use our web application and browser extension.
+            Skillomatic ("we", "our", or "us") provides an automation platform that integrates with Claude and other AI assistants. This privacy policy explains how we collect, use, and protect your information when you use our web application and browser extension.
           </p>
 
           <h2>Information We Collect</h2>
@@ -77,7 +77,7 @@ export default function Privacy() {
           <h2>Data Sharing</h2>
           <p>We do not sell your personal information. We may share data with:</p>
           <ul>
-            <li><strong>Integration providers:</strong> When you connect third-party services (e.g., ATS systems) via OAuth, we share necessary authentication tokens with those services as authorized by you.</li>
+            <li><strong>Integration providers:</strong> When you connect third-party services (e.g., Gmail, Stripe) via OAuth, we share necessary authentication tokens with those services as authorized by you.</li>
             <li><strong>Service providers:</strong> Infrastructure providers (AWS, Turso) who help us operate our services, bound by confidentiality agreements.</li>
           </ul>
 
@@ -128,7 +128,7 @@ export default function Privacy() {
           </p>
           <ul>
             <li>You are responsible for complying with LinkedIn's Terms of Service</li>
-            <li>You will use scraped data only for legitimate recruiting purposes</li>
+            <li>You will use scraped data only for legitimate business purposes</li>
             <li>Skillomatic does not store LinkedIn credentials or bypass any authentication</li>
             <li>Excessive or automated scraping may violate LinkedIn's policies</li>
           </ul>

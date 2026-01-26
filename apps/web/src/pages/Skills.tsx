@@ -236,8 +236,8 @@ export default function Skills() {
           <Lightbulb className="h-4 w-4 text-primary" />
           <AlertDescription className="flex items-start justify-between gap-4">
             <span>
-              <strong>Skills are pre-built recruiting playbooks.</strong> Each one automates a complete workflow—like
-              sourcing candidates or scheduling interviews. Browse below to see what's available.
+              <strong>Skills are pre-built automation playbooks.</strong> Each one automates a complete workflow—like
+              chasing overdue invoices or preparing for meetings. Browse below to see what's available.
             </span>
             <button
               onClick={dismissEducationBanner}
@@ -254,7 +254,7 @@ export default function Skills() {
         <div>
           <h1 className="text-2xl font-bold">Skills</h1>
           <p className="text-muted-foreground mt-1">
-            {viewFilter === 'all' && 'Browse and download recruiting playbooks for your workflow'}
+            {viewFilter === 'all' && 'Browse and download automation playbooks for your workflow'}
             {viewFilter === 'my' && 'Playbooks you have created'}
             {viewFilter === 'pending' && 'Playbooks awaiting visibility approval'}
           </p>

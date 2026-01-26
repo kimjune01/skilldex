@@ -38,7 +38,7 @@ const steps = [
     number: '02',
     title: 'I Build the Automation',
     description:
-      'I create the automation, connecting to your real systems — ATS, CRM, email, calendar, whatever you use. I test it with real data to make sure it works.',
+      'I create the automation, connecting to your real systems — email, calendar, spreadsheets, payments, whatever you use. I test it with real data to make sure it works.',
     icon: Code,
     color: 'bg-primary',
     details: [

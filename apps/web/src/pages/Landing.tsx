@@ -13,14 +13,14 @@ import { MarketingNav, MarketingFooter, DemoRevealGame } from '@/components/mark
 
 const workflowExamples = [
   {
-    category: 'Recruiting',
+    category: 'Client Work',
     icon: Database,
     color: 'cyan',
     tasks: [
-      'Source candidates from LinkedIn',
-      'Sync to your ATS (Greenhouse, Lever, etc.)',
-      'Send personalized outreach',
-      'Schedule interviews automatically',
+      'Track project status across clients',
+      'Send personalized follow-ups',
+      'Generate weekly client reports',
+      'Schedule meetings automatically',
     ],
   },
   {
@@ -31,7 +31,7 @@ const workflowExamples = [
       'Enrich leads from your CRM',
       'Draft follow-up sequences',
       'Update deal stages automatically',
-      'Send meeting reminders',
+      'Revive cold leads with context',
     ],
   },
   {
@@ -42,7 +42,7 @@ const workflowExamples = [
       'Chase overdue invoices',
       'Generate weekly reports',
       'Sync data between tools',
-      'Automate repetitive admin',
+      'Prep for tomorrow's meetings',
     ],
   },
 ];
@@ -297,12 +297,12 @@ function BenefitsSection() {
 // Use case carousel data from real scenarios
 const useCases = [
   {
-    id: 'recruiting',
-    category: 'Recruiting',
+    id: 'solopreneur',
+    category: 'Solopreneur',
     color: 'cyan',
-    before: "I used to mass-email candidates from my ATS, then manually log responses in a spreadsheet, then copy-paste into Slack to update my team.",
-    after: "Follow up with everyone who hasn't replied.",
-    persona: "Recruiter",
+    before: "I'd open my calendar, then my email, then my spreadsheet, then Stripe — just to figure out what needed my attention today.",
+    after: "What's on my plate today?",
+    persona: "Freelance Consultant",
     animal: '🦁',
     glasses: '👓',
   },
@@ -317,12 +317,12 @@ const useCases = [
     glasses: '👓',
   },
   {
-    id: 'support',
-    category: 'Support',
+    id: 'founder',
+    category: 'Founder',
     color: 'amber',
-    before: "23 tickets overnight. I'd manually categorize each one, check if they're enterprise customers, and figure out who to assign them to.",
-    after: "Triage last night's tickets and flag any from enterprise accounts.",
-    persona: "Support Lead",
+    before: "Monthly investor updates meant exporting from three different tools, calculating metrics manually, then spending an hour writing the email.",
+    after: "Draft my investor update with this month's metrics.",
+    persona: "Startup Founder",
     animal: '🐰',
     glasses: '🕶️',
   },
@@ -683,7 +683,7 @@ export default function Landing() {
           </h1>
           <p className="text-lg text-[hsl(220_15%_45%)] mb-8 max-w-2xl mx-auto">
             No new tools to learn. Your AI is already open — now it's connected to your
-            ATS, CRM, email, and calendar. Just ask it to do the work.
+            email, calendar, spreadsheets, and payment tools. Just ask it to do the work.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a

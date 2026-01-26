@@ -71,7 +71,7 @@ const steps = [
   {
     number: '2',
     title: 'Connect Integrations',
-    description: 'Link your tools — ATS, CRM, email, calendar. One-click OAuth for most.',
+    description: 'Link your tools — email, calendar, spreadsheets, payments. One-click OAuth for most.',
     icon: Plug,
   },
   {
@@ -91,7 +91,7 @@ const steps = [
 const faqs = [
   {
     q: 'What is MCP?',
-    a: 'MCP (Model Context Protocol) is an open standard created by Anthropic that lets AI assistants connect to external tools and data. Think of it like USB for AI — a universal way to plug capabilities into your AI. Skillomatic is an MCP server, meaning it gives your AI the ability to interact with your business tools (ATS, CRM, email, etc.).',
+    a: 'MCP (Model Context Protocol) is an open standard created by Anthropic that lets AI assistants connect to external tools and data. Think of it like USB for AI — a universal way to plug capabilities into your AI. Skillomatic is an MCP server, meaning it gives your AI the ability to interact with your business tools (email, calendar, spreadsheets, etc.).',
   },
   {
     q: 'Which AI apps work with Skillomatic?',
@@ -99,7 +99,7 @@ const faqs = [
   },
   {
     q: 'What counts as a "tool call"?',
-    a: 'Each action Skillomatic takes on your behalf — searching LinkedIn, adding a candidate to your ATS, sending an email — is one tool call. Reading data and writing data each count as separate calls.',
+    a: 'Each action Skillomatic takes on your behalf — checking your calendar, querying a spreadsheet, sending an email — is one tool call. Reading data and writing data each count as separate calls.',
   },
   {
     q: 'Can I switch between self-serve and consulting?',
@@ -107,7 +107,7 @@ const faqs = [
   },
   {
     q: 'Is my data secure?',
-    a: "We don't store candidate data or message content. Your OAuth tokens are encrypted at rest. We only access what you explicitly authorize, and you can disconnect integrations anytime. See our privacy policy for details.",
+    a: "We don't store your business data or message content. Your OAuth tokens are encrypted at rest. We only access what you explicitly authorize, and you can disconnect integrations anytime. See our privacy policy for details.",
   },
   {
     q: 'Do I need to be technical to use this?',

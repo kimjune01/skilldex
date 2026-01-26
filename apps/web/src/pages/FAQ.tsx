@@ -58,7 +58,7 @@ const faqItems: FAQItem[] = [
     category: 'Getting Started',
     question: 'What tools can you connect to?',
     answer:
-      'Common ones include CRMs (Salesforce, HubSpot), ATS systems (Greenhouse, Lever), email (Gmail, Outlook), calendars, Notion, Slack, Google Sheets, and more. If your tool has an API, I can probably connect to it.',
+      'Common ones include email (Gmail, Outlook), calendars, Google Sheets, Airtable, Stripe, CRMs (Salesforce, HubSpot), Notion, and more. If your tool has an API, I can probably connect to it.',
   },
 
   // How It Works

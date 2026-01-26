@@ -120,7 +120,7 @@ const selfServeTiers = [
 const faqs = [
   {
     q: "What's included in an automation build?",
-    a: "Everything needed to get your workflow running: connecting to your tools (ATS, CRM, email, etc.), building the automation logic, testing it with real data, documentation, and training your team to use it.",
+    a: "Everything needed to get your workflow running: connecting to your tools (email, calendar, spreadsheets, etc.), building the automation logic, testing it with real data, documentation, and training your team to use it.",
   },
   {
     q: "What if I want to do it myself?",
@@ -132,7 +132,7 @@ const faqs = [
   },
   {
     q: "What tools can you connect to?",
-    a: "ATS systems (Greenhouse, Lever, Ashby, etc.), CRMs (Salesforce, HubSpot), email (Gmail, Outlook), calendars, and many more. If it has an API, I can probably connect to it.",
+    a: "Email (Gmail, Outlook), calendars, Google Sheets, Airtable, Stripe, CRMs (Salesforce, HubSpot), and many more. If it has an API, I can probably connect to it.",
   },
   {
     q: "Do I need to be technical?",

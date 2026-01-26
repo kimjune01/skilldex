@@ -54,7 +54,7 @@ export default function About() {
                     After years of building AI products, I noticed a gap: people are using AI assistants every day, but they can't connect those assistants to their actual work tools. So I built Skillomatic.
                   </p>
                   <p>
-                    The platform connects your AI (Claude Desktop, ChatGPT, etc.) to your business systems — your ATS, CRM, email, calendar, and more. Instead of copy-pasting between windows, you just tell your AI what to do.
+                    The platform connects your AI (Claude Desktop, ChatGPT, etc.) to your business tools — your email, calendar, spreadsheets, payment systems, and more. Instead of copy-pasting between windows, you just tell your AI what to do.
                   </p>
                   <p>
                     I offer both consulting (I build the automation for you) and self-serve (you set it up yourself). No gatekeeping — whatever works best for you.

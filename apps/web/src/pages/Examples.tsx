@@ -62,28 +62,28 @@ const examples = [
     ],
   },
   {
-    category: 'Recruiting',
+    category: 'Solopreneur & Freelance',
     icon: Users,
     color: 'cyan',
-    description: 'Source candidates, manage pipelines, and schedule interviews without the tab-switching.',
+    description: 'Run your one-person business without drowning in admin work.',
     workflows: [
       {
-        title: 'Candidate Sourcing',
-        description: 'Find candidates on LinkedIn, enrich with contact info, and add to your ATS with notes.',
-        tools: ['LinkedIn', 'Greenhouse/Lever', 'Apollo'],
-        example: '"Find 20 senior engineers in NYC with React experience and add them to my pipeline"',
+        title: 'Client Management',
+        description: 'Track project status, client communications, and deliverables across all your clients.',
+        tools: ['Airtable/Sheets', 'Gmail', 'Calendar'],
+        example: '"What\'s the status with each of my active clients?"',
       },
       {
-        title: 'Outreach Sequences',
-        description: 'Draft personalized outreach based on each candidate\'s background, experience, and interests.',
-        tools: ['ATS', 'Gmail'],
-        example: '"Draft personalized outreach for my shortlist based on their LinkedIn profiles"',
+        title: 'Invoice Follow-up',
+        description: 'Identify overdue invoices and draft polite reminder emails to clients.',
+        tools: ['Stripe', 'Sheets', 'Gmail'],
+        example: '"Who owes me money and hasn\'t paid in 7+ days?"',
       },
       {
-        title: 'Interview Scheduling',
-        description: 'Check interviewer availability, find overlapping slots, and send calendar invites.',
-        tools: ['Google Calendar', 'ATS', 'Gmail'],
-        example: '"Schedule phone screens for candidates who passed the take-home"',
+        title: 'Daily Prep',
+        description: 'Get a morning briefing with your calendar, pending tasks, and what needs attention.',
+        tools: ['Google Calendar', 'Airtable', 'Gmail'],
+        example: '"What\'s on my plate today?"',
       },
     ],
   },
@@ -168,38 +168,34 @@ const examples = [
 ];
 
 const integrations = [
-  // CRM
-  { name: 'Salesforce', category: 'CRM' },
-  { name: 'HubSpot', category: 'CRM' },
-  { name: 'Pipedrive', category: 'CRM' },
-  // ATS
-  { name: 'Greenhouse', category: 'ATS' },
-  { name: 'Lever', category: 'ATS' },
-  { name: 'Ashby', category: 'ATS' },
   // Email
   { name: 'Gmail', category: 'Email' },
   { name: 'Outlook', category: 'Email' },
   // Calendar
   { name: 'Google Calendar', category: 'Calendar' },
   { name: 'Calendly', category: 'Calendar' },
+  // Productivity
+  { name: 'Google Sheets', category: 'Productivity' },
+  { name: 'Airtable', category: 'Productivity' },
+  { name: 'Notion', category: 'Productivity' },
+  { name: 'Slack', category: 'Productivity' },
+  // Finance
+  { name: 'Stripe', category: 'Finance' },
+  { name: 'QuickBooks', category: 'Finance' },
+  { name: 'Wave', category: 'Finance' },
+  // CRM
+  { name: 'Salesforce', category: 'CRM' },
+  { name: 'HubSpot', category: 'CRM' },
+  { name: 'Pipedrive', category: 'CRM' },
   // Support
   { name: 'Zendesk', category: 'Support' },
   { name: 'Intercom', category: 'Support' },
   // Dev
   { name: 'GitHub', category: 'Dev' },
   { name: 'Linear', category: 'Dev' },
-  { name: 'Jira', category: 'Dev' },
   // Data
   { name: 'Apollo', category: 'Data' },
   { name: 'LinkedIn', category: 'Data' },
-  // Productivity
-  { name: 'Notion', category: 'Productivity' },
-  { name: 'Slack', category: 'Productivity' },
-  { name: 'Airtable', category: 'Productivity' },
-  { name: 'Google Sheets', category: 'Productivity' },
-  // Finance
-  { name: 'Stripe', category: 'Finance' },
-  { name: 'QuickBooks', category: 'Finance' },
 ];
 
 export default function Examples() {
