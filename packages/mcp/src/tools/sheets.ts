@@ -1,12 +1,18 @@
 /**
- * Google Sheets tab tools for the MCP server.
+ * Data table tools for the MCP server.
+ *
+ * Provides a simple database-like interface for users to store and query structured data.
+ * Currently backed by Google Sheets, but the interface is designed to be provider-agnostic
+ * (could be Airtable, Notion, or other backends in the future).
  *
  * Provides two types of tools:
- * 1. Management tools (static): list_tabs, create_tab, update_tab_schema
- * 2. Per-tab CRUD tools (dynamic): {tabName}_add, {tabName}_list, {tabName}_search, etc.
+ * 1. Management tools (static): list_tables, create_table, update_table_schema
+ * 2. Per-table CRUD tools (dynamic): {tableName}_add, {tableName}_list, {tableName}_search, etc.
  *
- * Tools are generated based on user's tab configuration - each tab gets its own
- * set of hardcoded tools that can only operate on that specific tab.
+ * Tools are generated based on user's table configuration - each table gets its own
+ * set of hardcoded tools that can only operate on that specific table.
+ *
+ * Implementation note: "tabs" in the API/code map to "tables" in user-facing descriptions.
  */
 
 import { z } from 'zod';
@@ -50,35 +56,37 @@ function buildColumnFieldMap(columns: string[]): Map<string, string> {
 }
 
 /**
- * Error message when Google Sheets is not connected.
+ * Error message when data storage is not connected.
+ * Guides user to connect Google Sheets (current backend).
  */
-const NOT_CONNECTED_MESSAGE = `Google Sheets is not connected.
+const NOT_CONNECTED_MESSAGE = `Data storage is not connected.
 
-To use spreadsheet features:
+To use database features:
 1. Go to Skillomatic web app → Integrations
 2. Find "Google Sheets" under Other Integrations
 3. Click Connect and authorize access
 
-After connecting, you can create tabs to track any data (Contacts, Jobs, etc.) with dedicated tools for each.`;
+After connecting, you can create tables to track any data (Contacts, Jobs, Inventory, etc.) with dedicated tools for each table.`;
 
 /**
  * Format tabs response for LLM context.
+ * Uses "table" terminology in user-facing output.
  */
 function formatTabsForLLM(response: TabsResponse): string {
   if (response.tabs.length === 0) {
-    return `No tabs found in your spreadsheet.
+    return `No tables found in your database.
 
-To get started, use the create_tab tool to create a tab for your data.
+To get started, use the create_table tool to create a table for your data.
 
 Example:
-- Title: "Contacts"
+- Name: "Contacts"
 - Purpose: "Track business contacts and leads"
 - Columns: ["Name", "Company", "Email", "Phone", "Stage", "Notes"]
 
-Spreadsheet URL: ${response.spreadsheetUrl}`;
+View your data: ${response.spreadsheetUrl}`;
   }
 
-  const tabList = response.tabs
+  const tableList = response.tabs
     .map((tab) => {
       const slug = toSlug(tab.title);
       return [
@@ -90,7 +98,7 @@ Spreadsheet URL: ${response.spreadsheetUrl}`;
     })
     .join('\n\n---\n\n');
 
-  return `Your Spreadsheet Tabs:\n\n${tabList}\n\nSpreadsheet URL: ${response.spreadsheetUrl}`;
+  return `Your Data Tables:\n\n${tableList}\n\nView your data: ${response.spreadsheetUrl}`;
 }
 
 /**
@@ -103,13 +111,14 @@ export function registerTabManagementTools(
 ): string[] {
   const registeredTools: string[] = [];
 
-  // List all tabs
+  // List all tables
+  // Note: Tool named "list_tabs" for API compatibility, but described as "tables" to users
   server.tool(
-    'list_tabs',
-    `List all tabs in your Skillomatic spreadsheet.
+    'list_tables',
+    `List all tables in your Skillomatic database.
 
-Each tab represents a different data type (Contacts, Jobs, etc.) with its own CRUD tools.
-Call this to see what tabs are available and their columns.`,
+Each table stores a different data type (Contacts, Jobs, Inventory, etc.) with its own CRUD tools.
+Call this to see what tables exist and their columns.`,
     {},
     async () => {
       try {
@@ -132,28 +141,28 @@ Call this to see what tabs are available and their columns.`,
           };
         }
         return {
-          content: [{ type: 'text' as const, text: `Error listing tabs: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error listing tables: ${message}` }],
           isError: true,
         };
       }
     }
   );
-  registeredTools.push('list_tabs');
+  registeredTools.push('list_tables');
 
-  // Create a new tab
+  // Create a new table
   server.tool(
-    'create_tab',
-    `Create a new tab in your spreadsheet for tracking a new data type.
+    'create_table',
+    `Create a new table in your database for tracking a data type.
 
 Examples:
 - "Contacts" for CRM contacts
 - "Jobs" for job applications
 - "Inventory" for product tracking
 
-After creating a tab, new tools will be available: {tabname}_add, {tabname}_list, etc.`,
+After creating a table, new tools will be available: {tablename}_add, {tablename}_list, etc.`,
     {
-      title: z.string().describe('Tab name (e.g., "Contacts", "Jobs")'),
-      purpose: z.string().describe('What this tab tracks (for context)'),
+      title: z.string().describe('Table name (e.g., "Contacts", "Jobs")'),
+      purpose: z.string().describe('What this table tracks (for context)'),
       columns: z.array(z.string()).describe('Column headers (all treated as text)'),
     },
     async (args) => {
@@ -170,14 +179,14 @@ After creating a tab, new tools will be available: {tabname}_add, {tabname}_list
             {
               type: 'text' as const,
               text: [
-                `Created tab "${tab.title}" with ${tab.columns.length} columns.`,
+                `Created table "${tab.title}" with ${tab.columns.length} columns.`,
                 '',
                 `**New tools will be available after restart:**`,
-                `- ${slug}_add: Add a new entry`,
-                `- ${slug}_list: List entries`,
-                `- ${slug}_search: Search entries`,
-                `- ${slug}_update: Update an entry`,
-                `- ${slug}_delete: Delete an entry`,
+                `- ${slug}_add: Add a new row`,
+                `- ${slug}_list: List rows`,
+                `- ${slug}_search: Search rows`,
+                `- ${slug}_update: Update a row`,
+                `- ${slug}_delete: Delete a row`,
                 '',
                 `Columns: ${tab.columns.join(', ')}`,
                 '',
@@ -195,18 +204,18 @@ After creating a tab, new tools will be available: {tabname}_add, {tabname}_list
           };
         }
         return {
-          content: [{ type: 'text' as const, text: `Error creating tab: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error creating table: ${message}` }],
           isError: true,
         };
       }
     }
   );
-  registeredTools.push('create_tab');
+  registeredTools.push('create_table');
 
-  // Update tab schema
+  // Update table schema
   server.tool(
-    'update_tab_schema',
-    `Update a tab's columns.
+    'update_table_schema',
+    `Update a table's columns.
 
 Pass the complete list of columns in the desired order.
 - To add a column: include it in the list
@@ -216,13 +225,13 @@ Pass the complete list of columns in the desired order.
 
 Note: Column changes only affect the header row. Existing data rows are NOT modified.`,
     {
-      tabName: z.string().describe('Tab name to modify'),
+      tableName: z.string().describe('Table name to modify'),
       columns: z.array(z.string()).describe('New column list (complete, in order)'),
       purpose: z.string().optional().describe('Optionally update the purpose'),
     },
     async (args) => {
       try {
-        const tab = await client.updateTabSchema(args.tabName, {
+        const tab = await client.updateTabSchema(args.tableName, {
           columns: args.columns,
           purpose: args.purpose,
         });
@@ -248,33 +257,33 @@ Note: Column changes only affect the header row. Existing data rows are NOT modi
           };
         }
         return {
-          content: [{ type: 'text' as const, text: `Error updating tab schema: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error updating table schema: ${message}` }],
           isError: true,
         };
       }
     }
   );
-  registeredTools.push('update_tab_schema');
+  registeredTools.push('update_table_schema');
 
-  // Delete tab
+  // Delete table
   server.tool(
-    'delete_tab',
-    `Delete a tab from your spreadsheet.
+    'delete_table',
+    `Delete a table from your database.
 
-WARNING: This permanently deletes the tab and all its data.`,
+WARNING: This permanently deletes the table and all its data.`,
     {
-      tabName: z.string().describe('Tab name to delete'),
+      tableName: z.string().describe('Table name to delete'),
     },
     async (args) => {
       try {
-        const slug = toSlug(args.tabName);
-        await client.deleteTab(args.tabName);
+        const slug = toSlug(args.tableName);
+        await client.deleteTab(args.tableName);
         return {
           content: [
             {
               type: 'text' as const,
               text: [
-                `Deleted tab "${args.tabName}" and all its data.`,
+                `Deleted table "${args.tableName}" and all its data.`,
                 '',
                 `⚠️ **Restart required:** The ${slug}_* tools will be removed after you restart your MCP connection.`,
               ].join('\n'),
@@ -290,20 +299,22 @@ WARNING: This permanently deletes the tab and all its data.`,
           };
         }
         return {
-          content: [{ type: 'text' as const, text: `Error deleting tab: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error deleting table: ${message}` }],
           isError: true,
         };
       }
     }
   );
-  registeredTools.push('delete_tab');
+  registeredTools.push('delete_table');
 
   return registeredTools;
 }
 
 /**
- * Register CRUD tools for a specific tab.
- * Each tab gets 5 tools: {slug}_add, {slug}_list, {slug}_search, {slug}_update, {slug}_delete
+ * Register CRUD tools for a specific table.
+ * Each table gets 5 tools: {slug}_add, {slug}_list, {slug}_search, {slug}_update, {slug}_delete
+ *
+ * Note: "tab" in code = "table" in user-facing descriptions
  */
 export function registerToolsForTab(
   server: McpServer,
@@ -323,10 +334,10 @@ export function registerToolsForTab(
     addSchema[fieldName] = z.string().optional().describe(col);
   }
 
-  // {slug}_add - Add a new entry
+  // {slug}_add - Add a new row
   server.tool(
     `${slug}_add`,
-    `Add a new entry to your ${tab.title} sheet.
+    `Add a new row to your ${tab.title} table.
 
 Purpose: ${tab.purpose}
 Columns: ${tab.columns.join(', ')}`,
@@ -350,14 +361,14 @@ Columns: ${tab.columns.join(', ')}`,
           content: [
             {
               type: 'text' as const,
-              text: `Added entry to ${tab.title} at row ${rowNum}.`,
+              text: `Added row to ${tab.title} (row ${rowNum}).`,
             },
           ],
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return {
-          content: [{ type: 'text' as const, text: `Error adding entry: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error adding row: ${message}` }],
           isError: true,
         };
       }
@@ -365,15 +376,15 @@ Columns: ${tab.columns.join(', ')}`,
   );
   registeredTools.push(`${slug}_add`);
 
-  // {slug}_list - List entries
+  // {slug}_list - List rows
   server.tool(
     `${slug}_list`,
-    `List entries from your ${tab.title} sheet.
+    `List rows from your ${tab.title} table.
 
 Purpose: ${tab.purpose}`,
     {
-      limit: z.number().optional().default(50).describe('Maximum entries to return (default: 50)'),
-      offset: z.number().optional().default(0).describe('Number of entries to skip'),
+      limit: z.number().optional().default(50).describe('Maximum rows to return (default: 50)'),
+      offset: z.number().optional().default(0).describe('Number of rows to skip'),
     },
     async (args) => {
       try {
@@ -387,7 +398,7 @@ Purpose: ${tab.purpose}`,
             content: [
               {
                 type: 'text' as const,
-                text: `No entries found in ${tab.title}.`,
+                text: `No rows found in ${tab.title}.`,
               },
             ],
           };
@@ -407,14 +418,14 @@ Purpose: ${tab.purpose}`,
           content: [
             {
               type: 'text' as const,
-              text: `${tab.title} (${result.total} total entries):\n\n${formatted}`,
+              text: `${tab.title} (${result.total} total rows):\n\n${formatted}`,
             },
           ],
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return {
-          content: [{ type: 'text' as const, text: `Error listing entries: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error listing rows: ${message}` }],
           isError: true,
         };
       }
@@ -422,10 +433,10 @@ Purpose: ${tab.purpose}`,
   );
   registeredTools.push(`${slug}_list`);
 
-  // {slug}_search - Search entries
+  // {slug}_search - Search rows
   server.tool(
     `${slug}_search`,
-    `Search entries in your ${tab.title} sheet.
+    `Search rows in your ${tab.title} table.
 
 Purpose: ${tab.purpose}
 Searches across all columns.`,
@@ -477,7 +488,7 @@ Searches across all columns.`,
   );
   registeredTools.push(`${slug}_search`);
 
-  // {slug}_update - Update an entry
+  // {slug}_update - Update a row
   const updateSchema: Record<string, z.ZodTypeAny> = {
     row_number: z.number().describe('Row number to update (from list or search results)'),
   };
@@ -488,7 +499,7 @@ Searches across all columns.`,
 
   server.tool(
     `${slug}_update`,
-    `Update an entry in your ${tab.title} sheet.
+    `Update a row in your ${tab.title} table.
 
 Purpose: ${tab.purpose}
 Only fields you provide will be updated.`,
@@ -530,7 +541,7 @@ Only fields you provide will be updated.`,
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return {
-          content: [{ type: 'text' as const, text: `Error updating entry: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error updating row: ${message}` }],
           isError: true,
         };
       }
@@ -538,10 +549,10 @@ Only fields you provide will be updated.`,
   );
   registeredTools.push(`${slug}_update`);
 
-  // {slug}_delete - Delete an entry
+  // {slug}_delete - Delete a row
   server.tool(
     `${slug}_delete`,
-    `Delete an entry from your ${tab.title} sheet.
+    `Delete a row from your ${tab.title} table.
 
 WARNING: This permanently removes the row.`,
     {
@@ -561,7 +572,7 @@ WARNING: This permanently removes the row.`,
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return {
-          content: [{ type: 'text' as const, text: `Error deleting entry: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error deleting row: ${message}` }],
           isError: true,
         };
       }
