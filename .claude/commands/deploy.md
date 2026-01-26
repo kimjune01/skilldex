@@ -9,22 +9,46 @@ Run these commands in sequence. Stop if any fails.
 git diff --quiet && git diff --cached --quiet || echo "ERROR: Uncommitted changes"
 ```
 
-2. Run typecheck:
+2. Check what changed since last deploy:
+```bash
+LAST_TAG=$(git tag --list '[0-9]*' --sort=-v:refname | head -1)
+echo "Last deploy: $LAST_TAG"
+git diff --name-only "$LAST_TAG"..HEAD
+```
+
+Analyze the changed files to determine which services need deployment:
+
+| Changed Path | Affects |
+|-------------|---------|
+| `apps/api/` | API (Lambda) |
+| `apps/web/` | Web (CloudFront) |
+| `apps/mcp-server/` | MCP (ECS - slow, ~2min) |
+| `packages/db/` | API, MCP (both use DB) |
+| `packages/shared/` | API, Web, MCP (all use shared) |
+| `packages/mcp/` | API (MCP tools in API) |
+| `sst.config.ts` | All services |
+| `skills/` | None (runtime data) |
+
+If NO changes affect deployable services (e.g., only docs, .claude/, skills/), skip to step 8 and report "No deployment needed."
+
+If MCP server has no changes (no `apps/mcp-server/`, `packages/db/`, `packages/shared/`, or `sst.config.ts` changes), note that MCP won't be redeployed and verification can skip MCP hash check.
+
+3. Run typecheck:
 ```bash
 pnpm typecheck
 ```
 
-3. Push schema to prod:
+4. Push schema to prod (skip if no `packages/db/` changes):
 ```bash
 pnpm db:push:prod
 ```
 
-4. Deploy with git hash:
+5. Deploy with git hash:
 ```bash
 GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production
 ```
 
-5. Verify API, MCP, and web are responding and git hashes match (call all curl commands in parallel):
+6. Verify services are responding and git hashes match (call in parallel):
 ```bash
 curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 ```
@@ -34,20 +58,24 @@ curl -s "https://mcp.skillomatic.technology/health" | jq -r '.gitHash'
 ```bash
 curl -s "https://skillomatic.technology" | grep -oP 'git-hash" content="\K[^"]*'
 ```
-All three git hashes must match the local commit hash from step 1. Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't rolled over (ECS rolling deployment can take up to 2 minutes).
 
-6. Create and push incremented version tag:
+**Hash verification rules:**
+- API and Web hashes must always match the local commit
+- MCP hash must match local commit ONLY if MCP was deployed (see step 2)
+- If MCP wasn't deployed, its hash will still show the previous deploy's hash - this is expected
+
+Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't rolled over (ECS rolling deployment can take up to 2 minutes).
+
+7. Create and push incremented version tag:
 ```bash
 LAST_TAG=$(git tag --list '[0-9]*' --sort=-v:refname | head -1)
-```
-```bash
 NEW_TAG=$((LAST_TAG + 1))
 git tag "$NEW_TAG" && git push origin "$NEW_TAG"
 ```
 
-7. Report success with all three git hashes and the new version tag.
+8. Report success with deployed services, git hashes, and the new version tag.
 
-Stops on first failure. Verifies API, MCP, and web git hashes all match local commit. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
+Stops on first failure. Uses change detection to skip unnecessary deployments. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
 Note: Schema changes should deprecate columns before removing them to support rollbacks. See `/rollback` command.
 
