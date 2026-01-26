@@ -15,6 +15,11 @@ import type {
   EmailDraft,
   SentEmail,
   EmailSearchResult,
+  TabConfig,
+  TabsResponse,
+  CreateTabRequest,
+  UpdateTabSchemaRequest,
+  TabRow,
 } from './types.js';
 
 // Re-export types for consumers
@@ -30,6 +35,11 @@ export type {
   EmailDraft,
   SentEmail,
   EmailSearchResult,
+  TabConfig,
+  TabsResponse,
+  CreateTabRequest,
+  UpdateTabSchemaRequest,
+  TabRow,
 } from './types.js';
 
 export class SkillomaticClient {
@@ -397,5 +407,100 @@ export class SkillomaticClient {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  }
+
+  // ============ Google Sheets Tab Operations ============
+
+  /**
+   * List all tabs in the user's Skillomatic spreadsheet.
+   * Returns tabs with their purposes, columns, and a version number for tool regeneration.
+   */
+  async listTabs(): Promise<TabsResponse> {
+    return this.request<TabsResponse>('/v1/sheets/tabs');
+  }
+
+  /**
+   * Create a new tab in the user's spreadsheet.
+   */
+  async createTab(config: CreateTabRequest): Promise<TabConfig> {
+    const response = await this.request<{ tab: TabConfig; version: number }>('/v1/sheets/tabs', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
+    return response.tab;
+  }
+
+  /**
+   * Update a tab's schema (columns and optionally purpose).
+   */
+  async updateTabSchema(tabName: string, data: UpdateTabSchemaRequest): Promise<TabConfig> {
+    const response = await this.request<{ tab: TabConfig; version: number }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.tab;
+  }
+
+  /**
+   * Delete a tab from the user's spreadsheet.
+   */
+  async deleteTab(tabName: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Read rows from a tab.
+   */
+  async readTabRows(tabName: string, options: { limit?: number; offset?: number } = {}): Promise<{ rows: TabRow[]; total: number }> {
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.offset) params.set('offset', String(options.offset));
+    const query = params.toString();
+    return this.request<{ rows: TabRow[]; total: number }>(
+      `/v1/sheets/tabs/${encodeURIComponent(tabName)}/rows${query ? `?${query}` : ''}`
+    );
+  }
+
+  /**
+   * Append a row to a tab.
+   * Returns the updated range string (e.g., "Contacts!A2:F2").
+   */
+  async appendTabRow(tabName: string, data: Record<string, string>): Promise<{ success: boolean; updatedRange: string }> {
+    return this.request<{ success: boolean; updatedRange: string }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}/rows`, {
+      method: 'POST',
+      body: JSON.stringify({ data }),
+    });
+  }
+
+  /**
+   * Update a row in a tab.
+   */
+  async updateTabRow(tabName: string, rowNumber: number, data: Record<string, string>): Promise<{ success: boolean; rowNumber: number }> {
+    return this.request<{ success: boolean; rowNumber: number }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}/rows/${rowNumber}`, {
+      method: 'PUT',
+      body: JSON.stringify({ data }),
+    });
+  }
+
+  /**
+   * Delete a row from a tab.
+   */
+  async deleteTabRow(tabName: string, rowNumber: number): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}/rows/${rowNumber}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Search rows in a tab.
+   */
+  async searchTab(tabName: string, query: string, limit?: number): Promise<{ rows: TabRow[]; total: number }> {
+    const params = new URLSearchParams({ q: query });
+    if (limit) params.set('limit', String(limit));
+    return this.request<{ rows: TabRow[]; total: number }>(
+      `/v1/sheets/tabs/${encodeURIComponent(tabName)}/search?${params.toString()}`
+    );
   }
 }

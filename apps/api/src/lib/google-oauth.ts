@@ -304,7 +304,7 @@ async function handleGoogleOAuthCallback(
         : undefined,
     };
 
-    // For Google Sheets, create a default spreadsheet
+    // For Google Sheets, create a default spreadsheet with tabs system
     if (service === 'google-sheets') {
       try {
         const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
@@ -315,20 +315,30 @@ async function handleGoogleOAuthCallback(
           },
           body: JSON.stringify({
             properties: { title: 'Skillomatic Data' },
-            sheets: [{ properties: { title: 'Candidates' } }],
+            sheets: [{ properties: { title: 'Sheet1' } }], // Default empty sheet
           }),
         });
 
         if (createResponse.ok) {
-          const sheet = await createResponse.json() as { spreadsheetId: string; spreadsheetUrl: string };
+          const sheet = await createResponse.json() as {
+            spreadsheetId: string;
+            spreadsheetUrl: string;
+            sheets: Array<{ properties: { sheetId: number; title: string } }>;
+          };
           metadata.spreadsheetId = sheet.spreadsheetId;
           metadata.spreadsheetUrl = sheet.spreadsheetUrl;
           metadata.spreadsheetTitle = 'Skillomatic Data';
+          // Initialize tabs system - empty array, user will create tabs via MCP tools
+          metadata.tabs = [];
+          metadata.tabsVersion = 0;
           log.info('google_sheets_created', { userId, spreadsheetId: sheet.spreadsheetId });
         }
       } catch (err) {
         log.warn('google_sheets_create_failed', { userId, error: err instanceof Error ? err.message : 'Unknown' });
         // Continue anyway - user can set up manually
+        // Initialize empty tabs system even if spreadsheet creation failed
+        metadata.tabs = [];
+        metadata.tabsVersion = 0;
       }
     }
 

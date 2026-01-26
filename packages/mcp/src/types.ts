@@ -41,12 +41,14 @@ export interface CapabilityProfile {
   hasCalendar: boolean;
   hasEmail: boolean;
   hasAirtable?: boolean;
+  hasGoogleSheets?: boolean;
   isSuperAdmin?: boolean;
   llmProvider?: string;
   atsProvider?: string;
   calendarProvider?: string;
   emailProvider?: string;
   airtableProvider?: string;
+  googleSheetsProvider?: string;
   effectiveAccess?: EffectiveAccess;
 }
 
@@ -129,4 +131,68 @@ export interface EmailMessage {
   from?: string;
   to?: string;
   date?: string;
+}
+
+// ============ Google Sheets Tab Types ============
+
+/**
+ * Configuration for a single tab (sheet) in the user's Skillomatic spreadsheet.
+ * Each tab represents a different data type (Contacts, Jobs, etc.).
+ */
+export interface TabConfig {
+  /** Google's numeric sheet ID (for API operations) */
+  sheetId: number;
+  /** Tab name (used for tool names, e.g., "Contacts" → contacts_add) */
+  title: string;
+  /** Description for LLM context (what this tab is used for) */
+  purpose: string;
+  /** Column headers (all treated as strings) */
+  columns: string[];
+  /** ISO timestamp when tab was created */
+  createdAt: string;
+}
+
+/**
+ * Response from listing tabs - includes version for tool regeneration detection.
+ */
+export interface TabsResponse {
+  tabs: TabConfig[];
+  /** Incremented on any tab/schema change - used to detect when tools need regeneration */
+  version: number;
+  /** User's spreadsheet ID */
+  spreadsheetId: string;
+  /** URL to the spreadsheet */
+  spreadsheetUrl: string;
+}
+
+/**
+ * Request body for creating a new tab.
+ */
+export interface CreateTabRequest {
+  /** Tab name (e.g., "Contacts", "Jobs") */
+  title: string;
+  /** What this tab tracks */
+  purpose: string;
+  /** Column headers to initialize */
+  columns: string[];
+}
+
+/**
+ * Request body for updating a tab's schema.
+ */
+export interface UpdateTabSchemaRequest {
+  /** New column list (complete, in order) */
+  columns: string[];
+  /** Optional: update the purpose */
+  purpose?: string;
+}
+
+/**
+ * Row data for tab operations.
+ */
+export interface TabRow {
+  /** 1-indexed row number (excluding header) */
+  rowNumber: number;
+  /** Column values as key-value pairs */
+  data: Record<string, string>;
 }

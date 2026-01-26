@@ -14,6 +14,7 @@ import {
   getOrgIntegrationPermissions,
   getOrgDisabledSkills,
   getEffectiveAccessForUser,
+  getUserIntegrationsByCategory,
 } from '../lib/integration-permissions.js';
 import { getSkillStatus } from '../lib/skill-access.js';
 import {
@@ -298,10 +299,24 @@ skillsRoutes.get('/config', async (c) => {
         ? 'outlook-calendar'
         : undefined;
 
-  // Check if user has Airtable connected
-  const hasAirtable = effectiveAccess
-    ? effectiveAccess.database !== 'none' && effectiveAccess.database !== 'disabled'
-    : false;
+  // Check which database providers are connected
+  let hasAirtable = false;
+  let hasGoogleSheets = false;
+
+  if (user.organizationId) {
+    const integrationsByCategory = await getUserIntegrationsByCategory(user.sub, user.organizationId);
+    const databaseIntegrations = integrationsByCategory.database;
+
+    // Check database access is not disabled
+    const databaseEnabled = effectiveAccess
+      ? effectiveAccess.database !== 'none' && effectiveAccess.database !== 'disabled'
+      : false;
+
+    if (databaseEnabled) {
+      hasAirtable = databaseIntegrations.some((int) => int.provider === 'airtable');
+      hasGoogleSheets = databaseIntegrations.some((int) => int.provider === 'google-sheets');
+    }
+  }
 
   return c.json({
     data: {
@@ -315,12 +330,14 @@ skillsRoutes.get('/config', async (c) => {
         hasCalendar: !!(profile.calendar?.ical || profile.calendar?.calendly),
         hasEmail: !!profile.email,
         hasAirtable,
+        hasGoogleSheets,
         isSuperAdmin: !!user.isSuperAdmin,
         llmProvider: profile.llm?.provider,
         atsProvider: profile.ats?.provider,
         calendarProvider,
         emailProvider: profile.email?.provider,
         airtableProvider: hasAirtable ? 'airtable' : undefined,
+        googleSheetsProvider: hasGoogleSheets ? 'google-sheets' : undefined,
         effectiveAccess: effectiveAccess
           ? {
               ats: effectiveAccess.ats,

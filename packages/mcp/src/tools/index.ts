@@ -10,6 +10,7 @@ import { registerAtsTools } from './ats.js';
 import { registerScrapeTools } from './scrape.js';
 import { registerEmailTools } from './email.js';
 import { registerDatabaseTools } from './database.js';
+import { registerSheetsTools } from './sheets.js';
 import { log } from '../logger.js';
 import {
   getManifest,
@@ -203,6 +204,15 @@ export async function registerTools(
     registerDatabaseTools(server, client);
     registeredTools.push('list_database_tables', 'get_table_schema', 'query_database', 'get_database_stats');
     log.info('Database tools registered (super admin)');
+  }
+
+  // Google Sheets tools - only if Google Sheets is connected
+  if (profile.hasGoogleSheets) {
+    const sheetsTools = await registerSheetsTools(server, client);
+    registeredTools.push(...sheetsTools);
+    log.info(`Google Sheets tools registered: ${sheetsTools.length} tools`);
+  } else {
+    log.info('Google Sheets tools not registered (no Google Sheets integration connected)');
   }
 
   log.info(`Registered ${registeredTools.length} tools: ${registeredTools.join(', ')}`);
