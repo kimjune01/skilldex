@@ -1,14 +1,13 @@
 # Skillomatic
 
-A plug-and-play Claude Code skills platform for recruiters. Access job functions (LinkedIn lookup, ATS operations, email drafting) through Claude Code skills instead of traditional dashboards.
+Connect AI assistants (Claude, ChatGPT) to business tools via MCP. Two offerings:
 
-## Motivation
+1. **Consulting** (primary): Custom MCP server builds for clients' specific workflows
+2. **Self-serve** (secondary): Users connect their own integrations and use the platform directly
 
-Recruiters spend significant time switching between tools: ATS systems, LinkedIn, email clients, calendars. Skillomatic brings these capabilities directly into Claude Code, enabling natural language interactions with recruiting workflows.
+The platform handles OAuth token management, tool execution, and usage tracking. Supports ATS, CRM, email, calendar, and other business tools.
 
-**Key insight:** Skills are downloadable markdown files that users place in `~/.claude/commands/`. When executed, skills authenticate back to the Skillomatic backend for ATS data, integration access, and usage tracking.
-
-### Why Claude Code Skills?
+## Why Skillomatic?
 
 - **Natural language interface** - Ask Claude to "find senior engineers in Seattle" instead of clicking through filters
 - **Contextual actions** - Claude understands the conversation and can chain actions (search → review → email)
@@ -64,7 +63,7 @@ Recruiters spend significant time switching between tools: ATS systems, LinkedIn
 | Database | SQLite (local) / Turso (production) |
 | ORM | Drizzle |
 | Auth | JWT + API Keys |
-| LLM | Anthropic, OpenAI, Google Gemini, Groq (client-side) |
+| LLM | Anthropic > OpenAI > Groq (priority fallback) |
 | Integrations | Nango Cloud (OAuth) |
 | Deployment | Docker (local) / SST + AWS (production) |
 
@@ -118,7 +117,7 @@ This starts:
 - **API**: http://localhost:3000
 - **Mock ATS**: http://localhost:3001
 
-Default login: `admin@example.com` / `changeme`
+Default login: `demo@skillomatic.technology` / `demopassword123` (or any `@example.com` user with password `changeme`)
 
 ### Docker Development (Full Stack)
 
@@ -138,14 +137,17 @@ skillomatic/
 ├── apps/
 │   ├── web/              # React frontend
 │   ├── api/              # Hono API backend
+│   ├── mcp-server/       # MCP server for Claude Desktop/Code
 │   ├── mock-ats/         # Mock ATS for development
 │   └── skillomatic-scraper/ # Chrome extension for LinkedIn scraping
 ├── packages/
 │   ├── db/               # Drizzle schema + migrations
+│   ├── mcp/              # MCP provider manifests and tools
 │   └── shared/           # Shared TypeScript types
-├── skills/               # Claude Code skill definitions
+├── skills/               # Skill definitions (SKILL.md files)
 │   ├── linkedin-lookup/
 │   ├── ats-candidate-search/
+│   ├── skill-builder/
 │   └── ...
 ├── deploy/
 │   └── scripts/          # IT deployment scripts
@@ -298,10 +300,10 @@ To use a custom domain like `skillomatic.technology`:
 
 - **[Installation Guide](docs/INSTALLATION.md)** - Complete setup instructions for all platforms
 - **[IT Deployment Guide](docs/IT_DEPLOYMENT.md)** - Enterprise deployment, MDM, and bulk provisioning
-- **[Recruiter Guide](docs/RECRUITER_GUIDE.md)** - How to use Skillomatic skills in your workflow
 - **[Admin Guide](docs/ADMIN_GUIDE.md)** - Managing users, skills, and integrations
-- **[Ephemeral Architecture](docs/EPHEMERAL_ARCHITECTURE.md)** - Technical details on client-side LLM and privacy model
-- **[Vision Beyond Recruiting](docs/VISION_BEYOND_RECRUITING.md)** - Platform expansion to other verticals
+- **[Architecture](docs/ARCHITECTURE.md)** - Tech stack, directory structure, API endpoints, database schema
+- **[Security](docs/SECURITY.md)** - Security model and privacy considerations
+- **[Integration Guide](docs/INTEGRATION_GUIDE.md)** - Working with ATS, email, calendar integrations
 
 ## MCP Client Support
 
@@ -331,6 +333,7 @@ Skillomatic includes several pre-built skills:
 | `email-draft` | Communication | Draft emails to candidates |
 | `interview-scheduler` | Scheduling | Schedule interviews |
 | `meeting-notes` | Productivity | Sync meeting notes |
+| `skill-builder` | Productivity | Create custom skills via natural language |
 
 ## Demo Mode
 
