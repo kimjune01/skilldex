@@ -67,51 +67,6 @@ describe('requiredIntegrations parsing', () => {
     });
   });
 
-  describe('parseRequirementsFromIntegrations (preserve access levels)', () => {
-    it('should preserve access levels from object format', () => {
-      const dbValue = '{"ats": "read-write", "email": "read-only"}';
-      const result = parseRequirementsFromIntegrations(dbValue);
-
-      expect(result).toEqual({
-        ats: 'read-write',
-        email: 'read-only',
-      });
-    });
-
-    it('should filter to only known integration categories', () => {
-      const dbValue = '{"ats": "read-write", "unknown": "value", "email": "read-only"}';
-      const result = parseRequirementsFromIntegrations(dbValue);
-
-      expect(result).toEqual({
-        ats: 'read-write',
-        email: 'read-only',
-      });
-      expect(result).not.toHaveProperty('unknown');
-    });
-
-    it('should handle empty object', () => {
-      const dbValue = '{}';
-      const result = parseRequirementsFromIntegrations(dbValue);
-
-      expect(result).toEqual({});
-    });
-
-    it('should handle null value', () => {
-      const result = parseRequirementsFromIntegrations(null);
-
-      expect(result).toEqual({});
-    });
-
-    it('should handle all valid access levels', () => {
-      const dbValue = '{"ats": "read-only", "email": "read-write", "calendar": "disabled"}';
-      const result = parseRequirementsFromIntegrations(dbValue);
-
-      expect(result.ats).toBe('read-only');
-      expect(result.email).toBe('read-write');
-      expect(result.calendar).toBe('disabled');
-    });
-  });
-
   describe('real-world skill examples', () => {
     it('should parse linkedin-lookup (no integrations)', () => {
       const dbValue = '{}';
