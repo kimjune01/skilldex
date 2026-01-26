@@ -1,5 +1,28 @@
 /// <reference path="./.sst/platform/config.d.ts" />
 
+/**
+ * SST Configuration for Skillomatic
+ *
+ * DEPLOYMENT:
+ * - Use `/deploy` slash command in Claude Code (NOT `pnpm deploy` directly)
+ * - Use `/rollback` to revert to a previous version
+ * - Changes to this file trigger full deployment (all services)
+ *
+ * RELATED FILES:
+ * - .claude/commands/deploy.md   - Deploy command (has target mapping table)
+ * - .claude/commands/rollback.md - Rollback command
+ *
+ * SERVICES:
+ * - Api + ApiRouter: Lambda function with CloudFront router
+ * - Web: Static site on CloudFront
+ * - McpService: ECS Fargate for SSE streaming support
+ *
+ * SECRETS (set via `pnpm sst secret set <name> <value> --stage production`):
+ * - JwtSecret, TursoDatabaseUrl, TursoAuthToken
+ * - NangoSecretKey, NangoPublicKey
+ * - GoogleClientId, GoogleClientSecret
+ */
+
 export default $config({
   app(input) {
     return {
