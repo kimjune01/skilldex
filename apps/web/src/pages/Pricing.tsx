@@ -51,28 +51,31 @@ const consultingServices = [
   },
   {
     name: 'Automation Build',
-    price: 'Custom',
+    price: '$500',
+    priceNote: 'No charge until it works',
     description: 'I build a complete automation for one workflow, connected to your tools.',
     features: [
       'End-to-end workflow automation',
       'Connected to your real systems',
       'Works in Claude Desktop, ChatGPT, etc.',
       'Documentation and training',
-      'Typically done in 1-2 days',
+      'Done in 1-2 days',
+      "You don't pay until you're using it",
     ],
     cta: 'Book a Call',
     ctaHref: 'https://cal.com/june-kim-mokzq0/30min',
     highlight: true,
   },
   {
-    name: 'Ongoing Retainer',
-    price: 'Custom',
+    name: 'Ongoing Support',
+    price: '$200',
+    priceNote: '/month',
     description: 'Ongoing support, tweaks, and new automations as your needs evolve.',
     features: [
       'Priority support',
       'Adjustments and improvements',
-      'New automations as needed',
-      'Monthly check-ins',
+      'One new automation per month',
+      'Cancel anytime',
     ],
     cta: 'Book a Call',
     ctaHref: 'https://cal.com/june-kim-mokzq0/30min',
@@ -215,6 +218,9 @@ export default function Pricing() {
           <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
             Want it done for you? I'll build it. Prefer to DIY? Self-serve is always available.
           </p>
+          <p className="text-sm text-[hsl(220_15%_60%)] mt-2">
+            Prices may change with one month notice.
+          </p>
         </div>
       </section>
 
@@ -241,6 +247,11 @@ export default function Pricing() {
                   <span className="text-3xl font-black text-[hsl(220_30%_15%)]">
                     {service.price}
                   </span>
+                  {service.priceNote && (
+                    <span className="text-sm text-emerald-600 font-bold ml-2">
+                      {service.priceNote}
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-[hsl(220_15%_45%)] mb-6">
                   {service.description}

@@ -690,10 +690,13 @@ export default function Landing() {
               href="https://cal.com/june-kim-mokzq0/30min"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl robot-button text-white font-black tracking-wide text-lg border-0"
+              className="inline-flex flex-col items-center justify-center px-8 py-4 rounded-xl robot-button text-white font-black tracking-wide text-lg border-0"
             >
-              <Calendar className="h-5 w-5" />
-              Book a Discovery Call
+              <span className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Book a Discovery Call
+              </span>
+              <span className="text-xs font-medium text-white/70 mt-1">No charge until it works</span>
             </a>
             <Link
               to="/self-serve"
@@ -823,17 +826,20 @@ export default function Landing() {
             Let's Talk About What You Want to Automate
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            30-minute call. No commitment. I'll tell you if I can help — and if I can't, I'll point you in the right direction.
+            30-minute call. No commitment. And if we work together — you don't pay until it's working.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href="https://cal.com/june-kim-mokzq0/30min"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-primary font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
+              className="inline-flex flex-col items-center justify-center px-8 py-4 rounded-xl bg-white text-primary font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
             >
-              <Calendar className="h-5 w-5" />
-              Book a Discovery Call
+              <span className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Book a Discovery Call
+              </span>
+              <span className="text-xs font-medium text-primary/70 mt-1">No charge until it works</span>
             </a>
             <Link
               to="/self-serve"
