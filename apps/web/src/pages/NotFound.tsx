@@ -7,7 +7,6 @@ import { Home, Bot } from 'lucide-react';
 // Same explosive emojis as pricing page
 const EMOJIS = [
   '🤖', '⚙️', '🔧', '🎰', '💥', '✨', '🚀', '💀', '🔥', '😱', '🫠', '💫', '🎉', '💣', '⭐',
-  '🤖', '⚙️', '🔧', '🎰', '💥', '✨', '🚀', '💀', '🔥', '😱', '🫠', '💫', '🎉', '💣', '⭐',
 ];
 
 interface EmojiParticle {
@@ -23,8 +22,23 @@ interface EmojiParticle {
 export default function NotFound() {
   const [emojis, setEmojis] = useState<EmojiParticle[]>([]);
   const [pressCount, setPressCount] = useState(0);
+  const [buttonStyle, setButtonStyle] = useState({
+    x: 0,
+    y: 0,
+    rotate: 0,
+    scale: 1,
+  });
+  const [isBroken, setIsBroken] = useState(false);
 
   const spawnEmojis = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (isBroken) return;
+
+    // 2% chance to break the button
+    if (Math.random() < 0.02) {
+      setIsBroken(true);
+      return;
+    }
+
     // Get click position relative to viewport (same as Pricing page)
     const clickX = e.clientX;
     const clickY = e.clientY;
@@ -50,6 +64,14 @@ export default function NotFound() {
 
     setEmojis(prev => [...prev, ...newEmojis]);
     setPressCount(prev => prev + 1);
+
+    // Randomly adjust button position, rotation, and size
+    setButtonStyle(prev => ({
+      x: prev.x + (Math.random() - 0.5) * 60,
+      y: prev.y + (Math.random() - 0.5) * 40,
+      rotate: prev.rotate + (Math.random() - 0.5) * 30,
+      scale: Math.max(0.7, Math.min(1.3, prev.scale + (Math.random() - 0.5) * 0.2)),
+    }));
 
     // Clean up after animation
     setTimeout(() => {
@@ -133,15 +155,22 @@ export default function NotFound() {
         {/* Don't Press button */}
         <motion.button
           onClick={spawnEmojis}
-          whileTap={{ scale: 0.95, y: 4 }}
-          whileHover={{ scale: 1.02 }}
-          className="px-8 py-4 text-lg font-black uppercase tracking-wider rounded-xl
-            bg-gradient-to-b from-red-500 to-red-700
-            border-4 border-red-800
-            text-white
-            shadow-[inset_0_2px_0_rgba(255,255,255,0.3),0_6px_0_hsl(0_70%_30%),0_8px_20px_rgba(0,0,0,0.3)]
-            hover:from-red-400 hover:to-red-600
-          "
+          animate={{
+            x: buttonStyle.x,
+            y: buttonStyle.y,
+            rotate: buttonStyle.rotate,
+            scale: buttonStyle.scale,
+          }}
+          whileTap={{ scale: buttonStyle.scale * 0.95 }}
+          whileHover={{ scale: buttonStyle.scale * 1.02 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          className={`px-8 py-4 text-lg font-black uppercase tracking-wider rounded-xl
+            border-4 text-white select-none
+            ${isBroken
+              ? 'bg-gradient-to-b from-gray-400 to-gray-600 border-gray-700 shadow-[inset_0_2px_0_rgba(255,255,255,0.3),0_6px_0_hsl(0_0%_30%),0_8px_20px_rgba(0,0,0,0.3)] cursor-not-allowed opacity-60'
+              : 'bg-gradient-to-b from-red-500 to-red-700 border-red-800 shadow-[inset_0_2px_0_rgba(255,255,255,0.3),0_6px_0_hsl(0_70%_30%),0_8px_20px_rgba(0,0,0,0.3)] hover:from-red-400 hover:to-red-600'
+            }
+          `}
         >
           🚨 Don't Press 🚨
         </motion.button>
@@ -151,14 +180,15 @@ export default function NotFound() {
           <motion.p
             className="text-sm text-muted-foreground"
             initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: pressCount > 0 ? 1 : 0, y: 0 }}
+            animate={{ opacity: (pressCount > 0 || isBroken) ? 1 : 0, y: 0 }}
             key={pressCount}
           >
-            {pressCount === 1 && "I said don't press it!"}
-            {pressCount === 2 && "Seriously, stop!"}
-            {pressCount === 3 && "Why do you keep pressing?!"}
-            {pressCount === 4 && "This is getting out of hand..."}
-            {pressCount >= 5 && `You've pressed it ${pressCount} times. Are you ok?`}
+            {isBroken && "You broke it :("}
+            {!isBroken && pressCount === 1 && "I said don't press it!"}
+            {!isBroken && pressCount === 2 && "Seriously, stop!"}
+            {!isBroken && pressCount === 3 && "Why do you keep pressing?!"}
+            {!isBroken && pressCount === 4 && "This is getting out of hand..."}
+            {!isBroken && pressCount >= 5 && `You've pressed it ${pressCount} times. Are you ok?`}
           </motion.p>
         </div>
 
