@@ -13,6 +13,7 @@ When you connect Google Sheets, Skillomatic creates one spreadsheet for you. Ins
 
 Each tab you create gets its own set of MCP tools. For example, a "Contacts" tab generates:
 - `contacts_add` - Add a new contact
+- `contacts_upsert` - Find by email/name and update, or create if not found
 - `contacts_list` - List all contacts
 - `contacts_search` - Search contacts
 - `contacts_update` - Update a contact
@@ -53,7 +54,18 @@ Claude calls `contacts_add` with the data. The tool is hardcoded to write to the
 - *"Update row 3 to mark as Contacted"* → `contacts_update`
 - *"Show me all my contacts"* → `contacts_list`
 
-### 5. Modify Schema
+### 5. Upsert (Find or Create)
+
+Ask Claude: *"Add or update John Doe, john@acme.com, mark him as Contacted"*
+
+Claude calls `contacts_upsert` with:
+- **match_field**: "Email"
+- **match_value**: "john@acme.com"
+- **Stage**: "Contacted"
+
+If a contact with that email exists, it updates the row. If not, it creates a new one. This prevents duplicates.
+
+### 6. Modify Schema
 
 Need to add a column? Ask Claude: *"Add a 'Last Contact' column to my Contacts tab"*
 
@@ -79,6 +91,7 @@ For a tab named "Contacts":
 | Tool | Description |
 |------|-------------|
 | `contacts_add` | Add a new row |
+| `contacts_upsert` | Find and update, or create if not found (prevents duplicates) |
 | `contacts_list` | List rows with pagination |
 | `contacts_search` | Search across all columns |
 | `contacts_update` | Update specific fields in a row |
@@ -141,7 +154,7 @@ For developers investigating issues or extending functionality:
 
 **MCP Side:**
 - `registerSheetsTools()` - Entry point for tool registration (`sheets.ts:505`)
-- `registerToolsForTab()` - Generates 5 CRUD tools per tab (`sheets.ts:257`)
+- `registerToolsForTab()` - Generates 6 CRUD tools per tab (`sheets.ts:319`)
 - `buildColumnFieldMap()` - Handles column name collisions (`sheets.ts:35`)
 
 ### Data Flow
