@@ -91,6 +91,40 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  apps/mcp-server:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.12.0
+        version: 1.19.9(hono@4.11.4)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.12.0
+        version: 1.25.3(hono@4.11.4)(zod@3.25.76)
+      '@skillomatic/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@skillomatic/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.1(@libsql/client@0.17.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
+      hono:
+        specifier: ^4.11.4
+        version: 4.11.4
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.0.9
+        version: 25.0.9
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
   apps/mock-ats:
     dependencies:
       '@hono/node-server':
@@ -5124,7 +5158,7 @@ snapshots:
       pkce-challenge: 4.1.0
       raw-body: 3.0.2
       zod: 3.25.76
-      zod-to-json-schema: 3.24.3(zod@3.25.76)
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
     transitivePeerDependencies:
       - supports-color
 
@@ -8464,10 +8498,6 @@ snapshots:
   zod-to-json-schema@3.24.3(zod@3.24.2):
     dependencies:
       zod: 3.24.2
-
-  zod-to-json-schema@3.24.3(zod@3.25.76):
-    dependencies:
-      zod: 3.25.76
 
   zod-to-json-schema@3.25.1(zod@3.25.76):
     dependencies:

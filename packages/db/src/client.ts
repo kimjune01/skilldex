@@ -7,9 +7,9 @@ import * as schema from './schema.js';
 let tursoUrl: string | undefined;
 let tursoToken: string | undefined;
 
-// In Lambda, SST injects secrets via Resource. Try to import it.
-const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
-if (isLambda) {
+// In AWS (Lambda or ECS), SST injects secrets via Resource. Try to import it.
+const isAws = !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.AWS_EXECUTION_ENV || process.env.NODE_ENV === 'production';
+if (isAws) {
   try {
     // Dynamic import to avoid bundling sst in local dev
     const { Resource } = await import('sst');

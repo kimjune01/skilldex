@@ -11,9 +11,10 @@ export default function MobileChat() {
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
-  // MCP endpoint URL
-  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
-  const mcpUrl = `${apiUrl}/mcp`;
+  // MCP endpoint URL - separate service in production, API endpoint in dev
+  const mcpUrl = import.meta.env.VITE_MCP_URL ||
+    (import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/mcp` :
+    window.location.origin.replace(':5173', ':3000') + '/mcp');
 
   useEffect(() => {
     const fetchApiKey = async () => {
