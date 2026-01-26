@@ -11,9 +11,11 @@ git diff --quiet && git diff --cached --quiet || echo "ERROR: Uncommitted change
 
 2. Check what changed since last deploy:
 ```bash
-LAST_TAG=$(git tag --list '[0-9]*' --sort=-v:refname | head -1)
-echo "Last deploy: $LAST_TAG"
-git diff --name-only "$LAST_TAG"..HEAD
+git tag --list '[0-9]*' --sort=-v:refname | head -1
+```
+Use the tag number from above:
+```bash
+git diff --name-only <TAG>..HEAD
 ```
 
 Analyze the changed files to determine which services need deployment:
@@ -86,7 +88,7 @@ curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 curl -s "https://mcp.skillomatic.technology/health" | jq -r '.gitHash'
 ```
 ```bash
-curl -s "https://skillomatic.technology" | grep -oP 'git-hash" content="\K[^"]*'
+curl -s "https://skillomatic.technology" | grep 'git-hash' | sed 's/.*content="\([^"]*\)".*/\1/'
 ```
 
 **Hash verification rules:**
@@ -98,9 +100,11 @@ Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't ro
 
 7. Create and push incremented version tag:
 ```bash
-LAST_TAG=$(git tag --list '[0-9]*' --sort=-v:refname | head -1)
-NEW_TAG=$((LAST_TAG + 1))
-git tag "$NEW_TAG" && git push origin "$NEW_TAG"
+git tag --list '[0-9]*' --sort=-v:refname | head -1
+```
+Increment the tag number manually (e.g., if output is `17`, use `18`):
+```bash
+git tag <NEW_TAG> && git push origin <NEW_TAG>
 ```
 
 8. Report success with deployed services, git hashes, and the new version tag.
