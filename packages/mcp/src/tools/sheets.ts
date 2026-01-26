@@ -376,6 +376,105 @@ Columns: ${tab.columns.join(', ')}`,
   );
   registeredTools.push(`${slug}_add`);
 
+  // {slug}_upsert - Find or create (upsert)
+  const upsertSchema: Record<string, z.ZodTypeAny> = {
+    match_field: z.string().describe(`Column to match on (e.g., "Email", "Name")`),
+    match_value: z.string().describe('Value to search for in the match field'),
+  };
+  for (const col of tab.columns) {
+    const fieldName = fieldMap.get(col)!;
+    upsertSchema[fieldName] = z.string().optional().describe(col);
+  }
+
+  server.tool(
+    `${slug}_upsert`,
+    `Find and update an existing row, or create a new one if not found.
+
+Use this to avoid duplicates. Searches by the match_field, updates if found, creates if not.
+
+Example: match_field="Email", match_value="john@example.com" will:
+- If found: update that row with the provided fields
+- If not found: create a new row with all provided fields
+
+Purpose: ${tab.purpose}
+Columns: ${tab.columns.join(', ')}`,
+    upsertSchema,
+    async (args) => {
+      try {
+        const matchField = args.match_field as string;
+        const matchValue = args.match_value as string;
+
+        // Validate match_field is a valid column
+        if (!tab.columns.includes(matchField)) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Invalid match_field "${matchField}". Must be one of: ${tab.columns.join(', ')}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        // Build data from provided fields
+        const data: Record<string, string> = {};
+        for (const col of tab.columns) {
+          const fieldName = fieldMap.get(col)!;
+          if (args[fieldName] !== undefined) {
+            data[col] = args[fieldName] as string;
+          }
+        }
+
+        // Ensure match field value is included in data
+        if (!data[matchField]) {
+          data[matchField] = matchValue;
+        }
+
+        // Search for existing row
+        const searchResult = await client.searchTab(tab.title, matchValue, 50);
+
+        // Find exact match on the specified field
+        const existingRow = searchResult.rows.find(
+          (row) => row.data[matchField]?.toLowerCase() === matchValue.toLowerCase()
+        );
+
+        if (existingRow) {
+          // Update existing row
+          await client.updateTabRow(tab.title, existingRow.rowNumber, data);
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Updated existing row ${existingRow.rowNumber} in ${tab.title} (matched ${matchField}="${matchValue}").`,
+              },
+            ],
+          };
+        } else {
+          // Create new row
+          const result = await client.appendTabRow(tab.title, data);
+          const match = result.updatedRange.match(/!A(\d+):/);
+          const rowNum = match ? match[1] : 'unknown';
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Created new row ${rowNum} in ${tab.title} (no match found for ${matchField}="${matchValue}").`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text' as const, text: `Error upserting row: ${message}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+  registeredTools.push(`${slug}_upsert`);
+
   // {slug}_list - List rows
   server.tool(
     `${slug}_list`,
