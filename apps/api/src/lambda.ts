@@ -11,6 +11,8 @@ process.env.NANGO_SECRET_KEY = Resource.NangoSecretKey.value;
 process.env.NANGO_PUBLIC_KEY = Resource.NangoPublicKey.value;
 process.env.GOOGLE_CLIENT_ID = Resource.GoogleClientId.value;
 process.env.GOOGLE_CLIENT_SECRET = Resource.GoogleClientSecret.value;
+// @ts-expect-error - GithubToken added to sst.config.ts, types regenerate on deploy
+process.env.GITHUB_TOKEN = Resource.GithubToken.value;
 
 // Lazy load app to ensure env vars are set first
 let appHandler: ReturnType<typeof handle> | null = null;

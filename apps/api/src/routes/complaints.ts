@@ -5,7 +5,6 @@
  * with the complaint message and auto-captured context (URL, browser info).
  */
 import { Hono } from 'hono';
-import { Resource } from 'sst';
 import { jwtAuth, superAdminOnly } from '../middleware/auth.js';
 import type { ComplaintCreateRequest } from '@skillomatic/shared';
 
@@ -17,20 +16,11 @@ complaintsRoutes.use('*', jwtAuth);
 // GitHub config - uses skilldex repo
 const GITHUB_OWNER = 'kimjune01';
 const GITHUB_REPO = 'skilldex';
-
-// Get GitHub token from SST secret (production) or env var (development)
-function getGithubToken(): string | undefined {
-  try {
-    return (Resource as any).GithubToken?.value;
-  } catch {
-    return process.env.GITHUB_TOKEN;
-  }
-}
 const GITHUB_ISSUES_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues?q=is%3Aissue+is%3Aopen+label%3Auser-reported`;
 
 // GET /complaints/count - Get count of open user-reported issues (superadmin only)
 complaintsRoutes.get('/count', superAdminOnly, async (c) => {
-  const githubToken = getGithubToken();
+  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
     return c.json({ data: { count: 0, url: GITHUB_ISSUES_URL } });
   }
@@ -76,7 +66,7 @@ complaintsRoutes.post('/', async (c) => {
     return c.json({ error: { message: 'Message is required' } }, 400);
   }
 
-  const githubToken = getGithubToken();
+  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
     console.error('GITHUB_TOKEN not configured');
     return c.json({ error: { message: 'Bug reporting is not configured' } }, 500);
