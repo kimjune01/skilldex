@@ -125,6 +125,13 @@ function toSkillPublic(
 ): SkillPublic {
   const isOwner = options?.userId ? skill.userId === options.userId : false;
 
+  // Parse requiredIntegrations - stored as object {"ats": "read-only"}, convert to array ["ats"]
+  let requiredIntegrations: string[] = [];
+  if (skill.requiredIntegrations) {
+    const parsed = JSON.parse(skill.requiredIntegrations);
+    requiredIntegrations = Object.keys(parsed);
+  }
+
   return {
     id: skill.id,
     slug: skill.slug,
@@ -132,7 +139,7 @@ function toSkillPublic(
     description: skill.description,
     category: skill.category as SkillPublic['category'],
     version: skill.version,
-    requiredIntegrations: skill.requiredIntegrations ? JSON.parse(skill.requiredIntegrations) : [],
+    requiredIntegrations,
     requiredScopes: [],
     intent: skill.intent || '',
     capabilities: skill.capabilities ? JSON.parse(skill.capabilities) : [],
@@ -224,20 +231,14 @@ skillsRoutes.get('/', async (c) => {
 
     // Add access info if requested
     if (includeAccess && effectiveAccess) {
-      // Parse requirements from requiredIntegrations
+      // Parse requirements from requiredIntegrations (stored as {"ats": "read-only"})
       const requirements: Record<string, string> = {};
       if (skill.requiredIntegrations) {
         try {
-          const integrations = JSON.parse(skill.requiredIntegrations);
-          for (const int of integrations) {
-            if (['greenhouse', 'lever', 'ashby', 'workable', 'ats'].includes(int)) {
-              requirements.ats = requirements.ats || 'read-only';
-            }
-            if (['gmail', 'outlook', 'email'].includes(int)) {
-              requirements.email = requirements.email || 'read-only';
-            }
-            if (['google-calendar', 'outlook-calendar', 'calendly', 'calendar'].includes(int)) {
-              requirements.calendar = requirements.calendar || 'read-only';
+          const parsed = JSON.parse(skill.requiredIntegrations) as Record<string, string>;
+          for (const [key, value] of Object.entries(parsed)) {
+            if (['ats', 'email', 'calendar'].includes(key)) {
+              requirements[key] = value;
             }
           }
         } catch {
@@ -426,12 +427,12 @@ skillsRoutes.get('/:slug/rendered', async (c) => {
   // Build user's capability profile
   const profile = await buildCapabilityProfile(user.sub);
 
-  // Check capability requirements
-  const requiredIntegrations = skill.requiredIntegrations
-    ? JSON.parse(skill.requiredIntegrations)
+  // Check capability requirements (stored as {"ats": "read-only"}, extract keys)
+  const requiredIntegrationsForCheck = skill.requiredIntegrations
+    ? Object.keys(JSON.parse(skill.requiredIntegrations))
     : [];
 
-  const capabilityCheck = checkCapabilityRequirements(requiredIntegrations, profile);
+  const capabilityCheck = checkCapabilityRequirements(requiredIntegrationsForCheck, profile);
 
   if (!capabilityCheck.satisfied) {
     return c.json(
@@ -646,23 +647,14 @@ skillsRoutes.get('/:slug/access', combinedAuth, async (c) => {
   const disabledSkills = await getOrgDisabledSkills(user.organizationId);
   const effectiveAccess = await getEffectiveAccessForUser(user.sub, user.organizationId);
 
-  // Parse skill requirements from frontmatter stored in instructions
-  // For now, we'll use requiredIntegrations as a proxy for requirements
-  // In a full implementation, this would parse the SKILL.md frontmatter
+  // Parse skill requirements (stored as {"ats": "read-only"})
   const requirements: Record<string, string> = {};
   if (skill.requiredIntegrations) {
     try {
-      const integrations = JSON.parse(skill.requiredIntegrations);
-      for (const int of integrations) {
-        // Map integration names to categories
-        if (['greenhouse', 'lever', 'ashby', 'workable', 'ats'].includes(int)) {
-          requirements.ats = requirements.ats || 'read-only';
-        }
-        if (['gmail', 'outlook', 'email'].includes(int)) {
-          requirements.email = requirements.email || 'read-only';
-        }
-        if (['google-calendar', 'outlook-calendar', 'calendly', 'calendar'].includes(int)) {
-          requirements.calendar = requirements.calendar || 'read-only';
+      const parsed = JSON.parse(skill.requiredIntegrations) as Record<string, string>;
+      for (const [key, value] of Object.entries(parsed)) {
+        if (['ats', 'email', 'calendar'].includes(key)) {
+          requirements[key] = value;
         }
       }
     } catch {

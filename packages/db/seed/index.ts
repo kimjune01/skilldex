@@ -325,6 +325,7 @@ async function seed() {
         intent: skill.intent,
         capabilities: skill.capabilities,
         instructions: skill.instructions,
+        requiredIntegrations: skill.requiredIntegrations,
       },
     });
   }
