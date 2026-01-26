@@ -101,6 +101,7 @@ export default $config({
       environment: {
         NODE_ENV: "production",
         PORT: "3001",
+        GIT_HASH: process.env.GIT_HASH || "unknown",
       },
       loadBalancer: {
         domain: useCustomDomain ? mcpDomain : undefined,

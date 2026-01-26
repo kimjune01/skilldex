@@ -24,17 +24,17 @@ pnpm db:push:prod
 GIT_HASH=$(git rev-parse --short HEAD) pnpm sst deploy --stage production
 ```
 
-5. Verify API, MCP, and web are responding (call all curl commands in parallel):
+5. Verify API, MCP, and web are responding and git hashes match (call all curl commands in parallel):
 ```bash
-curl -s "https://api.skillomatic.technology/health"
+curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 ```
 ```bash
-curl -s "https://mcp.skillomatic.technology/health"
+curl -s "https://mcp.skillomatic.technology/health" | jq -r '.gitHash'
 ```
 ```bash
-curl -s "https://skillomatic.technology" | grep -o 'git-hash" content="[^"]*'
+curl -s "https://skillomatic.technology" | grep -oP 'git-hash" content="\K[^"]*'
 ```
-Retry web check with exponential backoff (2-64s) if CDN hasn't propagated yet. MCP server may take up to 2 minutes to update (ECS rolling deployment).
+All three git hashes must match the local commit hash from step 1. Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't rolled over (ECS rolling deployment can take up to 2 minutes).
 
 6. Create and push incremented version tag:
 ```bash
@@ -45,9 +45,9 @@ NEW_TAG=$((LAST_TAG + 1))
 git tag "$NEW_TAG" && git push origin "$NEW_TAG"
 ```
 
-7. Report success with both hashes and the new version tag.
+7. Report success with all three git hashes and the new version tag.
 
-Stops on first failure. Verifies both API and web git hashes match local commit. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
+Stops on first failure. Verifies API, MCP, and web git hashes all match local commit. Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
 Note: Schema changes should deprecate columns before removing them to support rollbacks. See `/rollback` command.
 

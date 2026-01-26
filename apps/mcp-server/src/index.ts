@@ -19,6 +19,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const MCP_VERSION = '0.1.0';
+const GIT_HASH = process.env.GIT_HASH || 'dev';
 
 console.log('[MCP Server] Starting...');
 
@@ -181,10 +182,10 @@ app.use('*', cors({
 }));
 
 // Root handler (for ALB health checks that may hit /)
-app.get('/', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION }));
+app.get('/', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION, gitHash: GIT_HASH }));
 
 // Health check
-app.get('/health', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION }));
+app.get('/health', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION, gitHash: GIT_HASH }));
 
 // GET /mcp - Establish SSE connection
 app.get('/mcp', async (c) => {
