@@ -42,7 +42,7 @@ const workflowExamples = [
       'Chase overdue invoices',
       'Generate weekly reports',
       'Sync data between tools',
-      'Prep for tomorrow's meetings',
+      'Prep for tomorrow\'s meetings',
     ],
   },
 ];
