@@ -1520,3 +1520,102 @@ The seed data should be interconnected:
 - GitHub PRs should have consistent authors
 
 This makes conversations feel realistic when the AI cross-references data between systems.
+
+---
+
+### Production Demo Mode
+
+To make mock services available in production for demos and new user onboarding:
+
+**UI Toggle Placement**
+
+Place a toggle above the chat input field:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│                      [chat messages]                        │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  🧪 Using sample data • Connect your tools for real data   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ Type a message...                                   │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Behavior:**
+- New users with no connected integrations → default to sample data mode
+- Banner shows: "Using sample data • [Connect your tools](/integrations) for real data"
+- Users can toggle between sample and real data
+- Once integrations are connected → default to real data, but allow switching back for testing
+
+**Implementation:**
+
+1. **Chat page state:**
+```typescript
+const [useSampleData, setUseSampleData] = useState(() => {
+  // Default to sample data if no integrations connected
+  return connectedIntegrations.length === 0;
+});
+```
+
+2. **Pass to API calls:**
+```typescript
+// When calling MCP tools
+const response = await fetch('/api/v1/chat', {
+  body: JSON.stringify({
+    message,
+    useSampleData, // Backend routes to mock handlers
+  }),
+});
+```
+
+3. **Backend routing:**
+```typescript
+// In MCP tool execution
+if (context.useSampleData) {
+  return mockHandlers[toolName](params);
+} else {
+  return realHandlers[toolName](params);
+}
+```
+
+4. **Toggle component:**
+```tsx
+{useSampleData && (
+  <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200 text-sm">
+    <span className="text-amber-700">
+      🧪 Using sample data
+    </span>
+    <Link to="/integrations" className="text-amber-900 underline">
+      Connect your tools
+    </Link>
+    <span className="text-amber-500">for real data</span>
+  </div>
+)}
+
+{!useSampleData && connectedIntegrations.length > 0 && (
+  <button
+    onClick={() => setUseSampleData(true)}
+    className="text-xs text-gray-400 hover:text-gray-600"
+  >
+    Test with sample data
+  </button>
+)}
+```
+
+**Entry points:**
+
+| Entry | Behavior |
+|-------|----------|
+| Landing page "Try Demo" button | Links to `/chat?demo=true` |
+| New user first visit to `/chat` | Auto-enables sample data mode |
+| User with integrations | Defaults to real data, toggle available |
+| Direct link `skillomatic.com/chat?demo=true` | Shareable demo link |
+
+**Benefits:**
+- No separate demo environment to maintain
+- New users can try immediately without setup
+- Existing users can test workflows safely before running against real data
+- Sales can share demo links with prospects
