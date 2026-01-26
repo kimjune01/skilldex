@@ -19,6 +19,10 @@ declare module "sst" {
       "sender": string
       "type": "sst.aws.Email"
     }
+    "GithubToken": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "GoogleClientId": {
       "type": "sst.sst.Secret"
       "value": string

@@ -424,10 +424,10 @@ export default function Layout() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Bug className="h-5 w-5 text-amber-600" />
-              Report a Bug
+              Complain More
             </DialogTitle>
             <DialogDescription>
-              Tell us what's wrong and we'll fix it. Your message and current page context will be sent.
+              The app sucks, we know. If you think we'll actually read this, say something. Current page context will also be sent.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
