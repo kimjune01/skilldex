@@ -467,18 +467,18 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
             <Zap className="h-3 w-3 mr-1" />
-            AI-Powered Automation
+            No UI. Just Chat.
           </Badge>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
-            Claude/ChatGPT + Your Tools
+            Automate Your Work
             <br />
             <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
-              = Actual Automation
+              Through Conversation
             </span>
           </h1>
           <p className="text-lg text-[hsl(220_15%_45%)] mb-8 max-w-2xl mx-auto">
-            Tell me what's repetitive. I connect your AI to your tools so it can actually
-            do the work — on command, on a schedule, or triggered by events.
+            No new tools to learn. Your AI is already open — now it's connected to your
+            ATS, CRM, email, and calendar. Just ask it to do the work.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
