@@ -12,6 +12,8 @@ Increments the Skillomatic browser extension version in all required locations.
 
 1. **Manifest** (source of truth for Chrome): `apps/skillomatic-scraper/manifest.json`
 2. **Shared constants** (for web app display): `packages/shared/src/constants.ts`
+3. **Popup HTML** (extension UI footer): `apps/skillomatic-scraper/popup.html`
+4. **Package.json** (npm version): `apps/skillomatic-scraper/package.json`
 
 ## Steps
 
@@ -42,4 +44,6 @@ New version: 1.0.2
 
 Files updated:
 - `apps/skillomatic-scraper/manifest.json`: `"version": "1.0.2"`
+- `apps/skillomatic-scraper/package.json`: `"version": "1.0.2"`
+- `apps/skillomatic-scraper/popup.html`: `v1.0.2`
 - `packages/shared/src/constants.ts`: `EXTENSION_VERSION = '1.0.2'`

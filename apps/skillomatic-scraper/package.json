@@ -1,6 +1,6 @@
 {
   "name": "skillomatic-scraper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "test": "node extractors/extractors.test.js"
