@@ -31,7 +31,8 @@ export default function Dashboard() {
       skills.list(),
       integrations.list(),
       apiKeys.list(),
-      organizations.getDeployment().catch(() => null), // May fail for non-admins, that's ok
+      // Only fetch deployment settings if user has an organization
+      user?.organizationId ? organizations.getDeployment().catch(() => null) : Promise.resolve(null),
       onboarding.getStatus().catch(() => null),
       analytics.getUsage(30).catch(() => null), // Get last 30 days activity
     ])
@@ -47,7 +48,7 @@ export default function Dashboard() {
         setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [user?.organizationId]);
 
   // Poll for onboarding updates (every 3 seconds while onboarding is incomplete)
   // Note: WebSocket would be a performance optimization here - enabling instant updates
