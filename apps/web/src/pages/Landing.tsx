@@ -467,7 +467,7 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
             <Zap className="h-3 w-3 mr-1" />
-            MCP Development
+            AI-Powered Automation
           </Badge>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
             Claude/ChatGPT + Your Tools
