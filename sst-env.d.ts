@@ -31,6 +31,11 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "McpService": {
+      "service": string
+      "type": "sst.aws.Service"
+      "url": string
+    }
     "McpVpc": {
       "type": "sst.aws.Vpc"
     }

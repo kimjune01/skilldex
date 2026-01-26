@@ -9,9 +9,8 @@ WORKDIR /app
 # Copy workspace config
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 
-# Copy package.json files for all workspaces
+# Copy package.json files for needed workspaces
 COPY packages/db/package.json packages/db/
-COPY packages/shared/package.json packages/shared/
 COPY apps/mcp-server/package.json apps/mcp-server/
 
 # Install dependencies
@@ -19,11 +18,9 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY packages/db packages/db
-COPY packages/shared packages/shared
 COPY apps/mcp-server apps/mcp-server
 
-# Build packages
-RUN pnpm --filter @skillomatic/shared build
+# Build packages (db first since mcp-server depends on it)
 RUN pnpm --filter @skillomatic/db build
 RUN pnpm --filter @skillomatic/mcp-server build
 

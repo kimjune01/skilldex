@@ -3,14 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./schema": "./src/schema.ts",
-    "./client": "./src/client.ts"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./src/index.ts"
+    },
+    "./schema": {
+      "import": "./dist/schema.js",
+      "types": "./src/schema.ts"
+    },
+    "./client": {
+      "import": "./dist/client.js",
+      "types": "./src/client.ts"
+    }
   },
   "scripts": {
+    "build": "tsc",
     "push": "drizzle-kit push",
     "push:prod": "TURSO_DATABASE_URL=$(turso db show skillomatic --url) TURSO_AUTH_TOKEN=$(turso db tokens create skillomatic) drizzle-kit push",
     "generate": "drizzle-kit generate",
