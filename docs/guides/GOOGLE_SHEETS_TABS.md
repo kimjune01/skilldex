@@ -23,9 +23,9 @@ Each tab you create gets its own set of MCP tools. For example, a "Contacts" tab
 
 ### 1. List Your Tabs
 
-Ask Claude: *"What tabs do I have in my spreadsheet?"*
+Ask Claude: *"What tables do I have?"*
 
-Claude will call `list_tabs` and show you:
+Claude will call `list_tables` and show you:
 - Tab names and their purposes
 - Column headers for each tab
 - Available tools for each tab
@@ -33,12 +33,13 @@ Claude will call `list_tabs` and show you:
 
 ### 2. Create a New Tab
 
-Ask Claude: *"Create a Contacts tab for tracking sales leads"*
+Ask Claude: *"Create a Contacts tab for tracking sales leads, use Email as the primary key"*
 
-Claude will call `create_tab` with:
+Claude will call `create_table` with:
 - **Title**: "Contacts"
 - **Purpose**: "Track sales leads"
 - **Columns**: Name, Company, Email, Phone, Stage, Notes
+- **Primary Key**: Email (used for automatic deduplication)
 
 **Important**: After creating a tab, restart Claude Code (or your MCP connection) to use the new tools.
 
@@ -56,12 +57,13 @@ Claude calls `contacts_add` with the data. The tool is hardcoded to write to the
 
 ### 5. Upsert (Find or Create)
 
-Ask Claude: *"Add or update John Doe, john@acme.com, mark him as Contacted"*
+Ask Claude: *"Add or update john@acme.com, mark him as Contacted"*
 
 Claude calls `contacts_upsert` with:
-- **match_field**: "Email"
 - **match_value**: "john@acme.com"
 - **Stage**: "Contacted"
+
+If the table has a primary key (e.g., Email), upsert automatically matches on it. No need to specify `match_field`.
 
 If a contact with that email exists, it updates the row. If not, it creates a new one. This prevents duplicates.
 
@@ -69,7 +71,7 @@ If a contact with that email exists, it updates the row. If not, it creates a ne
 
 Need to add a column? Ask Claude: *"Add a 'Last Contact' column to my Contacts tab"*
 
-Claude calls `update_tab_schema` with the complete column list.
+Claude calls `update_table_schema` with the complete column list.
 
 **Note**: Existing data rows are not modified when you change columns.
 
@@ -79,10 +81,10 @@ Claude calls `update_tab_schema` with the complete column list.
 
 | Tool | Description |
 |------|-------------|
-| `list_tabs` | List all tabs with columns and purposes |
-| `create_tab` | Create a new tab (requires restart after) |
-| `update_tab_schema` | Change columns or purpose |
-| `delete_tab` | Delete a tab and all its data (requires restart after) |
+| `list_tables` | List all tables with columns and purposes |
+| `create_table` | Create a new table with optional primaryKey (requires restart after) |
+| `update_table_schema` | Change columns, purpose, or primaryKey |
+| `delete_table` | Delete a table and all its data (requires restart after) |
 
 ### Per-Tab Tools (generated for each tab)
 
@@ -117,11 +119,11 @@ When you create or delete a tab, the MCP tools need to regenerate. Restart Claud
 
 Connect Google Sheets in the Skillomatic web UI under Integrations.
 
-### "Tab not found"
+### "Table not found"
 
-Tab names are case-insensitive. Check `list_tabs` for exact names.
+Table names are case-insensitive. Check `list_tables` for exact names.
 
-### New tools not appearing after `create_tab`
+### New tools not appearing after `create_table`
 
 Restart Claude Code. Tools are generated when the MCP connection starts.
 
