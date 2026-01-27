@@ -250,6 +250,40 @@ describe('skill-access', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should parse database requirements', () => {
+      const result = parseSkillRequirements({
+        requires: {
+          database: 'read-write',
+        },
+      });
+
+      expect(result).toEqual({ database: 'read-write' });
+    });
+
+    it('should convert sheets alias to database', () => {
+      const result = parseSkillRequirements({
+        requires: {
+          sheets: 'read-write',
+        },
+      });
+
+      expect(result).toEqual({ database: 'read-write' });
+    });
+
+    it('should convert sheets alias with read-only', () => {
+      const result = parseSkillRequirements({
+        requires: {
+          sheets: 'read-only',
+          email: 'read-write',
+        },
+      });
+
+      expect(result).toEqual({
+        database: 'read-only',
+        email: 'read-write',
+      });
+    });
   });
 
   describe('canPerformAction', () => {

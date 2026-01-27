@@ -25,11 +25,13 @@ export type SkillStatus = 'available' | 'limited' | 'disabled';
 /**
  * Skill requirements (from SKILL.md frontmatter)
  * Maps integration category to required access level
+ * Note: 'sheets' is an alias for 'database' category
  */
 export interface SkillRequirements {
   ats?: AccessLevel;
   email?: AccessLevel;
   calendar?: AccessLevel;
+  database?: AccessLevel;
 }
 
 /**
@@ -187,11 +189,15 @@ export function parseSkillRequirements(frontmatter: Record<string, unknown>): Sk
   const requiresObj = requires as Record<string, unknown>;
 
   for (const [key, value] of Object.entries(requiresObj)) {
-    if (
-      (key === 'ats' || key === 'email' || key === 'calendar') &&
-      (value === 'read-write' || value === 'read-only')
-    ) {
+    if (value !== 'read-write' && value !== 'read-only') {
+      continue;
+    }
+
+    if (key === 'ats' || key === 'email' || key === 'calendar' || key === 'database') {
       result[key] = value;
+    } else if (key === 'sheets') {
+      // 'sheets' is an alias for 'database' category
+      result.database = value;
     }
   }
 

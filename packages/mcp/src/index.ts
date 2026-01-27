@@ -69,7 +69,7 @@ async function main(): Promise<void> {
   try {
     const config = await client.getCapabilities();
     capabilities = config.profile;
-    log.info(`Capabilities: ATS=${capabilities.hasATS}, Email=${capabilities.hasEmail}, Calendar=${capabilities.hasCalendar}`);
+    log.info(`Capabilities: ATS=${capabilities.hasATS}, Email=${capabilities.hasEmail}, Calendar=${capabilities.hasCalendar}, Sheets=${capabilities.hasGoogleSheets}`);
 
     // Warn about missing capabilities that limit functionality
     const warnings: string[] = [];
@@ -81,6 +81,9 @@ async function main(): Promise<void> {
     }
     if (!capabilities.hasCalendar) {
       warnings.push('No calendar integration - calendar tools will not be available');
+    }
+    if (!capabilities.hasGoogleSheets) {
+      warnings.push('No Google Sheets connected - Sheets tools will not be available');
     }
     if (warnings.length > 0) {
       log.info('');
@@ -98,6 +101,7 @@ async function main(): Promise<void> {
       hasATS: false,
       hasCalendar: false,
       hasEmail: false,
+      hasGoogleSheets: false,
     };
   }
 
