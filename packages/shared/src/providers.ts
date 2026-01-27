@@ -266,6 +266,28 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     hasManifest: true,
   },
 
+  'google-docs': {
+    id: 'google-docs',
+    displayName: 'Google Docs',
+    category: 'database',
+    oauthFlow: 'google-direct',
+    apiBaseUrl: 'https://docs.googleapis.com/v1',
+    apiAuth: { type: 'bearer' },
+    order: 4,
+    hasManifest: true,
+  },
+
+  'google-forms': {
+    id: 'google-forms',
+    displayName: 'Google Forms',
+    category: 'database',
+    oauthFlow: 'google-direct',
+    apiBaseUrl: 'https://forms.googleapis.com/v1',
+    apiAuth: { type: 'bearer' },
+    order: 5,
+    hasManifest: true,
+  },
+
   'google-contacts': {
     id: 'google-contacts',
     displayName: 'Google Contacts',
@@ -273,7 +295,7 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     oauthFlow: 'google-direct',
     apiBaseUrl: 'https://people.googleapis.com/v1',
     apiAuth: { type: 'bearer' },
-    order: 4,
+    order: 6,
     hasManifest: true,
   },
 
@@ -284,7 +306,7 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     oauthFlow: 'google-direct',
     apiBaseUrl: 'https://tasks.googleapis.com/tasks/v1',
     apiAuth: { type: 'bearer' },
-    order: 5,
+    order: 7,
     hasManifest: true,
   },
 
@@ -449,6 +471,8 @@ export const INDIVIDUAL_ALLOWED_PROVIDERS = [
   // Database - Google stack (free)
   'google-sheets',
   'google-drive',
+  'google-docs',
+  'google-forms',
   'google-contacts',
   'google-tasks',
   // Database - Third party (full-featured free tiers)
@@ -492,6 +516,8 @@ export const FREE_PROVIDERS = [
   'google-calendar',
   'google-sheets',
   'google-drive',
+  'google-docs',
+  'google-forms',
   'google-contacts',
   'google-tasks',
   // Scheduling (free tiers)

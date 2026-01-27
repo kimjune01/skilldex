@@ -16,6 +16,8 @@ import { airtableManifest } from './airtable.js';
 // Data providers - Google stack
 import { googleSheetsManifest } from './google-sheets.js';
 import { googleDriveManifest } from './google-drive.js';
+import { googleDocsManifest } from './google-docs.js';
+import { googleFormsManifest } from './google-forms.js';
 import { googleContactsManifest } from './google-contacts.js';
 import { googleTasksManifest } from './google-tasks.js';
 // Data providers - Third party (free tier)
@@ -39,6 +41,8 @@ export const manifests: Record<string, ProviderManifest> = {
   airtable: airtableManifest,
   'google-sheets': googleSheetsManifest,
   'google-drive': googleDriveManifest,
+  'google-docs': googleDocsManifest,
+  'google-forms': googleFormsManifest,
   'google-contacts': googleContactsManifest,
   'google-tasks': googleTasksManifest,
   // Data providers - Third party (free tier)
@@ -74,6 +78,8 @@ export {
   airtableManifest,
   googleSheetsManifest,
   googleDriveManifest,
+  googleDocsManifest,
+  googleFormsManifest,
   googleContactsManifest,
   googleTasksManifest,
   notionManifest,

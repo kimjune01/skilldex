@@ -47,19 +47,42 @@ import {
   Lock,
   Sparkles,
   Lightbulb,
+  HardDrive,
+  FileText,
+  ClipboardList,
+  Users,
+  ListTodo,
   type LucideIcon,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 /**
  * Icon mapping for integration providers.
  */
-const providerIcons: Partial<Record<IntegrationProvider, LucideIcon>> = {
+const providerIcons: Partial<Record<IntegrationProvider | string, LucideIcon>> = {
   ats: Briefcase,
   email: Mail,
   calendar: Calendar,
   scheduling: Calendar,
   'google-sheets': Table2,
+  'google-drive': HardDrive,
+  'google-docs': FileText,
+  'google-forms': ClipboardList,
+  'google-contacts': Users,
+  'google-tasks': ListTodo,
 };
+
+/**
+ * Google Workspace tools configuration
+ */
+const GOOGLE_WORKSPACE_TOOLS = [
+  { id: 'google-sheets', name: 'Sheets', description: 'Spreadsheets for data' },
+  { id: 'google-drive', name: 'Drive', description: 'File storage' },
+  { id: 'google-docs', name: 'Docs', description: 'Documents' },
+  { id: 'google-forms', name: 'Forms', description: 'Surveys & forms' },
+  { id: 'google-contacts', name: 'Contacts', description: 'People' },
+  { id: 'google-tasks', name: 'Tasks', description: 'To-dos' },
+] as const;
 
 /**
  * Get sub-providers for a category from the registry.
@@ -89,13 +112,8 @@ function buildProviderConfigs(): {
   essentialProviders: ProviderConfig[];
   otherProviders: ProviderConfig[];
 } {
-  // Essential integrations - core workflow
+  // Essential integrations - Gmail and Calendar (Google Workspace tools are separate)
   const essentialProviders: ProviderConfig[] = [
-    {
-      id: 'google-sheets',
-      name: 'Google Sheets',
-      description: 'Your data lives here—contacts, leads, invoices',
-    },
     {
       id: 'email',
       name: 'Email',
@@ -458,13 +476,15 @@ export default function Integrations() {
         </p>
       </div>
 
-      {/* Onboarding: Show until email, sheets, and calendar are connected */}
+      {/* Onboarding: Show until email and calendar are connected */}
       {(() => {
         const hasEmail = integrationList.some(i => i.provider === 'email' && i.status === 'connected');
-        const hasSheets = integrationList.some(i => i.provider === 'google-sheets' && i.status === 'connected');
         const hasCalendar = integrationList.some(i => i.provider === 'calendar' && i.status === 'connected');
-        const allConnected = hasEmail && hasSheets && hasCalendar;
-        const noneConnected = !hasEmail && !hasSheets && !hasCalendar;
+        const hasAnyGoogleWorkspace = GOOGLE_WORKSPACE_TOOLS.some(tool =>
+          integrationList.some(i => i.provider === tool.id && i.status === 'connected')
+        );
+        const allConnected = hasEmail && hasCalendar && hasAnyGoogleWorkspace;
+        const noneConnected = !hasEmail && !hasCalendar && !hasAnyGoogleWorkspace;
 
         if (allConnected) return null;
 
@@ -479,7 +499,7 @@ export default function Integrations() {
                 <p className="text-sm text-amber-800 mb-4">
                   {noneConnected
                     ? "One click connects Gmail, Calendar, and Sheets—everything you need to get started."
-                    : "Skillomatic works best when it can access your data. Connect these three essentials to unlock the full experience."}
+                    : "Skillomatic works best when it can access your data. Connect the essentials to unlock the full experience."}
                 </p>
 
                 {/* Show one-click button if nothing is connected yet */}
@@ -503,26 +523,26 @@ export default function Integrations() {
                   </Button>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className={`rounded-md p-3 ${hasSheets ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
-                      <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
-                        {hasSheets && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                        1. Google Sheets
-                      </p>
-                      <p className="text-amber-700">Your data lives here—contacts, leads, invoices</p>
-                    </div>
                     <div className={`rounded-md p-3 ${hasEmail ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
                       <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
                         {hasEmail && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                        2. Email
+                        1. Email
                       </p>
                       <p className="text-amber-700">Send messages and follow-ups</p>
                     </div>
                     <div className={`rounded-md p-3 ${hasCalendar ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
                       <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
                         {hasCalendar && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                        3. Calendar
+                        2. Calendar
                       </p>
                       <p className="text-amber-700">Schedule meetings and check availability</p>
+                    </div>
+                    <div className={`rounded-md p-3 ${hasAnyGoogleWorkspace ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
+                      <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
+                        {hasAnyGoogleWorkspace && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                        3. Google Workspace
+                      </p>
+                      <p className="text-amber-700">Sheets, Drive, Docs, Forms...</p>
                     </div>
                   </div>
                 )}
@@ -550,14 +570,14 @@ export default function Integrations() {
       <div>
         <h2 className="text-lg font-semibold mb-4">Essentials</h2>
         {(() => {
-          // Find first unconnected essential (in order: sheets, email, calendar)
+          // Find first unconnected essential (in order: email, calendar)
           const firstUnconnected = essentialProviders.find((p) => {
             const integration = getIntegrationStatus(p.id);
             return integration?.status !== 'connected';
           })?.id;
 
           return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {essentialProviders.map((provider) => {
             const integration = getIntegrationStatus(provider.id);
             const isConnected = integration?.status === 'connected';
@@ -654,6 +674,93 @@ export default function Integrations() {
         </div>
           );
         })()}
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Google Workspace Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">Google Workspace</h2>
+            <p className="text-sm text-muted-foreground">Enable the tools you want to use</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSheetsInfoOpen(true)}
+            className="text-xs"
+          >
+            <Lightbulb className="h-3.5 w-3.5 mr-1 text-yellow-500" />
+            How it works
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {GOOGLE_WORKSPACE_TOOLS.map((tool) => {
+                const integration = integrationList.find(i => i.provider === tool.id);
+                const isConnected = integration?.status === 'connected';
+                const Icon = providerIcons[tool.id] || Plug;
+
+                return (
+                  <div key={tool.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : 'bg-muted'}`}>
+                        <Icon className={`h-4 w-4 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{tool.name}</p>
+                        <p className="text-xs text-muted-foreground">{tool.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {/* Access level dropdown - only show when connected */}
+                      {isConnected && integration && (
+                        <Select
+                          value={integration.accessLevel || 'read-write'}
+                          onValueChange={(value) => handleUpdateAccessLevel(integration.id, value as IntegrationAccessLevel)}
+                          disabled={updatingAccessLevel === integration.id}
+                        >
+                          <SelectTrigger className="h-7 w-[110px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="read-write">
+                              <span className="flex items-center gap-1">
+                                <ShieldCheck className="h-3 w-3" /> Full
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="read-only">
+                              <span className="flex items-center gap-1">
+                                <Shield className="h-3 w-3" /> Read only
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {/* Toggle switch */}
+                      <Switch
+                        checked={isConnected}
+                        disabled={isConnecting}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            // Connect this specific Google tool
+                            initiateOAuth(tool.id, undefined, 'read-write');
+                          } else if (integration) {
+                            // Disconnect
+                            setDisconnectTarget({ id: integration.id, name: tool.name });
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Divider */}
