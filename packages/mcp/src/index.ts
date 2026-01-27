@@ -69,7 +69,8 @@ async function main(): Promise<void> {
   try {
     const config = await client.getCapabilities();
     capabilities = config.profile;
-    log.info(`Capabilities: ATS=${capabilities.hasATS}, Email=${capabilities.hasEmail}, Calendar=${capabilities.hasCalendar}, Sheets=${capabilities.hasGoogleSheets}`);
+    log.info(`Capabilities: ATS=${capabilities.hasATS}, Email=${capabilities.hasEmail}, Calendar=${capabilities.hasCalendar}`);
+    log.info(`Google Workspace: Sheets=${capabilities.hasGoogleSheets}, Drive=${capabilities.hasGoogleDrive}, Docs=${capabilities.hasGoogleDocs}, Forms=${capabilities.hasGoogleForms}, Contacts=${capabilities.hasGoogleContacts}, Tasks=${capabilities.hasGoogleTasks}`);
 
     // Warn about missing capabilities that limit functionality
     const warnings: string[] = [];
@@ -82,6 +83,7 @@ async function main(): Promise<void> {
     if (!capabilities.hasCalendar) {
       warnings.push('No calendar integration - calendar tools will not be available');
     }
+    // Only warn about Sheets since it's the most commonly used Google Workspace tool
     if (!capabilities.hasGoogleSheets) {
       warnings.push('No Google Sheets connected - Sheets tools will not be available');
     }
@@ -102,6 +104,11 @@ async function main(): Promise<void> {
       hasCalendar: false,
       hasEmail: false,
       hasGoogleSheets: false,
+      hasGoogleDrive: false,
+      hasGoogleDocs: false,
+      hasGoogleForms: false,
+      hasGoogleContacts: false,
+      hasGoogleTasks: false,
     };
   }
 

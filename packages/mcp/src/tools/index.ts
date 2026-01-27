@@ -215,5 +215,39 @@ export async function registerTools(
     log.info('Google Sheets tools not registered (no Google Sheets integration connected)');
   }
 
+  // Google Workspace tools - register based on connection status
+  const googleWorkspaceTools: Array<{ flag: boolean | undefined; provider: string; name: string }> = [
+    { flag: profile.hasGoogleDrive, provider: 'google-drive', name: 'Google Drive' },
+    { flag: profile.hasGoogleDocs, provider: 'google-docs', name: 'Google Docs' },
+    { flag: profile.hasGoogleForms, provider: 'google-forms', name: 'Google Forms' },
+    { flag: profile.hasGoogleContacts, provider: 'google-contacts', name: 'Google Contacts' },
+    { flag: profile.hasGoogleTasks, provider: 'google-tasks', name: 'Google Tasks' },
+  ];
+
+  const databaseAccess: AccessLevel = profile.effectiveAccess?.database || 'read-write';
+
+  for (const { flag, provider, name } of googleWorkspaceTools) {
+    if (flag) {
+      if (isProviderSupported(provider)) {
+        const manifest = getManifest(provider);
+        if (manifest) {
+          const tools = generateToolsFromManifest(manifest, databaseAccess);
+          const toolNames = registerGeneratedTools(server, tools, client);
+          registeredTools.push(...toolNames);
+
+          const summary = getToolSummary(manifest, databaseAccess);
+          log.info(
+            `${name} tools registered: ${toolNames.length} tools ` +
+            `(access: ${databaseAccess}, read: ${summary.read}, write: ${summary.write}, filtered: ${summary.filtered})`
+          );
+        }
+      } else {
+        log.info(`${name} tools not registered (provider not supported for dynamic tools)`);
+      }
+    } else {
+      log.info(`${name} tools not registered (not connected)`);
+    }
+  }
+
   log.info(`Registered ${registeredTools.length} tools: ${registeredTools.join(', ')}`);
 }

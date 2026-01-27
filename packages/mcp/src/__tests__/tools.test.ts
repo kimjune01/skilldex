@@ -132,6 +132,59 @@ describe('registerTools', () => {
     });
   });
 
+  describe('conditional Google Workspace tools registration', () => {
+    it('should register Google Drive tools when hasGoogleDrive is true', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+        hasGoogleDrive: true,
+      };
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      // Google Drive manifest has tools like list_files, get_file, search_files, etc.
+      // Check that server.tool was called for Drive tools
+      const toolCalls = mockServer.tool.mock.calls.map((c: any[]) => c[0]);
+      expect(toolCalls).toContain('google_drive_list_files');
+    });
+
+    it('should NOT register Google Drive tools when hasGoogleDrive is false', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+        hasGoogleDrive: false,
+      };
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      const toolCalls = mockServer.tool.mock.calls.map((c: any[]) => c[0]);
+      expect(toolCalls).not.toContain('google_drive_list_files');
+    });
+
+    it('should register multiple Google Workspace tools when connected', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+        hasGoogleDrive: true,
+        hasGoogleDocs: true,
+        hasGoogleTasks: true,
+      };
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      const toolCalls = mockServer.tool.mock.calls.map((c: any[]) => c[0]);
+      expect(toolCalls).toContain('google_drive_list_files');
+      expect(toolCalls).toContain('google_docs_get_document');
+      expect(toolCalls).toContain('google_tasks_list_task_lists');
+    });
+  });
+
   describe('get_skill_catalog handler', () => {
     it('should return formatted skill catalog', async () => {
       const profile: CapabilityProfile = {
