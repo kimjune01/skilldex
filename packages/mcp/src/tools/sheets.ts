@@ -206,6 +206,18 @@ After creating a table, new tools will be available: {tablename}_add, {tablename
         });
 
         const slug = toSlug(tab.baseName);
+
+        // Dynamically register tools for the new table
+        const newTools = registerToolsForTab(server, client, tab, slug);
+        registeredTools.push(...newTools);
+
+        // Notify client that tool list has changed
+        try {
+          await server.server.sendToolListChanged();
+        } catch {
+          // Client may not support notifications, that's ok
+        }
+
         const pkInfo = tab.primaryKey ? `\nPrimary key: ${tab.primaryKey} (used for upsert)` : '';
         const purposeInfo = tab.purpose ? `\nPurpose: ${tab.purpose}` : '';
         return {
@@ -215,7 +227,7 @@ After creating a table, new tools will be available: {tablename}_add, {tablename
               text: [
                 `Created table "${tab.baseName}" with ${tab.columns.length} columns.`,
                 '',
-                `**New tools will be available after restart:**`,
+                `**New tools are now available:**`,
                 `- ${slug}_add: Add a new row`,
                 `- ${slug}_upsert: Find and update, or create if not found`,
                 `- ${slug}_list: List rows`,
@@ -224,8 +236,6 @@ After creating a table, new tools will be available: {tablename}_add, {tablename
                 `- ${slug}_delete: Delete a row`,
                 '',
                 `Columns: ${tab.columns.join(', ')}${pkInfo}${purposeInfo}`,
-                '',
-                `⚠️ **Restart required:** Please restart your MCP connection (or Claude Code) to use the new ${slug}_* tools.`,
               ].join('\n'),
             },
           ],
