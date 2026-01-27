@@ -388,7 +388,33 @@ async function handleGoogleCombinedOAuthCallback(
       refresh_token?: string;
       expires_in?: number;
       token_type: string;
+      scope?: string; // Space-separated list of actually granted scopes
     };
+
+    // Parse granted scopes to determine which services to enable
+    const grantedScopes = new Set((tokens.scope || '').split(' ').filter(Boolean));
+
+    // Helper to check if a scope pattern is granted
+    const hasScope = (pattern: string) => {
+      for (const scope of grantedScopes) {
+        if (scope.includes(pattern)) return true;
+      }
+      return false;
+    };
+
+    // Determine which services were granted
+    const hasGmail = hasScope('gmail');
+    const hasCalendar = hasScope('calendar');
+    const hasSheets = hasScope('spreadsheets');
+    const hasDrive = hasScope('drive');
+    const hasContacts = hasScope('contacts');
+    const hasTasks = hasScope('tasks');
+
+    log.info('google_oauth_scopes_granted', {
+      userId,
+      grantedScopes: tokens.scope,
+      hasGmail, hasCalendar, hasSheets, hasDrive, hasContacts, hasTasks
+    });
 
     // Get user info to verify email
     const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -416,12 +442,14 @@ async function handleGoogleCombinedOAuthCallback(
         : undefined,
     };
 
-    // Create all Google integrations with the same tokens
+    // Create integrations only for services the user granted access to
     const integrationsToCreate: Array<{
       provider: string;
       metadata: Record<string, unknown>;
-    }> = [
-      {
+    }> = [];
+
+    if (hasGmail) {
+      integrationsToCreate.push({
         provider: 'email',
         metadata: {
           ...baseMetadata,
@@ -429,8 +457,11 @@ async function handleGoogleCombinedOAuthCallback(
           subProvider: 'gmail',
           gmailEmail: userEmail,
         },
-      },
-      {
+      });
+    }
+
+    if (hasCalendar) {
+      integrationsToCreate.push({
         provider: 'calendar',
         metadata: {
           ...baseMetadata,
@@ -438,8 +469,11 @@ async function handleGoogleCombinedOAuthCallback(
           subProvider: 'google-calendar',
           calendarEmail: userEmail,
         },
-      },
-      {
+      });
+    }
+
+    if (hasSheets) {
+      integrationsToCreate.push({
         provider: 'google-sheets',
         metadata: {
           ...baseMetadata,
@@ -449,8 +483,11 @@ async function handleGoogleCombinedOAuthCallback(
           tabs: [],
           tabsVersion: 0,
         },
-      },
-      {
+      });
+    }
+
+    if (hasDrive) {
+      integrationsToCreate.push({
         provider: 'google-drive',
         metadata: {
           ...baseMetadata,
@@ -458,8 +495,11 @@ async function handleGoogleCombinedOAuthCallback(
           subProvider: 'google-drive',
           driveEmail: userEmail,
         },
-      },
-      {
+      });
+    }
+
+    if (hasContacts) {
+      integrationsToCreate.push({
         provider: 'google-contacts',
         metadata: {
           ...baseMetadata,
@@ -467,8 +507,11 @@ async function handleGoogleCombinedOAuthCallback(
           subProvider: 'google-contacts',
           contactsEmail: userEmail,
         },
-      },
-      {
+      });
+    }
+
+    if (hasTasks) {
+      integrationsToCreate.push({
         provider: 'google-tasks',
         metadata: {
           ...baseMetadata,
@@ -476,8 +519,8 @@ async function handleGoogleCombinedOAuthCallback(
           subProvider: 'google-tasks',
           tasksEmail: userEmail,
         },
-      },
-    ];
+      });
+    }
 
     // For Google Sheets, find existing or create new spreadsheet
     const sheetsIntegration = integrationsToCreate.find(i => i.provider === 'google-sheets');
@@ -570,12 +613,12 @@ async function handleGoogleCombinedOAuthCallback(
 
     log.info('google_combined_connected', { userId, email: userEmail });
 
-    // Advance onboarding to sheets connected (highest step)
-    if (dbUser && dbUser.onboardingStep < ONBOARDING_STEPS.SHEETS_CONNECTED) {
+    // Advance onboarding when Google is connected
+    if (dbUser && dbUser.onboardingStep < ONBOARDING_STEPS.GOOGLE_CONNECTED) {
       await db
         .update(users)
         .set({
-          onboardingStep: ONBOARDING_STEPS.SHEETS_CONNECTED,
+          onboardingStep: ONBOARDING_STEPS.GOOGLE_CONNECTED,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
@@ -790,27 +833,15 @@ async function handleGoogleOAuthCallback(
 
     log.info(`${service}_connected`, { userId, email: userEmail });
 
-    // Advance onboarding based on which provider was connected
-    if (dbUser) {
-      let newStep: number | null = null;
-
-      if (config.provider === 'google-sheets' && dbUser.onboardingStep < ONBOARDING_STEPS.SHEETS_CONNECTED) {
-        newStep = ONBOARDING_STEPS.SHEETS_CONNECTED;
-      } else if (config.provider === 'email' && dbUser.onboardingStep < ONBOARDING_STEPS.EMAIL_CONNECTED) {
-        newStep = ONBOARDING_STEPS.EMAIL_CONNECTED;
-      } else if (config.provider === 'calendar' && dbUser.onboardingStep < ONBOARDING_STEPS.CALENDAR_CONNECTED) {
-        newStep = ONBOARDING_STEPS.CALENDAR_CONNECTED;
-      }
-
-      if (newStep !== null) {
-        await db
-          .update(users)
-          .set({
-            onboardingStep: newStep,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, userId));
-      }
+    // Advance onboarding when any Google service is connected
+    if (dbUser && dbUser.onboardingStep < ONBOARDING_STEPS.GOOGLE_CONNECTED) {
+      await db
+        .update(users)
+        .set({
+          onboardingStep: ONBOARDING_STEPS.GOOGLE_CONNECTED,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
     }
 
     return c.redirect(`${webUrl}/integrations?success=${encodeURIComponent(config.displayName + ' connected successfully')}`);

@@ -108,9 +108,7 @@ Onboarding steps use floats so new steps can be inserted between existing ones:
 export const ONBOARDING_STEPS = {
   NOT_STARTED: 0,
   ACCOUNT_TYPE_SELECTED: 0.5,
-  SHEETS_CONNECTED: 1,
-  EMAIL_CONNECTED: 1.5,
-  CALENDAR_CONNECTED: 2,
+  GOOGLE_CONNECTED: 1,
   API_KEY_GENERATED: 3,
   EXTENSION_INSTALLED: 3.5,
   DEPLOYMENT_CONFIGURED: 4,
@@ -118,7 +116,7 @@ export const ONBOARDING_STEPS = {
 } as const;
 ```
 
-The flow is: Account Type → Google Sheets → Email → Calendar → API Key → Extension → Deployment → Complete.
+The flow is: Account Type → Connect Google → API Key → Extension → Deployment → Complete.
 
 Don't renumber existing steps - existing users have these values stored.
 

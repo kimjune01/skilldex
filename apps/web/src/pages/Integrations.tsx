@@ -8,6 +8,7 @@ import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared
 import { getProviders, getProvider, type IntegrationCategory, isProviderAllowedForIndividual, type PayIntentionTrigger } from '@skillomatic/shared';
 import { PayIntentionDialog } from '@/components/PayIntentionDialog';
 import { GoogleSheetsInfoDialog } from '@/components/GoogleSheetsInfoDialog';
+import { OnboardingBadge } from '@/components/ui/onboarding-badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -195,6 +196,9 @@ export default function Integrations() {
 
   // Google Sheets info dialog state
   const [sheetsInfoOpen, setSheetsInfoOpen] = useState(false);
+
+  // Google reconnect dialog state (when user tries to enable a tool we don't have access to)
+  const [reconnectDialog, setReconnectDialog] = useState<{ open: boolean; toolName: string } | null>(null);
 
   // Nango Connect UI ref
   const nangoConnectRef = useRef<ReturnType<Nango['openConnectUI']> | null>(null);
@@ -413,6 +417,17 @@ export default function Integrations() {
     setDisconnectTarget(null);
   };
 
+  // Quick disconnect without confirmation dialog (for toggles)
+  const handleQuickDisconnect = async (integrationId: string, name: string) => {
+    try {
+      await integrations.disconnect(integrationId);
+      await loadIntegrations();
+      toast(`${name} disabled`, 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to disconnect', 'error');
+    }
+  };
+
   const getIntegrationStatus = (provider: IntegrationProvider) => {
     // Prioritize connected integrations over disconnected ones
     const matches = integrationList.filter((i) => i.provider === provider);
@@ -492,7 +507,8 @@ export default function Integrations() {
         if (allConnected) return null;
 
         return (
-          <div className="bg-amber-50 border-amber-200 rounded-lg p-5 border">
+          <div id="connect-google" className="bg-amber-50 border-amber-200 rounded-lg p-5 border relative">
+            <OnboardingBadge elementId="connect-google" className="absolute -top-2 -right-2" />
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
@@ -715,73 +731,91 @@ export default function Integrations() {
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-4">
-              {GOOGLE_WORKSPACE_TOOLS.map((tool) => {
-                const integration = integrationList.find(i => i.provider === tool.id as typeof i.provider);
-                const isConnected = integration?.status === 'connected';
-                const Icon = providerIcons[tool.id] || Plug;
-
-                return (
-                  <div key={tool.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : 'bg-muted'}`}>
-                        <Icon className={`h-4 w-4 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`} />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{tool.name}</p>
-                        <p className="text-xs text-muted-foreground">{tool.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {/* Access level dropdown - only show when connected */}
-                      {isConnected && integration && (
-                        <Select
-                          value={integration.accessLevel || 'read-write'}
-                          onValueChange={(value) => handleUpdateAccessLevel(integration.id, value as IntegrationAccessLevel)}
-                          disabled={updatingAccessLevel === integration.id}
-                        >
-                          <SelectTrigger className="h-7 w-[110px] text-xs">
-                            {(integration.accessLevel || 'read-write') === 'read-write' ? (
-                              <span className="flex items-center gap-1">
-                                <ShieldCheck className="h-3 w-3" /> Full
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <Shield className="h-3 w-3" /> Read only
-                              </span>
-                            )}
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="read-write">
-                              <span className="flex items-center gap-1">
-                                <ShieldCheck className="h-3 w-3" /> Full
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="read-only">
-                              <span className="flex items-center gap-1">
-                                <Shield className="h-3 w-3" /> Read only
-                              </span>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                      {/* Toggle switch */}
-                      <Switch
-                        checked={isConnected}
-                        disabled={isConnecting}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            // Connect this specific Google tool
-                            initiateOAuth(tool.id, undefined, 'read-write');
-                          } else if (integration) {
-                            // Disconnect
-                            setDisconnectTarget({ id: integration.id, name: tool.name });
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
+              {(() => {
+                // Check if Google is connected at all (any essentials connected)
+                const hasAnyGoogle = integrationList.some(i =>
+                  ['email', 'calendar', 'google-sheets'].includes(i.provider) && i.status === 'connected'
                 );
-              })}
+
+                return GOOGLE_WORKSPACE_TOOLS.map((tool) => {
+                  const integration = integrationList.find(i => i.provider === tool.id as typeof i.provider);
+                  const isConnected = integration?.status === 'connected';
+                  const Icon = providerIcons[tool.id] || Plug;
+
+                  // Tool is unavailable if Google is connected but this scope wasn't granted
+                  const isUnavailable = hasAnyGoogle && !isConnected;
+
+                  return (
+                    <div key={tool.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : 'bg-muted'}`}>
+                          <Icon className={`h-4 w-4 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`} />
+                        </div>
+                        <div>
+                          <p className={`font-medium text-sm ${isUnavailable ? 'text-muted-foreground' : ''}`}>
+                            {tool.name}
+                            {isUnavailable && (
+                              <span className="ml-2 text-xs text-amber-600">(not granted)</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{tool.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {/* Access level dropdown - only show when connected */}
+                        {isConnected && integration && (
+                          <Select
+                            value={integration.accessLevel || 'read-write'}
+                            onValueChange={(value) => handleUpdateAccessLevel(integration.id, value as IntegrationAccessLevel)}
+                            disabled={updatingAccessLevel === integration.id}
+                          >
+                            <SelectTrigger className="h-8 w-[130px] text-xs">
+                              {(integration.accessLevel || 'read-write') === 'read-write' ? (
+                                <span className="flex items-center gap-1.5">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> Full
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1.5">
+                                  <Shield className="h-3.5 w-3.5" /> Read only
+                                </span>
+                              )}
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="read-write">
+                                <span className="flex items-center gap-1.5">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> Full
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="read-only">
+                                <span className="flex items-center gap-1.5">
+                                  <Shield className="h-3.5 w-3.5" /> Read only
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {/* Toggle switch */}
+                        <Switch
+                          checked={isConnected}
+                          disabled={isConnecting || (!hasAnyGoogle && !isConnected)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              if (isUnavailable) {
+                                // Show reconnect dialog
+                                setReconnectDialog({ open: true, toolName: tool.name });
+                              }
+                              // If Google not connected at all, do nothing (disabled state)
+                            } else if (integration) {
+                              // Quick disconnect with toast (no confirmation dialog)
+                              handleQuickDisconnect(integration.id, tool.name);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -1129,6 +1163,37 @@ export default function Integrations() {
         open={sheetsInfoOpen}
         onClose={() => setSheetsInfoOpen(false)}
       />
+
+      {/* Google Reconnect Dialog - When user tries to enable a tool they didn't grant access to */}
+      <AlertDialog open={reconnectDialog?.open} onOpenChange={() => setReconnectDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permission Required</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You didn't grant access to <strong>{reconnectDialog?.toolName}</strong> when connecting Google.
+              </p>
+              <p>
+                To enable this tool, you'll need to reconnect Google and grant the additional permission.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setReconnectDialog(null);
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+                const token = localStorage.getItem('token');
+                window.location.href = `${apiUrl}/integrations/google/connect?token=${encodeURIComponent(token || '')}`;
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reconnect Google
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

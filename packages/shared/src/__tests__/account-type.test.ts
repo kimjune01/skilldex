@@ -115,10 +115,8 @@ describe('Individual Account Provider Restrictions', () => {
       expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('google-tasks');
     });
 
-    it('should include Notion, Trello, GitHub (full-featured free tiers)', () => {
+    it('should include Notion (full-featured free tier)', () => {
       expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('notion');
-      expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('trello');
-      expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('github');
     });
 
     it('should NOT include ATS providers', () => {
@@ -155,10 +153,8 @@ describe('Individual Account Provider Restrictions', () => {
       expect(isProviderAllowedForIndividual('google-tasks')).toBe(true);
     });
 
-    it('should return true for Notion, Trello, GitHub', () => {
+    it('should return true for Notion', () => {
       expect(isProviderAllowedForIndividual('notion')).toBe(true);
-      expect(isProviderAllowedForIndividual('trello')).toBe(true);
-      expect(isProviderAllowedForIndividual('github')).toBe(true);
     });
 
     it('should return false for ATS providers', () => {

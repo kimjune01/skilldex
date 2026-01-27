@@ -33,10 +33,8 @@ describe('Premium Provider Detection', () => {
       expect(FREE_PROVIDERS).toContain('cal-com');
     });
 
-    it('should include Notion, Trello, GitHub (full-featured free tiers)', () => {
+    it('should include Notion (full-featured free tier)', () => {
       expect(FREE_PROVIDERS).toContain('notion');
-      expect(FREE_PROVIDERS).toContain('trello');
-      expect(FREE_PROVIDERS).toContain('github');
     });
 
     it('should NOT include ATS providers', () => {

@@ -35,8 +35,8 @@ export default function ApiKeys() {
     if (hasAdvancedOnboarding.current || !user) return;
 
     const step = user.onboardingStep;
-    // If user is at CALENDAR_CONNECTED, advance to API_KEY_GENERATED
-    if (step >= ONBOARDING_STEPS.CALENDAR_CONNECTED && step < ONBOARDING_STEPS.API_KEY_GENERATED) {
+    // If user is at GOOGLE_CONNECTED, advance to API_KEY_GENERATED
+    if (step >= ONBOARDING_STEPS.GOOGLE_CONNECTED && step < ONBOARDING_STEPS.API_KEY_GENERATED) {
       hasAdvancedOnboarding.current = true;
       onboarding.completeStep('API_KEY_GENERATED').then(() => {
         refreshUser();

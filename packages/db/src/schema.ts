@@ -47,12 +47,8 @@ export const ONBOARDING_STEPS = {
   NOT_STARTED: 0,
   /** User has selected individual or organization account type */
   ACCOUNT_TYPE_SELECTED: 0.5,
-  /** User has connected Google Sheets */
-  SHEETS_CONNECTED: 1,
-  /** User has connected Email */
-  EMAIL_CONNECTED: 1.5,
-  /** User has connected Calendar */
-  CALENDAR_CONNECTED: 2,
+  /** User has connected Google (Gmail, Calendar, Sheets via combined OAuth) */
+  GOOGLE_CONNECTED: 1,
   /** User has generated their API key for desktop chat */
   API_KEY_GENERATED: 3,
   /** User has installed the browser extension */

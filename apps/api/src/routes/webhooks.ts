@@ -116,29 +116,17 @@ webhooksRoutes.post('/nango', async (c) => {
             .limit(1);
 
           if (user) {
-            let newStep: number | null = null;
-            let stepName = '';
-
-            if (provider === 'google-sheets' && user.onboardingStep < ONBOARDING_STEPS.SHEETS_CONNECTED) {
-              newStep = ONBOARDING_STEPS.SHEETS_CONNECTED;
-              stepName = 'SHEETS_CONNECTED';
-            } else if (provider === 'email' && user.onboardingStep < ONBOARDING_STEPS.EMAIL_CONNECTED) {
-              newStep = ONBOARDING_STEPS.EMAIL_CONNECTED;
-              stepName = 'EMAIL_CONNECTED';
-            } else if (provider === 'calendar' && user.onboardingStep < ONBOARDING_STEPS.CALENDAR_CONNECTED) {
-              newStep = ONBOARDING_STEPS.CALENDAR_CONNECTED;
-              stepName = 'CALENDAR_CONNECTED';
-            }
-
-            if (newStep !== null) {
+            // Advance onboarding when any Google service is connected
+            const isGoogleProvider = ['google-sheets', 'email', 'calendar'].includes(provider);
+            if (isGoogleProvider && user.onboardingStep < ONBOARDING_STEPS.GOOGLE_CONNECTED) {
               await db
                 .update(users)
                 .set({
-                  onboardingStep: newStep,
+                  onboardingStep: ONBOARDING_STEPS.GOOGLE_CONNECTED,
                   updatedAt: new Date(),
                 })
                 .where(eq(users.id, userId));
-              console.log(`[Nango Webhook] Advanced onboarding for user ${userId} to ${stepName}`);
+              console.log(`[Nango Webhook] Advanced onboarding for user ${userId} to GOOGLE_CONNECTED`);
             }
           }
         } else if (!authPayload.success) {

@@ -299,4 +299,118 @@ describe('Google OAuth', () => {
       expect(params.get('state')).toBe(state);
     });
   });
+
+  describe('granted scopes parsing', () => {
+    // Helper function matching the one in google-oauth.ts
+    const parseGrantedScopes = (scopeString: string | undefined) => {
+      const grantedScopes = new Set((scopeString || '').split(' ').filter(Boolean));
+
+      const hasScope = (pattern: string) => {
+        for (const scope of grantedScopes) {
+          if (scope.includes(pattern)) return true;
+        }
+        return false;
+      };
+
+      return {
+        hasGmail: hasScope('gmail'),
+        hasCalendar: hasScope('calendar'),
+        hasSheets: hasScope('spreadsheets'),
+        hasDrive: hasScope('drive'),
+        hasContacts: hasScope('contacts'),
+        hasTasks: hasScope('tasks'),
+      };
+    };
+
+    it('should detect all services when all scopes granted', () => {
+      const scopeString = [
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/gmail.send',
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/contacts.readonly',
+        'https://www.googleapis.com/auth/tasks',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ].join(' ');
+
+      const result = parseGrantedScopes(scopeString);
+
+      expect(result.hasGmail).toBe(true);
+      expect(result.hasCalendar).toBe(true);
+      expect(result.hasSheets).toBe(true);
+      expect(result.hasDrive).toBe(true);
+      expect(result.hasContacts).toBe(true);
+      expect(result.hasTasks).toBe(true);
+    });
+
+    it('should detect partial scopes (only Gmail and Calendar)', () => {
+      const scopeString = [
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ].join(' ');
+
+      const result = parseGrantedScopes(scopeString);
+
+      expect(result.hasGmail).toBe(true);
+      expect(result.hasCalendar).toBe(true);
+      expect(result.hasSheets).toBe(false);
+      expect(result.hasDrive).toBe(false);
+      expect(result.hasContacts).toBe(false);
+      expect(result.hasTasks).toBe(false);
+    });
+
+    it('should detect only Drive when only drive scopes granted', () => {
+      const scopeString = [
+        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ].join(' ');
+
+      const result = parseGrantedScopes(scopeString);
+
+      expect(result.hasGmail).toBe(false);
+      expect(result.hasCalendar).toBe(false);
+      expect(result.hasSheets).toBe(false);
+      expect(result.hasDrive).toBe(true);
+      expect(result.hasContacts).toBe(false);
+      expect(result.hasTasks).toBe(false);
+    });
+
+    it('should handle empty scope string', () => {
+      const result = parseGrantedScopes('');
+
+      expect(result.hasGmail).toBe(false);
+      expect(result.hasCalendar).toBe(false);
+      expect(result.hasSheets).toBe(false);
+      expect(result.hasDrive).toBe(false);
+      expect(result.hasContacts).toBe(false);
+      expect(result.hasTasks).toBe(false);
+    });
+
+    it('should handle undefined scope', () => {
+      const result = parseGrantedScopes(undefined);
+
+      expect(result.hasGmail).toBe(false);
+      expect(result.hasCalendar).toBe(false);
+      expect(result.hasSheets).toBe(false);
+      expect(result.hasDrive).toBe(false);
+      expect(result.hasContacts).toBe(false);
+      expect(result.hasTasks).toBe(false);
+    });
+
+    it('should detect drive.file scope for Sheets (includes drive)', () => {
+      // drive.file is used by Sheets for file creation
+      const scopeString = [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ].join(' ');
+
+      const result = parseGrantedScopes(scopeString);
+
+      expect(result.hasSheets).toBe(true);
+      expect(result.hasDrive).toBe(true); // drive.file contains 'drive'
+    });
+  });
 });

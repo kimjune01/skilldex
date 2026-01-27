@@ -12,12 +12,8 @@ export const ONBOARDING_STEPS = {
   NOT_STARTED: 0,
   /** User has selected individual or organization account type */
   ACCOUNT_TYPE_SELECTED: 0.5,
-  /** User has connected Google Sheets */
-  SHEETS_CONNECTED: 1,
-  /** User has connected Email */
-  EMAIL_CONNECTED: 1.5,
-  /** User has connected Calendar */
-  CALENDAR_CONNECTED: 2,
+  /** User has connected Google (Gmail, Calendar, Sheets via combined OAuth) */
+  GOOGLE_CONNECTED: 1,
   /** User has generated their API key for desktop chat */
   API_KEY_GENERATED: 3,
   /** User has installed the browser extension */
@@ -53,9 +49,7 @@ export function getOnboardingStepName(step: number): string {
   if (step >= ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) return 'Configure Deployment';
   if (step >= ONBOARDING_STEPS.EXTENSION_INSTALLED) return 'Install Extension';
   if (step >= ONBOARDING_STEPS.API_KEY_GENERATED) return 'Generate API Key';
-  if (step >= ONBOARDING_STEPS.CALENDAR_CONNECTED) return 'Connect Calendar';
-  if (step >= ONBOARDING_STEPS.EMAIL_CONNECTED) return 'Connect Email';
-  if (step >= ONBOARDING_STEPS.SHEETS_CONNECTED) return 'Connect Google Sheets';
+  if (step >= ONBOARDING_STEPS.GOOGLE_CONNECTED) return 'Connect Google';
   if (step >= ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED) return 'Select Account Type';
   return 'Get Started';
 }
@@ -63,9 +57,9 @@ export function getOnboardingStepName(step: number): string {
 /** Get the route path for an onboarding step */
 export function getOnboardingStepRoute(step: number): string | null {
   if (step >= ONBOARDING_STEPS.COMPLETE) return null;
-  // After desktop chat setup, badge Home to show onboarding progress
-  if (step >= ONBOARDING_STEPS.CALENDAR_CONNECTED) return '/home';
-  // All three connection steps go to integrations page
+  // After Google connection, badge Home to show onboarding progress
+  if (step >= ONBOARDING_STEPS.GOOGLE_CONNECTED) return '/home';
+  // Google connection step goes to integrations page
   if (step >= ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED) return '/integrations';
   return '/onboarding/account-type';
 }
@@ -73,19 +67,15 @@ export function getOnboardingStepRoute(step: number): string | null {
 /** Get the element ID for an onboarding step (for in-page badge highlighting) */
 export function getOnboardingStepElementId(step: number): string | null {
   if (step >= ONBOARDING_STEPS.COMPLETE) return null;
-  // Highlight specific integration on integrations page
-  if (step < ONBOARDING_STEPS.SHEETS_CONNECTED) return 'connect-google-sheets';
-  if (step < ONBOARDING_STEPS.EMAIL_CONNECTED) return 'connect-email';
-  if (step < ONBOARDING_STEPS.CALENDAR_CONNECTED) return 'connect-calendar';
+  // Highlight Google connection on integrations page
+  if (step < ONBOARDING_STEPS.GOOGLE_CONNECTED) return 'connect-google';
   return null;
 }
 
 /** Get the step name key for advancing to the next step */
 export function getNextOnboardingStepKey(currentStep: number): keyof typeof ONBOARDING_STEPS | null {
   if (currentStep < ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED) return 'ACCOUNT_TYPE_SELECTED';
-  if (currentStep < ONBOARDING_STEPS.SHEETS_CONNECTED) return 'SHEETS_CONNECTED';
-  if (currentStep < ONBOARDING_STEPS.EMAIL_CONNECTED) return 'EMAIL_CONNECTED';
-  if (currentStep < ONBOARDING_STEPS.CALENDAR_CONNECTED) return 'CALENDAR_CONNECTED';
+  if (currentStep < ONBOARDING_STEPS.GOOGLE_CONNECTED) return 'GOOGLE_CONNECTED';
   if (currentStep < ONBOARDING_STEPS.API_KEY_GENERATED) return 'API_KEY_GENERATED';
   if (currentStep < ONBOARDING_STEPS.EXTENSION_INSTALLED) return 'EXTENSION_INSTALLED';
   if (currentStep < ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) return 'DEPLOYMENT_CONFIGURED';

@@ -463,22 +463,15 @@ integrationsRoutes.get('/callback', async (c) => {
       .limit(1);
 
     if (user) {
-      let newStep: number | null = null;
+      // Advance onboarding when any Google service is connected
       const provider = int.provider;
+      const isGoogleProvider = ['google-sheets', 'email', 'calendar'].includes(provider);
 
-      if (provider === 'google-sheets' && user.onboardingStep < ONBOARDING_STEPS.SHEETS_CONNECTED) {
-        newStep = ONBOARDING_STEPS.SHEETS_CONNECTED;
-      } else if (provider === 'email' && user.onboardingStep < ONBOARDING_STEPS.EMAIL_CONNECTED) {
-        newStep = ONBOARDING_STEPS.EMAIL_CONNECTED;
-      } else if (provider === 'calendar' && user.onboardingStep < ONBOARDING_STEPS.CALENDAR_CONNECTED) {
-        newStep = ONBOARDING_STEPS.CALENDAR_CONNECTED;
-      }
-
-      if (newStep !== null) {
+      if (isGoogleProvider && user.onboardingStep < ONBOARDING_STEPS.GOOGLE_CONNECTED) {
         await db
           .update(users)
           .set({
-            onboardingStep: newStep,
+            onboardingStep: ONBOARDING_STEPS.GOOGLE_CONNECTED,
             updatedAt: new Date(),
           })
           .where(eq(users.id, userId));

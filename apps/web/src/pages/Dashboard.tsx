@@ -98,11 +98,11 @@ export default function Dashboard() {
 
     const currentStep = onboardingStatus?.currentStep ?? 0;
 
-    // Connect all three essential integrations (Sheets, Email, Calendar)
+    // Connect Google (Gmail, Calendar, Sheets via combined OAuth)
     steps.push({
       id: 'integration',
-      label: 'Connect integrations',
-      done: currentStep >= ONBOARDING_STEPS.CALENDAR_CONNECTED,
+      label: 'Connect Google',
+      done: currentStep >= ONBOARDING_STEPS.GOOGLE_CONNECTED,
       icon: Plug,
       route: '/integrations',
       actionLabel: 'Connect',
