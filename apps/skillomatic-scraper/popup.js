@@ -426,6 +426,16 @@ async function autoConfigureFromPage() {
     apiKeyInput.value = config.apiKey;
     showMessage('Auto-connected from Skillomatic page!', 'success');
     await loadStatus();
+
+    // Redirect the page if specified (e.g., from /extension to /home)
+    if (config.redirectUrl) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        const currentUrl = new URL(tab.url);
+        const redirectUrl = new URL(config.redirectUrl, currentUrl.origin);
+        await chrome.tabs.update(tab.id, { url: redirectUrl.href });
+      }
+    }
   } catch (err) {
     // Silently fail
     console.error('Auto-configure failed:', err);
