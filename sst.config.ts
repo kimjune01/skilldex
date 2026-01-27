@@ -126,6 +126,8 @@ export default $config({
         NODE_ENV: "production",
         PORT: "3001",
         GIT_HASH: process.env.GIT_HASH || "unknown",
+        // API URL for proxying tool calls
+        SKILLOMATIC_API_URL: useCustomDomain ? `https://${apiDomain}` : api.url,
       },
       loadBalancer: {
         domain: useCustomDomain ? mcpDomain : undefined,
