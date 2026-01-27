@@ -63,10 +63,8 @@ export function getOnboardingStepName(step: number): string {
 /** Get the route path for an onboarding step */
 export function getOnboardingStepRoute(step: number): string | null {
   if (step >= ONBOARDING_STEPS.COMPLETE) return null;
-  if (step >= ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) return '/skills';
-  if (step >= ONBOARDING_STEPS.EXTENSION_INSTALLED) return '/skills';
-  if (step >= ONBOARDING_STEPS.API_KEY_GENERATED) return '/extension';
-  if (step >= ONBOARDING_STEPS.CALENDAR_CONNECTED) return '/desktop-chat';
+  // After desktop chat setup, badge Home to show onboarding progress
+  if (step >= ONBOARDING_STEPS.CALENDAR_CONNECTED) return '/home';
   // All three connection steps go to integrations page
   if (step >= ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED) return '/integrations';
   return '/onboarding/account-type';

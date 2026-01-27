@@ -22,14 +22,15 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 
 // Main navigation - visible to all authenticated users
+// Order: Home first, then chat options (how to connect), then configuration (what it can do)
 const navigation = [
   { name: 'Home', href: '/home', icon: Home },
-  { name: 'Connections', href: '/integrations', icon: Plug },
-  { name: 'Skills', href: '/skills', icon: Zap },
   { name: 'Desktop Chat', href: '/desktop-chat', icon: Key },
   { name: 'Mobile Chat', href: '/mobile-chat', icon: Smartphone },
-  { name: 'Extension', href: '/extension', icon: Chrome },
   { name: 'Web Chat', href: '/chat', icon: MessageSquare },
+  { name: 'Connections', href: '/integrations', icon: Plug },
+  { name: 'Skills', href: '/skills', icon: Zap },
+  { name: 'Extension', href: '/extension', icon: Chrome },
 ];
 
 // Admin navigation - visible only to users with isAdmin=true
@@ -223,8 +224,9 @@ export default function Layout() {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
             // Show badge on the tab that corresponds to the next onboarding step
+            // But don't show if user is already on that page
             const nextStepRoute = !isOnboarded && user ? getOnboardingStepRoute(user.onboardingStep) : null;
-            const showSetupBadge = nextStepRoute === item.href;
+            const showSetupBadge = nextStepRoute === item.href && !isActive;
             return (
               <Link
                 key={item.href}

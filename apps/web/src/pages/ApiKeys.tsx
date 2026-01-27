@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
-import { apiKeys } from '../lib/api';
+import { apiKeys, onboarding } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
+import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import type { ApiKeyPublic } from '@skillomatic/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +20,7 @@ import { Copy, AlertCircle, CheckCircle2, RefreshCw, Zap, Shield, Sparkles, Exte
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ApiKeys() {
+  const { user, refreshUser } = useAuth();
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -25,6 +28,21 @@ export default function ApiKeys() {
   const [copied, setCopied] = useState<string | null>(null);
   const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
   const hasAutoCreated = useRef(false);
+  const hasAdvancedOnboarding = useRef(false);
+
+  // Auto-advance onboarding when user visits Desktop Chat page
+  useEffect(() => {
+    if (hasAdvancedOnboarding.current || !user) return;
+
+    const step = user.onboardingStep;
+    // If user is at CALENDAR_CONNECTED, advance to API_KEY_GENERATED
+    if (step >= ONBOARDING_STEPS.CALENDAR_CONNECTED && step < ONBOARDING_STEPS.API_KEY_GENERATED) {
+      hasAdvancedOnboarding.current = true;
+      onboarding.completeStep('API_KEY_GENERATED').then(() => {
+        refreshUser();
+      }).catch(console.error);
+    }
+  }, [user, refreshUser]);
 
   const loadKeys = async () => {
     try {

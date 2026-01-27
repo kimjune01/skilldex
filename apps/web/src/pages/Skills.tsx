@@ -1,6 +1,7 @@
-import { useEffect, useState, useMemo } from 'react';
-import { skills } from '../lib/api';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { skills, onboarding } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
+import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import type { SkillPublic, SkillCategory, SkillVisibility } from '@skillomatic/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,9 +40,25 @@ import { useNavigate } from 'react-router-dom';
 type ViewFilter = 'all' | 'my' | 'pending';
 
 export default function Skills() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const isAdmin = user?.isAdmin || false;
   const navigate = useNavigate();
+  const hasAdvancedOnboarding = useRef(false);
+
+  // Auto-advance onboarding when user visits Skills page
+  useEffect(() => {
+    if (hasAdvancedOnboarding.current || !user) return;
+
+    const step = user.onboardingStep;
+    // If user hasn't completed the "Browse playbooks" step yet, advance to DEPLOYMENT_CONFIGURED
+    // (they still need to manually complete onboarding from the Home page)
+    if (step < ONBOARDING_STEPS.DEPLOYMENT_CONFIGURED) {
+      hasAdvancedOnboarding.current = true;
+      onboarding.completeStep('DEPLOYMENT_CONFIGURED').then(() => {
+        refreshUser();
+      }).catch(console.error);
+    }
+  }, [user, refreshUser]);
 
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [skillList, setSkillList] = useState<SkillPublic[]>([]);

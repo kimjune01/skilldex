@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { skills, integrations, apiKeys, organizations, onboarding, analytics, type UsageStats } from '../lib/api';
@@ -23,7 +23,6 @@ export default function Dashboard() {
   const [deploymentSettings, setDeploymentSettings] = useState<DeploymentSettings | null>(null);
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
-  const prevOnboardingCompleteRef = useRef<boolean | null>(null);
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
 
   useEffect(() => {
@@ -140,41 +139,38 @@ export default function Dashboard() {
       });
     }
 
-    // Final step: Complete onboarding (step 4)
-    // Only show if all other steps are done but onboarding not yet marked complete
-    const allPreviousStepsDone = steps.every(s => s.done);
     const isComplete = currentStep >= ONBOARDING_STEPS.COMPLETE;
 
-    if (allPreviousStepsDone && !isComplete) {
-      steps.push({
-        id: 'complete',
-        label: 'Complete setup',
-        done: false,
-        icon: PartyPopper,
-        route: '', // No route - handled by button
-        actionLabel: 'Finish',
-      });
-    }
+    // Final step: Complete onboarding - always visible until complete
+    steps.push({
+      id: 'complete',
+      label: 'Complete onboarding',
+      done: isComplete,
+      icon: PartyPopper,
+      route: '', // No route - handled by button
+      actionLabel: 'Finish',
+    });
 
     const completed = steps.filter(s => s.done).length;
+    const allPreviousStepsDone = steps.slice(0, -1).every(s => s.done); // All except the final step
     return { steps, completed, total: steps.length, isFullyOnboarded: isComplete, allPreviousStepsDone };
   }, [apiKeyList, connectedIntegrations, deploymentSettings, onboardingStatus]);
 
-  // Celebrate only when onboarding is fully complete
-  useEffect(() => {
-    if (prevOnboardingCompleteRef.current === false && setupSteps.isFullyOnboarded) {
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 100);
-    }
-    prevOnboardingCompleteRef.current = setupSteps.isFullyOnboarded;
-  }, [setupSteps.isFullyOnboarded]);
-
-  // Handler for completing onboarding
+  // Handler for completing onboarding - shows confetti only on manual completion
   const handleCompleteOnboarding = async () => {
     setIsCompletingOnboarding(true);
     try {
       const status = await onboarding.completeStep('COMPLETE');
       setOnboardingStatus(status);
+      // Refresh user to update isOnboarded state and remove nav badge
+      await refreshUser();
+      // Show confetti only when user manually clicks Finish
+      // Check localStorage to ensure confetti shows only once ever
+      if (!localStorage.getItem('onboarding-confetti-shown')) {
+        localStorage.setItem('onboarding-confetti-shown', 'true');
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 100);
+      }
     } catch (err) {
       console.error('Failed to complete onboarding:', err);
     } finally {
@@ -311,9 +307,9 @@ export default function Dashboard() {
                     ) : step.id === 'complete' ? (
                       <Button
                         size="sm"
-                        className="robot-button border-0 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                        className="robot-button border-0 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={handleCompleteOnboarding}
-                        disabled={isCompletingOnboarding}
+                        disabled={isCompletingOnboarding || !setupSteps.allPreviousStepsDone}
                       >
                         {isCompletingOnboarding ? 'Completing...' : step.actionLabel}
                         <PartyPopper className="h-4 w-4 ml-2" />
