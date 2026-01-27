@@ -6,27 +6,31 @@
 
 ## Overview
 
-Skillomatic is a **Claude Code skills platform for recruiters**. Instead of traditional dashboards, recruiters interact with recruiting workflows (ATS operations, LinkedIn lookup, email drafting, interview scheduling) via natural language through Claude Code skills.
+Skillomatic connects AI assistants (Claude, ChatGPT) to business tools via MCP. Users can manage data in Google Sheets, send emails, schedule meetings, and work with business applications through natural language.
 
-**Core Concept**: Recruiters download markdown skill files to `~/.claude/commands/` that authenticate back to the Skillomatic API for ATS data, integration tokens, and usage tracking.
+**Two account types:**
+- **Individual accounts** (free): Email, Calendar, Google Sheets, Calendly, Cal.com
+- **Organization accounts** (paid): All integrations including ATS providers, Airtable
+
+**Core Concept**: Users connect their integrations via OAuth. Skillomatic provides MCP tools that let AI assistants interact with these services on their behalf.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         HOW SKILLOMATIC WORKS                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  1. Recruiter installs skill file to ~/.claude/commands/                 │
+│  1. User connects integrations (Google Sheets, Email, Calendar, etc.)    │
 │                                                                          │
-│  2. Skill contains:                                                      │
-│     - Instructions for Claude (natural language)                         │
-│     - API endpoints to call (Skillomatic API)                            │
-│     - Embedded credentials (rendered at download time)                   │
+│  2. Skillomatic provides:                                                │
+│     - MCP server for Claude Desktop / ChatGPT                            │
+│     - OAuth token management via Nango                                   │
+│     - Dynamic tools generated from connected services                    │
 │                                                                          │
-│  3. When recruiter says "find React developers in SF":                   │
-│     - Claude reads skill instructions                                    │
-│     - Calls Skillomatic API with embedded API key                        │
-│     - API proxies to ATS (Greenhouse, Lever, etc.)                       │
-│     - Results returned to Claude → shown to recruiter                    │
+│  3. When user asks "add John Smith to my contacts sheet":                │
+│     - AI reads available tools from MCP server                           │
+│     - Calls Skillomatic API with user's API key                          │
+│     - API proxies to Google Sheets (or other service)                    │
+│     - Results returned to AI → shown to user                             │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -149,12 +153,16 @@ Users fall into two categories:
 
 | Type | Description | Integrations Allowed |
 |------|-------------|---------------------|
-| **Individual** | Personal email users (gmail, outlook, etc.) | Email, Calendar, Google Sheets |
-| **Organization** | Company domain users | All integrations (ATS, Airtable, etc.) |
+| **Individual** | Personal email users (gmail, outlook, etc.) | Email, Calendar, Google Sheets, Calendly, Cal.com |
+| **Organization** | Company domain users | All integrations (ATS, Airtable, Outlook, etc.) |
 
-Individual accounts are free but limited. Organization accounts have full access.
+Individual accounts are free but limited to productivity integrations. Organization accounts have full access to all integrations including ATS providers.
 
-See `packages/shared/src/providers.ts` for `INDIVIDUAL_ALLOWED_PROVIDERS`.
+**Premium vs Free Integrations:**
+- **Free**: Gmail, Google Calendar, Calendly, Google Sheets, Cal.com
+- **Premium** (requires pay intention): ATS providers, Outlook, Outlook Calendar, Airtable
+
+See `packages/shared/src/providers.ts` for `INDIVIDUAL_ALLOWED_PROVIDERS` and `FREE_PROVIDERS`.
 
 ### Skill Tables
 
@@ -233,13 +241,29 @@ WS   /ws/scrape               # Real-time scrape task updates
 | Workable | Supported | Bearer Token |
 | Zoho Recruit | Supported | OAuth 2.0 |
 
-### Email/Calendar (via Nango + Direct OAuth)
+### Email (via Nango + Direct OAuth)
 | Provider | Status | Notes |
 |----------|--------|-------|
 | Gmail | Supported | Direct OAuth, send/draft/search |
+| Outlook | Supported | Via Nango |
+
+### Calendar (via Nango + Direct OAuth)
+| Provider | Status | Notes |
+|----------|--------|-------|
 | Google Calendar | Supported | Direct OAuth, event management |
 | Calendly | Supported | Via Nango, scheduling links |
-| Outlook/365 | Planned | Via Nango |
+| Outlook Calendar | Supported | Via Nango |
+
+### Scheduling
+| Provider | Status | Notes |
+|----------|--------|-------|
+| Cal.com | Supported | Via Nango, open-source scheduling |
+
+### Database
+| Provider | Status | Notes |
+|----------|--------|-------|
+| Google Sheets | Supported | Direct OAuth, dynamic tools from spreadsheet structure |
+| Airtable | Supported | Via Nango (premium) |
 
 ### Other
 | Integration | Status | Notes |
@@ -251,7 +275,7 @@ WS   /ws/scrape               # Real-time scrape task updates
 
 | Type | Providers | Pay Intention Required |
 |------|-----------|----------------------|
-| **Free** | Gmail, Google Calendar, Calendly, Google Sheets | No |
+| **Free** | Gmail, Google Calendar, Calendly, Google Sheets, Cal.com | No |
 | **Premium** | ATS providers, Outlook, Outlook Calendar, Airtable | Yes |
 
 Premium providers require users to complete a Stripe checkout flow ($0 setup) to confirm willingness to pay before connecting. See `packages/shared/src/providers.ts` for `FREE_PROVIDERS` and `isPremiumProvider()`.

@@ -52,7 +52,7 @@ docs/
 - **Frontend**: React 19 + Vite + Tailwind (`apps/web/`)
 - **API**: Hono on Node.js/Lambda (`apps/api/`)
 - **Database**: SQLite (local) / Turso libSQL (prod), Drizzle ORM (`packages/db/`)
-- **OAuth**: Nango Cloud for ATS/Calendar/Email tokens
+- **OAuth**: Nango Cloud for ATS/Calendar/Email/Scheduling tokens + Google Direct OAuth
 - **LLM**: Anthropic > OpenAI > Groq (priority fallback)
 
 ## Key Files

@@ -61,7 +61,7 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
   'my-provider': {
     id: 'my-provider',
     displayName: 'My Provider',
-    category: 'ats',  // 'ats' | 'email' | 'calendar' | 'database'
+    category: 'ats',  // 'ats' | 'email' | 'calendar' | 'database' | 'scheduling'
     oauthFlow: 'nango',  // 'nango' | 'google-direct' | 'none'
     nangoKey: 'my-provider',  // Nango integration key (if different from id)
     apiBaseUrl: 'https://api.myprovider.com/v2',
@@ -214,7 +214,7 @@ The provider registry (`packages/shared/src/providers.ts`) is the single source 
 interface ProviderConfig {
   id: string;                    // Unique identifier (e.g., 'greenhouse')
   displayName: string;           // UI display name (e.g., 'Greenhouse')
-  category: IntegrationCategory; // 'ats' | 'email' | 'calendar' | 'database'
+  category: IntegrationCategory; // 'ats' | 'email' | 'calendar' | 'database' | 'scheduling'
   oauthFlow: OAuthFlow;          // 'nango' | 'google-direct' | 'none'
   nangoKey?: string;             // Nango config key (defaults to id)
   apiBaseUrl: string;            // API base URL
@@ -484,5 +484,6 @@ Never log raw error messages or response bodies (PII risk).
 | Outlook Calendar | Calendar | Nango | Planned | v1/calendar |
 | Calendly | Calendar | Nango | Yes | v1/calendar |
 | Airtable | Database | Nango | Yes (14 ops) | v1/data |
-| Google Sheets | Database | Direct | Yes (10 ops) | v1/data |
+| Google Sheets | Database | Direct | Yes (dynamic) | v1/data |
+| Cal.com | Scheduling | Nango | Planned | v1/scheduling |
 | Mock ATS | ATS (dev) | None | Yes (14 ops) | v1/ats |

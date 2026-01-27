@@ -116,11 +116,11 @@ Skills are stored in the database. To add a new skill:
 ### Skill Categories
 
 Available categories:
-- `sourcing` - Finding candidates (LinkedIn, job boards)
-- `ats` - ATS operations (CRUD, pipelines)
+- `sourcing` - Finding people (LinkedIn, web research)
+- `ats` - ATS operations (CRUD, pipelines) - org accounts only
 - `communication` - Email, messaging
-- `scheduling` - Calendar, interviews
-- `productivity` - Notes, summaries, misc
+- `scheduling` - Calendar, meetings, scheduling tools
+- `productivity` - Notes, summaries, data management
 - `system` - Platform skills (sync, propose)
 
 ### Reviewing Skill Proposals
@@ -139,7 +139,7 @@ Users can propose new skills via the Chat. To review proposals:
 | Role | Description |
 |------|-------------|
 | Admin | Full access, user management, skill configuration |
-| User | Standard recruiter access to skills and integrations |
+| User | Standard access to skills and integrations |
 
 ### Assigning Skills to Roles
 
