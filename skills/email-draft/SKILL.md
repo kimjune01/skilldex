@@ -1,9 +1,9 @@
 ---
 name: email-draft
-description: Draft and send personalized recruitment emails for candidates. Use when the user wants to write outreach, follow-up, or other recruitment emails.
-intent: I want to draft or send emails for candidates
+description: Draft and send emails via your connected Gmail. Use for client outreach, follow-ups, proposals, or any professional email.
+intent: I want to draft or send an email
 capabilities:
-  - Draft outreach emails
+  - Draft emails
   - Send emails directly
   - Create follow-up emails
   - Search past emails
@@ -14,9 +14,9 @@ allowed-tools:
   - WebFetch
 ---
 
-# Recruitment Email Drafting
+# Email Drafting
 
-You are a recruiting assistant that helps draft and send personalized recruitment emails via the user's connected Gmail account.
+You are an assistant that helps draft and send professional emails via the user's connected Gmail account.
 
 ## Prerequisites
 
@@ -39,9 +39,9 @@ curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   "{{SKILLOMATIC_API_URL}}/api/v1/email/draft" \
   -d '{
-    "to": "candidate@example.com",
-    "subject": "Exciting Opportunity at [Company]",
-    "body": "Hi [Name],\n\nI came across your profile and was impressed by your background in...",
+    "to": "client@example.com",
+    "subject": "Following up on our conversation",
+    "body": "Hi [Name],\n\nI wanted to follow up on...",
     "bodyType": "text"
   }'
 ```
@@ -53,9 +53,9 @@ curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   "{{SKILLOMATIC_API_URL}}/api/v1/email/send" \
   -d '{
-    "to": "candidate@example.com",
-    "subject": "Following up on our conversation",
-    "body": "Hi [Name],\n\nThank you for taking the time to speak with me...",
+    "to": "client@example.com",
+    "subject": "Project update",
+    "body": "Hi [Name],\n\nHere is the latest update...",
     "bodyType": "text"
   }'
 ```
@@ -67,10 +67,10 @@ curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   "{{SKILLOMATIC_API_URL}}/api/v1/email/send" \
   -d '{
-    "to": [{"email": "candidate@example.com", "name": "Jane Doe"}],
-    "cc": [{"email": "hiring-manager@company.com"}],
-    "subject": "Interview Confirmation",
-    "body": "Hi Jane,\n\nThis email confirms your interview...",
+    "to": [{"email": "client@example.com", "name": "Jane Doe"}],
+    "cc": [{"email": "partner@company.com"}],
+    "subject": "Meeting Confirmation",
+    "body": "Hi Jane,\n\nThis email confirms our meeting...",
     "bodyType": "text"
   }'
 ```
@@ -81,7 +81,7 @@ Search user's mailbox:
 curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -H "Content-Type: application/json" \
   "{{SKILLOMATIC_API_URL}}/api/v1/email/search" \
-  -d '{"query": "from:candidate@example.com", "maxResults": 5}'
+  -d '{"query": "from:client@example.com", "maxResults": 5}'
 ```
 
 ### 6. List Drafts
@@ -100,40 +100,46 @@ curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
 
 ## Email Types
 
-### Outreach Email
-Initial contact with a potential candidate:
-- Subject: Keep it personalized and specific
-- Opening: Reference something specific about their background
-- Body: Explain the opportunity and why they're a fit
+### Client Outreach
+Initial contact with a potential client:
+- Subject: Clear and specific to their needs
+- Opening: Reference how you found them or mutual connection
+- Body: Value proposition and what you can help with
 - CTA: Suggest a brief call or meeting
 
 ### Follow-up Email
-After an interview or previous contact:
+After a meeting or previous contact:
 - Subject: Reference the previous interaction
 - Opening: Thank them for their time
-- Body: Provide any promised information or next steps
+- Body: Recap key points, provide promised info
 - CTA: Clear next action
 
-### Interview Scheduling
-Coordinate interview times:
-- Subject: "Interview for [Role] at [Company]"
-- Body: Proposed times, interview format, who they'll meet
-- Include: Calendar link if available
+### Proposal / Quote
+Sending pricing or project details:
+- Subject: "[Project Name] Proposal" or "Quote for [Service]"
+- Body: Summary, scope, pricing, timeline
+- Attachments: Full proposal document if needed
 
-### Rejection Email
-Professional decline:
-- Subject: "Update on your application at [Company]"
-- Opening: Thank them for their interest and time
-- Body: Brief, respectful decline
-- Closing: Encourage future applications if appropriate
+### Invoice Reminder
+Polite payment follow-up:
+- Subject: "Invoice #XXX - Payment Reminder"
+- Opening: Friendly check-in
+- Body: Invoice details, amount, due date
+- CTA: Payment link or instructions
+
+### Project Update
+Keep clients informed:
+- Subject: "[Project] Update - [Date or Milestone]"
+- Body: Progress, completed items, next steps
+- Attachments: Screenshots, documents as needed
 
 ## Best Practices
 
-1. **Personalization**: Always customize emails based on the candidate's background
+1. **Personalization**: Reference specific details about the recipient
 2. **Brevity**: Keep emails concise and scannable
 3. **Clear CTA**: Every email should have one clear next step
 4. **Professional tone**: Warm but professional
-5. **Proofread**: Check names, company, and role before sending
+5. **Proofread**: Check names, company, and details before sending
 
 ## Response Format
 

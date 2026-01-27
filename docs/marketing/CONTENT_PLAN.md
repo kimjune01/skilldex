@@ -4,7 +4,9 @@
 
 **Core insight:** One-person businesses are exploding (29.8M in U.S., rising). They're drowning in admin tasks across fragmented tools. AI makes it possible to run a business solo, but existing tools (Zapier, Lindy) are complex or expensive.
 
-**Positioning:** "Claude that runs your business ops"
+**Positioning:** "Claude that actually runs your business"
+
+**Key differentiator:** We don't just read your data - we update it. Mark invoices paid. Log expenses. Add tasks. Close the loop.
 
 ## Target Audiences
 
@@ -12,9 +14,9 @@
 
 | Segment | Pain | What they use now |
 |---------|------|-------------------|
-| Digital solopreneurs | Tool fragmentation, admin overwhelm | Notion, Sheets, Stripe, Gmail |
-| Solo trades (plumbers, electricians, etc.) | Hate paperwork, no time to learn software | Sheets, Calendar, maybe Wave |
-| Freelancers/consultants | Client management, invoicing follow-up | Airtable, Gmail, Calendly |
+| Digital solopreneurs | Tool fragmentation, admin overwhelm | Sheets, Stripe, Gmail |
+| Solo trades (plumbers, electricians, etc.) | Hate paperwork, no time to learn software | Sheets, Calendar |
+| Freelancers/consultants | Client management, invoicing follow-up | Sheets, Gmail, Calendly |
 
 **Market size:** 29.8M solopreneurs in U.S., 50.9% of workforce will be freelancers by 2027
 
@@ -36,76 +38,116 @@
 
 ## Demo Strategy
 
+### The Big Idea
+
+Every demo should show TWO things:
+1. **Read:** Pull information from their tools
+2. **Write:** Actually update their data (the "wow" moment)
+
+This is what separates us from ChatGPT - we close the loop.
+
 ### Solopreneur Demos
 
-#### S1: "What's Overdue?"
+#### S1: "What's Overdue?" + Mark Paid
 - **Hook:** "I stopped letting invoices slip through the cracks"
-- **Show:** "What invoices are overdue?" → pulls from Stripe + Sheets
-- **Integrations:** Stripe + Google Sheets
+- **Show:** "What invoices are overdue?" → lists them → "Mark Johnson as paid" → updates sheet
+- **Skill:** `overdue-invoices`
+- **Integrations:** Stripe + Google Sheets (read-write)
 - **Platform:** Twitter/X, TikTok
 
-#### S2: "Revive Cold Leads"
+#### S2: "Revive Cold Leads" + Log Outreach
 - **Hook:** "I just found $10k in leads I forgot about"
-- **Show:** "Draft follow-ups for leads who went cold" → scans Airtable + Gmail
-- **Integrations:** Gmail + Airtable
+- **Show:** "Draft follow-ups for cold leads" → drafts emails → "Send to Sarah" → logs in sheet
+- **Skill:** `cold-leads`
+- **Integrations:** Gmail + Google Sheets (read-write)
 - **Platform:** Twitter/X, LinkedIn
 
-#### S3: "Prep My Day"
+#### S3: "Prep My Day" + Check Off Tasks
 - **Hook:** "I know exactly what to focus on before I open my laptop"
-- **Show:** "What's on my plate today?" → calendar + tasks + pending items
-- **Integrations:** Google Calendar + Airtable + Gmail
+- **Show:** "What's on my plate today?" → shows tasks → "Done with proposal" → marks complete
+- **Skill:** `morning-briefing`
+- **Integrations:** Google Calendar + Gmail + Sheets (read-write)
 - **Platform:** Twitter/X, TikTok
 
 #### S4: "Weekly Revenue Check"
 - **Hook:** "My Monday financial review takes 30 seconds"
 - **Show:** "How'd we do last week?" → revenue, expenses, summary
-- **Integrations:** Stripe + Sheets
+- **Skill:** `revenue-summary`
+- **Integrations:** Stripe + Sheets (read)
 - **Platform:** Twitter/X, LinkedIn
 
-#### S5: "Client Status"
+#### S5: "Client Status" + Add Notes
 - **Hook:** "I never forget where things stand with a client"
-- **Show:** "What's the status with [client]?" → emails, invoices, notes
-- **Integrations:** Gmail + Stripe + Airtable
+- **Show:** "What's the status with Acme?" → shows context → "Add note: discussed Phase 2" → saves
+- **Skill:** `client-status`
+- **Integrations:** Gmail + Stripe + Sheets (read-write)
 - **Platform:** Twitter/X
+
+#### S6: "Log This Expense"
+- **Hook:** "I track every business expense without opening a spreadsheet"
+- **Show:** "Log $54 for Adobe subscription" → adds to sheet → shows monthly total
+- **Skill:** `log-expense`
+- **Integrations:** Google Sheets (write)
+- **Platform:** Twitter/X, TikTok
+
+#### S7: "Add Task"
+- **Hook:** "I capture tasks the moment I think of them"
+- **Show:** "Remind me to call insurance tomorrow" → adds to task sheet
+- **Skill:** `add-task`
+- **Integrations:** Google Sheets (write)
+- **Platform:** Twitter/X, TikTok
 
 ### Trades-Specific Demos
 
-#### T1: "Who Owes Me?"
+#### T1: "Who Owes Me?" + Mark Paid
 - **Hook:** "I collect $2k more per month just by not forgetting invoices"
-- **Show:** "Who hasn't paid me?" → scans Sheets/Wave, lists overdue
-- **Integrations:** Google Sheets or Wave
+- **Show:** "Who hasn't paid me?" → lists jobs → "Williams paid" → updates sheet
+- **Skill:** `overdue-invoices`
+- **Integrations:** Google Sheets (read-write)
 - **Platform:** TikTok, YouTube Shorts
 
 #### T2: "What's Tomorrow?"
 - **Hook:** "I show up to every job prepared"
 - **Show:** "What jobs do I have tomorrow?" → calendar + details + addresses
-- **Integrations:** Google Calendar + Sheets
+- **Skill:** `morning-briefing`
+- **Integrations:** Google Calendar + Sheets (read)
 - **Platform:** TikTok, YouTube Shorts
 
-#### T3: "Running Late"
-- **Hook:** "Clients don't get mad when you communicate"
-- **Show:** "Text [client] I'm 20 minutes out" → drafts message
-- **Integrations:** Calendar + contacts
-- **Platform:** TikTok
+#### T3: "Log Today's Job"
+- **Hook:** "I log every job in 10 seconds from my truck"
+- **Show:** "Finished Johnson bathroom, $450" → adds to sheet → shows weekly total
+- **Skill:** `log-job`
+- **Integrations:** Google Sheets (write)
+- **Platform:** TikTok, YouTube Shorts
 
 #### T4: "Monthly Check-in"
 - **Hook:** "I actually know if I'm making money now"
-- **Show:** "How much did I make last month?" → revenue summary
-- **Integrations:** Sheets or Wave + Stripe
+- **Show:** "How much did I make this month?" → revenue summary by week
+- **Skill:** `revenue-summary`
+- **Integrations:** Sheets (read)
 - **Platform:** YouTube, TikTok
+
+#### T5: "Log Expense"
+- **Hook:** "Every receipt goes in the books, no excuses"
+- **Show:** "Spent $85 on parts at Home Depot" → logs expense
+- **Skill:** `log-expense`
+- **Integrations:** Google Sheets (write)
+- **Platform:** TikTok
 
 ### Founder Demos
 
-#### F1: "Morning Briefing"
+#### F1: "Morning Briefing" + Quick Actions
 - **Hook:** "My AI knows what I need to know before I check anything"
-- **Show:** One prompt → calendar + priority emails + key metrics
-- **Integrations:** Gmail + Google Calendar + Sheets/Airtable
+- **Show:** One prompt → calendar + priority emails + tasks → "Mark task 1 done"
+- **Skill:** `morning-briefing`
+- **Integrations:** Gmail + Google Calendar + Sheets (read-write)
 - **Platform:** Twitter/X, LinkedIn
 
 #### F2: "Prep Me for This Meeting"
 - **Hook:** "I walked into every meeting this week fully prepared"
 - **Show:** "Prep me for my 2pm" → email history, past notes, context
-- **Integrations:** Gmail + Calendar + Airtable
+- **Skill:** `meeting-prep`
+- **Integrations:** Gmail + Calendar + Sheets (read)
 - **Platform:** Twitter/X
 
 #### F3: "Investor Update Draft"
@@ -117,6 +159,7 @@
 #### F4: "What Fell Through the Cracks"
 - **Hook:** "Nothing slips through anymore"
 - **Show:** "What emails need responses?" → surfaces unanswered threads
+- **Skill:** `inbox-review`
 - **Integrations:** Gmail
 - **Platform:** Twitter/X
 
@@ -146,8 +189,17 @@
 ### Structure
 1. **Hook (0-3 sec):** Problem statement or surprising result
 2. **Setup (3-10 sec):** Quick context
-3. **Demo (10-45 sec):** Show the workflow
-4. **Result (45-60 sec):** What we accomplished, time saved
+3. **Demo (10-45 sec):** Show the workflow - READ then WRITE
+4. **Result (45-60 sec):** Show the updated data, time saved
+
+### The "Write" Moment
+Every demo should have a moment where the data actually changes:
+- Invoice marked paid
+- Task checked off
+- Expense logged
+- Note added
+
+This is the differentiator. Show the spreadsheet updating in real-time if possible.
 
 ### Audio
 - Voiceover or text overlay (many watch muted)
@@ -159,19 +211,26 @@
 - "AI assistant" (generic, crowded)
 - "Automation platform" (sounds complex)
 - "Workflow builder" (they don't want to build)
+- "Integrates with" (passive, boring)
 
 ### Do Say
-- "Claude for your business"
-- "Your tools, finally talking to each other"
-- "Ask questions, get answers from your actual data"
-- "The glue your tech stack is missing"
+- "Claude that actually updates your data"
+- "Your spreadsheet becomes smart"
+- "Ask questions, get answers, close the loop"
 - "You don't need to learn software. Just ask."
+- "Works with what you already use"
 
 ### Key Differentiators
-1. **No new tools to learn** - Works with what you already use
-2. **Conversational** - Just ask, don't configure
-3. **Multi-tool orchestration** - Everything connected
-4. **Affordable** - Cheaper than VA, simpler than Zapier
+1. **Writes back, not just reads** - Actually updates your spreadsheet
+2. **No new tools to learn** - Uses your existing Sheets
+3. **Conversational** - Just ask, don't configure
+4. **Closes the loop** - Read → Decide → Update → Done
+
+### One-liner Options
+- "Claude that runs your business ops"
+- "Your spreadsheet, but smart"
+- "AI that actually updates your data"
+- "Stop copy-pasting. Start asking."
 
 ## Pricing Strategy
 
@@ -185,16 +244,16 @@
 
 ## Content Calendar
 
-### Week 1-2: Foundation
-- [ ] Record S1 (overdue invoices)
-- [ ] Record S3 (prep my day)
-- [ ] Record T1 (who owes me - trades version)
+### Week 1-2: Foundation (Read + Write demos)
+- [ ] Record S1 (overdue invoices + mark paid)
+- [ ] Record T3 (log job - trades)
+- [ ] Record S3 (prep my day + check off task)
 - [ ] Post daily on TikTok + Twitter
 
 ### Week 3-4: Expand
-- [ ] Record F1 (morning briefing)
-- [ ] Record S2 (cold leads)
-- [ ] Record T2 (what's tomorrow)
+- [ ] Record S6 (log expense)
+- [ ] Record S2 (cold leads + log outreach)
+- [ ] Record T1 (who owes me - trades version)
 - [ ] Test founder content on Twitter
 
 ### Week 5-6: Iterate
@@ -222,30 +281,40 @@
 |------------|-------------|----------|
 | Zapier/Make | Automation platform | Complex setup, not conversational |
 | Lindy AI | AI employee | Expensive, inconsistent, steep learning curve |
-| ChatGPT/Claude alone | General AI | No tool connections, manual copy-paste |
+| ChatGPT/Claude alone | General AI | No tool connections, can't update data |
 | Virtual assistants | Human help | $2-5k/month, async, training required |
 | Vertical tools (Jobber, etc.) | Trade-specific | Complex, expensive, low adoption |
 
 **Our angle:**
 - Simpler than Zapier (just talk to it)
 - Cheaper than Lindy or VA
-- More powerful than raw ChatGPT (actually connected)
+- **Actually updates your data** (unlike raw ChatGPT)
 - No learning curve (unlike vertical software)
 
-## Integration Constraints
+## Integration Strategy
 
-| Tool | API Status | Priority |
+### Core Stack (Required)
+| Tool | Capability | Priority |
 |------|------------|----------|
-| Gmail | Open | High |
-| Google Calendar | Open | High |
-| Google Sheets | Open | High |
-| Stripe | Open | High |
-| Airtable | Open | Medium |
-| Wave | Check API | Medium (trades) |
-| Notion | Limited | Low |
-| Slack | Locked down (May 2025) | Skip |
+| Google Sheets | **Read + Write** | Critical |
+| Gmail | Read + Send | Critical |
+| Google Calendar | Read | Critical |
+| Stripe | Read | High |
 
-**Focus on:** Gmail + Calendar + Sheets + Stripe. Covers 80% of use cases.
+**This is the stack.** Gmail + Calendar + Sheets + Stripe covers 90% of use cases.
+
+Sheets is the database. Everything writes back to Sheets.
+
+### Optional (Nice to have)
+| Tool | Capability | Priority |
+|------|------------|----------|
+| Airtable | Read + Write | Low (Sheets preferred) |
+| Wave | Read | Low (trades who use it) |
+| Notion | Read | Low (limited API) |
+
+### Not Pursuing
+- Slack (API locked down May 2025)
+- QuickBooks (complex OAuth, Sheets is simpler)
 
 ## Segment Comparison
 
@@ -256,15 +325,33 @@
 | Willingness to pay | Medium-high | Medium | Very high |
 | Onboarding tolerance | Medium | Very low | High |
 | Distribution | Content marketing | TikTok/Facebook | Word of mouth |
+| Key demo | Cold leads, client status | Log job, who owes me | Morning briefing |
 | Role | Volume/revenue | Niche test | Credibility |
 
 ## Key Principles
 
-1. **Ship demos fast** - Stop researching, start posting
-2. **Simple onboarding** - Gmail + Calendar + one Sheet, that's it
-3. **Parallel test** - Solopreneurs + Founders simultaneously
-4. **Kill fast** - If it's not working in 2 weeks, move on
-5. **Double down on winners** - When something works, do more of it
+1. **Show the write** - Every demo should update data, not just read it
+2. **Sheets is the database** - No new tools, use what they have
+3. **Ship demos fast** - Stop researching, start posting
+4. **Simple onboarding** - Gmail + Calendar + one Sheet, that's it
+5. **Kill fast** - If it's not working in 2 weeks, move on
+6. **Double down on winners** - When something works, do more of it
+
+## Available Skills (for demos)
+
+| Skill | Read | Write | Best For |
+|-------|------|-------|----------|
+| `overdue-invoices` | Invoices from Stripe/Sheets | Mark paid | S1, T1 |
+| `cold-leads` | Leads from Sheets, Gmail history | Update status, log outreach | S2 |
+| `morning-briefing` | Calendar, email, tasks | Mark tasks done | S3, T2, F1 |
+| `client-status` | Emails, invoices, notes | Add notes, add clients | S5 |
+| `meeting-prep` | Calendar, email history | - | F2 |
+| `inbox-review` | Unanswered emails | - | F4 |
+| `revenue-summary` | Stripe, Sheets | - | S4, T4 |
+| `log-expense` | - | Add expense | S6, T5 |
+| `log-job` | - | Add completed job | T3 |
+| `add-task` | - | Add task | S7 |
+| `email-draft` | Search emails | Send/draft emails | Any |
 
 ## Notes
 
@@ -273,3 +360,4 @@
 - Founders are lighthouse customers, not primary revenue
 - Slack API locked down May 2025 - not viable without Marketplace approval
 - They already pay for Claude/ChatGPT - we make that subscription more valuable
+- **Sheets as database is the key insight** - no new tools, just smarter existing tools

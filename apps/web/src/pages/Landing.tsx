@@ -1,48 +1,47 @@
 /**
  * Landing Page
  *
- * Consulting-first landing page for Skillomatic.
- * "I build AI automations for your business"
- * Includes easter eggs for the curious.
+ * Solopreneur/Trades/Founder focused landing page.
+ * "Your spreadsheet becomes smart"
  */
 import { useState, useRef, useEffect } from 'react';
-import { ArrowRight, Zap, Clock, CheckCircle, Calendar, Mail, Database, Bot, Workflow, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Zap, CheckCircle, Calendar, FileSpreadsheet, Database, Bot, PenLine, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter, DemoRevealGame } from '@/components/marketing';
 
 const workflowExamples = [
   {
-    category: 'Client Work',
+    category: 'Money',
+    icon: FileSpreadsheet,
+    color: 'green',
+    tasks: [
+      '"Who owes me money?" → lists overdue invoices',
+      '"Mark Johnson as paid" → updates your sheet',
+      '"How did I do last week?" → revenue summary',
+      '"Log $85 for parts" → adds to expenses',
+    ],
+  },
+  {
+    category: 'Clients & Leads',
     icon: Database,
     color: 'cyan',
     tasks: [
-      'Track project status across clients',
-      'Send personalized follow-ups',
-      'Generate weekly client reports',
-      'Schedule meetings automatically',
+      '"Follow up with cold leads" → drafts emails',
+      '"What\'s the status with Acme?" → full context',
+      '"Add note: discussed Phase 2" → saves to sheet',
+      '"Send reminder to Smith" → emails + logs it',
     ],
   },
   {
-    category: 'Sales',
-    icon: Mail,
-    color: 'green',
-    tasks: [
-      'Enrich leads from your CRM',
-      'Draft follow-up sequences',
-      'Update deal stages automatically',
-      'Revive cold leads with context',
-    ],
-  },
-  {
-    category: 'Operations',
-    icon: Workflow,
+    category: 'Daily Ops',
+    icon: Calendar,
     color: 'amber',
     tasks: [
-      'Chase overdue invoices',
-      'Generate weekly reports',
-      'Sync data between tools',
-      'Prep for tomorrow\'s meetings',
+      '"What\'s on my plate today?" → full briefing',
+      '"Done with the proposal" → marks complete',
+      '"Remind me to call insurance" → adds task',
+      '"Prep me for my 2pm" → meeting context',
     ],
   },
 ];
@@ -50,19 +49,19 @@ const workflowExamples = [
 // Interactive flip cards data
 const benefitCards = [
   {
-    id: 'work',
-    label: 'ACTUALLY DOES THE WORK',
-    description: 'Not just suggestions. Real actions in your real systems.',
-    icon: Zap,
+    id: 'write',
+    label: 'ACTUALLY UPDATES YOUR DATA',
+    description: 'Not just answers. Marks invoices paid. Logs expenses. Checks off tasks.',
+    icon: PenLine,
     color: 'cyan',
     led: 'led-cyan',
     rotation: -0.75,
   },
   {
     id: 'fast',
-    label: 'DONE IN DAYS',
-    description: 'Not a 6-month IT project. Working automation in 1-2 days.',
-    icon: Clock,
+    label: 'NO NEW TOOLS',
+    description: 'Works with Gmail, Calendar, Sheets, Stripe. Tools you already have.',
+    icon: FileSpreadsheet,
     color: 'green',
     led: 'led-green',
     rotation: 0.5,
@@ -70,7 +69,7 @@ const benefitCards = [
   {
     id: 'ai',
     label: 'WORKS WITH YOUR AI',
-    description: 'Claude Desktop, ChatGPT, or any MCP-compatible app.',
+    description: 'Claude, ChatGPT, or any MCP-compatible app you already use.',
     icon: Bot,
     color: 'amber',
     led: 'led-amber',
@@ -79,7 +78,7 @@ const benefitCards = [
   {
     id: 'control',
     label: 'YOU STAY IN CONTROL',
-    description: 'Review and approve actions before they happen.',
+    description: 'Review and approve actions. Your data, your rules.',
     icon: Shield,
     color: 'purple',
     led: 'led-purple',
@@ -92,10 +91,10 @@ const flipAxes = ['X', '-X', 'Y', '-Y'] as const;
 // Interactive How It Works steps with growing buttons
 const setupSteps = [
   { id: 'start-here', number: '0', title: '', description: '', color: 'gray', size: 72 },
-  { id: 'discovery', number: '1', title: 'Discovery Call', description: "You tell me what's painful. I ask questions.", color: 'cyan', size: 100 },
-  { id: 'build', number: '2', title: 'I Build It', description: 'Automation connected to your real tools.', color: 'green', size: 140 },
-  { id: 'use', number: '3', title: 'You Use It', description: 'Works in Claude Desktop, ChatGPT, any AI app.', color: 'amber', size: 200 },
-  { id: 'go', number: "LET'S GO", title: "Ready to Automate?", description: 'Book a free discovery call', color: 'primary', size: 280, isLink: true },
+  { id: 'connect', number: '1', title: 'Connect Your Tools', description: 'Gmail, Calendar, your spreadsheet. 5 minutes.', color: 'cyan', size: 100 },
+  { id: 'ask', number: '2', title: 'Just Ask', description: '"Who owes me money?" "What\'s on my plate?"', color: 'green', size: 140 },
+  { id: 'done', number: '3', title: 'Watch It Update', description: 'Your spreadsheet changes. Loop closed.', color: 'amber', size: 200 },
+  { id: 'go', number: "LET'S GO", title: "Ready to try it?", description: 'Book a free call or try self-serve', color: 'primary', size: 280, isLink: true },
 ];
 
 function BenefitsSection() {
@@ -277,9 +276,9 @@ function BenefitsSection() {
           <div className="dispense-slot rounded-lg md:rounded-xl p-3 md:p-4 mt-4 md:mt-6 text-center min-h-[44px] md:min-h-[52px]">
             {allDiscovered ? (
               <p className="text-white/50 text-xs sm:text-sm font-mono animate-reveal-ltr">
-                AI that actually{' '}
-                <span className="text-cyan-400">does the work</span>, connected to{' '}
-                <span className="text-primary">your tools</span>.
+                AI that{' '}
+                <span className="text-cyan-400">actually works</span>. Ask questions,{' '}
+                <span className="text-primary">get things done</span>.
               </p>
             ) : (
               <p className="text-white/30 text-[10px] sm:text-xs font-mono">
@@ -294,47 +293,47 @@ function BenefitsSection() {
   );
 }
 
-// Use case carousel data from real scenarios
+// Use case carousel data - solopreneurs, trades, founders
 const useCases = [
   {
     id: 'solopreneur',
     category: 'Solopreneur',
     color: 'cyan',
-    before: "I'd open my calendar, then my email, then my spreadsheet, then Stripe — just to figure out what needed my attention today.",
-    after: "What's on my plate today?",
-    persona: "Freelance Consultant",
-    animal: '🦁',
+    before: "I'd open Stripe, then my invoice spreadsheet, then Gmail to chase down who owes me money. Usually forgot someone.",
+    after: "Who owes me money? ... Mark Johnson as paid.",
+    persona: "Freelance Designer",
+    animal: '🦊',
     glasses: '👓',
   },
   {
-    id: 'sales',
-    category: 'Sales',
+    id: 'trades',
+    category: 'Trades',
     color: 'green',
-    before: "I'd spend 30 minutes before every call pulling data from Salesforce, checking LinkedIn, and reading through old email threads.",
-    after: "Prep me for my 2pm call with Acme Corp.",
-    persona: "Account Executive",
-    animal: '🐮',
+    before: "End of day, I'm tired. Logging jobs in the spreadsheet? Tracking expenses? It never happened consistently.",
+    after: "Finished the Johnson bathroom, $450. Spent $85 on parts.",
+    persona: "Plumber",
+    animal: '🦁',
+    glasses: '🧢',
+  },
+  {
+    id: 'consultant',
+    category: 'Consultant',
+    color: 'amber',
+    before: "Before every client call, I'd dig through email threads, check if they paid their last invoice, look for my notes. 15 minutes gone.",
+    after: "Prep me for my 2pm with Acme. Add note: discussed Phase 2.",
+    persona: "Business Consultant",
+    animal: '🐻',
     glasses: '👓',
   },
   {
     id: 'founder',
     category: 'Founder',
-    color: 'amber',
-    before: "Monthly investor updates meant exporting from three different tools, calculating metrics manually, then spending an hour writing the email.",
-    after: "Draft my investor update with this month's metrics.",
-    persona: "Startup Founder",
+    color: 'purple',
+    before: "Monday morning I'd check Stripe, then my pipeline spreadsheet, then calendar, then email. Just to know what needed attention.",
+    after: "What's on my plate today? ... Done with the proposal.",
+    persona: "Solo Founder",
     animal: '🐰',
     glasses: '🕶️',
-  },
-  {
-    id: 'operations',
-    category: 'Operations',
-    color: 'purple',
-    before: "Every week I'd export from QuickBooks, filter for overdue invoices, look up contacts in the CRM, then draft individual reminder emails.",
-    after: "Send polite reminders for invoices overdue by more than 7 days.",
-    persona: "Operations Manager",
-    animal: '🐸',
-    glasses: '👓',
   },
 ];
 
@@ -395,7 +394,7 @@ function UseCaseCarousel() {
     <section className="py-20 px-6 bg-gradient-to-b from-[hsl(220_25%_97%)] to-[hsl(220_20%_94%)]">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-2xl md:text-3xl font-black text-[hsl(220_30%_15%)] mb-10 text-center">
-          Stop context switching. Just ask.
+          Stop copy-pasting. Start asking.
         </h2>
 
         <div className="relative">
@@ -453,10 +452,10 @@ function UseCaseCarousel() {
             <div className="flex items-center justify-center gap-4 mt-10 pt-6 border-t border-[hsl(220_20%_92%)]">
               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-sm relative">
                 <span className="text-4xl">{currentCase.animal}</span>
-                <span className="absolute top-3 text-2xl">{currentCase.glasses}</span>
+                <span className={`absolute ${currentCase.glasses === '🧢' ? 'text-3xl top-1' : 'text-2xl top-3'}`}>{currentCase.glasses}</span>
               </div>
               <div className="text-left">
-                <div className="font-medium text-[hsl(220_20%_30%)]">Your Name Here</div>
+                <div className="font-medium text-[hsl(220_20%_30%)]">Could be you</div>
                 <div className="text-sm text-[hsl(220_15%_50%)]">{currentCase.persona}</div>
               </div>
             </div>
@@ -479,10 +478,10 @@ function UseCaseCarousel() {
           </div>
         </div>
 
-        {/* Honest CTA */}
+        {/* CTA */}
         <div className="text-center mt-10">
           <p className="text-[hsl(220_15%_45%)] mb-3">
-            These are real workflows we can automate. We just need our first customers.
+            Real workflows. Your existing spreadsheet. No new tools to learn.
           </p>
           <a
             href="https://cal.com/june-kim-mokzq0/30min"
@@ -490,7 +489,7 @@ function UseCaseCarousel() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-primary font-bold hover:underline"
           >
-            Want to be featured here?
+            See how it works for you
             <ArrowRight className="h-4 w-4" />
           </a>
         </div>
@@ -557,7 +556,7 @@ function HowItWorksSection() {
             className="text-[hsl(220_15%_45%)] max-w-2xl mx-auto transition-opacity duration-500"
             style={{ opacity: Math.max(0.2, Math.pow(0.6, currentStep)) }}
           >
-            Simple process. Fast delivery. Real results.
+            Connect your tools. Ask questions. Watch your data update.
           </p>
         </div>
 
@@ -672,18 +671,18 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
             <Zap className="h-3 w-3 mr-1" />
-            No UI. Just Chat.
+            Not Just Answers — Actions
           </Badge>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
-            Automate Your Work
+            AI That Handles
             <br />
             <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
-              Through Conversation
+              The Paperwork
             </span>
           </h1>
           <p className="text-lg text-[hsl(220_15%_45%)] mb-8 max-w-2xl mx-auto">
-            No new tools to learn. Your AI is already open — now it's connected to your
-            email, calendar, spreadsheets, and payment tools. Just ask it to do the work.
+            Connected to your email, calendar, spreadsheets, and the tools you already use.
+            Ask "who owes me money?" and mark them paid. Ask "what's on my plate?" and check things off.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
@@ -694,15 +693,15 @@ export default function Landing() {
             >
               <span className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Book a Discovery Call
+                See It In Action
               </span>
-              <span className="text-xs font-medium text-white/70 mt-1">No charge until it works</span>
+              <span className="text-xs font-medium text-white/70 mt-1">Free 30-min call</span>
             </a>
             <Link
               to="/self-serve"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[hsl(220_15%_92%)] border-2 border-[hsl(220_15%_82%)] text-[hsl(220_20%_35%)] font-bold tracking-wide text-lg hover:bg-[hsl(220_15%_88%)] transition-colors"
             >
-              Or Set It Up Yourself
+              Or Try It Yourself
             </Link>
           </div>
         </div>
@@ -715,14 +714,14 @@ export default function Landing() {
             Sound familiar?
           </h2>
           <p className="text-[hsl(220_15%_50%)] text-center mb-10 max-w-xl mx-auto">
-            You tried to automate. It didn't stick.
+            You're running your business solo. The admin never ends.
           </p>
           <div className="grid sm:grid-cols-2 gap-5 text-left max-w-3xl mx-auto">
             {[
-              { text: "You built 47 Zaps. Now you maintain 47 Zaps.", emoji: "🔧" },
-              { text: "Your 'automation' is a spreadsheet you update manually.", emoji: "📊" },
-              { text: "You have 12 browser tabs open just to do one task.", emoji: "🤯" },
-              { text: "Every task needs 3 logins and 5 clicks to even start.", emoji: "👻" },
+              { text: "You check Stripe, then your spreadsheet, then email — just to know who owes you.", emoji: "💸" },
+              { text: "End of day, you're too tired to log the job. It never makes it to the books.", emoji: "😴" },
+              { text: "Before every call, you're digging through email to remember where things left off.", emoji: "🔍" },
+              { text: "Your 'system' is 4 browser tabs and a prayer.", emoji: "🙏" },
             ].map((pain, i) => (
               <div
                 key={i}
@@ -737,10 +736,10 @@ export default function Landing() {
           </div>
           <div className="mt-12 text-center">
             <p className="text-lg text-[hsl(220_15%_40%)] mb-2">
-              Automation tools keep multiplying. Your work doesn't get easier.
+              You already use ChatGPT or Claude. But it can't see your data.
             </p>
             <p className="text-xl font-black text-[hsl(220_30%_20%)]">
-              What if you could just ask?
+              What if it could — and actually update it too?
             </p>
           </div>
         </div>
@@ -753,15 +752,15 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* What I Can Automate */}
+      {/* What You Can Ask */}
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-black text-[hsl(220_30%_15%)] mb-4">
-              What Can I Automate?
+              Ask It. Watch It Happen.
             </h2>
             <p className="text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
-              If it's repetitive and involves your business tools, I can probably automate it.
+              Not just answers — actions. Emails sent. Tasks checked off. Data updated.
             </p>
           </div>
 
@@ -797,15 +796,8 @@ export default function Landing() {
           </div>
 
           <p className="text-center text-[hsl(220_15%_50%)] mt-8">
-            Don't see your workflow?{' '}
-            <a
-              href="https://cal.com/june-kim-mokzq0/30min"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Let's talk about it
-            </a>
+            Works with what you already have:{' '}
+            <span className="font-medium">Gmail, Google Calendar, Google Sheets, Stripe</span>
           </p>
         </div>
       </section>
@@ -823,10 +815,11 @@ export default function Landing() {
       <section className="py-20 px-6 bg-gradient-to-br from-primary to-amber-500">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-            Let's Talk About What You Want to Automate
+            Ready to Stop Doing Admin?
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            30-minute call. No commitment. And if we work together — you don't pay until it's working.
+            30-minute call. I'll show you exactly how it works with your tools.
+            If we work together — you don't pay until it's working.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
@@ -837,15 +830,15 @@ export default function Landing() {
             >
               <span className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Book a Discovery Call
+                Book a Free Call
               </span>
-              <span className="text-xs font-medium text-primary/70 mt-1">No charge until it works</span>
+              <span className="text-xs font-medium text-primary/70 mt-1">See it work with your data</span>
             </a>
             <Link
               to="/self-serve"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/10 text-white font-bold tracking-wide text-lg hover:bg-white/20 transition-colors border border-white/20"
             >
-              Prefer DIY? Try Self-Serve
+              Try Self-Serve
               <ArrowRight className="h-5 w-5" />
             </Link>
           </div>
