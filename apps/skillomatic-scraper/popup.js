@@ -424,18 +424,24 @@ async function autoConfigureFromPage() {
     // Update UI
     apiUrlInput.value = config.apiUrl;
     apiKeyInput.value = config.apiKey;
-    showMessage('Auto-connected from Skillomatic page!', 'success');
-    await loadStatus();
+    showMessage('Auto-connected! Redirecting...', 'success');
 
     // Redirect the page if specified (e.g., from /extension to /home)
+    // Do this before loadStatus to avoid showing brief "disconnected" state
     if (config.redirectUrl) {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.id) {
         const currentUrl = new URL(tab.url);
         const redirectUrl = new URL(config.redirectUrl, currentUrl.origin);
-        await chrome.tabs.update(tab.id, { url: redirectUrl.href });
+        // Small delay to let user see success message
+        setTimeout(() => {
+          chrome.tabs.update(tab.id, { url: redirectUrl.href });
+        }, 500);
+        return; // Don't load status since we're redirecting
       }
     }
+
+    await loadStatus();
   } catch (err) {
     // Silently fail
     console.error('Auto-configure failed:', err);
