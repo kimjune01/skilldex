@@ -2,7 +2,7 @@
  * Shared footer component for marketing pages
  */
 import { Link } from 'react-router-dom';
-import { Bot, Mail } from 'lucide-react';
+import { Bot, Mail, Shield } from 'lucide-react';
 
 export function MarketingFooter() {
   return (
@@ -54,6 +54,16 @@ export function MarketingFooter() {
             </Link>
             <Link to="/jerbs" className="hover:text-white transition-colors text-[hsl(220_15%_40%)] hover:text-[hsl(220_15%_60%)]">
               Jerbs
+            </Link>
+          </div>
+
+          {/* Trust statement */}
+          <div className="flex items-center justify-center gap-2 text-xs text-[hsl(220_15%_50%)]">
+            <Shield className="h-3.5 w-3.5" />
+            <span>Zero PII storage — your data stays in your tools</span>
+            <span className="text-[hsl(220_15%_35%)]">•</span>
+            <Link to="/security" className="hover:text-white transition-colors underline">
+              Security
             </Link>
           </div>
 

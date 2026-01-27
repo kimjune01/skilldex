@@ -247,7 +247,16 @@ export default function Integrations() {
     const payIntentionParam = searchParams.get('pay_intention');
 
     if (errorParam) {
-      setError(errorParam);
+      // Map technical error codes to user-friendly messages
+      const errorMessages: Record<string, string> = {
+        'invalid_state': 'Your connection request timed out. Please try again.',
+        'missing_code_or_state': 'Connection was interrupted. Please try again.',
+        'token_exchange_failed': 'Could not complete connection. Please try again.',
+        'oauth_not_configured': 'OAuth is not configured. Please contact support.',
+        'oauth_failed': 'Connection failed. Please try again.',
+        'access_denied': 'You declined the connection request.',
+      };
+      setError(errorMessages[errorParam] || errorParam);
       searchParams.delete('error');
       setSearchParams(searchParams, { replace: true });
     }
@@ -546,6 +555,11 @@ export default function Integrations() {
         <h1 className="text-2xl font-bold">Connections</h1>
         <p className="text-muted-foreground mt-1">
           Connect your tools so Skillomatic can help you work faster
+        </p>
+        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+          <Shield className="h-3 w-3" />
+          Your data stays in your tools. We only store connection tokens, never your content.
+          <Link to="/security" className="text-primary hover:underline">Learn more</Link>
         </p>
       </div>
 
