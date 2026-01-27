@@ -8,10 +8,18 @@
   },
   "main": "./dist/index.js",
   "exports": {
-    ".": "./src/index.ts",
-    "./api-client": "./src/api-client.ts",
-    "./tools": "./src/tools/index.ts",
-    "./types": "./src/types.ts"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./src/index.ts"
+    },
+    "./api-client": {
+      "import": "./dist/api-client.js",
+      "types": "./src/api-client.ts"
+    },
+    "./tools": {
+      "import": "./dist/tools/index.js",
+      "types": "./src/tools/index.ts"
+    }
   },
   "files": [
     "dist"

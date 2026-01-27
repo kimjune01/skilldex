@@ -1,5 +1,6 @@
 import * as esbuild from 'esbuild';
 
+// Build main entry point (CLI with shebang)
 await esbuild.build({
   entryPoints: ['src/index.ts'],
   bundle: true,
@@ -10,7 +11,6 @@ await esbuild.build({
   banner: {
     js: '#!/usr/bin/env node',
   },
-  // Externalize npm packages that users need to install
   external: [
     '@modelcontextprotocol/sdk',
     'zod',
@@ -18,4 +18,23 @@ await esbuild.build({
   sourcemap: true,
 });
 
-console.log('Build complete: dist/index.js');
+// Build library entry points (for imports by mcp-server)
+await esbuild.build({
+  entryPoints: [
+    'src/api-client.ts',
+    'src/tools/index.ts',
+  ],
+  bundle: true,
+  platform: 'node',
+  target: 'node18',
+  format: 'esm',
+  outdir: 'dist',
+  external: [
+    '@modelcontextprotocol/sdk',
+    'zod',
+    '@skillomatic/shared',
+  ],
+  sourcemap: true,
+});
+
+console.log('Build complete: dist/');

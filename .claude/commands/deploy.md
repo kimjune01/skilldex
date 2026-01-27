@@ -59,7 +59,18 @@ pnpm typecheck
 pnpm db:push:prod
 ```
 
-6. Deploy with git hash:
+6. Bump Docker cache bust if MCP-related changes (packages/mcp/, apps/mcp-server/, packages/db/):
+```bash
+# Check current cache bust version
+grep 'CACHEBUST=v' apps/mcp-server/Dockerfile
+```
+If MCP-related files changed, increment the version number (e.g., v6 → v7):
+```bash
+sed -i '' 's/CACHEBUST=v[0-9]*/CACHEBUST=v<NEW_VERSION>/' apps/mcp-server/Dockerfile
+git add apps/mcp-server/Dockerfile && git commit -m "Bump Docker cache bust" && git push
+```
+
+7. Deploy with git hash:
 
 ```bash
 SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production
@@ -67,7 +78,7 @@ SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --
 
 > **Note:** Always run a full deploy (no `--target` flag). SST v3's `--target` flag has known issues where Lambda code may not update reliably. The MCP Docker build is cached when unchanged, so full deploys are fast.
 
-7. Verify services are responding and git hashes match (call in parallel):
+8. Verify services are responding and git hashes match (call in parallel):
 ```bash
 curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 ```
@@ -80,7 +91,7 @@ curl -s "https://skillomatic.technology" | grep 'git-hash' | sed 's/.*content="\
 
 All three hashes must match the local commit. Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't rolled over (ECS rolling deployment can take up to 2 minutes).
 
-8. Create and push incremented version tag:
+9. Create and push incremented version tag:
 ```bash
 git tag --list '[0-9]*' --sort=-v:refname | head -1
 ```
@@ -89,7 +100,7 @@ Increment the tag number manually (e.g., if output is `17`, use `18`):
 git tag <NEW_TAG> && git push origin <NEW_TAG>
 ```
 
-9. Report success with deployed services, git hashes, and the new version tag.
+10. Report success with deployed services, git hashes, and the new version tag.
 
 Stops on first failure. Always runs full deploy (MCP Docker is cached when unchanged). Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
