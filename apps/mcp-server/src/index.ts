@@ -124,10 +124,19 @@ app.post('/mcp', async (c) => {
   }
 
   const sessionId = c.req.header('mcp-session-id');
-  const body = await c.req.json();
 
-  // Check if this is an initialization request
-  if (!sessionId && isInitializeRequest(body)) {
+  // Parse body to check request type
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { message: 'Invalid JSON body' } }, 400);
+  }
+
+  console.log(`[MCP Server] POST /mcp - sessionId: ${sessionId || 'none'}, isInit: ${isInitializeRequest(body)}`);
+
+  // Check if this is an initialization request (no session ID required)
+  if (isInitializeRequest(body)) {
     try {
       const { server, userName } = await createMcpServerForUser(apiKey);
 
@@ -146,7 +155,7 @@ app.post('/mcp', async (c) => {
       // Connect server to transport
       await server.connect(transport);
 
-      // Handle the request
+      // Handle the request - pass parsed body since we already consumed the stream
       await transport.handleRequest(nodeIO.req, nodeIO.res, body);
 
       // Store session
@@ -164,18 +173,19 @@ app.post('/mcp', async (c) => {
     }
   }
 
-  // Existing session - reuse transport
-  if (sessionId) {
-    const session = sessions.get(sessionId);
-    if (!session) {
-      return c.json({ error: { message: 'Session not found' } }, 404);
-    }
-
-    await session.transport.handleRequest(nodeIO.req, nodeIO.res, body);
-    return new Promise(() => {});
+  // Non-init requests require session ID
+  if (!sessionId) {
+    return c.json({ error: { message: 'Missing sessionId' } }, 400);
   }
 
-  return c.json({ error: { message: 'Missing session ID for non-initialization request' } }, 400);
+  // Existing session - reuse transport
+  const session = sessions.get(sessionId);
+  if (!session) {
+    return c.json({ error: { message: 'Session not found' } }, 404);
+  }
+
+  await session.transport.handleRequest(nodeIO.req, nodeIO.res, body);
+  return new Promise(() => {});
 });
 
 // GET /mcp - SSE stream for server-to-client notifications
