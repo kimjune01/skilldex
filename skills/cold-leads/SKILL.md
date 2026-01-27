@@ -1,6 +1,7 @@
 ---
-name: cold-leads
+name: Cold Leads
 description: Find leads that went cold, draft follow-ups, and log your outreach. Use when someone asks to "revive cold leads" or "follow up with old prospects."
+category: Outreach
 intent: I want to follow up with cold leads, revive stale leads, re-engage prospects
 capabilities:
   - Scan Google Sheets for inactive leads

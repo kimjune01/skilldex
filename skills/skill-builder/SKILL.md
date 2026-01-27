@@ -1,13 +1,13 @@
 ---
 name: Skill Builder
-description: Create a new custom skill for your recruiting workflow. Describe what you want and I'll help fill in any missing details.
+description: Create a new custom skill. Describe what you want and I'll help build it.
+category: Meta
 intent: I want to create a new skill, build a skill, make a custom skill
 capabilities:
   - Extract skill details from natural descriptions
   - Identify missing required fields
   - Generate skill markdown with proper frontmatter
   - Save skills to the user's account
-category: Productivity
 allowed-tools:
   - Bash
   - Read

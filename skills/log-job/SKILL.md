@@ -1,6 +1,7 @@
 ---
-name: log-job
+name: Log Job
 description: Log a completed job with details and payment status. For trades and service businesses. Use when someone says "log today's job" or "finished the Johnson job."
+category: Finance
 intent: I want to log a job, record completed work, finished job, log service call
 capabilities:
   - Add completed job to Sheets

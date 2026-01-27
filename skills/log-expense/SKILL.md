@@ -1,6 +1,7 @@
 ---
-name: log-expense
+name: Log Expense
 description: Log a business expense to your spreadsheet. Use when someone says "log this expense" or "I just spent $X on..."
+category: Finance
 intent: I want to log an expense, track expense, record purchase, business expense
 capabilities:
   - Add expense to Sheets

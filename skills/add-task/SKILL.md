@@ -1,6 +1,7 @@
 ---
-name: add-task
+name: Add Task
 description: Quickly add a task to your task list. Use when someone says "remind me to..." or "add task..." or "I need to..."
+category: Tasks
 intent: I want to add a task, remind me to, I need to, create task, new task
 capabilities:
   - Add tasks to Sheets

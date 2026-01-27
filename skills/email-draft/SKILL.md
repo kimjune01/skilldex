@@ -1,6 +1,7 @@
 ---
-name: email-draft
+name: Email Draft
 description: Draft and send emails via your connected Gmail. Use for client outreach, follow-ups, proposals, or any professional email.
+category: Email
 intent: I want to draft or send an email
 capabilities:
   - Draft emails

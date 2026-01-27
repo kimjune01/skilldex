@@ -78,11 +78,11 @@ const providerIcons: Partial<Record<IntegrationProvider | string, LucideIcon>> =
  * Google Workspace tools configuration
  */
 const GOOGLE_WORKSPACE_TOOLS = [
-  { id: 'google-drive', name: 'Drive', description: 'File storage' },
-  { id: 'google-docs', name: 'Docs', description: 'Documents' },
-  { id: 'google-forms', name: 'Forms', description: 'Surveys & forms' },
-  { id: 'google-contacts', name: 'Contacts', description: 'People' },
-  { id: 'google-tasks', name: 'Tasks', description: 'To-dos' },
+  { id: 'google-drive', name: 'Drive', description: 'Search and share files' },
+  { id: 'google-docs', name: 'Docs', description: 'Draft and edit documents' },
+  { id: 'google-forms', name: 'Forms', description: 'Collect responses' },
+  { id: 'google-contacts', name: 'Contacts', description: 'Look up contact info' },
+  { id: 'google-tasks', name: 'Tasks', description: 'Create and track tasks' },
 ] as const;
 
 /**
@@ -118,7 +118,7 @@ function buildProviderConfigs(): {
     {
       id: 'email',
       name: 'Email',
-      description: 'Send messages and follow-ups',
+      description: 'Read, draft, and send messages',
       subProviders: getSubProvidersForCategory('email'),
     },
     {
@@ -130,7 +130,7 @@ function buildProviderConfigs(): {
     {
       id: 'google-sheets',
       name: 'Sheets',
-      description: 'Spreadsheets for tracking data',
+      description: 'Store and analyze your data',
     },
   ];
 
@@ -199,6 +199,9 @@ export default function Integrations() {
 
   // Google reconnect dialog state (when user tries to enable a tool we don't have access to)
   const [reconnectDialog, setReconnectDialog] = useState<{ open: boolean; toolName: string } | null>(null);
+
+  // Track enabling state for Google Workspace tools
+  const [enablingTool, setEnablingTool] = useState<string | null>(null);
 
   // Nango Connect UI ref
   const nangoConnectRef = useRef<ReturnType<Nango['openConnectUI']> | null>(null);
@@ -406,9 +409,20 @@ export default function Integrations() {
     if (!disconnectTarget) return;
 
     try {
-      await integrations.disconnect(disconnectTarget.id);
+      if (disconnectTarget.id === 'google-all') {
+        // Disconnect all Google integrations (essentials + workspace tools)
+        const googleProviders = ['email', 'calendar', 'google-sheets', 'google-drive', 'google-docs', 'google-forms', 'google-contacts', 'google-tasks'];
+        const googleIntegrations = integrationList.filter(
+          i => googleProviders.includes(i.provider) && i.status === 'connected'
+        );
+        for (const int of googleIntegrations) {
+          await integrations.disconnect(int.id);
+        }
+      } else {
+        await integrations.disconnect(disconnectTarget.id);
+      }
       await loadIntegrations();
-      setSuccessMessage('Integration disconnected successfully');
+      setSuccessMessage(`${disconnectTarget.name} disconnected successfully`);
       setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to disconnect');
@@ -425,6 +439,26 @@ export default function Integrations() {
       toast(`${name} disabled`, 'success');
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Failed to disconnect', 'error');
+    }
+  };
+
+  // Enable a non-essential Google Workspace tool
+  const handleEnableGoogleTool = async (toolId: string, toolName: string) => {
+    setEnablingTool(toolId);
+    try {
+      await integrations.enableGoogleTool(toolId);
+      await loadIntegrations();
+      toast(`${toolName} enabled`, 'success');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to enable tool';
+      // If scope wasn't granted (permission denied), show reconnect dialog
+      if (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('not granted')) {
+        setReconnectDialog({ open: true, toolName });
+      } else {
+        toast(errorMessage, 'error');
+      }
+    } finally {
+      setEnablingTool(null);
     }
   };
 
@@ -587,7 +621,21 @@ export default function Integrations() {
 
       {/* Essentials Section */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Essentials</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Essentials</h2>
+          {/* Show disconnect button when any Google essential is connected */}
+          {integrationList.some(i => ['email', 'calendar', 'google-sheets'].includes(i.provider) && i.status === 'connected') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setDisconnectTarget({ id: 'google-all', name: 'Google' })}
+            >
+              <Unplug className="h-4 w-4 mr-1" />
+              Disconnect Google
+            </Button>
+          )}
+        </div>
         {(() => {
           // Find first unconnected essential (in order: email, calendar)
           const firstUnconnected = essentialProviders.find((p) => {
@@ -639,17 +687,7 @@ export default function Integrations() {
                 <CardContent className="pt-0">
                   {integration && integration.status !== 'disconnected' ? (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        {getStatusBadge(integration.status)}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
-                        >
-                          <Unplug className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {getStatusBadge(integration.status)}
                       {/* Access level selector for connected integrations */}
                       {isConnected && (
                         <div className="flex items-center justify-between pt-1">
@@ -741,9 +779,7 @@ export default function Integrations() {
                   const integration = integrationList.find(i => i.provider === tool.id as typeof i.provider);
                   const isConnected = integration?.status === 'connected';
                   const Icon = providerIcons[tool.id] || Plug;
-
-                  // Tool is unavailable if Google is connected but this scope wasn't granted
-                  const isUnavailable = hasAnyGoogle && !isConnected;
+                  const isEnabling = enablingTool === tool.id;
 
                   return (
                     <div key={tool.id} className="flex items-center justify-between py-2 border-b last:border-0">
@@ -752,10 +788,10 @@ export default function Integrations() {
                           <Icon className={`h-4 w-4 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`} />
                         </div>
                         <div>
-                          <p className={`font-medium text-sm ${isUnavailable ? 'text-muted-foreground' : ''}`}>
+                          <p className="font-medium text-sm">
                             {tool.name}
-                            {isUnavailable && (
-                              <span className="ml-2 text-xs text-amber-600">(not granted)</span>
+                            {isEnabling && (
+                              <span className="ml-2 text-xs text-muted-foreground">(enabling...)</span>
                             )}
                           </p>
                           <p className="text-xs text-muted-foreground">{tool.description}</p>
@@ -797,14 +833,11 @@ export default function Integrations() {
                         {/* Toggle switch */}
                         <Switch
                           checked={isConnected}
-                          disabled={isConnecting || (!hasAnyGoogle && !isConnected)}
+                          disabled={isConnecting || enablingTool === tool.id || (!hasAnyGoogle && !isConnected)}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              if (isUnavailable) {
-                                // Show reconnect dialog
-                                setReconnectDialog({ open: true, toolName: tool.name });
-                              }
-                              // If Google not connected at all, do nothing (disabled state)
+                              // Enable the tool by copying tokens from existing Google integration
+                              handleEnableGoogleTool(tool.id, tool.name);
                             } else if (integration) {
                               // Quick disconnect with toast (no confirmation dialog)
                               handleQuickDisconnect(integration.id, tool.name);
@@ -1131,10 +1164,11 @@ export default function Integrations() {
       <AlertDialog open={!!disconnectTarget} onOpenChange={() => setDisconnectTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disconnect Integration</AlertDialogTitle>
+            <AlertDialogTitle>Disconnect {disconnectTarget?.name}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to disconnect the {disconnectTarget?.name} integration? Skills
-              that require this integration will stop working until you reconnect.
+              {disconnectTarget?.id === 'google-all'
+                ? 'This will disconnect all Google services (Gmail, Calendar, Sheets, Drive, Docs, Forms, Contacts, and Tasks). Skills that use these integrations will stop working until you reconnect.'
+                : `Are you sure you want to disconnect ${disconnectTarget?.name}? Skills that require this integration will stop working until you reconnect.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1143,7 +1177,7 @@ export default function Integrations() {
               onClick={handleDisconnect}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Disconnect
+              Disconnect{disconnectTarget?.id === 'google-all' ? ' All' : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

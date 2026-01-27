@@ -58,4 +58,12 @@ export const integrations = {
       accessLevel?: string;
       message?: string;
     }>(`/integrations/status/${provider}`),
+
+  // Enable a non-essential Google Workspace tool (Drive, Docs, Forms, Contacts, Tasks)
+  // This copies tokens from an existing Google integration
+  enableGoogleTool: (provider: string) =>
+    request<{ message: string; provider: string }>('/integrations/google/enable-tool', {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
+    }),
 };

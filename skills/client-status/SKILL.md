@@ -1,6 +1,7 @@
 ---
-name: client-status
+name: Client Status
 description: Get complete context on any client and add notes. Use when someone asks "what's the status with [client]?" or wants to log client info.
+category: Clients
 intent: I want to check on a client, client status, add client note, what's happening with this client
 capabilities:
   - Pull recent email threads with client

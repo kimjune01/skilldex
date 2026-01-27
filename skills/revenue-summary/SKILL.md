@@ -1,6 +1,7 @@
 ---
-name: revenue-summary
+name: Revenue Summary
 description: Get a summary of revenue, expenses, and financial health. Use when someone asks "how did we do last week?" or "what's my revenue this month?"
+category: Finance
 intent: I want to check revenue, how did we do, monthly revenue, financial summary
 capabilities:
   - Pull revenue from Stripe

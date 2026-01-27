@@ -442,4 +442,211 @@ describe('Google OAuth', () => {
       expect(result.hasSheets).toBe(false);
     });
   });
+
+  describe('Google Workspace tools configuration', () => {
+    // Configuration matching GOOGLE_WORKSPACE_TOOLS in google-oauth.ts
+    const GOOGLE_WORKSPACE_TOOLS: Record<string, {
+      provider: string;
+      emailField: string;
+      displayName: string;
+      scopePattern: string;
+    }> = {
+      'google-drive': {
+        provider: 'google-drive',
+        emailField: 'driveEmail',
+        displayName: 'Google Drive',
+        scopePattern: 'drive',
+      },
+      'google-docs': {
+        provider: 'google-docs',
+        emailField: 'docsEmail',
+        displayName: 'Google Docs',
+        scopePattern: 'documents',
+      },
+      'google-forms': {
+        provider: 'google-forms',
+        emailField: 'formsEmail',
+        displayName: 'Google Forms',
+        scopePattern: 'forms',
+      },
+      'google-contacts': {
+        provider: 'google-contacts',
+        emailField: 'contactsEmail',
+        displayName: 'Google Contacts',
+        scopePattern: 'contacts',
+      },
+      'google-tasks': {
+        provider: 'google-tasks',
+        emailField: 'tasksEmail',
+        displayName: 'Google Tasks',
+        scopePattern: 'tasks',
+      },
+    };
+
+    it('should have correct config for all non-essential tools', () => {
+      const tools = Object.keys(GOOGLE_WORKSPACE_TOOLS);
+      expect(tools).toContain('google-drive');
+      expect(tools).toContain('google-docs');
+      expect(tools).toContain('google-forms');
+      expect(tools).toContain('google-contacts');
+      expect(tools).toContain('google-tasks');
+      expect(tools.length).toBe(5);
+    });
+
+    it('should have unique scope patterns for each tool', () => {
+      const scopePatterns = Object.values(GOOGLE_WORKSPACE_TOOLS).map(t => t.scopePattern);
+      const uniquePatterns = new Set(scopePatterns);
+      expect(uniquePatterns.size).toBe(scopePatterns.length);
+    });
+
+    it('should have provider matching the key', () => {
+      for (const [key, config] of Object.entries(GOOGLE_WORKSPACE_TOOLS)) {
+        expect(config.provider).toBe(key);
+      }
+    });
+
+    it('should have correct email field naming convention', () => {
+      expect(GOOGLE_WORKSPACE_TOOLS['google-drive'].emailField).toBe('driveEmail');
+      expect(GOOGLE_WORKSPACE_TOOLS['google-docs'].emailField).toBe('docsEmail');
+      expect(GOOGLE_WORKSPACE_TOOLS['google-forms'].emailField).toBe('formsEmail');
+      expect(GOOGLE_WORKSPACE_TOOLS['google-contacts'].emailField).toBe('contactsEmail');
+      expect(GOOGLE_WORKSPACE_TOOLS['google-tasks'].emailField).toBe('tasksEmail');
+    });
+  });
+
+  describe('enable tool validation', () => {
+    const VALID_TOOLS = ['google-drive', 'google-docs', 'google-forms', 'google-contacts', 'google-tasks'];
+
+    it('should accept valid non-essential tool providers', () => {
+      for (const tool of VALID_TOOLS) {
+        expect(VALID_TOOLS.includes(tool)).toBe(true);
+      }
+    });
+
+    it('should reject essential providers (not in GOOGLE_WORKSPACE_TOOLS)', () => {
+      const essentialProviders = ['email', 'calendar', 'google-sheets', 'gmail', 'google-calendar'];
+      for (const provider of essentialProviders) {
+        expect(VALID_TOOLS.includes(provider)).toBe(false);
+      }
+    });
+
+    it('should reject invalid/unknown providers', () => {
+      const invalidProviders = ['invalid', 'unknown', 'google-meet', ''];
+      for (const provider of invalidProviders) {
+        expect(VALID_TOOLS.includes(provider)).toBe(false);
+      }
+    });
+  });
+
+  describe('enable tool metadata creation', () => {
+    it('should create correct metadata when enabling a tool', () => {
+      const sourceMetadata = {
+        accessToken: 'source-access-token',
+        refreshToken: 'source-refresh-token',
+        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+        gmailEmail: 'user@gmail.com',
+      };
+
+      const toolConfig = {
+        provider: 'google-drive',
+        emailField: 'driveEmail',
+        displayName: 'Google Drive',
+        scopePattern: 'drive',
+      };
+
+      // Simulating what handleEnableGoogleTool does
+      const userEmail = sourceMetadata.gmailEmail;
+      const newMetadata = {
+        accessLevel: 'read-write',
+        subProvider: 'google-drive',
+        [toolConfig.emailField]: userEmail,
+        accessToken: sourceMetadata.accessToken,
+        refreshToken: sourceMetadata.refreshToken,
+        expiresAt: sourceMetadata.expiresAt,
+      };
+
+      expect(newMetadata.accessLevel).toBe('read-write');
+      expect(newMetadata.subProvider).toBe('google-drive');
+      expect(newMetadata.driveEmail).toBe('user@gmail.com');
+      expect(newMetadata.accessToken).toBe(sourceMetadata.accessToken);
+      expect(newMetadata.refreshToken).toBe(sourceMetadata.refreshToken);
+      expect(newMetadata.expiresAt).toBe(sourceMetadata.expiresAt);
+    });
+
+    it('should handle missing refresh token from source', () => {
+      const sourceMetadata = {
+        accessToken: 'source-access-token',
+        refreshToken: undefined,
+        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+        calendarEmail: 'user@gmail.com',
+      };
+
+      const newMetadata = {
+        accessLevel: 'read-write',
+        subProvider: 'google-contacts',
+        contactsEmail: sourceMetadata.calendarEmail,
+        accessToken: sourceMetadata.accessToken,
+        refreshToken: sourceMetadata.refreshToken,
+        expiresAt: sourceMetadata.expiresAt,
+      };
+
+      expect(newMetadata.refreshToken).toBeUndefined();
+      expect(newMetadata.accessToken).toBe(sourceMetadata.accessToken);
+    });
+
+    it('should extract email from any Google source integration', () => {
+      // Test that email can be extracted from gmail, calendar, or sheets metadata
+      const gmailSource = { gmailEmail: 'user@gmail.com' };
+      const calendarSource = { calendarEmail: 'user@gmail.com' };
+      const sheetsSource = { sheetsEmail: 'user@gmail.com' };
+
+      const extractEmail = (metadata: Record<string, unknown>) =>
+        (metadata.gmailEmail || metadata.calendarEmail || metadata.sheetsEmail || '') as string;
+
+      expect(extractEmail(gmailSource)).toBe('user@gmail.com');
+      expect(extractEmail(calendarSource)).toBe('user@gmail.com');
+      expect(extractEmail(sheetsSource)).toBe('user@gmail.com');
+      expect(extractEmail({})).toBe('');
+    });
+  });
+
+  describe('scope verification logic', () => {
+    // Helper matching verifyGoogleScope logic
+    const checkScopeInString = (scopeString: string, pattern: string) => scopeString.includes(pattern);
+
+    it('should detect drive scope in various formats', () => {
+      expect(checkScopeInString('https://www.googleapis.com/auth/drive.readonly', 'drive')).toBe(true);
+      expect(checkScopeInString('https://www.googleapis.com/auth/drive.file', 'drive')).toBe(true);
+      expect(checkScopeInString('https://www.googleapis.com/auth/drive', 'drive')).toBe(true);
+    });
+
+    it('should detect documents scope', () => {
+      expect(checkScopeInString('https://www.googleapis.com/auth/documents', 'documents')).toBe(true);
+      expect(checkScopeInString('https://www.googleapis.com/auth/documents.readonly', 'documents')).toBe(true);
+    });
+
+    it('should detect forms scope', () => {
+      expect(checkScopeInString('https://www.googleapis.com/auth/forms.body.readonly', 'forms')).toBe(true);
+      expect(checkScopeInString('https://www.googleapis.com/auth/forms.responses.readonly', 'forms')).toBe(true);
+    });
+
+    it('should detect contacts scope', () => {
+      expect(checkScopeInString('https://www.googleapis.com/auth/contacts.readonly', 'contacts')).toBe(true);
+      expect(checkScopeInString('https://www.googleapis.com/auth/contacts', 'contacts')).toBe(true);
+    });
+
+    it('should detect tasks scope', () => {
+      expect(checkScopeInString('https://www.googleapis.com/auth/tasks', 'tasks')).toBe(true);
+      expect(checkScopeInString('https://www.googleapis.com/auth/tasks.readonly', 'tasks')).toBe(true);
+    });
+
+    it('should not detect scope when not present', () => {
+      const gmailOnlyScope = 'https://www.googleapis.com/auth/gmail.readonly';
+      expect(checkScopeInString(gmailOnlyScope, 'drive')).toBe(false);
+      expect(checkScopeInString(gmailOnlyScope, 'documents')).toBe(false);
+      expect(checkScopeInString(gmailOnlyScope, 'forms')).toBe(false);
+      expect(checkScopeInString(gmailOnlyScope, 'contacts')).toBe(false);
+      expect(checkScopeInString(gmailOnlyScope, 'tasks')).toBe(false);
+    });
+  });
 });

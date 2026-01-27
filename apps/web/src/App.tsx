@@ -75,6 +75,7 @@ import NotFound from './pages/NotFound';
 import Debug from './pages/Debug';
 import AccountType from './pages/onboarding/AccountType';
 import GetApiKey from './pages/GetApiKey';
+import Profile from './pages/Profile';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAuth();
@@ -229,6 +230,7 @@ export default function App() {
           <Route path="automations" element={<Automations />} />
           <Route path="extension/install" element={<ExtensionInstall />} />
           <Route path="usage" element={<Usage />} />
+          <Route path="profile" element={<Profile />} />
 
           {/* Admin routes */}
           <Route

@@ -1,6 +1,7 @@
 ---
-name: morning-briefing
+name: Morning Briefing
 description: Get your day's overview - calendar, priority emails, tasks - and mark things done as you go. Use when someone asks "what's on my plate today?" or "prep my day."
+category: Daily
 intent: I want my morning briefing, what's on my plate, prep my day, daily overview
 capabilities:
   - Pull today's calendar events

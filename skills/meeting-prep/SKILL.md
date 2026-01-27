@@ -1,6 +1,7 @@
 ---
-name: meeting-prep
+name: Meeting Prep
 description: Prepare for an upcoming meeting with full context - attendee info, email history, past notes, and suggested talking points. Use when someone asks "prep me for my 2pm" or "get ready for meeting with [person]."
+category: Meetings
 intent: I want to prepare for a meeting, prep me for my call, get ready for meeting
 capabilities:
   - Pull meeting details from calendar

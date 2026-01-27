@@ -214,12 +214,15 @@ skillsRoutes.get('/', async (c) => {
       );
   }
 
-  // Get access info if requested and user has org context
+  // Get access info if requested (works for both org and individual users)
   let disabledSkills: string[] = [];
   let effectiveAccess: Awaited<ReturnType<typeof getEffectiveAccessForUser>> | null = null;
 
-  if (includeAccess && organizationId) {
-    disabledSkills = await getOrgDisabledSkills(organizationId);
+  if (includeAccess) {
+    if (organizationId) {
+      disabledSkills = await getOrgDisabledSkills(organizationId);
+    }
+    // getEffectiveAccessForUser handles both org and individual users
     effectiveAccess = await getEffectiveAccessForUser(user.sub, organizationId);
   }
 
@@ -229,14 +232,16 @@ skillsRoutes.get('/', async (c) => {
 
     // Add access info if requested
     if (includeAccess && effectiveAccess) {
-      // Parse requirements from requiredIntegrations (stored as {"ats": "read-only"})
+      // Parse requirements from requiredIntegrations (stored as {"ats": "read-only", "sheets": "read-write"})
       const requirements: Record<string, string> = {};
       if (skill.requiredIntegrations) {
         try {
           const parsed = JSON.parse(skill.requiredIntegrations) as Record<string, string>;
           for (const [key, value] of Object.entries(parsed)) {
-            if (['ats', 'email', 'calendar'].includes(key)) {
-              requirements[key] = value;
+            // Map 'sheets' to 'database' category for access check
+            const category = key === 'sheets' ? 'database' : key;
+            if (['ats', 'email', 'calendar', 'database'].includes(category)) {
+              requirements[category] = value;
             }
           }
         } catch {

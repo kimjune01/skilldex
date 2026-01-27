@@ -127,17 +127,48 @@ function parseSkillFrontmatter(slug: string): {
   return { name, description, intent, capabilities, requires, instructions };
 }
 
-// Skills to seed (from skills/ directory, not .claude/commands/)
-const SKILLS = [
-  { slug: 'linkedin-lookup', category: 'sourcing', isEnabled: true },
-  { slug: 'ats-candidate-search', category: 'ats', isEnabled: true },
-  { slug: 'ats-candidate-crud', category: 'ats', isEnabled: true },
-  { slug: 'email-draft', category: 'communication', isEnabled: false },
-  { slug: 'interview-scheduler', category: 'scheduling', isEnabled: false },
-  { slug: 'meeting-notes', category: 'productivity', isEnabled: false },
-  { slug: 'candidate-pipeline-builder', category: 'sourcing', isEnabled: true },
-  { slug: 'daily-report', category: 'productivity', isEnabled: true },
-];
+import { readdirSync, statSync } from 'fs';
+
+// Auto-discover skills from skills/ directory
+function discoverSkills(): { slug: string; category: string; isEnabled: boolean }[] {
+  if (!existsSync(skillsDir)) {
+    console.warn('Skills directory not found:', skillsDir);
+    return [];
+  }
+
+  const entries = readdirSync(skillsDir);
+  const skills: { slug: string; category: string; isEnabled: boolean }[] = [];
+
+  for (const entry of entries) {
+    const entryPath = join(skillsDir, entry);
+    // Skip non-directories
+    if (!statSync(entryPath).isDirectory()) continue;
+
+    const skillPath = join(entryPath, 'SKILL.md');
+    if (!existsSync(skillPath)) continue;
+
+    const content = readFileSync(skillPath, 'utf-8');
+    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontmatterMatch) continue;
+
+    const frontmatter = frontmatterMatch[1];
+
+    // Parse category from frontmatter, default to 'productivity'
+    const categoryMatch = frontmatter.match(/^category:\s*(.+)$/m);
+    const category = categoryMatch ? categoryMatch[1].trim().toLowerCase() : 'productivity';
+
+    // Parse enabled status, default to true
+    const enabledMatch = frontmatter.match(/^enabled:\s*(.+)$/m);
+    const isEnabled = enabledMatch ? enabledMatch[1].trim().toLowerCase() === 'true' : true;
+
+    skills.push({ slug: entry, category, isEnabled });
+  }
+
+  return skills;
+}
+
+// Auto-discover skills from the skills/ directory
+const SKILLS = discoverSkills();
 
 async function seed() {
   console.log('Seeding production database (idempotent)...');

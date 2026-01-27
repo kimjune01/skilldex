@@ -64,7 +64,7 @@ export default function Skills() {
   const [skillList, setSkillList] = useState<SkillPublic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<SkillCategory | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<SkillCategory | 'available' | 'all'>('available');
   const [showDisabled, setShowDisabled] = useState(false);
 
   // Visibility request dialog state
@@ -124,8 +124,12 @@ export default function Skills() {
       filtered = filtered.filter((s) => s.isEnabled);
     }
 
-    // Apply category filter
-    if (categoryFilter !== 'all') {
+    // Apply filter
+    if (categoryFilter === 'available') {
+      // Show only skills that are fully available (not limited)
+      filtered = filtered.filter((s) => s.accessInfo?.status !== 'limited');
+    } else if (categoryFilter !== 'all') {
+      // Category filter
       filtered = filtered.filter((s) => s.category === categoryFilter);
     }
 
@@ -314,15 +318,15 @@ export default function Skills() {
         </Alert>
       )}
 
-      {/* Category Filters and Admin Toggle */}
+      {/* Availability and Category Filters */}
       <div className="flex items-center justify-between">
         <div className="flex gap-2 flex-wrap">
           <Button
-            variant={categoryFilter === 'all' ? 'default' : 'outline'}
+            variant={categoryFilter === 'available' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setCategoryFilter('all')}
+            onClick={() => setCategoryFilter('available')}
           >
-            All
+            Available
           </Button>
           {categories.map((cat) => (
             <Button
@@ -334,6 +338,13 @@ export default function Skills() {
               {cat}
             </Button>
           ))}
+          <Button
+            variant={categoryFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCategoryFilter('all')}
+          >
+            All
+          </Button>
         </div>
 
         {isAdmin && (

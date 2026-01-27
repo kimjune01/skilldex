@@ -1,6 +1,7 @@
 ---
-name: inbox-review
+name: Inbox Review
 description: Find emails that need responses and things that fell through the cracks. Use when someone asks "what emails need responses?" or "what fell through the cracks?"
+category: Email
 intent: I want to review my inbox, what emails need responses, what fell through the cracks
 capabilities:
   - Find unanswered email threads

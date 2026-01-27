@@ -2,7 +2,7 @@ import { db } from '../src/client.js';
 import { users, skills, roles, permissions, roleSkills, userRoles, organizations, organizationInvites } from '../src/schema.js';
 import { randomUUID } from 'crypto';
 import { hashSync } from 'bcrypt-ts';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -11,10 +11,13 @@ const skillsDir = join(__dirname, '../../../skills');
 
 // Parse YAML-like frontmatter from SKILL.md files
 function parseSkillFrontmatter(slug: string): {
+  name?: string;
+  description?: string;
   intent?: string;
   capabilities?: string[];
   requires?: Record<string, string>;
   instructions?: string;
+  category?: string;
 } {
   const skillPath = join(skillsDir, slug, 'SKILL.md');
   if (!existsSync(skillPath)) {
@@ -30,14 +33,35 @@ function parseSkillFrontmatter(slug: string): {
   const frontmatter = frontmatterMatch[1];
   const instructions = content.slice(frontmatterMatch[0].length).trim();
 
+  let name: string | undefined;
+  let description: string | undefined;
   let intent: string | undefined;
   let capabilities: string[] = [];
   let requires: Record<string, string> | undefined;
+  let category: string | undefined;
+
+  // Parse name
+  const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+  if (nameMatch) {
+    name = nameMatch[1].trim();
+  }
+
+  // Parse description
+  const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+  if (descMatch) {
+    description = descMatch[1].trim();
+  }
 
   // Parse intent
   const intentMatch = frontmatter.match(/^intent:\s*(.+)$/m);
   if (intentMatch) {
     intent = intentMatch[1].trim();
+  }
+
+  // Parse category
+  const categoryMatch = frontmatter.match(/^category:\s*(.+)$/m);
+  if (categoryMatch) {
+    category = categoryMatch[1].trim();
   }
 
   // Parse capabilities (YAML array)
@@ -57,13 +81,39 @@ function parseSkillFrontmatter(slug: string): {
     for (const line of lines) {
       const match = line.match(/^\s+(\w+):\s+(.+)$/);
       if (match) {
-        const [, category, accessLevel] = match;
-        requires[category.trim()] = accessLevel.trim();
+        const [, cat, accessLevel] = match;
+        requires[cat.trim()] = accessLevel.trim();
       }
     }
   }
 
-  return { intent, capabilities, requires, instructions };
+  return { name, description, intent, capabilities, requires, instructions, category };
+}
+
+// Auto-discover all skills from the skills/ directory
+function discoverSkills(): { slug: string; frontmatter: ReturnType<typeof parseSkillFrontmatter> }[] {
+  if (!existsSync(skillsDir)) {
+    console.warn('Skills directory not found:', skillsDir);
+    return [];
+  }
+
+  const entries = readdirSync(skillsDir);
+  const discoveredSkills: { slug: string; frontmatter: ReturnType<typeof parseSkillFrontmatter> }[] = [];
+
+  for (const entry of entries) {
+    const entryPath = join(skillsDir, entry);
+    if (!statSync(entryPath).isDirectory()) continue;
+
+    const skillPath = join(entryPath, 'SKILL.md');
+    if (!existsSync(skillPath)) continue;
+
+    const frontmatter = parseSkillFrontmatter(entry);
+    if (frontmatter.name || frontmatter.description) {
+      discoveredSkills.push({ slug: entry, frontmatter });
+    }
+  }
+
+  return discoveredSkills;
 }
 
 async function seed() {
@@ -211,84 +261,56 @@ async function seed() {
 
   // ============ SKILLS ============
 
-  const skillIds = {
-    linkedinLookup: 'skill-linkedin-lookup',
-    atsCandidateSearch: 'skill-ats-candidate-search',
-    atsCandidateCrud: 'skill-ats-candidate-crud',
-    emailDraft: 'skill-email-draft',
-    interviewScheduler: 'skill-interview-scheduler',
-    meetingNotes: 'skill-meeting-notes',
-    skillBuilder: 'skill-skill-builder',
-    candidatePipelineBuilder: 'skill-candidate-pipeline-builder',
-    dailyReport: 'skill-daily-report',
-  };
+  // Auto-discover all skills from the skills/ directory
+  const discoveredSkills = discoverSkills();
+  console.log(`Discovered ${discoveredSkills.length} skills from filesystem`);
 
-  // Helper to build skill with frontmatter from SKILL.md
-  const buildSkill = (id: string, slug: string, name: string, description: string, category: string, requiredIntegrations: string[], requiredScopes: string[], isEnabled = true) => {
-    const frontmatter = parseSkillFrontmatter(slug);
+  const seededSkillIds: string[] = [];
 
-    // Use 'requires' from frontmatter if available, otherwise fall back to requiredIntegrations list
-    // New format: {"ats": "read-write", "email": "read-only"}
-    // Old format: ["ats", "email"] (will be treated as read-write for each)
-    let requiredIntegrationsJson: string;
-    if (frontmatter.requires && Object.keys(frontmatter.requires).length > 0) {
-      requiredIntegrationsJson = JSON.stringify(frontmatter.requires);
-    } else {
-      // Convert old format to new format (assuming read-write for backwards compatibility)
-      const legacyFormat: Record<string, string> = {};
-      for (const provider of requiredIntegrations) {
-        // Map provider names to categories
-        const category = provider === 'gmail' || provider === 'email' ? 'email' :
-                        provider === 'ats' || provider === 'greenhouse' || provider === 'lever' ? 'ats' :
-                        provider === 'calendar' || provider === 'calendly' ? 'calendar' : provider;
-        legacyFormat[category] = 'read-write';
-      }
-      requiredIntegrationsJson = Object.keys(legacyFormat).length > 0 ? JSON.stringify(legacyFormat) : JSON.stringify({});
-    }
+  for (const { slug, frontmatter } of discoveredSkills) {
+    const skillId = `skill-${slug}`;
+    const name = frontmatter.name || slug;
+    const description = frontmatter.description || '';
+    const category = (frontmatter.category || 'productivity').toLowerCase();
+    const requiredIntegrations = frontmatter.requires ? JSON.stringify(frontmatter.requires) : '{}';
 
-    return {
-      id,
+    await db.insert(skills).values({
+      id: skillId,
       slug,
       name,
       description,
       category,
-      requiredIntegrations: requiredIntegrationsJson,
-      requiredScopes: JSON.stringify(requiredScopes),
+      requiredIntegrations,
+      requiredScopes: '[]',
       intent: frontmatter.intent || null,
       capabilities: frontmatter.capabilities?.length ? JSON.stringify(frontmatter.capabilities) : null,
       instructions: frontmatter.instructions || null,
-      isEnabled,
+      isEnabled: true,
       isGlobal: true,
       organizationId: null,
-    };
-  };
-
-  // Note: All these skills are global (isGlobal: true, organizationId: null)
-  // Organization-specific skills would have isGlobal: false and organizationId set
-  const skillData = [
-    buildSkill(skillIds.skillBuilder, 'skill-builder', 'Skill Builder', 'Create a new custom skill for your recruiting workflow. I\'ll guide you through defining what the skill does and how it works.', 'Productivity', [], ['skills:write']),
-    buildSkill(skillIds.linkedinLookup, 'linkedin-lookup', 'LinkedIn Profile Lookup', 'Find candidate profiles on LinkedIn that match a job description using browser automation', 'sourcing', [], ['candidates:read']),
-    buildSkill(skillIds.atsCandidateSearch, 'ats-candidate-search', 'ATS Candidate Search', 'Search for candidates in your Applicant Tracking System', 'ats', ['ats'], ['candidates:read']),
-    buildSkill(skillIds.atsCandidateCrud, 'ats-candidate-crud', 'ATS Candidate Management', 'Create, update, and manage candidates in your ATS', 'ats', ['ats'], ['candidates:read', 'candidates:write']),
-    buildSkill(skillIds.emailDraft, 'email-draft', 'Recruitment Email Drafting', 'Draft personalized recruitment emails for candidates', 'communication', ['email'], ['email:draft', 'candidates:read'], false),
-    buildSkill(skillIds.interviewScheduler, 'interview-scheduler', 'Interview Scheduler', 'Schedule interviews with candidates', 'scheduling', ['calendar'], ['calendar:write', 'candidates:read'], false),
-    buildSkill(skillIds.meetingNotes, 'meeting-notes', 'Meeting Notes Sync', 'Sync meeting notes from recording apps to ATS', 'productivity', ['granola'], ['meetings:read', 'candidates:write'], false),
-    buildSkill(skillIds.candidatePipelineBuilder, 'candidate-pipeline-builder', 'Candidate Pipeline Builder', 'End-to-end candidate sourcing: search LinkedIn profiles, add to ATS, generate personalized outreach emails, and log activity.', 'sourcing', ['ats', 'email'], ['candidates:read', 'candidates:write', 'email:draft']),
-    buildSkill(skillIds.dailyReport, 'daily-report', 'Daily Recruiting Report', 'Generate a summary report of recruiting activity from the ATS for standups, syncs, or tracking progress.', 'productivity', ['ats'], ['candidates:read', 'applications:read', 'jobs:read']),
-  ];
-
-  for (const skill of skillData) {
-    await db.insert(skills).values(skill).onConflictDoUpdate({
+    }).onConflictDoUpdate({
       target: skills.id,
       set: {
-        intent: skill.intent,
-        capabilities: skill.capabilities,
-        instructions: skill.instructions,
-        requiredIntegrations: skill.requiredIntegrations,
+        name,
+        description,
+        category,
+        intent: frontmatter.intent || null,
+        capabilities: frontmatter.capabilities?.length ? JSON.stringify(frontmatter.capabilities) : null,
+        instructions: frontmatter.instructions || null,
+        requiredIntegrations,
       },
     });
+
+    seededSkillIds.push(skillId);
+    console.log(`  ✓ ${name} (${slug})`);
   }
-  console.log('Created/updated global skills (with frontmatter from SKILL.md files)');
+
+  console.log('Created/updated global skills from SKILL.md files');
+
+  // Keep track of skill IDs for role assignments
+  const skillIds = {
+    skillBuilder: 'skill-skill-builder',
+  };
 
   // Create an example org-specific skill for Acme Corp
   const acmeSkillId = 'skill-acme-internal';
@@ -307,33 +329,20 @@ async function seed() {
 
   // ============ ROLE-SKILL ASSIGNMENTS ============
 
-  const roleSkillAssignments = [
-    // Skill Builder available to everyone - allows creating custom skills
-    { roleId: adminRoleId, skillId: skillIds.skillBuilder },
-    { roleId: recruiterRoleId, skillId: skillIds.skillBuilder },
-    { roleId: viewerRoleId, skillId: skillIds.skillBuilder },
+  // Assign all discovered skills to admin and recruiter roles
+  const roleSkillAssignments: { roleId: string; skillId: string }[] = [];
 
+  for (const skillId of seededSkillIds) {
     // Admin gets all skills
-    { roleId: adminRoleId, skillId: skillIds.linkedinLookup },
-    { roleId: adminRoleId, skillId: skillIds.atsCandidateSearch },
-    { roleId: adminRoleId, skillId: skillIds.atsCandidateCrud },
-    { roleId: adminRoleId, skillId: skillIds.emailDraft },
-    { roleId: adminRoleId, skillId: skillIds.interviewScheduler },
-    { roleId: adminRoleId, skillId: skillIds.meetingNotes },
-    { roleId: adminRoleId, skillId: skillIds.candidatePipelineBuilder },
+    roleSkillAssignments.push({ roleId: adminRoleId, skillId });
+    // Recruiter gets all skills too (can be restricted later)
+    roleSkillAssignments.push({ roleId: recruiterRoleId, skillId });
+  }
 
-    // Recruiter gets operational skills
-    { roleId: recruiterRoleId, skillId: skillIds.linkedinLookup },
-    { roleId: recruiterRoleId, skillId: skillIds.atsCandidateSearch },
-    { roleId: recruiterRoleId, skillId: skillIds.atsCandidateCrud },
-    { roleId: recruiterRoleId, skillId: skillIds.emailDraft },
-    { roleId: recruiterRoleId, skillId: skillIds.interviewScheduler },
-    { roleId: recruiterRoleId, skillId: skillIds.meetingNotes },
-    { roleId: recruiterRoleId, skillId: skillIds.candidatePipelineBuilder },
-
-    // Viewer gets read-only skills
-    { roleId: viewerRoleId, skillId: skillIds.atsCandidateSearch },
-  ];
+  // Viewer only gets skill-builder
+  if (seededSkillIds.includes(skillIds.skillBuilder)) {
+    roleSkillAssignments.push({ roleId: viewerRoleId, skillId: skillIds.skillBuilder });
+  }
 
   for (const assignment of roleSkillAssignments) {
     await db.insert(roleSkills).values(assignment).onConflictDoNothing();

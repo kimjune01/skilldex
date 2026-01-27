@@ -493,65 +493,10 @@ async function handleGoogleCombinedOAuthCallback(
       });
     }
 
-    if (hasDrive) {
-      integrationsToCreate.push({
-        provider: 'google-drive',
-        metadata: {
-          ...baseMetadata,
-          accessLevel: 'read-only', // Drive is read-only for security
-          subProvider: 'google-drive',
-          driveEmail: userEmail,
-        },
-      });
-    }
-
-    if (hasDocs) {
-      integrationsToCreate.push({
-        provider: 'google-docs',
-        metadata: {
-          ...baseMetadata,
-          accessLevel: 'read-write',
-          subProvider: 'google-docs',
-          docsEmail: userEmail,
-        },
-      });
-    }
-
-    if (hasForms) {
-      integrationsToCreate.push({
-        provider: 'google-forms',
-        metadata: {
-          ...baseMetadata,
-          accessLevel: 'read-only', // Forms is read-only
-          subProvider: 'google-forms',
-          formsEmail: userEmail,
-        },
-      });
-    }
-
-    if (hasContacts) {
-      integrationsToCreate.push({
-        provider: 'google-contacts',
-        metadata: {
-          ...baseMetadata,
-          accessLevel: 'read-only', // Contacts is read-only
-          subProvider: 'google-contacts',
-          contactsEmail: userEmail,
-        },
-      });
-    }
-
-    if (hasTasks) {
-      integrationsToCreate.push({
-        provider: 'google-tasks',
-        metadata: {
-          ...baseMetadata,
-          accessLevel: 'read-write',
-          subProvider: 'google-tasks',
-          tasksEmail: userEmail,
-        },
-      });
-    }
+    // Non-essential Google Workspace tools are NOT created by default.
+    // Users can enable them via toggles on the integrations page.
+    // The granted scopes (hasDrive, hasDocs, hasForms, hasContacts, hasTasks) are logged
+    // but integrations are only created when user explicitly enables them.
 
     // For Google Sheets, find existing or create new spreadsheet
     const sheetsIntegration = integrationsToCreate.find(i => i.provider === 'google-sheets');
@@ -993,6 +938,187 @@ export function createGoogleOAuthRoutes() {
   return routes;
 }
 
+// Mapping from provider ID to the config for non-essential Google Workspace tools
+const GOOGLE_WORKSPACE_TOOLS: Record<string, {
+  provider: string;
+  emailField: string;
+  displayName: string;
+  scopePattern: string; // Pattern to check in granted scopes
+}> = {
+  'google-drive': {
+    provider: 'google-drive',
+    emailField: 'driveEmail',
+    displayName: 'Google Drive',
+    scopePattern: 'drive',
+  },
+  'google-docs': {
+    provider: 'google-docs',
+    emailField: 'docsEmail',
+    displayName: 'Google Docs',
+    scopePattern: 'documents',
+  },
+  'google-forms': {
+    provider: 'google-forms',
+    emailField: 'formsEmail',
+    displayName: 'Google Forms',
+    scopePattern: 'forms',
+  },
+  'google-contacts': {
+    provider: 'google-contacts',
+    emailField: 'contactsEmail',
+    displayName: 'Google Contacts',
+    scopePattern: 'contacts',
+  },
+  'google-tasks': {
+    provider: 'google-tasks',
+    emailField: 'tasksEmail',
+    displayName: 'Google Tasks',
+    scopePattern: 'tasks',
+  },
+};
+
+/**
+ * Verify that the access token has the required scope for a Google Workspace tool.
+ * Uses Google's tokeninfo endpoint to check granted scopes.
+ */
+async function verifyGoogleScope(accessToken: string, scopePattern: string): Promise<boolean> {
+  try {
+    const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(accessToken)}`);
+    if (!response.ok) {
+      return false;
+    }
+    const tokenInfo = await response.json() as { scope?: string };
+    const scopes = tokenInfo.scope || '';
+    return scopes.includes(scopePattern);
+  } catch {
+    return false;
+  }
+}
+
+// Handler to enable a non-essential Google Workspace tool
+// This copies tokens from an existing Google integration (email, calendar, or sheets)
+async function handleEnableGoogleTool(
+  c: Context<BlankEnv, string, BlankInput> & { get: (key: 'user') => { sub: string; email: string; organizationId: string | null } }
+) {
+  const user = c.get('user');
+  const body = await c.req.json<{ provider: string }>().catch(() => ({ provider: '' }));
+
+  const toolConfig = GOOGLE_WORKSPACE_TOOLS[body.provider];
+  if (!toolConfig) {
+    return c.json({ error: { message: `Invalid provider: ${body.provider}. Must be one of: ${Object.keys(GOOGLE_WORKSPACE_TOOLS).join(', ')}` } }, 400);
+  }
+
+  // Check if already connected
+  const existingTool = await db
+    .select()
+    .from(integrations)
+    .where(and(
+      eq(integrations.userId, user.sub),
+      eq(integrations.provider, toolConfig.provider),
+      eq(integrations.status, 'connected')
+    ))
+    .limit(1);
+
+  if (existingTool.length > 0) {
+    return c.json({ error: { message: `${toolConfig.displayName} is already connected` } }, 400);
+  }
+
+  // Find an existing Google integration to copy tokens from
+  const sourceIntegration = await db
+    .select()
+    .from(integrations)
+    .where(and(
+      eq(integrations.userId, user.sub),
+      eq(integrations.status, 'connected')
+    ))
+    .limit(10);
+
+  // Look for email, calendar, or sheets integration
+  const googleSource = sourceIntegration.find(int =>
+    ['email', 'calendar', 'google-sheets'].includes(int.provider)
+  );
+
+  if (!googleSource) {
+    return c.json({ error: { message: 'No Google integration found. Please connect Google first.' } }, 400);
+  }
+
+  // Parse source metadata to get tokens
+  let sourceMetadata: Record<string, unknown> = {};
+  try {
+    sourceMetadata = JSON.parse(googleSource.metadata || '{}');
+  } catch {
+    return c.json({ error: { message: 'Invalid source integration metadata' } }, 500);
+  }
+
+  const accessToken = sourceMetadata.accessToken as string | undefined;
+  const refreshToken = sourceMetadata.refreshToken as string | undefined;
+  const expiresAt = sourceMetadata.expiresAt as string | undefined;
+
+  if (!accessToken) {
+    return c.json({ error: { message: 'Source integration has no access token. Please reconnect Google.' } }, 400);
+  }
+
+  // Verify the token has the required scope for this tool
+  const hasScope = await verifyGoogleScope(accessToken, toolConfig.scopePattern);
+  if (!hasScope) {
+    // Token doesn't have the required scope - user restricted it during OAuth
+    log.warn('google_tool_scope_missing', { userId: user.sub, provider: body.provider, scopePattern: toolConfig.scopePattern });
+    return c.json({
+      error: {
+        message: `Permission for ${toolConfig.displayName} was not granted. Please reconnect Google and grant the required permission.`,
+        code: 'SCOPE_NOT_GRANTED',
+      },
+    }, 403);
+  }
+
+  // Get user email from source metadata or fetch it
+  const userEmail = (sourceMetadata.gmailEmail || sourceMetadata.calendarEmail || sourceMetadata.sheetsEmail || '') as string;
+
+  // Get user's organization ID
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, user.sub))
+    .limit(1);
+
+  // Create metadata for the new integration
+  const newMetadata: Record<string, unknown> = {
+    accessLevel: 'read-write',
+    subProvider: body.provider,
+    [toolConfig.emailField]: userEmail,
+    accessToken,
+    refreshToken,
+    expiresAt,
+  };
+
+  // Delete any existing disconnected integration for this provider
+  await db
+    .delete(integrations)
+    .where(and(eq(integrations.userId, user.sub), eq(integrations.provider, toolConfig.provider)));
+
+  // Create the new integration
+  await db.insert(integrations).values({
+    id: randomUUID(),
+    userId: user.sub,
+    organizationId: dbUser?.organizationId ?? null,
+    provider: toolConfig.provider,
+    status: 'connected',
+    metadata: JSON.stringify(newMetadata),
+    lastSyncAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  log.info('google_tool_enabled', { userId: user.sub, provider: body.provider });
+
+  return c.json({
+    data: {
+      message: `${toolConfig.displayName} enabled successfully`,
+      provider: toolConfig.provider,
+    },
+  });
+}
+
 /**
  * Create Google OAuth token routes for a Hono app.
  * These routes require JWT auth middleware to be applied.
@@ -1006,6 +1132,9 @@ export function createGoogleOAuthTokenRoutes() {
   routes.get('/google-drive/token', (c) => handleGoogleTokenRequest(c, 'google-drive'));
   routes.get('/google-contacts/token', (c) => handleGoogleTokenRequest(c, 'google-contacts'));
   routes.get('/google-tasks/token', (c) => handleGoogleTokenRequest(c, 'google-tasks'));
+
+  // Enable non-essential Google Workspace tools (copies tokens from existing integration)
+  routes.post('/google/enable-tool', handleEnableGoogleTool);
 
   return routes;
 }

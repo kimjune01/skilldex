@@ -1,6 +1,7 @@
 ---
-name: overdue-invoices
+name: Overdue Invoices
 description: Find overdue invoices, send reminders, and mark them paid. Use when someone asks "who owes me money?" or "what invoices are overdue?"
+category: Finance
 intent: I want to see overdue invoices, who owes me money, unpaid invoices, mark invoice paid
 capabilities:
   - Check Stripe for overdue invoices

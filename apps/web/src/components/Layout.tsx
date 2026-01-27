@@ -395,7 +395,11 @@ export default function Layout() {
             </div>
           )}
 
-          <div className="flex items-center gap-3 mb-3 p-2 rounded-lg bg-[hsl(220_15%_95%)] border-2 border-[hsl(220_15%_85%)]">
+          <Link
+            to="/profile"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-3 mb-3 p-2 rounded-lg bg-[hsl(220_15%_95%)] border-2 border-[hsl(220_15%_85%)] hover:bg-[hsl(220_15%_92%)] hover:border-[hsl(220_15%_75%)] transition-all cursor-pointer"
+          >
             <div className="relative">
               <div className="h-9 w-9 rounded-lg robot-button flex items-center justify-center">
                 <span className="text-sm font-bold text-white">
@@ -418,7 +422,7 @@ export default function Layout() {
                 ADMIN
               </Badge>
             ) : null}
-          </div>
+          </Link>
 
           <button
             onClick={() => setComplainDialogOpen(true)}
