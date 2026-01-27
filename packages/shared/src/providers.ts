@@ -302,31 +302,6 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     hasManifest: true,
   },
 
-  // ==================== Project Boards ====================
-  trello: {
-    id: 'trello',
-    displayName: 'Trello',
-    category: 'database',
-    oauthFlow: 'nango',
-    nangoKey: 'trello',
-    apiBaseUrl: 'https://api.trello.com/1',
-    apiAuth: { type: 'bearer' },
-    order: 7,
-    hasManifest: true,
-  },
-
-  // ==================== Developer Tools ====================
-  github: {
-    id: 'github',
-    displayName: 'GitHub',
-    category: 'database',
-    oauthFlow: 'nango',
-    nangoKey: 'github',
-    apiBaseUrl: 'https://api.github.com',
-    apiAuth: { type: 'bearer' },
-    order: 8,
-    hasManifest: true,
-  },
 };
 
 // ============ Query Functions ============
@@ -478,8 +453,6 @@ export const INDIVIDUAL_ALLOWED_PROVIDERS = [
   'google-tasks',
   // Database - Third party (full-featured free tiers)
   'notion',
-  'trello',
-  'github',
   // Scheduling
   'cal-com',
 ] as const;
@@ -526,8 +499,6 @@ export const FREE_PROVIDERS = [
   'cal-com',
   // Third party (full-featured free tiers)
   'notion',
-  'trello',
-  'github',
 ] as const;
 
 /**

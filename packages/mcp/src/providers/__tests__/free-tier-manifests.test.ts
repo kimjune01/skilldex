@@ -2,14 +2,12 @@
  * Free Tier Provider Manifest Tests
  *
  * Tests for the new free tier provider manifests:
- * - Notion, Trello, GitHub (third-party)
+ * - Notion, GitHub (third-party)
  * - Google Drive, Contacts, Tasks (expanded Google stack)
  */
 
 import { describe, it, expect } from 'vitest';
 import { notionManifest } from '../manifests/notion.js';
-import { trelloManifest } from '../manifests/trello.js';
-import { githubManifest } from '../manifests/github.js';
 import { googleDriveManifest } from '../manifests/google-drive.js';
 import { googleContactsManifest } from '../manifests/google-contacts.js';
 import { googleTasksManifest } from '../manifests/google-tasks.js';
@@ -48,81 +46,6 @@ describe('Notion Manifest', () => {
     expect(notionManifest.rateLimit).toBeDefined();
     expect(notionManifest.rateLimit?.requests).toBe(3);
     expect(notionManifest.rateLimit?.windowSeconds).toBe(1);
-  });
-});
-
-describe('Trello Manifest', () => {
-  it('has correct provider metadata', () => {
-    expect(trelloManifest.provider).toBe('trello');
-    expect(trelloManifest.displayName).toBe('Trello');
-    expect(trelloManifest.category).toBe('database');
-    expect(trelloManifest.baseUrl).toBe('https://api.trello.com/1');
-  });
-
-  it('uses bearer auth', () => {
-    expect(trelloManifest.auth.type).toBe('bearer');
-  });
-
-  it('has required operations', () => {
-    const operationIds = trelloManifest.operations.map((op) => op.id);
-    expect(operationIds).toContain('list_boards');
-    expect(operationIds).toContain('list_cards');
-    expect(operationIds).toContain('create_card');
-    expect(operationIds).toContain('update_card');
-  });
-
-  it('all operations have required fields', () => {
-    for (const op of trelloManifest.operations) {
-      expect(op.id).toBeDefined();
-      expect(op.method).toMatch(/^(GET|POST|PUT|DELETE)$/);
-      expect(op.path).toBeDefined();
-      expect(op.access).toMatch(/^(read|write|delete)$/);
-      expect(op.description).toBeDefined();
-    }
-  });
-});
-
-describe('GitHub Manifest', () => {
-  it('has correct provider metadata', () => {
-    expect(githubManifest.provider).toBe('github');
-    expect(githubManifest.displayName).toBe('GitHub');
-    expect(githubManifest.category).toBe('database');
-    expect(githubManifest.baseUrl).toBe('https://api.github.com');
-  });
-
-  it('uses bearer auth', () => {
-    expect(githubManifest.auth.type).toBe('bearer');
-  });
-
-  it('has required operations', () => {
-    const operationIds = githubManifest.operations.map((op) => op.id);
-    expect(operationIds).toContain('list_repos');
-    expect(operationIds).toContain('list_issues');
-    expect(operationIds).toContain('create_issue');
-    expect(operationIds).toContain('list_pull_requests');
-    expect(operationIds).toContain('get_content');
-  });
-
-  it('all operations have required fields', () => {
-    for (const op of githubManifest.operations) {
-      expect(op.id).toBeDefined();
-      expect(op.method).toMatch(/^(GET|POST|PATCH|DELETE)$/);
-      expect(op.path).toBeDefined();
-      expect(op.access).toMatch(/^(read|write|delete)$/);
-      expect(op.description).toBeDefined();
-    }
-  });
-
-  it('has rate limit configured', () => {
-    expect(githubManifest.rateLimit).toBeDefined();
-    expect(githubManifest.rateLimit?.requests).toBe(5000);
-    expect(githubManifest.rateLimit?.windowSeconds).toBe(3600);
-  });
-
-  it('has blocklist for sensitive endpoints', () => {
-    expect(githubManifest.blocklist).toBeDefined();
-    expect(githubManifest.blocklist).toContain('/admin');
-    expect(githubManifest.blocklist).toContain('/authorizations');
   });
 });
 
@@ -225,8 +148,6 @@ describe('Google Tasks Manifest', () => {
 describe('All Free Tier Manifests', () => {
   const manifests = [
     notionManifest,
-    trelloManifest,
-    githubManifest,
     googleDriveManifest,
     googleContactsManifest,
     googleTasksManifest,

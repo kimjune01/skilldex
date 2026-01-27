@@ -20,8 +20,6 @@ import { googleContactsManifest } from './google-contacts.js';
 import { googleTasksManifest } from './google-tasks.js';
 // Data providers - Third party (free tier)
 import { notionManifest } from './notion.js';
-import { trelloManifest } from './trello.js';
-import { githubManifest } from './github.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -45,8 +43,6 @@ export const manifests: Record<string, ProviderManifest> = {
   'google-tasks': googleTasksManifest,
   // Data providers - Third party (free tier)
   notion: notionManifest,
-  trello: trelloManifest,
-  github: githubManifest,
 };
 
 /**
@@ -81,6 +77,4 @@ export {
   googleContactsManifest,
   googleTasksManifest,
   notionManifest,
-  trelloManifest,
-  githubManifest,
 };

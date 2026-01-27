@@ -26,13 +26,13 @@ export default function Terms() {
 
           <h2>2. Description of Service</h2>
           <p>
-            Skillomatic is a platform that provides AI-powered recruiting skills for use with Claude Code, Claude Desktop, and other MCP-compatible applications. The Service includes:
+            Skillomatic is a platform that connects AI assistants (Claude, ChatGPT, and other MCP-compatible applications) to business tools and services. The Service includes:
           </p>
           <ul>
-            <li>A web dashboard for managing skills, integrations, and API keys</li>
-            <li>An MCP server for connecting to desktop chat applications</li>
-            <li>A browser extension for LinkedIn profile extraction</li>
-            <li>Integration with third-party ATS and recruiting tools</li>
+            <li>A web dashboard for managing integrations, API keys, and usage</li>
+            <li>An MCP server for connecting to AI assistants and chat applications</li>
+            <li>A browser extension for web page access and data extraction</li>
+            <li>OAuth integrations with third-party services (CRM, ATS, email, calendar, spreadsheets, and more)</li>
           </ul>
 
           <h2>3. Account Registration</h2>
@@ -61,7 +61,7 @@ export default function Terms() {
 
           <h2>5. Third-Party Integrations</h2>
           <p>
-            The Service integrates with third-party platforms including LinkedIn, various ATS systems, and AI providers. You acknowledge that:
+            The Service integrates with third-party platforms including CRM systems, ATS platforms, email providers, calendar services, spreadsheet applications, and AI providers. You acknowledge that:
           </p>
           <ul>
             <li>You must comply with the terms of service of all integrated platforms</li>
@@ -70,15 +70,15 @@ export default function Terms() {
             <li>OAuth connections grant us limited access as authorized by you</li>
           </ul>
 
-          <h2>6. LinkedIn Usage</h2>
+          <h2>6. Web Scraping and Browser Extension</h2>
           <p>
-            The browser extension allows extraction of LinkedIn profile data. By using this feature, you agree that:
+            The browser extension allows access to web pages using your authenticated browser session. By using this feature, you agree that:
           </p>
           <ul>
-            <li>You will use LinkedIn data only for legitimate recruiting purposes</li>
-            <li>You are responsible for compliance with LinkedIn's Terms of Service</li>
+            <li>You will use extracted data only for legitimate business purposes</li>
+            <li>You are responsible for compliance with each website's Terms of Service</li>
             <li>You will not engage in excessive automated scraping</li>
-            <li>Skillomatic is not liable for any LinkedIn account restrictions resulting from your use</li>
+            <li>Skillomatic is not liable for any account restrictions resulting from your use</li>
           </ul>
 
           <h2>7. API Keys and Security</h2>
