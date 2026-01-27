@@ -282,6 +282,36 @@ value = value || process.env.MY_SECRET;  // Fallback for local
 
 ---
 
+## 13. Platform Parity: Web Actions = MCP Tools
+
+Features that work in web chat should also work in Claude Desktop (MCP). The pattern:
+
+| Platform | Implementation | Context Access |
+|----------|---------------|----------------|
+| Web chat | Action in `action-executor.ts` | LLM has conversation in context |
+| MCP/Claude Desktop | Tool in `packages/mcp/src/tools/` | LLM has conversation in context |
+
+**Key insight:** The LLM always has the current conversation in context on both platforms. Don't create "get_conversation_history" actions - the LLM can already see the conversation.
+
+```typescript
+// ✅ Web action calls same API as MCP tool
+// action-executor.ts
+case 'create_skill':
+  return serverRequest('/skills', { method: 'POST', body: { content, force } });
+
+// packages/mcp/src/tools/index.ts
+server.tool('create_skill', ..., async (args) => {
+  return client.createSkill(args.content, args.force);
+});
+
+// ❌ Don't create platform-specific conversation access
+case 'get_conversation_history':  // Not needed - LLM already has it
+```
+
+When adding new actions, add both the web action and MCP tool pointing to the same API endpoint.
+
+---
+
 ## Quick Reference: What NOT to Do
 
 | Don't | Why | Do Instead |
@@ -297,3 +327,5 @@ value = value || process.env.MY_SECRET;  // Fallback for local
 | Hardcode free/premium providers | Logic scattered | Use `isPremiumProvider()` from providers.ts |
 | Hardcode individual restrictions | Logic scattered | Use `isProviderAllowedForIndividual()` |
 | Put secrets in SST `environment:` | Baked at deploy | Use `link:` + `Resource` import |
+| Create "get_conversation_history" action | LLM already has context | Just use the conversation directly |
+| Add web action without MCP tool | Breaks Claude Desktop | Add both, same API endpoint |
