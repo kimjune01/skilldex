@@ -73,6 +73,7 @@ import Status from './pages/Status';
 import NotFound from './pages/NotFound';
 import Debug from './pages/Debug';
 import AccountType from './pages/onboarding/AccountType';
+import GetApiKey from './pages/GetApiKey';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAuth();
@@ -222,6 +223,7 @@ export default function App() {
           <Route path="skills/:slug/raw" element={<SkillRaw />} />
           <Route path="desktop-chat" element={<ApiKeys />} />
           <Route path="mobile-chat" element={<MobileChat />} />
+          <Route path="get-api-key" element={<GetApiKey />} />
           <Route path="integrations" element={<Integrations />} />
           <Route path="extension/install" element={<ExtensionInstall />} />
           <Route path="usage" element={<Usage />} />

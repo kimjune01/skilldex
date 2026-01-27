@@ -7,7 +7,7 @@ import type { DeploymentSettings } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Zap, Plug, Key, ArrowRight, AlertCircle, CheckCircle, Bot, Cog, Circle, Terminal, Chrome, PartyPopper, CheckCircle2, XCircle, BarChart3 } from 'lucide-react';
+import { Zap, Plug, Key, ArrowRight, AlertCircle, CheckCircle, Bot, Cog, Circle, Terminal, Chrome, PartyPopper, CheckCircle2, XCircle, BarChart3, Sparkles } from 'lucide-react';
 import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import { Confetti } from '@/components/ui/confetti';
 import { SkeletonDashboard } from '@/components/ui/skeleton';
@@ -93,6 +93,7 @@ export default function Dashboard() {
       icon: typeof Key;
       route: string;
       actionLabel: string;
+      skippable?: boolean;
     }> = [];
 
     const currentStep = onboardingStatus?.currentStep ?? 0;
@@ -105,6 +106,17 @@ export default function Dashboard() {
       icon: Plug,
       route: '/integrations',
       actionLabel: 'Connect',
+    });
+
+    // BYOK step - get an AI API key (skippable, shown after integrations)
+    steps.push({
+      id: 'byok',
+      label: 'Get an AI API key',
+      done: currentStep >= ONBOARDING_STEPS.API_KEY_GENERATED, // Considered done when they proceed to desktop chat
+      icon: Sparkles,
+      route: '/get-api-key',
+      actionLabel: 'Get key',
+      skippable: true,
     });
 
     // Desktop BYOAI mode: need API key for desktop chat app connection (step 2)
@@ -340,6 +352,17 @@ export default function Dashboard() {
                             {integrationList.some(i => i.status === 'connected') ? 'More' : 'Other'}
                           </Button>
                         </Link>
+                      </div>
+                    ) : step.skippable ? (
+                      // Skippable step: show action + skip option
+                      <div className="flex items-center gap-2">
+                        <Link to={step.route}>
+                          <Button size="sm" className="robot-button border-0">
+                            {step.actionLabel}
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        </Link>
+                        <span className="text-xs text-muted-foreground">Optional</span>
                       </div>
                     ) : (
                       <Link to={step.route}>
