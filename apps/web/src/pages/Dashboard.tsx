@@ -124,7 +124,7 @@ export default function Dashboard() {
         label: 'Install browser extension',
         done: currentStep >= ONBOARDING_STEPS.EXTENSION_INSTALLED,
         icon: Chrome,
-        route: '/extension',
+        route: '/extension/install',
         actionLabel: 'Install',
       });
 

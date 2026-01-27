@@ -30,7 +30,7 @@ const navigation = [
   { name: 'Web Chat', href: '/chat', icon: MessageSquare },
   { name: 'Connections', href: '/integrations', icon: Plug },
   { name: 'Skills', href: '/skills', icon: Zap },
-  { name: 'Extension', href: '/extension', icon: Chrome },
+  { name: 'Extension', href: '/extension/install', icon: Chrome },
 ];
 
 // Admin navigation - visible only to users with isAdmin=true
