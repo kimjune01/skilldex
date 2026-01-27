@@ -426,135 +426,211 @@ Columns: ${tab.columns.join(', ')}${pkInfo}`,
   );
   registeredTools.push(`${slug}_add`);
 
-  // {slug}_upsert - Find or create (upsert)
-  // If tab has primaryKey, match_field is optional (defaults to primaryKey)
-  const upsertSchema: Record<string, z.ZodTypeAny> = {
-    match_value: z.string().describe(`Value to search for${tab.primaryKey ? ` in ${tab.primaryKey}` : ''}`),
-  };
-  // match_field is optional if primaryKey is set, required otherwise
+  // {slug}_upsert - Find or create (upsert) with binary search
+  // Requires primary key for the optimized upsert endpoint
   if (tab.primaryKey) {
-    upsertSchema.match_field = z.string().optional().describe(`Column to match on (default: "${tab.primaryKey}")`);
-  } else {
-    upsertSchema.match_field = z.string().describe('Column to match on (e.g., "Email", "Name")');
-  }
-  for (const col of tab.columns) {
-    const fieldName = fieldMap.get(col)!;
-    upsertSchema[fieldName] = z.string().optional().describe(col);
-  }
+    const upsertSchema: Record<string, z.ZodTypeAny> = {
+      force: z.boolean().optional().describe('Force overwrite instead of merge (avoids conflict errors)'),
+    };
+    for (const col of tab.columns) {
+      const fieldName = fieldMap.get(col)!;
+      const isPrimaryKey = col === tab.primaryKey;
+      upsertSchema[fieldName] = isPrimaryKey
+        ? z.string().describe(`${col} (primary key - required)`)
+        : z.string().optional().describe(col);
+    }
 
-  const upsertDescription = tab.primaryKey
-    ? `Find and update an existing row in ${tab.baseName}, or create a new one if not found.
+    const upsertDescription = `Find and update an existing row in ${tab.baseName}, or create a new one if not found.
 
-Matches by ${tab.primaryKey} (primary key) by default. Just provide the ${tab.primaryKey} value.
+Uses binary search on the primary key (${tab.primaryKey}) for O(log n) performance.
+Data is kept sorted by primary key. If unsorted, will auto-sort first.
 
-Example: match_value="john@example.com" will:
-- If found: update that row with the provided fields
-- If not found: create a new row with all provided fields
+**Enrichment mode (default):**
+- Empty fields in existing row are filled with new values
+- If both existing and new have different non-empty values: conflict error
+- Use force=true to overwrite instead of merge
+
+**Force mode (force=true):**
+- Overwrites existing values with new values
+- No conflict errors
 ${purposeLine}
 Columns: ${tab.columns.join(', ')}
-Primary key: ${tab.primaryKey}`
-    : `Find and update an existing row in ${tab.baseName}, or create a new one if not found.
+Primary key: ${tab.primaryKey}`;
+
+    server.tool(
+      `${slug}_upsert`,
+      upsertDescription,
+      upsertSchema,
+      async (args) => {
+        try {
+          // Build data from provided fields
+          const data: Record<string, string> = {};
+          for (const col of tab.columns) {
+            const fieldName = fieldMap.get(col)!;
+            if (args[fieldName] !== undefined) {
+              data[col] = args[fieldName] as string;
+            }
+          }
+
+          // Ensure primary key is provided
+          if (!data[tab.primaryKey!]) {
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Primary key "${tab.primaryKey}" is required for upsert.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const result = await client.upsertTabRow(tab.title, {
+            data,
+            force: args.force as boolean | undefined,
+          });
+
+          if (result.action === 'created') {
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Created new row ${result.rowNumber} in ${tab.title} (inserted at sorted position).`,
+                },
+              ],
+            };
+          } else {
+            const forceNote = args.force ? ' (force overwrite)' : ' (enriched)';
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Updated existing row ${result.rowNumber} in ${tab.title}${forceNote}.`,
+                },
+              ],
+            };
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          // Check for conflict error
+          if (message.includes('Conflict detected')) {
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `${message}\n\nTo overwrite existing values, use force=true.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text' as const, text: `Error upserting row: ${message}` }],
+            isError: true,
+          };
+        }
+      }
+    );
+    registeredTools.push(`${slug}_upsert`);
+  } else {
+    // Fallback for tables without primary key - use old linear search approach
+    const upsertSchema: Record<string, z.ZodTypeAny> = {
+      match_field: z.string().describe('Column to match on (e.g., "Email", "Name")'),
+      match_value: z.string().describe('Value to search for'),
+    };
+    for (const col of tab.columns) {
+      const fieldName = fieldMap.get(col)!;
+      upsertSchema[fieldName] = z.string().optional().describe(col);
+    }
+
+    const upsertDescription = `Find and update an existing row in ${tab.baseName}, or create a new one if not found.
 
 Use this to avoid duplicates. Searches by the match_field, updates if found, creates if not.
 
-Example: match_field="Email", match_value="john@example.com" will:
-- If found: update that row with the provided fields
-- If not found: create a new row with all provided fields
+Note: For better performance, set a primary key on this table using update_table_schema.
 ${purposeLine}
 Columns: ${tab.columns.join(', ')}`;
 
-  server.tool(
-    `${slug}_upsert`,
-    upsertDescription,
-    upsertSchema,
-    async (args) => {
-      try {
-        // Use primaryKey as default match_field if available
-        const matchField = (args.match_field as string | undefined) || tab.primaryKey;
-        const matchValue = args.match_value as string;
+    server.tool(
+      `${slug}_upsert`,
+      upsertDescription,
+      upsertSchema,
+      async (args) => {
+        try {
+          const matchField = args.match_field as string;
+          const matchValue = args.match_value as string;
 
-        if (!matchField) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: 'match_field is required (no primary key configured for this table)',
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        // Validate match_field is a valid column
-        if (!tab.columns.includes(matchField)) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Invalid match_field "${matchField}". Must be one of: ${tab.columns.join(', ')}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        // Build data from provided fields
-        const data: Record<string, string> = {};
-        for (const col of tab.columns) {
-          const fieldName = fieldMap.get(col)!;
-          if (args[fieldName] !== undefined) {
-            data[col] = args[fieldName] as string;
+          // Validate match_field is a valid column
+          if (!tab.columns.includes(matchField)) {
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Invalid match_field "${matchField}". Must be one of: ${tab.columns.join(', ')}`,
+                },
+              ],
+              isError: true,
+            };
           }
-        }
 
-        // Ensure match field value is included in data
-        if (!data[matchField]) {
-          data[matchField] = matchValue;
-        }
+          // Build data from provided fields
+          const data: Record<string, string> = {};
+          for (const col of tab.columns) {
+            const fieldName = fieldMap.get(col)!;
+            if (args[fieldName] !== undefined) {
+              data[col] = args[fieldName] as string;
+            }
+          }
 
-        // Search for existing row
-        const searchResult = await client.searchTab(tab.title, matchValue, 50);
+          // Ensure match field value is included in data
+          if (!data[matchField]) {
+            data[matchField] = matchValue;
+          }
 
-        // Find exact match on the specified field
-        const existingRow = searchResult.rows.find(
-          (row) => row.data[matchField]?.toLowerCase() === matchValue.toLowerCase()
-        );
+          // Search for existing row (linear search - no primary key)
+          const searchResult = await client.searchTab(tab.title, matchValue, 50);
 
-        if (existingRow) {
-          // Update existing row
-          await client.updateTabRow(tab.title, existingRow.rowNumber, data);
+          // Find exact match on the specified field
+          const existingRow = searchResult.rows.find(
+            (row) => row.data[matchField]?.toLowerCase() === matchValue.toLowerCase()
+          );
+
+          if (existingRow) {
+            // Update existing row
+            await client.updateTabRow(tab.title, existingRow.rowNumber, data);
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Updated existing row ${existingRow.rowNumber} in ${tab.title} (matched ${matchField}="${matchValue}").`,
+                },
+              ],
+            };
+          } else {
+            // Create new row (appends to end - no sorted insert without PK)
+            const result = await client.appendTabRow(tab.title, data);
+            const match = result.updatedRange.match(/!A(\d+):/);
+            const rowNum = match ? match[1] : 'unknown';
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Created new row ${rowNum} in ${tab.title} (no match found for ${matchField}="${matchValue}").`,
+                },
+              ],
+            };
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
           return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Updated existing row ${existingRow.rowNumber} in ${tab.title} (matched ${matchField}="${matchValue}").`,
-              },
-            ],
-          };
-        } else {
-          // Create new row
-          const result = await client.appendTabRow(tab.title, data);
-          const match = result.updatedRange.match(/!A(\d+):/);
-          const rowNum = match ? match[1] : 'unknown';
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Created new row ${rowNum} in ${tab.title} (no match found for ${matchField}="${matchValue}").`,
-              },
-            ],
+            content: [{ type: 'text' as const, text: `Error upserting row: ${message}` }],
+            isError: true,
           };
         }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error upserting row: ${message}` }],
-          isError: true,
-        };
       }
-    }
-  );
-  registeredTools.push(`${slug}_upsert`);
+    );
+    registeredTools.push(`${slug}_upsert`);
+  }
 
   // {slug}_list - List rows
   server.tool(

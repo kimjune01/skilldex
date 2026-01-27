@@ -503,4 +503,28 @@ export class SkillomaticClient {
       `/v1/sheets/tabs/${encodeURIComponent(tabName)}/search?${params.toString()}`
     );
   }
+
+  /**
+   * Upsert a row in a tab using binary search and enrichment.
+   * - If a row with the same primary key exists: merge data (enrich empty fields)
+   * - If no match: insert at sorted position to maintain primary key order
+   * - Use force=true to overwrite instead of merge (avoids conflict errors)
+   */
+  async upsertTabRow(
+    tabName: string,
+    request: { data: Record<string, string>; force?: boolean }
+  ): Promise<{
+    action: 'created' | 'updated';
+    rowNumber: number;
+    merged?: Record<string, string>;
+  }> {
+    return this.request<{
+      action: 'created' | 'updated';
+      rowNumber: number;
+      merged?: Record<string, string>;
+    }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}/upsert`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
 }

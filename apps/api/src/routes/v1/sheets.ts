@@ -111,6 +111,291 @@ function parseColumns(headerRow: string[]): { columns: string[]; primaryKey?: st
 }
 
 /**
+ * Convert a 0-indexed column number to a column letter (A, B, ..., Z, AA, AB, ...).
+ * Handles columns beyond Z (26+).
+ * Examples: 0 -> 'A', 25 -> 'Z', 26 -> 'AA', 27 -> 'AB', 702 -> 'AAA'
+ */
+function getColumnLetter(index: number): string {
+  let letter = '';
+  let temp = index;
+  while (temp >= 0) {
+    letter = String.fromCharCode((temp % 26) + 65) + letter;
+    temp = Math.floor(temp / 26) - 1;
+  }
+  return letter;
+}
+
+/**
+ * Read just the primary key column values for a tab.
+ * Returns array of {value, rowNumber} and whether the data is sorted.
+ * Much more efficient than reading all columns for binary search.
+ */
+async function readPrimaryKeyColumn(
+  accessToken: string,
+  spreadsheetId: string,
+  tab: DerivedTab
+): Promise<{ values: Array<{ value: string; rowNumber: number }>; isSorted: boolean }> {
+  if (!tab.primaryKey) {
+    return { values: [], isSorted: true };
+  }
+
+  // Find column letter for primary key
+  const pkIndex = tab.columns.indexOf(tab.primaryKey);
+  if (pkIndex === -1) {
+    return { values: [], isSorted: true };
+  }
+  const colLetter = getColumnLetter(pkIndex);
+
+  // Read just that column (e.g., "Contacts!A:A")
+  const response = await sheetsRequest(
+    accessToken,
+    'GET',
+    `/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tab.title)}!${colLetter}:${colLetter}?majorDimension=ROWS`
+  );
+
+  if (!response.ok) {
+    log.error('sheets_read_pk_column_failed', { error: response.error });
+    return { values: [], isSorted: true };
+  }
+
+  const data = response.data as { values?: string[][] };
+  const allValues = data.values || [];
+
+  // Skip header row, map to {value, rowNumber}, filter empty values
+  const values = allValues.slice(1).map((row, index) => ({
+    value: row[0] || '',
+    rowNumber: index + 2, // +2 for 1-indexed + header
+  })).filter(v => v.value !== '');
+
+  // Check if already sorted (case-insensitive string comparison)
+  const isSorted = values.every((v, i) =>
+    i === 0 || v.value.localeCompare(values[i - 1].value, undefined, { sensitivity: 'base' }) >= 0
+  );
+
+  return { values, isSorted };
+}
+
+/**
+ * Binary search to find a primary key value's position.
+ * Returns { found: boolean, index: number, rowNumber?: number }
+ * - If found: index is the position in the values array, rowNumber is the sheet row
+ * - If not found: index is where it should be inserted to maintain sorted order
+ */
+function binarySearchPrimaryKey(
+  values: Array<{ value: string; rowNumber: number }>,
+  target: string
+): { found: boolean; index: number; rowNumber?: number } {
+  let left = 0;
+  let right = values.length - 1;
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const cmp = values[mid].value.localeCompare(target, undefined, { sensitivity: 'base' });
+
+    if (cmp === 0) {
+      return { found: true, index: mid, rowNumber: values[mid].rowNumber };
+    } else if (cmp < 0) {
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
+
+  return { found: false, index: left };
+}
+
+/**
+ * Sort the sheet by primary key column using Google Sheets sortRange API.
+ * Skips header row (row 1).
+ */
+async function sortSheetByPrimaryKey(
+  accessToken: string,
+  spreadsheetId: string,
+  tab: DerivedTab,
+  totalRows: number
+): Promise<{ ok: boolean; error?: string }> {
+  if (!tab.primaryKey) {
+    return { ok: false, error: 'No primary key defined' };
+  }
+
+  const pkIndex = tab.columns.indexOf(tab.primaryKey);
+  if (pkIndex === -1) {
+    return { ok: false, error: 'Primary key column not found' };
+  }
+
+  // sortRange request via batchUpdate
+  const response = await sheetsRequest(
+    accessToken,
+    'POST',
+    `/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      requests: [
+        {
+          sortRange: {
+            range: {
+              sheetId: tab.sheetId,
+              startRowIndex: 1, // Skip header
+              endRowIndex: totalRows + 1, // Include all data rows
+              startColumnIndex: 0,
+              endColumnIndex: tab.columns.length,
+            },
+            sortSpecs: [
+              {
+                dimensionIndex: pkIndex,
+                sortOrder: 'ASCENDING',
+              },
+            ],
+          },
+        },
+      ],
+    }
+  );
+
+  if (!response.ok) {
+    log.error('sheets_sort_failed', { error: response.error });
+    return { ok: false, error: response.error };
+  }
+
+  log.info('sheets_sorted_by_pk', { tab: tab.title, primaryKey: tab.primaryKey });
+  return { ok: true };
+}
+
+/**
+ * Insert a row at a specific position in the sheet atomically.
+ * Uses single batchUpdate with insertDimension + updateCells.
+ */
+async function insertRowAtPositionAtomic(
+  accessToken: string,
+  spreadsheetId: string,
+  tab: DerivedTab,
+  position: number, // 1-indexed row number where row will be inserted
+  data: Record<string, string>
+): Promise<{ ok: boolean; rowNumber: number; error?: string }> {
+  // Build cell values in column order
+  const rowValues = tab.columns.map(col => ({
+    userEnteredValue: { stringValue: data[col] || '' }
+  }));
+
+  const response = await sheetsRequest(
+    accessToken,
+    'POST',
+    `/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      requests: [
+        // First: insert empty row at position
+        {
+          insertDimension: {
+            range: {
+              sheetId: tab.sheetId,
+              dimension: 'ROWS',
+              startIndex: position - 1, // 0-indexed
+              endIndex: position,       // Insert 1 row
+            },
+            inheritFromBefore: position > 2, // Inherit formatting if not first data row
+          },
+        },
+        // Second: write values to the new row
+        {
+          updateCells: {
+            rows: [{ values: rowValues }],
+            fields: 'userEnteredValue',
+            start: {
+              sheetId: tab.sheetId,
+              rowIndex: position - 1, // 0-indexed
+              columnIndex: 0,
+            },
+          },
+        },
+      ],
+    }
+  );
+
+  if (!response.ok) {
+    log.error('sheets_insert_at_position_failed', { error: response.error });
+    return { ok: false, rowNumber: 0, error: response.error };
+  }
+
+  return { ok: true, rowNumber: position };
+}
+
+/**
+ * Merge row data with enrichment semantics.
+ * - Empty values in incoming data: keep existing
+ * - Non-empty values in incoming data:
+ *   - If existing is empty: use incoming (enrichment)
+ *   - If existing equals incoming: no conflict
+ *   - If existing differs from incoming: conflict
+ */
+function mergeRowData(
+  existing: Record<string, string>,
+  incoming: Record<string, string>
+): { merged: Record<string, string>; conflicts: string[] } {
+  const merged: Record<string, string> = { ...existing };
+  const conflicts: string[] = [];
+
+  for (const [key, newValue] of Object.entries(incoming)) {
+    if (!newValue) continue; // Skip empty incoming values
+
+    const existingValue = existing[key] || '';
+
+    if (!existingValue) {
+      // Enrichment: fill in empty field
+      merged[key] = newValue;
+    } else if (existingValue !== newValue) {
+      // Conflict: different non-empty values
+      conflicts.push(key);
+    }
+    // If equal, no change needed
+  }
+
+  return { merged, conflicts };
+}
+
+/**
+ * Verify a row still has the expected primary key value.
+ * Returns false if the row was moved/deleted externally.
+ *
+ * Exported for future use - can be integrated into update/delete operations
+ * to add resilience against external sheet modifications.
+ */
+export async function verifyRowPrimaryKey(
+  accessToken: string,
+  spreadsheetId: string,
+  tab: DerivedTab,
+  rowNumber: number,
+  expectedPkValue: string
+): Promise<{ valid: boolean; actualValue?: string }> {
+  if (!tab.primaryKey) {
+    return { valid: true };
+  }
+
+  const pkIndex = tab.columns.indexOf(tab.primaryKey);
+  if (pkIndex === -1) {
+    return { valid: true };
+  }
+
+  const colLetter = getColumnLetter(pkIndex);
+
+  const response = await sheetsRequest(
+    accessToken,
+    'GET',
+    `/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tab.title)}!${colLetter}${rowNumber}`
+  );
+
+  if (!response.ok) {
+    return { valid: false, actualValue: undefined };
+  }
+
+  const data = response.data as { values?: string[][] };
+  const actualValue = data.values?.[0]?.[0] || '';
+
+  return {
+    valid: actualValue.toLowerCase() === expectedPkValue.toLowerCase(),
+    actualValue,
+  };
+}
+
+/**
  * Get user's Google Sheets integration with valid token.
  * Returns only OAuth tokens - no user data stored.
  */
@@ -1017,4 +1302,194 @@ v1SheetsRoutes.get('/tabs/:tabName/search', async (c) => {
       columns: tab.columns,
     },
   });
+});
+
+// POST /v1/sheets/tabs/:tabName/upsert - Smart upsert with binary search and enrichment
+v1SheetsRoutes.post('/tabs/:tabName/upsert', async (c) => {
+  const user = c.get('user');
+  const tabName = c.req.param('tabName');
+  const body = await c.req.json<{ data: Record<string, string>; force?: boolean }>();
+
+  if (!body.data || typeof body.data !== 'object') {
+    return c.json({ error: { message: 'data object is required' } }, 400);
+  }
+
+  const result = await getGoogleSheetsIntegration(user.sub);
+  if (!result) {
+    return c.json({ error: { message: 'Google Sheets not connected' } }, 400);
+  }
+
+  const { metadata } = result;
+
+  // Check write access
+  if (metadata.accessLevel === 'read-only') {
+    return c.json({ error: { message: 'Read-only access to Google Sheets' } }, 403);
+  }
+
+  // Find the tab
+  const tabResult = await getTabByName(metadata.accessToken, tabName);
+  if ('error' in tabResult) {
+    return c.json({ error: { message: tabResult.error } }, tabResult.status as 404 | 500);
+  }
+  const { sheetInfo, tab } = tabResult;
+
+  // Require primary key for upsert
+  if (!tab.primaryKey) {
+    return c.json({ error: { message: 'Tab has no primary key defined. Cannot upsert without a primary key.' } }, 400);
+  }
+
+  const pkValue = body.data[tab.primaryKey];
+  if (!pkValue) {
+    return c.json({ error: { message: `Primary key "${tab.primaryKey}" is required in data` } }, 400);
+  }
+
+  // Read primary key column for binary search
+  let { values, isSorted } = await readPrimaryKeyColumn(
+    metadata.accessToken,
+    sheetInfo.spreadsheetId,
+    tab
+  );
+
+  // Auto-sort if needed and there's data
+  if (!isSorted && values.length > 0) {
+    log.info('sheets_auto_sorting', { userId: user.sub, tab: tab.title, rowCount: values.length });
+    const sortResult = await sortSheetByPrimaryKey(
+      metadata.accessToken,
+      sheetInfo.spreadsheetId,
+      tab,
+      values.length
+    );
+    if (sortResult.ok) {
+      // Re-read after sorting
+      const sorted = await readPrimaryKeyColumn(
+        metadata.accessToken,
+        sheetInfo.spreadsheetId,
+        tab
+      );
+      values = sorted.values;
+    } else {
+      log.warn('sheets_auto_sort_failed', { userId: user.sub, error: sortResult.error });
+      // Continue with unsorted - will fall back to linear behavior
+    }
+  }
+
+  // Binary search for existing row
+  const searchResult = binarySearchPrimaryKey(values, pkValue);
+
+  if (searchResult.found && searchResult.rowNumber) {
+    // Existing row found - read full row data for merge
+    const existingRowNum = searchResult.rowNumber;
+    const lastCol = getColumnLetter(tab.columns.length - 1);
+
+    const readResponse = await sheetsRequest(
+      metadata.accessToken,
+      'GET',
+      `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(tab.title)}!A${existingRowNum}:${lastCol}${existingRowNum}`
+    );
+
+    if (!readResponse.ok) {
+      log.error('sheets_upsert_read_failed', { userId: user.sub, error: readResponse.error });
+      return c.json({ error: { message: `Failed to read existing row: ${readResponse.error}` } }, 500);
+    }
+
+    const existingData = readResponse.data as { values?: string[][] };
+    const existingRow = existingData.values?.[0] || [];
+
+    // Convert to object
+    const existingObj: Record<string, string> = {};
+    tab.columns.forEach((col, index) => {
+      existingObj[col] = existingRow[index] || '';
+    });
+
+    let finalData: Record<string, string>;
+
+    if (body.force) {
+      // Force overwrite - use incoming data entirely, keeping existing for unspecified fields
+      finalData = { ...existingObj };
+      for (const [key, value] of Object.entries(body.data)) {
+        if (value !== undefined) {
+          finalData[key] = value;
+        }
+      }
+    } else {
+      // Enrichment merge - check for conflicts
+      const { merged, conflicts } = mergeRowData(existingObj, body.data);
+
+      if (conflicts.length > 0) {
+        return c.json({
+          error: {
+            message: 'Conflict detected during upsert. Use force=true to overwrite.',
+            conflicts,
+            existing: Object.fromEntries(conflicts.map(c => [c, existingObj[c]])),
+            incoming: Object.fromEntries(conflicts.map(c => [c, body.data[c]])),
+          }
+        }, 409);
+      }
+
+      finalData = merged;
+    }
+
+    // Write merged/updated row
+    const rowValues = tab.columns.map(col => finalData[col] || '');
+    const writeResponse = await sheetsRequest(
+      metadata.accessToken,
+      'PUT',
+      `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(tab.title)}!A${existingRowNum}?valueInputOption=USER_ENTERED`,
+      {
+        values: [rowValues],
+      }
+    );
+
+    if (!writeResponse.ok) {
+      log.error('sheets_upsert_write_failed', { userId: user.sub, error: writeResponse.error });
+      return c.json({ error: { message: `Failed to update row: ${writeResponse.error}` } }, 500);
+    }
+
+    log.info('sheets_upsert_updated', { userId: user.sub, tab: tab.title, row: existingRowNum, force: body.force });
+
+    return c.json({
+      data: {
+        action: 'updated',
+        rowNumber: existingRowNum,
+        merged: finalData,
+      },
+    });
+  } else {
+    // No existing row - insert at sorted position
+    let insertPosition: number;
+
+    if (values.length === 0) {
+      // First data row after header
+      insertPosition = 2;
+    } else if (searchResult.index >= values.length) {
+      // Insert after last row
+      insertPosition = values[values.length - 1].rowNumber + 1;
+    } else {
+      // Insert at the position of the first greater element
+      insertPosition = values[searchResult.index].rowNumber;
+    }
+
+    const insertResult = await insertRowAtPositionAtomic(
+      metadata.accessToken,
+      sheetInfo.spreadsheetId,
+      tab,
+      insertPosition,
+      body.data
+    );
+
+    if (!insertResult.ok) {
+      log.error('sheets_upsert_insert_failed', { userId: user.sub, error: insertResult.error });
+      return c.json({ error: { message: `Failed to insert row: ${insertResult.error}` } }, 500);
+    }
+
+    log.info('sheets_upsert_created', { userId: user.sub, tab: tab.title, row: insertResult.rowNumber });
+
+    return c.json({
+      data: {
+        action: 'created',
+        rowNumber: insertResult.rowNumber,
+        merged: body.data,
+      },
+    });
+  }
 });
