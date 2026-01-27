@@ -102,12 +102,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.0
         version: 1.25.3(hono@4.11.4)(zod@3.25.76)
-      '@skillomatic/db':
+      '@skillomatic/mcp':
         specifier: workspace:*
-        version: link:../../packages/db
-      drizzle-orm:
-        specifier: ^0.45.1
-        version: 0.45.1(@libsql/client@0.17.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
+        version: link:../../packages/mcp
       hono:
         specifier: ^4.11.4
         version: 4.11.4

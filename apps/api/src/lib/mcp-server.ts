@@ -142,7 +142,7 @@ async function registerTools(
   // Skill discovery tools - always register
   server.tool(
     'get_skill_catalog',
-    'Get available recruiting workflows and their intents. Call this FIRST when user asks about recruiting tasks.',
+    'Get available automation workflows and their intents. Call this FIRST when user asks about business tasks.',
     {},
     async () => {
       try {
@@ -174,7 +174,7 @@ async function registerTools(
 
   server.tool(
     'get_skill',
-    'Get detailed instructions for a specific recruiting workflow.',
+    'Get detailed instructions for a specific automation workflow.',
     { slug: z.string().describe('Skill slug from the catalog') },
     async (args: { slug: string }) => {
       try {

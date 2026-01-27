@@ -44,7 +44,7 @@ describe('registerTools', () => {
 
       expect(mockServer.tool).toHaveBeenCalledWith(
         'get_skill_catalog',
-        expect.stringContaining('recruiting workflows'),
+        expect.stringContaining('automation workflows'),
         {},
         expect.any(Function)
       );

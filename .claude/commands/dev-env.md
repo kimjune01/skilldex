@@ -1,12 +1,13 @@
 # Dev Environment
 
-Start the development environment with both services running in background tasks.
+Start the development environment with all services running in background tasks.
 
 ## Instructions
 
 Services and their ports:
 - **Web** (Vite frontend): port 5173
 - **API** (Hono backend): port 3000
+- **MCP** (MCP server for Claude Desktop): port 3001
 
 For each service, follow this pattern:
 
@@ -25,6 +26,10 @@ pnpm dev:web
 # Kill existing and start API (port 3000)
 kill $(lsof -ti:3000) 2>/dev/null; sleep 1
 pnpm dev:api
+
+# Kill existing and start MCP server (port 3001)
+kill $(lsof -ti:3001) 2>/dev/null; sleep 1
+pnpm dev:mcp
 ```
 
 ### Expected output
@@ -38,6 +43,7 @@ Example output format:
 Dev environment status:
 - Web (5173): restarted
 - API (3000): started
+- MCP (3001): started
 ```
 
 ---

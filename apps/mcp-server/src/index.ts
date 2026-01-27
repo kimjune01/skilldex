@@ -1,156 +1,40 @@
 /**
- * Skillomatic MCP Server - Standalone Service
+ * Skillomatic MCP Server - Standalone HTTP Service
  *
- * Provides hosted MCP endpoint for ChatGPT web/mobile connections.
- * Runs as a persistent ECS Fargate service to support SSE streaming.
+ * Provides a hosted MCP endpoint using Streamable HTTP transport.
+ * Proxies all tool calls to the main Skillomatic API.
+ *
+ * This server reuses the tool registration logic from packages/mcp,
+ * but exposes it over HTTP instead of stdio.
  */
 
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
-import { db } from '@skillomatic/db';
-import { apiKeys, users, skills } from '@skillomatic/db/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+// Import from packages/mcp to reuse all the tool logic
+import { SkillomaticClient } from '@skillomatic/mcp/api-client';
+import { registerTools } from '@skillomatic/mcp/tools';
+
 const PORT = parseInt(process.env.PORT || '3001', 10);
+const API_URL = process.env.SKILLOMATIC_API_URL || 'http://localhost:3000';
 const MCP_VERSION = '0.1.0';
 const GIT_HASH = process.env.GIT_HASH || 'dev';
 
 console.log('[MCP Server] Starting...');
-
-// ============ API Key Auth ============
-
-interface ApiKeyUser {
-  id: string;
-  email: string;
-  name: string;
-  isAdmin: boolean;
-  organizationId: string | null;
-}
-
-async function validateApiKey(key: string): Promise<ApiKeyUser | null> {
-  if (!key || !key.startsWith('sk_')) {
-    return null;
-  }
-
-  // Fetch all non-revoked keys with user data
-  const results = await db
-    .select()
-    .from(apiKeys)
-    .innerJoin(users, eq(apiKeys.userId, users.id))
-    .where(isNull(apiKeys.revokedAt));
-
-  // Find matching key
-  for (const row of results) {
-    const storedKey = row.api_keys.key;
-    if (storedKey === key) {
-      // Update last used (fire and forget)
-      db.update(apiKeys)
-        .set({ lastUsedAt: new Date() })
-        .where(eq(apiKeys.id, row.api_keys.id))
-        .execute()
-        .catch(() => {});
-
-      return {
-        id: row.users.id,
-        email: row.users.email,
-        name: row.users.name,
-        isAdmin: row.users.isAdmin,
-        organizationId: row.users.organizationId,
-      };
-    }
-  }
-
-  return null;
-}
-
-// ============ MCP Server Factory ============
-
-interface SkillPublic {
-  slug: string;
-  name: string;
-  description: string;
-  intent?: string;
-  capabilities?: string[];
-  isEnabled: boolean;
-}
-
-async function createMcpServer(userId: string): Promise<McpServer> {
-  const server = new McpServer(
-    { name: 'skillomatic', version: MCP_VERSION },
-    { capabilities: { tools: {} } }
-  );
-
-  // Register skill catalog tool
-  server.tool(
-    'get_skill_catalog',
-    'Get available recruiting workflows. Call this FIRST when user asks about recruiting tasks.',
-    {},
-    async () => {
-      try {
-        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-        const allSkills = await db.select().from(skills);
-
-        const enabledSkills = allSkills
-          .filter((s) => s.isEnabled || user?.isAdmin)
-          .map((s): SkillPublic => ({
-            slug: s.slug,
-            name: s.name,
-            description: s.description || '',
-            intent: s.intent || undefined,
-            capabilities: s.capabilities ? JSON.parse(s.capabilities) : undefined,
-            isEnabled: s.isEnabled,
-          }));
-
-        const catalog = enabledSkills
-          .map((s) => {
-            const parts = [`## ${s.name} (${s.slug})`, s.description];
-            if (s.intent) parts.push(`**When to use:** ${s.intent}`);
-            if (s.capabilities?.length) parts.push(`**Capabilities:** ${s.capabilities.join(', ')}`);
-            return parts.join('\n');
-          })
-          .join('\n\n---\n\n');
-
-        return { content: [{ type: 'text' as const, text: catalog || 'No skills available.' }] };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return { content: [{ type: 'text' as const, text: `Error: ${message}` }], isError: true };
-      }
-    }
-  );
-
-  // Register get_skill tool
-  server.tool(
-    'get_skill',
-    'Get detailed instructions for a specific recruiting workflow.',
-    { slug: z.string().describe('Skill slug from the catalog') },
-    async (args: { slug: string }) => {
-      try {
-        const [skill] = await db.select().from(skills).where(eq(skills.slug, args.slug)).limit(1);
-        if (!skill) {
-          return { content: [{ type: 'text' as const, text: `Skill not found: ${args.slug}` }], isError: true };
-        }
-        return { content: [{ type: 'text' as const, text: skill.instructions || 'No instructions.' }] };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return { content: [{ type: 'text' as const, text: `Error: ${message}` }], isError: true };
-      }
-    }
-  );
-
-  console.log(`[MCP Server] Created server for user ${userId}`);
-  return server;
-}
+console.log(`[MCP Server] Will proxy to API at ${API_URL}`);
 
 // ============ Session Management ============
 
 interface Session {
-  transport: SSEServerTransport;
+  transport: StreamableHTTPServerTransport;
+  server: McpServer;
   userId: string;
   createdAt: Date;
 }
@@ -169,6 +53,33 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
+// ============ MCP Server Factory ============
+
+async function createMcpServerForUser(apiKey: string): Promise<{ server: McpServer; userName: string }> {
+  // Create API client that proxies to the main API
+  const client = new SkillomaticClient({ baseUrl: API_URL, apiKey });
+
+  // Verify authentication and get user info
+  const user = await client.verifyAuth();
+  const userName = user.name || user.email;
+  console.log(`[MCP Server] Authenticated as: ${userName}`);
+
+  // Get user's capabilities (which integrations are connected)
+  const { profile: capabilities } = await client.getCapabilities();
+  console.log(`[MCP Server] Capabilities: ATS=${capabilities.hasATS}, Email=${capabilities.hasEmail}, Calendar=${capabilities.hasCalendar}`);
+
+  // Create MCP server
+  const server = new McpServer(
+    { name: 'skillomatic', version: MCP_VERSION },
+    { capabilities: { tools: { listChanged: true } } }
+  );
+
+  // Register all tools based on user's capabilities
+  await registerTools(server, client, capabilities);
+
+  return { server, userName };
+}
+
 // ============ Hono App ============
 
 const app = new Hono();
@@ -177,102 +88,149 @@ app.use('*', logger());
 app.use('*', cors({
   origin: '*',
   credentials: false,
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
-  allowHeaders: ['Authorization', 'Content-Type'],
+  allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type', 'mcp-session-id'],
+  exposeHeaders: ['mcp-session-id'],
 }));
 
-// Root handler (for ALB health checks that may hit /)
+// Health checks
 app.get('/', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION, gitHash: GIT_HASH }));
-
-// Health check
 app.get('/health', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION, gitHash: GIT_HASH }));
 
-// GET /mcp - Establish SSE connection
-app.get('/mcp', async (c) => {
+// Helper to get Node.js request/response from Hono context
+function getNodeReqRes(c: { env: unknown }): { req: IncomingMessage; res: ServerResponse } | null {
+  const env = c.env as { incoming?: IncomingMessage; outgoing?: ServerResponse };
+  if (!env.incoming || !env.outgoing) return null;
+  return { req: env.incoming, res: env.outgoing };
+}
+
+// Helper to extract API key from Authorization header
+function getApiKey(c: { req: { header: (name: string) => string | undefined } }): string | null {
   const authHeader = c.req.header('Authorization');
-  const key = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  return authHeader.slice(7);
+}
 
-  if (!key) {
-    return c.json({ error: { message: 'Missing Authorization header' } }, 401);
+// POST /mcp - Handle JSON-RPC requests (main handler for Streamable HTTP)
+app.post('/mcp', async (c) => {
+  const apiKey = getApiKey(c);
+  if (!apiKey) {
+    return c.json({ error: { message: 'Missing or invalid Authorization header' } }, 401);
   }
 
-  const user = await validateApiKey(key);
-  if (!user) {
-    return c.json({ error: { message: 'Invalid or revoked API key' } }, 401);
+  const nodeIO = getNodeReqRes(c);
+  if (!nodeIO) {
+    return c.json({ error: { message: 'Node.js request/response not available' } }, 500);
   }
 
-  console.log(`[MCP Server] Connection from ${user.email}`);
+  const sessionId = c.req.header('mcp-session-id');
+  const body = await c.req.json();
 
-  // Get raw Node.js response
-  const nodeRes = (c.env as { outgoing?: ServerResponse })?.outgoing;
-  if (!nodeRes) {
-    return c.json({ error: { message: 'SSE not available' } }, 500);
+  // Check if this is an initialization request
+  if (!sessionId && isInitializeRequest(body)) {
+    try {
+      const { server, userName } = await createMcpServerForUser(apiKey);
+
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+      });
+
+      transport.onclose = () => {
+        const sid = transport.sessionId;
+        if (sid) {
+          console.log(`[MCP Server] Session closed: ${sid}`);
+          sessions.delete(sid);
+        }
+      };
+
+      // Connect server to transport
+      await server.connect(transport);
+
+      // Handle the request
+      await transport.handleRequest(nodeIO.req, nodeIO.res, body);
+
+      // Store session
+      const newSessionId = transport.sessionId;
+      if (newSessionId) {
+        sessions.set(newSessionId, { transport, server, userId: userName, createdAt: new Date() });
+        console.log(`[MCP Server] Session created: ${newSessionId} for ${userName}`);
+      }
+
+      return new Promise(() => {});
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[MCP Server] Connection failed: ${message}`);
+      return c.json({ error: { message } }, 401);
+    }
   }
 
-  try {
-    const server = await createMcpServer(user.id);
-    const transport = new SSEServerTransport('/mcp', nodeRes);
+  // Existing session - reuse transport
+  if (sessionId) {
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return c.json({ error: { message: 'Session not found' } }, 404);
+    }
 
-    await server.connect(transport);
-
-    const sessionId = transport.sessionId;
-    sessions.set(sessionId, { transport, userId: user.id, createdAt: new Date() });
-
-    console.log(`[MCP Server] Session created: ${sessionId}`);
-
-    transport.onclose = () => {
-      console.log(`[MCP Server] Session closed: ${sessionId}`);
-      sessions.delete(sessionId);
-    };
-
-    // Keep connection open
+    await session.transport.handleRequest(nodeIO.req, nodeIO.res, body);
     return new Promise(() => {});
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[MCP Server] Connection failed: ${message}`);
-    return c.json({ error: { message: `Failed: ${message}` } }, 500);
   }
+
+  return c.json({ error: { message: 'Missing session ID for non-initialization request' } }, 400);
 });
 
-// POST /mcp - Receive messages
-app.post('/mcp', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  const key = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!key) {
-    return c.json({ error: { message: 'Missing Authorization header' } }, 401);
+// GET /mcp - SSE stream for server-to-client notifications
+app.get('/mcp', async (c) => {
+  const apiKey = getApiKey(c);
+  if (!apiKey) {
+    return c.json({ error: { message: 'Missing or invalid Authorization header' } }, 401);
   }
 
-  const user = await validateApiKey(key);
-  if (!user) {
-    return c.json({ error: { message: 'Invalid or revoked API key' } }, 401);
+  const nodeIO = getNodeReqRes(c);
+  if (!nodeIO) {
+    return c.json({ error: { message: 'Node.js request/response not available' } }, 500);
   }
 
-  const sessionId = c.req.query('sessionId');
+  const sessionId = c.req.header('mcp-session-id');
   if (!sessionId) {
-    return c.json({ error: { message: 'Missing sessionId' } }, 400);
+    return c.json({ error: { message: 'Missing mcp-session-id header' } }, 400);
   }
 
   const session = sessions.get(sessionId);
-  if (!session || session.userId !== user.id) {
+  if (!session) {
     return c.json({ error: { message: 'Session not found' } }, 404);
   }
 
-  const nodeReq = (c.env as { incoming?: IncomingMessage })?.incoming;
-  const nodeRes = (c.env as { outgoing?: ServerResponse })?.outgoing;
+  await session.transport.handleRequest(nodeIO.req, nodeIO.res);
+  return new Promise(() => {});
+});
 
-  if (!nodeReq || !nodeRes) {
-    return c.json({ error: { message: 'POST not available' } }, 500);
+// DELETE /mcp - Close session
+app.delete('/mcp', async (c) => {
+  const apiKey = getApiKey(c);
+  if (!apiKey) {
+    return c.json({ error: { message: 'Missing or invalid Authorization header' } }, 401);
   }
 
-  try {
-    const body = await c.req.json();
-    await session.transport.handlePostMessage(nodeReq, nodeRes, body);
-    return new Response(null, { status: 202 });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return c.json({ error: { message } }, 500);
+  const nodeIO = getNodeReqRes(c);
+  if (!nodeIO) {
+    return c.json({ error: { message: 'Node.js request/response not available' } }, 500);
   }
+
+  const sessionId = c.req.header('mcp-session-id');
+  if (!sessionId) {
+    return c.json({ error: { message: 'Missing mcp-session-id header' } }, 400);
+  }
+
+  const session = sessions.get(sessionId);
+  if (!session) {
+    return c.json({ error: { message: 'Session not found' } }, 404);
+  }
+
+  await session.transport.handleRequest(nodeIO.req, nodeIO.res);
+  sessions.delete(sessionId);
+  console.log(`[MCP Server] Session deleted: ${sessionId}`);
+
+  return new Promise(() => {});
 });
 
 // ============ Start Server ============

@@ -12,8 +12,7 @@
   "dependencies": {
     "@hono/node-server": "^1.12.0",
     "@modelcontextprotocol/sdk": "^1.12.0",
-    "@skillomatic/db": "workspace:*",
-    "drizzle-orm": "^0.45.1",
+    "@skillomatic/mcp": "workspace:*",
     "hono": "^4.11.4",
     "zod": "^3.23.0"
   },

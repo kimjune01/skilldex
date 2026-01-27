@@ -33,10 +33,10 @@ export async function registerTools(
   const registeredTools: string[] = [];
 
   // Skill discovery tools - always register
-  // These help Claude find the right workflow for recruiting tasks
+  // These help Claude find the right workflow for automation tasks
   server.tool(
     'get_skill_catalog',
-    'Get available recruiting workflows and their intents. Call this FIRST when user asks about recruiting tasks like sourcing candidates, LinkedIn outreach, scheduling interviews, searching ATS, or any hiring-related workflow.',
+    'Get available automation workflows and their intents. Call this FIRST when user asks about business tasks like managing spreadsheets, tracking data, web scraping, scheduling, or any workflow automation.',
     {},
     async () => {
       try {
@@ -73,8 +73,8 @@ export async function registerTools(
 
   server.tool(
     'get_skill',
-    'Get detailed instructions for a specific recruiting workflow. Call this after identifying the right skill from the catalog.',
-    { slug: z.string().describe('Skill slug from the catalog (e.g., linkedin-lookup, candidate-outreach)') },
+    'Get detailed instructions for a specific automation workflow. Call this after identifying the right skill from the catalog.',
+    { slug: z.string().describe('Skill slug from the catalog') },
     async (args) => {
       try {
         const skill = await client.getRenderedSkill(args.slug);

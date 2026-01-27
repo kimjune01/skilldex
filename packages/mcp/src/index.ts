@@ -1,7 +1,7 @@
 /**
  * Skillomatic MCP Server
  *
- * Provides recruiting workflow tools for ATS operations, web scraping, and more.
+ * Provides automation tools for business workflows - spreadsheets, databases, web scraping, and more.
  * Skills are discovered via get_skill_catalog and fetched via get_skill tools.
  *
  * Required environment variables:
