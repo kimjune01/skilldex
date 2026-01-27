@@ -15,7 +15,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { apiKeys, complaints } from '../lib/api';
-import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard, Menu, X, Smartphone, Bug, Loader2 } from 'lucide-react';
+import { Home, Zap, Key, Plug, Users, Settings, LogOut, BarChart3, FileText, MessageSquare, Server, Building2, Mail, Crown, Bot, Circle, Wand2, Chrome, CreditCard, Menu, X, Smartphone, Bug, Loader2, Clock } from 'lucide-react';
 import { getOnboardingStepRoute } from '@skillomatic/shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ const navigation = [
   { name: 'Web Chat', href: '/chat', icon: MessageSquare },
   { name: 'Connections', href: '/integrations', icon: Plug },
   { name: 'Skills', href: '/skills', icon: Zap },
+  { name: 'Automations', href: '/automations', icon: Clock, comingSoon: true },
   { name: 'Extension', href: '/extension/install', icon: Chrome },
 ];
 
@@ -227,6 +228,7 @@ export default function Layout() {
             // But don't show if user is already on that page
             const nextStepRoute = !isOnboarded && user ? getOnboardingStepRoute(user.onboardingStep) : null;
             const showSetupBadge = nextStepRoute === item.href && !isActive;
+            const comingSoon = 'comingSoon' in item && item.comingSoon;
             return (
               <Link
                 key={item.href}
@@ -253,7 +255,10 @@ export default function Layout() {
                   )}
                 </div>
                 <span className="tracking-wide">{item.name}</span>
-                {isActive && (
+                {comingSoon && (
+                  <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 py-0">Soon</Badge>
+                )}
+                {isActive && !comingSoon && (
                   <Circle className="ml-auto h-2 w-2 fill-current" />
                 )}
               </Link>

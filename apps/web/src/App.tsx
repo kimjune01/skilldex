@@ -38,6 +38,7 @@ import SkillRaw from './pages/SkillRaw';
 import ApiKeys from './pages/ApiKeys';
 import MobileChat from './pages/MobileChat';
 import Integrations from './pages/Integrations';
+import Automations from './pages/Automations';
 import Usage from './pages/Usage';
 import AdminUsers from './pages/admin/Users';
 import AdminSkills from './pages/admin/Skills';
@@ -225,6 +226,7 @@ export default function App() {
           <Route path="mobile-chat" element={<MobileChat />} />
           <Route path="get-api-key" element={<GetApiKey />} />
           <Route path="integrations" element={<Integrations />} />
+          <Route path="automations" element={<Automations />} />
           <Route path="extension/install" element={<ExtensionInstall />} />
           <Route path="usage" element={<Usage />} />
 
