@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { MessageList, ChatInput, ChatSidebar } from '@/components/chat';
 import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Download, Menu, KeyRound, MessageSquare, ExternalLink, ChevronRight, Sparkles } from 'lucide-react';
+import { AlertCircle, Loader2, Download, Menu, KeyRound, MessageSquare, ExternalLink, ChevronRight, Sparkles, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { SkillPublic } from '@skillomatic/shared';
+import { PayIntentionDialog } from '@/components/PayIntentionDialog';
 import { useClientChat } from '@/hooks/useClientChat';
 import { ConversationProvider, useConversations } from '@/hooks/useConversations';
 import { executeAction, formatActionResult, type ActionType } from '@/lib/action-executor';
@@ -38,6 +39,7 @@ function ChatContent() {
     instructions: string;
   }>({ open: false, skill: null, instructions: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [payIntentionOpen, setPayIntentionOpen] = useState(false);
 
   // Track whether org has LLM configured (separate from user config)
   const [hasOrgLLM, setHasOrgLLM] = useState<boolean | null>(null);
@@ -206,19 +208,12 @@ function ChatContent() {
                     Just chat.
                   </p>
                   <Button
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('open-complain-dialog', {
-                        detail: 'I want to subscribe! Please let me know when subscriptions are available.'
-                      }));
-                    }}
+                    onClick={() => setPayIntentionOpen(true)}
                     className="w-full"
                   >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Join Waitlist
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Subscribe
                   </Button>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Coming soon - we'll notify you
-                  </p>
                 </div>
               </div>
             </div>
@@ -277,6 +272,14 @@ function ChatContent() {
           hasOrgLLM={false}
           userLLMConfig={userLLMConfig}
           onUserLLMConfigChange={handleUserLLMConfigChange}
+        />
+
+        {/* Pay Intention Dialog for subscription */}
+        <PayIntentionDialog
+          open={payIntentionOpen}
+          onClose={() => setPayIntentionOpen(false)}
+          triggerType="subscription"
+          providerName="Skillomatic subscription"
         />
       </div>
     );

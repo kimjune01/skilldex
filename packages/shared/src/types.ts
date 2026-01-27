@@ -846,8 +846,9 @@ export interface JoinOrgResponse {
  * What triggered the pay intention.
  * - individual_ats: Individual user tried to access ATS integration
  * - premium_integration: User tried to connect a premium integration
+ * - subscription: User wants to subscribe instead of BYOK
  */
-export type PayIntentionTrigger = 'individual_ats' | 'premium_integration';
+export type PayIntentionTrigger = 'individual_ats' | 'premium_integration' | 'subscription';
 
 /**
  * Status of the pay intention.

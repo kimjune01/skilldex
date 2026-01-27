@@ -42,6 +42,11 @@ export interface CapabilityProfile {
   hasEmail: boolean;
   hasAirtable?: boolean;
   hasGoogleSheets?: boolean;
+  hasGoogleDrive?: boolean;
+  hasGoogleDocs?: boolean;
+  hasGoogleForms?: boolean;
+  hasGoogleContacts?: boolean;
+  hasGoogleTasks?: boolean;
   isSuperAdmin?: boolean;
   llmProvider?: string;
   atsProvider?: string;

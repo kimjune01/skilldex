@@ -237,6 +237,7 @@ payIntentionsRoutes.get('/admin/stats', superAdminOnly, async (c) => {
   const byTriggerType: Record<PayIntentionTrigger, number> = {
     individual_ats: allIntentions.filter((i) => i.pay_intentions.triggerType === 'individual_ats').length,
     premium_integration: allIntentions.filter((i) => i.pay_intentions.triggerType === 'premium_integration').length,
+    subscription: allIntentions.filter((i) => i.pay_intentions.triggerType === 'subscription').length,
   };
 
   // Recent intentions with user info (top 50)

@@ -301,6 +301,11 @@ skillsRoutes.get('/config', async (c) => {
   // Check which database providers are connected
   let hasAirtable = false;
   let hasGoogleSheets = false;
+  let hasGoogleDrive = false;
+  let hasGoogleDocs = false;
+  let hasGoogleForms = false;
+  let hasGoogleContacts = false;
+  let hasGoogleTasks = false;
 
   if (user.organizationId) {
     const integrationsByCategory = await getUserIntegrationsByCategory(user.sub, user.organizationId);
@@ -314,6 +319,11 @@ skillsRoutes.get('/config', async (c) => {
     if (databaseEnabled) {
       hasAirtable = databaseIntegrations.some((int) => int.provider === 'airtable');
       hasGoogleSheets = databaseIntegrations.some((int) => int.provider === 'google-sheets');
+      hasGoogleDrive = databaseIntegrations.some((int) => int.provider === 'google-drive');
+      hasGoogleDocs = databaseIntegrations.some((int) => int.provider === 'google-docs');
+      hasGoogleForms = databaseIntegrations.some((int) => int.provider === 'google-forms');
+      hasGoogleContacts = databaseIntegrations.some((int) => int.provider === 'google-contacts');
+      hasGoogleTasks = databaseIntegrations.some((int) => int.provider === 'google-tasks');
     }
   }
 
@@ -330,6 +340,11 @@ skillsRoutes.get('/config', async (c) => {
         hasEmail: !!profile.email,
         hasAirtable,
         hasGoogleSheets,
+        hasGoogleDrive,
+        hasGoogleDocs,
+        hasGoogleForms,
+        hasGoogleContacts,
+        hasGoogleTasks,
         isSuperAdmin: !!user.isSuperAdmin,
         llmProvider: profile.llm?.provider,
         atsProvider: profile.ats?.provider,
