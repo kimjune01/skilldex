@@ -148,7 +148,7 @@ payIntentionsRoutes.post('/', async (c) => {
 });
 
 // Valid trigger types for validation
-const VALID_TRIGGER_TYPES: PayIntentionTrigger[] = ['individual_ats', 'premium_integration'];
+const VALID_TRIGGER_TYPES: PayIntentionTrigger[] = ['individual_ats', 'premium_integration', 'subscription'];
 
 /**
  * GET /pay-intentions/status

@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { CreditCard, Shield, Check, Loader2 } from 'lucide-react';
 import type { PayIntentionTrigger } from '@skillomatic/shared';
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 interface PayIntentionDialogProps {
   open: boolean;
   onClose: () => void;
@@ -42,7 +44,7 @@ export function PayIntentionDialog({
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/pay-intentions', {
+      const response = await fetch(`${API_BASE}/pay-intentions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

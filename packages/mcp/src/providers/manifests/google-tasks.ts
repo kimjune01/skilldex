@@ -121,12 +121,13 @@ export const googleTasksManifest: ProviderManifest = {
       method: 'GET',
       path: '/lists/{tasklist}/tasks',
       access: 'read',
-      description: 'List all tasks in a task list.',
+      description: 'List all tasks in a task list. Use "@default" for the default "My Tasks" list.',
       params: {
         tasklist: {
           type: 'string',
-          description: 'Task list ID',
+          description: 'Task list ID. Use "@default" for the default "My Tasks" list.',
           required: true,
+          default: '@default',
         },
         maxResults: {
           type: 'number',
@@ -166,12 +167,13 @@ export const googleTasksManifest: ProviderManifest = {
       method: 'GET',
       path: '/lists/{tasklist}/tasks/{task}',
       access: 'read',
-      description: 'Get a specific task.',
+      description: 'Get a specific task. Use "@default" for the default "My Tasks" list.',
       params: {
         tasklist: {
           type: 'string',
-          description: 'Task list ID',
+          description: 'Task list ID. Use "@default" for the default "My Tasks" list.',
           required: true,
+          default: '@default',
         },
         task: {
           type: 'string',
@@ -187,12 +189,13 @@ export const googleTasksManifest: ProviderManifest = {
       method: 'POST',
       path: '/lists/{tasklist}/tasks',
       access: 'write',
-      description: 'Create a new task in a task list.',
+      description: 'Create a new task in a task list. Use "@default" for the default "My Tasks" list.',
       params: {
         tasklist: {
           type: 'string',
-          description: 'Task list ID',
+          description: 'Task list ID. Use "@default" for the default "My Tasks" list.',
           required: true,
+          default: '@default',
         },
         parent: {
           type: 'string',
@@ -233,12 +236,13 @@ export const googleTasksManifest: ProviderManifest = {
       method: 'PATCH',
       path: '/lists/{tasklist}/tasks/{task}',
       access: 'write',
-      description: 'Update a task (title, notes, due date, status).',
+      description: 'Update a task (title, notes, due date, status). Use "@default" for the default "My Tasks" list.',
       params: {
         tasklist: {
           type: 'string',
-          description: 'Task list ID',
+          description: 'Task list ID. Use "@default" for the default "My Tasks" list.',
           required: true,
+          default: '@default',
         },
         task: {
           type: 'string',
@@ -274,12 +278,13 @@ export const googleTasksManifest: ProviderManifest = {
       method: 'PATCH',
       path: '/lists/{tasklist}/tasks/{task}',
       access: 'write',
-      description: 'Mark a task as completed.',
+      description: 'Mark a task as completed. Use "@default" for the default "My Tasks" list.',
       params: {
         tasklist: {
           type: 'string',
-          description: 'Task list ID',
+          description: 'Task list ID. Use "@default" for the default "My Tasks" list.',
           required: true,
+          default: '@default',
         },
         task: {
           type: 'string',
@@ -302,12 +307,13 @@ export const googleTasksManifest: ProviderManifest = {
       method: 'DELETE',
       path: '/lists/{tasklist}/tasks/{task}',
       access: 'delete',
-      description: 'Delete a task.',
+      description: 'Delete a task. Use "@default" for the default "My Tasks" list.',
       params: {
         tasklist: {
           type: 'string',
-          description: 'Task list ID',
+          description: 'Task list ID. Use "@default" for the default "My Tasks" list.',
           required: true,
+          default: '@default',
         },
         task: {
           type: 'string',
@@ -323,12 +329,13 @@ export const googleTasksManifest: ProviderManifest = {
       method: 'POST',
       path: '/lists/{tasklist}/tasks/{task}/move',
       access: 'write',
-      description: 'Move a task to a different position or make it a subtask.',
+      description: 'Move a task to a different position or make it a subtask. Use "@default" for the default "My Tasks" list.',
       params: {
         tasklist: {
           type: 'string',
-          description: 'Task list ID',
+          description: 'Task list ID. Use "@default" for the default "My Tasks" list.',
           required: true,
+          default: '@default',
         },
         task: {
           type: 'string',
@@ -352,12 +359,13 @@ export const googleTasksManifest: ProviderManifest = {
       method: 'POST',
       path: '/lists/{tasklist}/clear',
       access: 'write',
-      description: 'Clear all completed tasks from a task list.',
+      description: 'Clear all completed tasks from a task list. Use "@default" for the default "My Tasks" list.',
       params: {
         tasklist: {
           type: 'string',
-          description: 'Task list ID',
+          description: 'Task list ID. Use "@default" for the default "My Tasks" list.',
           required: true,
+          default: '@default',
         },
       },
       responseHints: [],
