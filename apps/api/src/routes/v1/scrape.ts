@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { apiKeyAuth } from '../../middleware/apiKey.js';
 import { db } from '@skillomatic/db';
-import { scrapeTasks } from '@skillomatic/db/schema';
-import { eq, and, gt, desc } from 'drizzle-orm';
+import { scrapeTasks, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
+import { eq, and, gt, desc, lt } from 'drizzle-orm';
 import { randomUUID, createHash } from 'crypto';
 import type {
   ScrapeTaskPublic,
@@ -238,6 +238,26 @@ v1ScrapeRoutes.get('/tasks', async (c) => {
   const claim = c.req.query('claim') === 'true';
 
   const now = new Date();
+
+  // If status=pending and claim=true, extension is polling - mark extension as installed
+  if (status === 'pending' && claim) {
+    // Side effect: advance onboarding to EXTENSION_INSTALLED if not already there
+    // This is fire-and-forget, we don't wait for it
+    db.update(users)
+      .set({
+        onboardingStep: ONBOARDING_STEPS.EXTENSION_INSTALLED,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(users.id, user.id),
+          lt(users.onboardingStep, ONBOARDING_STEPS.EXTENSION_INSTALLED)
+        )
+      )
+      .catch(() => {
+        // Ignore errors - this is a side effect
+      });
+  }
 
   // If status=pending and claim=true, atomically claim one task for processing
   if (status === 'pending' && claim) {
