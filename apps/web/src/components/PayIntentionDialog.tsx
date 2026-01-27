@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CreditCard, Shield, Check, Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 import type { PayIntentionTrigger } from '@skillomatic/shared';
 
 const API_BASE = import.meta.env.VITE_API_URL;
@@ -37,6 +38,7 @@ export function PayIntentionDialog({
 }: PayIntentionDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleConfirm = async () => {
     setIsLoading(true);
@@ -62,10 +64,11 @@ export function PayIntentionDialog({
         throw new Error(data.error?.message || 'Failed to confirm subscription');
       }
 
-      // Pay intention confirmed - reload to refresh state
+      // Pay intention confirmed - show toast and close
       if (data.data?.confirmed) {
+        const message = data.data.message || 'Thanks for your interest! This feature is coming soon.';
+        toast(message, 'success');
         onClose();
-        window.location.reload();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

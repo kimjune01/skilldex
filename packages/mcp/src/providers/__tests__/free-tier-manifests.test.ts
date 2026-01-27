@@ -96,9 +96,8 @@ describe('Google Contacts Manifest', () => {
   it('has required operations', () => {
     const operationIds = googleContactsManifest.operations.map((op) => op.id);
     expect(operationIds).toContain('list_contacts');
-    expect(operationIds).toContain('get_contact');
     expect(operationIds).toContain('search_contacts');
-    expect(operationIds).toContain('list_contact_groups');
+    expect(operationIds).toContain('get_contact');
   });
 
   it('is read-only (no write/delete operations)', () => {

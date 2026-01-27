@@ -62,11 +62,12 @@ payIntentionsRoutes.post('/', async (c) => {
 
   if (existing.length > 0) {
     return c.json({
-      error: {
-        message: 'You have already confirmed payment intent for this feature',
-        code: 'ALREADY_CONFIRMED',
+      data: {
+        payIntentionId: existing[0].id,
+        confirmed: true,
+        message: 'Thanks for your interest! This feature is coming soon.',
       },
-    }, 400);
+    });
   }
 
   // Create pay intention record - immediately confirmed (no Stripe)
