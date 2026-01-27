@@ -671,8 +671,11 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
             <Zap className="h-3 w-3 mr-1" />
-            Not Just Answers — Actions
+            If AI Can Do It, AI Should
           </Badge>
+          <p className="text-lg md:text-xl text-[hsl(220_15%_45%)] mb-4">
+            You didn't start your business to do administration.
+          </p>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
             Just Tell AI To Do
             <br />
@@ -718,7 +721,7 @@ export default function Landing() {
           </p>
           <div className="grid sm:grid-cols-2 gap-5 text-left max-w-3xl mx-auto">
             {[
-              { text: "You check Stripe, then your spreadsheet, then email — just to know who owes you.", emoji: "💸" },
+              { text: "You're copy-pasting invoices between Gmail and spreadsheets like it's 2005.", emoji: "💸" },
               { text: "End of day, you're too tired to log the job. It never makes it to the books.", emoji: "😴" },
               { text: "Before every call, you're digging through email to remember where things left off.", emoji: "🔍" },
               { text: "Your 'system' is 4 browser tabs and a prayer.", emoji: "🙏" },
@@ -760,7 +763,7 @@ export default function Landing() {
               Ask It. Watch It Happen.
             </h2>
             <p className="text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
-              Not just answers — actions. Emails sent. Tasks checked off. Data updated.
+              If AI can do it, why are you still doing it? Emails sent. Tasks checked off. Data updated.
             </p>
           </div>
 
@@ -815,7 +818,7 @@ export default function Landing() {
       <section className="py-20 px-6 bg-gradient-to-br from-primary to-amber-500">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-            Ready to Stop Doing Admin?
+            Ready to Let AI Take Care of It?
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
             30-minute call. I'll show you exactly how it works with your tools.
