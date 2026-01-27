@@ -320,39 +320,78 @@ async function handleGoogleOAuthCallback(
         : undefined,
     };
 
-    // For Google Sheets, create a default spreadsheet with tabs system
+    // For Google Sheets, find existing or create new spreadsheet with tabs system
     if (service === 'google-sheets') {
       try {
-        const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${tokens.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            properties: { title: 'Skillomatic Data' },
-            sheets: [{ properties: { title: 'Sheet1' } }], // Default empty sheet
-          }),
+        // First, search for existing "Skillomatic Data" spreadsheet
+        const searchParams = new URLSearchParams({
+          q: "name='Skillomatic Data' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+          fields: 'files(id,name,webViewLink)',
+          orderBy: 'modifiedTime desc',
+          pageSize: '1',
         });
 
-        if (createResponse.ok) {
-          const sheet = await createResponse.json() as {
-            spreadsheetId: string;
-            spreadsheetUrl: string;
-            sheets: Array<{ properties: { sheetId: number; title: string } }>;
+        const searchResponse = await fetch(
+          `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`,
+          {
+            headers: { Authorization: `Bearer ${tokens.access_token}` },
+          }
+        );
+
+        let spreadsheetId: string | null = null;
+        let spreadsheetUrl: string | null = null;
+
+        if (searchResponse.ok) {
+          const searchResult = await searchResponse.json() as {
+            files: Array<{ id: string; name: string; webViewLink: string }>;
           };
-          metadata.spreadsheetId = sheet.spreadsheetId;
-          metadata.spreadsheetUrl = sheet.spreadsheetUrl;
+
+          if (searchResult.files && searchResult.files.length > 0) {
+            // Found existing spreadsheet
+            const existing = searchResult.files[0];
+            spreadsheetId = existing.id;
+            spreadsheetUrl = existing.webViewLink;
+            log.info('google_sheets_found_existing', { userId, spreadsheetId });
+          }
+        }
+
+        // If no existing spreadsheet found, create a new one
+        if (!spreadsheetId) {
+          const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${tokens.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              properties: { title: 'Skillomatic Data' },
+              sheets: [{ properties: { title: 'Sheet1' } }], // Default empty sheet
+            }),
+          });
+
+          if (createResponse.ok) {
+            const sheet = await createResponse.json() as {
+              spreadsheetId: string;
+              spreadsheetUrl: string;
+            };
+            spreadsheetId = sheet.spreadsheetId;
+            spreadsheetUrl = sheet.spreadsheetUrl;
+            log.info('google_sheets_created', { userId, spreadsheetId });
+          }
+        }
+
+        if (spreadsheetId) {
+          metadata.spreadsheetId = spreadsheetId;
+          metadata.spreadsheetUrl = spreadsheetUrl;
           metadata.spreadsheetTitle = 'Skillomatic Data';
           // Initialize tabs system - empty array, user will create tabs via MCP tools
           metadata.tabs = [];
           metadata.tabsVersion = 0;
-          log.info('google_sheets_created', { userId, spreadsheetId: sheet.spreadsheetId });
         }
       } catch (err) {
-        log.warn('google_sheets_create_failed', { userId, error: err instanceof Error ? err.message : 'Unknown' });
+        log.warn('google_sheets_setup_failed', { userId, error: err instanceof Error ? err.message : 'Unknown' });
         // Continue anyway - user can set up manually
-        // Initialize empty tabs system even if spreadsheet creation failed
+        // Initialize empty tabs system even if spreadsheet setup failed
         metadata.tabs = [];
         metadata.tabsVersion = 0;
       }
@@ -380,15 +419,27 @@ async function handleGoogleOAuthCallback(
 
     log.info(`${service}_connected`, { userId, email: userEmail });
 
-    // Advance onboarding if needed
-    if (dbUser && dbUser.onboardingStep < ONBOARDING_STEPS.ATS_CONNECTED) {
-      await db
-        .update(users)
-        .set({
-          onboardingStep: ONBOARDING_STEPS.ATS_CONNECTED,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userId));
+    // Advance onboarding based on which provider was connected
+    if (dbUser) {
+      let newStep: number | null = null;
+
+      if (config.provider === 'google-sheets' && dbUser.onboardingStep < ONBOARDING_STEPS.SHEETS_CONNECTED) {
+        newStep = ONBOARDING_STEPS.SHEETS_CONNECTED;
+      } else if (config.provider === 'email' && dbUser.onboardingStep < ONBOARDING_STEPS.EMAIL_CONNECTED) {
+        newStep = ONBOARDING_STEPS.EMAIL_CONNECTED;
+      } else if (config.provider === 'calendar' && dbUser.onboardingStep < ONBOARDING_STEPS.CALENDAR_CONNECTED) {
+        newStep = ONBOARDING_STEPS.CALENDAR_CONNECTED;
+      }
+
+      if (newStep !== null) {
+        await db
+          .update(users)
+          .set({
+            onboardingStep: newStep,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, userId));
+      }
     }
 
     return c.redirect(`${webUrl}/integrations?success=${encodeURIComponent(config.displayName + ' connected successfully')}`);
