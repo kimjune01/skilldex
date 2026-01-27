@@ -69,6 +69,19 @@ export default function Layout() {
     return () => window.removeEventListener('open-mobile-menu', handler);
   }, []);
 
+  // Listen for open-complain-dialog events from other pages
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail) {
+        setComplainMessage(detail);
+      }
+      setComplainDialogOpen(true);
+    };
+    window.addEventListener('open-complain-dialog', handler);
+    return () => window.removeEventListener('open-complain-dialog', handler);
+  }, []);
+
   // Fetch API key for browser extension auto-config
   useEffect(() => {
     const fetchApiKey = async () => {

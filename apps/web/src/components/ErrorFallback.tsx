@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Home, Bot } from 'lucide-react';
+import { Home, Bot, Bug } from 'lucide-react';
 
 const EMOJIS = [
   '🤖', '⚙️', '🔧', '🎰', '💥', '✨', '🚀', '💀', '🔥', '😱', '🫠', '💫', '🎉', '💣', '⭐',
@@ -23,10 +23,9 @@ interface ErrorFallbackProps {
   title: string;
   subtitle: string;
   error?: Error | null;
-  onRetry?: () => void;
 }
 
-export function ErrorFallback({ code, title, subtitle, error, onRetry }: ErrorFallbackProps) {
+export function ErrorFallback({ code, title, subtitle, error }: ErrorFallbackProps) {
   const [emojis, setEmojis] = useState<EmojiParticle[]>([]);
   const [pressCount, setPressCount] = useState(0);
   const [buttonStyle, setButtonStyle] = useState({
@@ -196,16 +195,17 @@ export function ErrorFallback({ code, title, subtitle, error, onRetry }: ErrorFa
         )}
 
         <div className="flex gap-3 justify-center">
-          {onRetry && (
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={onRetry}
-              className="gap-2"
-            >
-              Try Again
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-complain-dialog', {
+              detail: error ? `Error: ${error.message}\n\nStack trace:\n${error.stack}` : undefined
+            }))}
+            className="gap-2"
+          >
+            <Bug className="h-4 w-4" />
+            Complain
+          </Button>
           <Link to="/home">
             <Button
               size="lg"

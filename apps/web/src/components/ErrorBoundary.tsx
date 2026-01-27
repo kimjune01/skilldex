@@ -27,10 +27,6 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
   }
 
-  handleRetry = () => {
-    this.setState({ hasError: false, error: null });
-  };
-
   handleReload = () => {
     window.location.reload();
   };
@@ -47,7 +43,6 @@ export class ErrorBoundary extends Component<Props, State> {
           title="Something went wrong"
           subtitle="The skill machine encountered an unexpected error"
           error={this.state.error}
-          onRetry={this.handleRetry}
         />
       );
     }
