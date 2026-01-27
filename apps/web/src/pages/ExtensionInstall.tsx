@@ -88,7 +88,7 @@ export default function ExtensionInstall() {
             Install Browser Extension
           </h1>
           <p className="text-[hsl(220_15%_50%)] mt-1">
-            Enable LinkedIn profile extraction for recruiting skills
+            Enable web page extraction for your AI assistant
           </p>
         </div>
         <Badge className="bg-amber-100 text-amber-700 border-amber-200">

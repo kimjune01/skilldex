@@ -3,7 +3,7 @@
   "name": "Skillomatic Scraper",
   "version": "1.0.1",
   "minimum_chrome_version": "116",
-  "description": "Browser companion for Skillomatic recruiting skills. Enables LinkedIn profile extraction for Claude Code skills.",
+  "description": "Browser companion for Skillomatic. Enables web page extraction for AI assistants.",
   "homepage_url": "https://skillomatic.technology/extension",
   "permissions": [
     "storage",
@@ -12,10 +12,8 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://www.linkedin.com/*",
-    "https://linkedin.com/*",
-    "http://localhost:3000/*",
-    "https://api.skillomatic.technology/*"
+    "https://*/*",
+    "http://*/*"
   ],
   "background": {
     "service_worker": "background.js",

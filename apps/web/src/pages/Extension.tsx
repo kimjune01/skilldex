@@ -3,12 +3,44 @@ import { EXTENSION_VERSION, EXTENSION_MIN_CHROME_VERSION } from '@skillomatic/sh
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
+import { useEffect, useState } from 'react';
+import { apiKeys } from '@/lib/api';
 
 export default function Extension() {
   const extensionZipUrl = '/skillomatic-scraper.zip';
+  const { user } = useAuth();
+  const [extensionApiKey, setExtensionApiKey] = useState<string | null>(null);
+
+  // Fetch API key for extension auto-config (only for logged-in users)
+  useEffect(() => {
+    if (!user) return;
+
+    apiKeys.list().then(keys => {
+      if (keys.length > 0) {
+        setExtensionApiKey(keys[0].key);
+      }
+    }).catch(() => {
+      // Ignore errors - extension config is optional
+    });
+  }, [user]);
+
+  // API URL for the extension
+  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Hidden element for browser extension auto-config (logged-in users only) */}
+      {extensionApiKey && (
+        <div
+          id="skillomatic-extension-config"
+          data-api-url={apiUrl}
+          data-api-key={extensionApiKey}
+          data-redirect-url="/home"
+          style={{ display: 'none' }}
+          aria-hidden="true"
+        />
+      )}
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -32,7 +64,7 @@ export default function Extension() {
             Skillomatic Scraper Extension
           </h1>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-            Browser companion that enables LinkedIn profile extraction for Claude Code recruiting skills.
+            Browser companion that lets your AI assistant read web pages using your authenticated session.
           </p>
         </div>
 
@@ -139,7 +171,7 @@ export default function Extension() {
               <Settings className="h-8 w-8 text-indigo-500 mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Rate Limited</h3>
               <p className="text-sm text-slate-600">
-                Built-in throttling between requests to respect LinkedIn's servers and avoid detection.
+                Built-in throttling between requests for polite, responsible scraping.
               </p>
             </CardContent>
           </Card>
@@ -154,7 +186,7 @@ export default function Extension() {
             <div>
               <h3 className="font-medium mb-1">What websites does the extension access?</h3>
               <p className="text-slate-600 text-sm">
-                The extension only accesses LinkedIn (linkedin.com). It cannot access any other websites. This focused permission scope ensures your browsing privacy while enabling recruiting workflows.
+                The extension can access any website you request through Skillomatic. It uses your existing browser session, so it can only see pages you're already authorized to view. Sensitive domains (login pages, password managers) are blocked.
               </p>
             </div>
             <div>
@@ -164,9 +196,9 @@ export default function Extension() {
               </p>
             </div>
             <div>
-              <h3 className="font-medium mb-1">Will this work with my LinkedIn session?</h3>
+              <h3 className="font-medium mb-1">How does authentication work?</h3>
               <p className="text-slate-600 text-sm">
-                Yes. The extension opens pages in background tabs using your existing browser session. If you're logged into LinkedIn, the extension can access pages you have permission to view.
+                The extension opens pages in background tabs using your existing browser session. If you're logged into a website, the extension can access pages you have permission to view — no extra credentials needed.
               </p>
             </div>
             <div>

@@ -351,7 +351,8 @@ async function getConfigFromPage() {
       if (configElement && configElement.dataset.apiKey && configElement.dataset.apiUrl) {
         return {
           apiKey: configElement.dataset.apiKey,
-          apiUrl: configElement.dataset.apiUrl
+          apiUrl: configElement.dataset.apiUrl,
+          redirectUrl: configElement.dataset.redirectUrl || null
         };
       }
 

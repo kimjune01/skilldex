@@ -122,15 +122,15 @@ export default function Privacy() {
             </a>
           </p>
 
-          <h2>LinkedIn Scraping Disclaimer</h2>
+          <h2>Web Scraping Disclaimer</h2>
           <p>
-            The Skillomatic Scraper extension enables access to LinkedIn pages using your own authenticated browser session. By using this feature, you acknowledge that:
+            The Skillomatic Scraper extension enables access to web pages using your own authenticated browser session. By using this feature, you acknowledge that:
           </p>
           <ul>
-            <li>You are responsible for complying with LinkedIn's Terms of Service</li>
+            <li>You are responsible for complying with each website's Terms of Service</li>
             <li>You will use scraped data only for legitimate business purposes</li>
-            <li>Skillomatic does not store LinkedIn credentials or bypass any authentication</li>
-            <li>Excessive or automated scraping may violate LinkedIn's policies</li>
+            <li>Skillomatic does not store your credentials or bypass any authentication</li>
+            <li>Excessive or automated scraping may violate some websites' policies</li>
           </ul>
         </div>
       </main>

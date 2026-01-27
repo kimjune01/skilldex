@@ -6,7 +6,15 @@ const RECONNECT_DELAY_MS = 3000;
 const PING_INTERVAL_MS = 20000; // Keep alive every 20s (Chrome official recommendation)
 const THROTTLE_MIN_MS = 150;
 const THROTTLE_MAX_MS = 250;
-const ALLOWED_DOMAINS = ['www.linkedin.com', 'linkedin.com'];
+// Security: block sensitive domains where scraping would be inappropriate
+const BLOCKED_DOMAINS = [
+  'accounts.google.com',
+  'login.microsoftonline.com',
+  'signin.aws.amazon.com',
+  '1password.com',
+  'lastpass.com',
+  'bitwarden.com',
+];
 
 let apiKey = null;
 let apiUrl = DEFAULT_API_URL;
@@ -179,7 +187,15 @@ function startPingInterval() {
 function isAllowedUrl(url) {
   try {
     const parsed = new URL(url);
-    return ALLOWED_DOMAINS.includes(parsed.hostname);
+    // Block sensitive domains
+    const hostname = parsed.hostname.toLowerCase();
+    for (const blocked of BLOCKED_DOMAINS) {
+      if (hostname === blocked || hostname.endsWith('.' + blocked)) {
+        return false;
+      }
+    }
+    // Allow all other URLs
+    return true;
   } catch {
     return false;
   }
@@ -198,10 +214,10 @@ async function handleTaskAssignment(task) {
     return;
   }
 
-  // Validate URL is LinkedIn
+  // Validate URL is not blocked
   if (!isAllowedUrl(task.url)) {
-    console.log(`[Task] Rejected task ${task.id}: URL not allowed (${task.url})`);
-    await updateTask(task.id, 'failed', null, 'URL not allowed - only LinkedIn URLs are supported');
+    console.log(`[Task] Rejected task ${task.id}: URL blocked (${task.url})`);
+    await updateTask(task.id, 'failed', null, 'URL blocked - this domain is not allowed for scraping');
     return;
   }
 
