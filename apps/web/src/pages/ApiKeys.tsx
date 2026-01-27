@@ -14,12 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Copy, AlertCircle, CheckCircle2, RefreshCw, Monitor, ChevronDown, Zap, Shield, Sparkles } from 'lucide-react';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Copy, AlertCircle, CheckCircle2, RefreshCw, Zap, Shield, Sparkles, ExternalLink } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ApiKeys() {
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
@@ -96,49 +92,7 @@ export default function ApiKeys() {
 
   const activeKey = keys[0]; // We only show one key now
 
-  const [expandedApp, setExpandedApp] = useState<string | null>('claude');
-
-  const mcpApps = [
-    {
-      id: 'claude',
-      name: 'Claude Desktop',
-      url: 'https://claude.ai/download',
-      configPath: {
-        mac: '~/Library/Application Support/Claude/claude_desktop_config.json',
-        windows: '%APPDATA%\\Claude\\claude_desktop_config.json',
-      },
-    },
-    {
-      id: 'chatgpt',
-      name: 'ChatGPT Desktop',
-      url: 'https://openai.com/chatgpt/desktop',
-      configPath: {
-        mac: '~/Library/Application Support/com.openai.chat/mcp.json',
-        windows: '%APPDATA%\\com.openai.chat\\mcp.json',
-      },
-      note: 'Requires ChatGPT Plus subscription. Enable Developer Mode in settings first.',
-    },
-    {
-      id: 'chatmcp',
-      name: 'ChatMCP (Free)',
-      url: 'https://chatmcp.com',
-      configPath: {
-        mac: '~/.chatmcp/mcp_config.json',
-        windows: '%USERPROFILE%\\.chatmcp\\mcp_config.json',
-      },
-      note: 'Free, open-source MCP client.',
-    },
-    {
-      id: 'deepchat',
-      name: 'DeepChat (Free)',
-      url: 'https://deepchat.dev',
-      configPath: {
-        mac: '~/Library/Application Support/DeepChat/mcp.json',
-        windows: '%APPDATA%\\DeepChat\\mcp.json',
-      },
-      note: 'Free, cross-platform AI chat app.',
-    },
-  ];
+  const [selectedProvider, setSelectedProvider] = useState<string>('claude');
 
   // MCP endpoint URL - different in dev vs prod
   // In dev: localhost:3001 (standalone MCP server)
@@ -148,17 +102,61 @@ export default function ApiKeys() {
     ? 'http://localhost:3001/mcp'
     : 'https://mcp.skillomatic.technology/mcp';
 
-  // Web endpoint config (for Claude Desktop, ChatGPT, etc.)
-  const getMcpConfig = (key: string) => JSON.stringify({
-    mcpServers: {
-      skillomatic: {
-        url: mcpEndpoint,
-        headers: {
-          Authorization: `Bearer ${key}`
+  // Claude Desktop config (uses mcp-remote bridge)
+  const getClaudeConfig = (key: string) => {
+    const args = [
+      'mcp-remote',
+      mcpEndpoint,
+      '--header',
+      `Authorization: Bearer ${key}`
+    ];
+    if (isLocalDev) {
+      args.push('--allow-http');
+    }
+    return JSON.stringify({
+      mcpServers: {
+        skillomatic: {
+          command: 'npx',
+          args
         }
       }
+    }, null, 2);
+  };
+
+  // ChatGPT config (direct HTTP - requires remote server)
+  const getChatGPTConfig = (key: string) => {
+    return JSON.stringify({
+      mcpServers: {
+        skillomatic: {
+          url: isLocalDev ? 'https://mcp.skillomatic.technology/mcp' : mcpEndpoint,
+          headers: {
+            Authorization: `Bearer ${key}`
+          }
+        }
+      }
+    }, null, 2);
+  };
+
+  // Other apps config (generic mcp-remote)
+  const getOtherConfig = (key: string) => {
+    const args = [
+      'mcp-remote',
+      mcpEndpoint,
+      '--header',
+      `Authorization: Bearer ${key}`
+    ];
+    if (isLocalDev) {
+      args.push('--allow-http');
     }
-  }, null, 2);
+    return JSON.stringify({
+      mcpServers: {
+        skillomatic: {
+          command: 'npx',
+          args
+        }
+      }
+    }, null, 2);
+  };
 
   if (isLoading || isCreating) {
     return (
@@ -245,120 +243,221 @@ export default function ApiKeys() {
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
               </div>
               <div className="flex-1">
-                <CardTitle className="text-lg">MCP Server Setup</CardTitle>
+                <CardTitle className="text-lg">Connect Your Chat App</CardTitle>
                 <CardDescription>
-                  Add this configuration to connect Skillomatic to your chat app
+                  Choose your app and follow the setup instructions
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Step 1: Choose your app */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                  1
-                </div>
-                <span className="font-medium">Choose your chat app</span>
-              </div>
-              <div className="ml-8 space-y-2">
-                {mcpApps.map((app) => (
-                  <Collapsible
-                    key={app.id}
-                    open={expandedApp === app.id}
-                    onOpenChange={(open) => setExpandedApp(open ? app.id : null)}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <button className="flex items-center justify-between w-full p-3 text-left bg-muted/50 hover:bg-muted rounded-lg transition-colors">
-                        <div className="flex items-center gap-2">
-                          <Monitor className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium text-sm">{app.name}</span>
-                        </div>
-                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedApp === app.id ? 'rotate-180' : ''}`} />
-                      </button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 ml-6 space-y-2">
-                      <div className="text-xs space-y-1">
-                        <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground min-w-[50px]">macOS:</span>
-                          <code className="bg-muted px-2 py-0.5 rounded break-all">{app.configPath.mac}</code>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground min-w-[50px]">Windows:</span>
-                          <code className="bg-muted px-2 py-0.5 rounded break-all">{app.configPath.windows}</code>
-                        </div>
-                        {app.note && (
-                          <p className="text-muted-foreground italic mt-1">{app.note}</p>
-                        )}
-                        {app.url && (
-                          <a
-                            href={app.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline mt-1"
-                          >
-                            Download {app.name} →
-                          </a>
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-              </div>
-            </div>
+          <CardContent>
+            <Tabs defaultValue="claude" value={selectedProvider} onValueChange={setSelectedProvider}>
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="claude">Claude</TabsTrigger>
+                <TabsTrigger value="chatgpt">ChatGPT</TabsTrigger>
+                <TabsTrigger value="other">Other</TabsTrigger>
+              </TabsList>
 
-            {/* Step 2: Add config */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                  2
-                </div>
-                <span className="font-medium">Add this configuration</span>
-              </div>
-              <div className="ml-8 space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  {expandedApp === 'cline'
-                    ? 'Add this server entry to your existing MCP servers:'
-                    : <>Copy this to your config file. <a href="https://modelcontextprotocol.io/docs/develop/connect-local-servers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">See setup guide →</a></>}
-                </p>
-
-                {expandedApp !== 'cline' && (
+              {/* Claude Desktop Setup */}
+              <TabsContent value="claude" className="space-y-4">
+                <div className="space-y-4">
                   <div>
-                    <div className="relative">
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">1</span>
+                      Download Claude Desktop
+                    </h4>
+                    <p className="text-sm text-muted-foreground ml-7">
+                      <a href="https://claude.ai/download" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                        claude.ai/download <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">2</span>
+                      Open config file
+                    </h4>
+                    <div className="ml-7 text-sm space-y-1">
+                      <p className="text-muted-foreground">
+                        <span className="font-medium text-foreground">macOS:</span>{' '}
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs">~/Library/Application Support/Claude/claude_desktop_config.json</code>
+                      </p>
+                      <p className="text-muted-foreground">
+                        <span className="font-medium text-foreground">Windows:</span>{' '}
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs">%APPDATA%\Claude\claude_desktop_config.json</code>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">3</span>
+                      Paste this configuration
+                    </h4>
+                    <div className="ml-7 relative">
                       <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
-{getMcpConfig(activeKey.key)}
+{getClaudeConfig(activeKey.key)}
                       </pre>
                       <Button
                         size="sm"
                         variant="secondary"
                         className="absolute top-2 right-2"
-                        onClick={() => copyToClipboard(getMcpConfig(activeKey.key), 'config-full')}
+                        onClick={() => copyToClipboard(getClaudeConfig(activeKey.key), 'claude-config')}
                       >
                         <Copy className="h-3 w-3 mr-1" />
-                        {copied === 'config-full' ? 'Copied!' : 'Copy'}
+                        {copied === 'claude-config' ? 'Copied!' : 'Copy'}
                       </Button>
                     </div>
                   </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">4</span>
+                      Restart Claude Desktop
+                    </h4>
+                    <p className="text-sm text-muted-foreground ml-7">
+                      Quit and reopen Claude Desktop to load the configuration
+                    </p>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* ChatGPT Setup */}
+              <TabsContent value="chatgpt" className="space-y-4">
+                {isLocalDev && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      ChatGPT requires a remote server. The config below uses production URL since localhost won't work.
+                    </AlertDescription>
+                  </Alert>
                 )}
 
-              </div>
-            </div>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">1</span>
+                      Requirements
+                    </h4>
+                    <ul className="text-sm text-muted-foreground ml-7 list-disc list-inside space-y-1">
+                      <li>ChatGPT Plus, Pro, or Team subscription</li>
+                      <li>ChatGPT Desktop app (mobile syncs automatically)</li>
+                    </ul>
+                  </div>
 
-            {/* Step 3: Restart */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                  3
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">2</span>
+                      Enable Developer Mode
+                    </h4>
+                    <p className="text-sm text-muted-foreground ml-7">
+                      Settings → Developer → Enable Developer Mode
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">3</span>
+                      Add MCP Server
+                    </h4>
+                    <div className="ml-7 space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Settings → Developer → Add MCP Server → "Add manually"
+                      </p>
+                      <div className="relative">
+                        <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
+{getChatGPTConfig(activeKey.key)}
+                        </pre>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="absolute top-2 right-2"
+                          onClick={() => copyToClipboard(getChatGPTConfig(activeKey.key), 'chatgpt-config')}
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          {copied === 'chatgpt-config' ? 'Copied!' : 'Copy'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">4</span>
+                      Works on mobile too
+                    </h4>
+                    <p className="text-sm text-muted-foreground ml-7">
+                      Once connected on desktop, Skillomatic syncs to ChatGPT mobile automatically
+                    </p>
+                  </div>
                 </div>
-                <span className="font-medium">Restart your chat app</span>
-              </div>
-              <p className="ml-8 text-sm text-muted-foreground">
-                Quit and reopen the app to load the new configuration
-              </p>
-            </div>
+              </TabsContent>
 
-            {/* Regenerate option */}
-            <div className="pt-4 border-t">
+              {/* Other Apps Setup */}
+              <TabsContent value="other" className="space-y-4">
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Most MCP-compatible apps use a JSON config file. Here's a generic configuration:
+                  </p>
+
+                  <div className="relative">
+                    <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
+{getOtherConfig(activeKey.key)}
+                    </pre>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="absolute top-2 right-2"
+                      onClick={() => copyToClipboard(getOtherConfig(activeKey.key), 'other-config')}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      {copied === 'other-config' ? 'Copied!' : 'Copy'}
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-3">Popular MCP Apps</h4>
+                    <div className="grid gap-2 text-sm">
+                      <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                        <div>
+                          <span className="font-medium">ChatMCP</span>
+                          <span className="text-muted-foreground ml-2">Free, open-source</span>
+                        </div>
+                        <a href="https://chatmcp.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
+                          chatmcp.com <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                        <div>
+                          <span className="font-medium">DeepChat</span>
+                          <span className="text-muted-foreground ml-2">Free, cross-platform</span>
+                        </div>
+                        <a href="https://deepchat.dev" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
+                          deepchat.dev <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                        <div>
+                          <span className="font-medium">Cursor</span>
+                          <span className="text-muted-foreground ml-2">AI code editor</span>
+                        </div>
+                        <a href="https://cursor.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
+                          cursor.com <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Config file locations vary by app. Check your app's documentation for the exact path.
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* API Key / Regenerate */}
+            <div className="pt-4 mt-6 border-t">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">API Key:</span>{' '}
