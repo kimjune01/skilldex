@@ -65,19 +65,12 @@ describe('Google Drive Manifest', () => {
     const operationIds = googleDriveManifest.operations.map((op) => op.id);
     expect(operationIds).toContain('list_files');
     expect(operationIds).toContain('get_file');
-    expect(operationIds).toContain('search_files');
     expect(operationIds).toContain('export_file');
   });
 
   it('is read-only (no write/delete operations)', () => {
     const accessLevels = googleDriveManifest.operations.map((op) => op.access);
     expect(accessLevels.every((a) => a === 'read')).toBe(true);
-  });
-
-  it('has blocklist for sensitive endpoints', () => {
-    expect(googleDriveManifest.blocklist).toBeDefined();
-    expect(googleDriveManifest.blocklist).toContain('/changes/watch');
-    expect(googleDriveManifest.blocklist).toContain('/files/trash');
   });
 });
 

@@ -144,7 +144,7 @@ describe('registerTools', () => {
 
       await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
 
-      // Google Drive manifest has tools like list_files, get_file, search_files, etc.
+      // Google Drive manifest has tools like list_files, get_file, export_file
       // Check that server.tool was called for Drive tools
       const toolCalls = mockServer.tool.mock.calls.map((c: any[]) => c[0]);
       expect(toolCalls).toContain('google_drive_list_files');
