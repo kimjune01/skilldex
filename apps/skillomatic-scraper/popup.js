@@ -51,7 +51,7 @@ function analyzeError(error, status) {
     title = 'Invalid API Key';
     message = 'Your API key was rejected by the server.';
     hint = 'Go to <code>skillomatic.technology</code> → Settings → API Keys to get a valid key. Make sure it starts with <code>sk_live_</code> or <code>sk_test_</code>.';
-  } else if (error?.includes('Connection lost unexpectedly') || error?.includes('WebSocket connection error')) {
+  } else if (error?.includes('Connection lost unexpectedly') || error?.includes('Cannot reach')) {
     title = 'Connection Lost';
     message = 'Could not connect to the Skillomatic server.';
 
@@ -63,7 +63,7 @@ function analyzeError(error, status) {
     } else {
       hint = 'Check your internet connection. The API URL should be <code>https://api.skillomatic.technology</code>.';
     }
-  } else if (error?.includes('Max reconnection attempts')) {
+  } else if (error?.includes('consecutive errors') || error?.includes('Stopped polling')) {
     title = 'Connection Failed';
     message = 'Could not establish connection after multiple attempts.';
     hint = 'Click "Save & Connect" to try again, or check the API URL is correct: <code>https://api.skillomatic.technology</code>';
@@ -137,7 +137,7 @@ function updateUI(status) {
       processingUrl.textContent = status.processingTask.url;
     } else {
       connectedDot.className = 'status-dot active';
-      connectedText.textContent = 'Connected';
+      connectedText.textContent = 'Polling';
       processingInfo.style.display = 'none';
     }
   } else if (status.connecting) {

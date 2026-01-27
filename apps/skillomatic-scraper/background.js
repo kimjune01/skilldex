@@ -1,9 +1,8 @@
 // Skillomatic Scraper - Background Service Worker
-// Connects via WebSocket to receive scrape tasks in real-time
+// Polls the API to receive scrape tasks
 
 const DEFAULT_API_URL = 'https://api.skillomatic.technology';
-const RECONNECT_DELAY_MS = 3000;
-const PING_INTERVAL_MS = 20000; // Keep alive every 20s (Chrome official recommendation)
+const POLL_INTERVAL_MS = 3000; // Poll every 3 seconds
 const THROTTLE_MIN_MS = 150;
 const THROTTLE_MAX_MS = 250;
 // Security: block sensitive domains where scraping would be inappropriate
@@ -18,14 +17,12 @@ const BLOCKED_DOMAINS = [
 
 let apiKey = null;
 let apiUrl = DEFAULT_API_URL;
-let ws = null;
 let processingTask = null;
-let pingIntervalId = null;
-let reconnectTimeoutId = null;
-let isConnecting = false;
-let lastError = null; // Track last connection error for popup display
-let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
+let pollIntervalId = null;
+let isPolling = false;
+let lastError = null;
+let consecutiveErrors = 0;
+const MAX_CONSECUTIVE_ERRORS = 5;
 
 // ============ Storage ============
 
@@ -42,144 +39,84 @@ async function saveConfig(key, url) {
   await chrome.storage.local.set({ apiKey: key, apiUrl: apiUrl });
 }
 
-// ============ WebSocket Connection ============
+// ============ Polling ============
 
-function getWsUrl() {
-  const httpUrl = new URL(apiUrl);
-  const wsProtocol = httpUrl.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${wsProtocol}//${httpUrl.host}/ws/scrape?apiKey=${encodeURIComponent(apiKey)}&mode=extension`;
+function startPolling() {
+  if (pollIntervalId || !apiKey) return;
+
+  console.log('[Poll] Starting polling');
+  isPolling = true;
+  lastError = null;
+  consecutiveErrors = 0;
+
+  // Poll immediately, then at interval
+  pollForTasks();
+  pollIntervalId = setInterval(pollForTasks, POLL_INTERVAL_MS);
 }
 
-function connect() {
-  if (!apiKey || isConnecting || (ws && ws.readyState === WebSocket.OPEN)) {
-    return;
+function stopPolling() {
+  if (pollIntervalId) {
+    clearInterval(pollIntervalId);
+    pollIntervalId = null;
   }
+  isPolling = false;
+  console.log('[Poll] Stopped polling');
+}
 
-  isConnecting = true;
-  console.log('[WS] Connecting to', getWsUrl().replace(apiKey, '***'));
+async function pollForTasks() {
+  if (!apiKey || processingTask) return;
 
   try {
-    ws = new WebSocket(getWsUrl());
+    const response = await fetch(`${apiUrl}/v1/scrape/tasks?status=pending&claim=true`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+    });
 
-    ws.onopen = () => {
-      isConnecting = false;
-      lastError = null;
-      reconnectAttempts = 0;
-      console.log('[WS] Connected');
-      startPingInterval();
-    };
-
-    ws.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('[WS] Received:', data.type);
-
-        if (data.type === 'task_assigned' && data.task) {
-          await handleTaskAssignment(data.task);
-        }
-
-        if (data.type === 'pong') {
-          // Connection is alive
-        }
-      } catch (err) {
-        console.error('[WS] Message parse error:', err);
-      }
-    };
-
-    ws.onclose = (event) => {
-      isConnecting = false;
-      console.log('[WS] Closed:', event.code, event.reason);
-
-      // Map close codes to user-friendly error messages with context
-      if (event.code === 4001) {
+    if (!response.ok) {
+      if (response.status === 401) {
         lastError = 'Invalid or expired API key. Please check your API key in the extension settings.';
-      } else if (event.code === 1006) {
-        // 1006 = abnormal closure - often means we couldn't connect at all
-        // Check if we might be connecting to the wrong URL
-        if (apiUrl && !apiUrl.includes('api.skillomatic.technology') && apiUrl.includes('skillomatic.technology')) {
-          lastError = `Connection failed. You may be using the wrong URL (${apiUrl}). The API is at api.skillomatic.technology`;
-        } else {
-          lastError = `Connection lost unexpectedly to ${apiUrl}. Check your network connection.`;
-        }
-      } else if (event.code === 1001) {
-        lastError = 'Server is shutting down. Will reconnect automatically.';
-      } else if (event.code === 1008) {
-        lastError = 'Policy violation: ' + (event.reason || 'Connection rejected by server.');
-      } else if (event.code === 1011) {
-        lastError = 'Server error: ' + (event.reason || 'Unexpected server condition.');
-      } else if (event.reason) {
-        lastError = event.reason;
-      } else if (event.code !== 1000) {
-        lastError = `Connection closed (code: ${event.code}) to ${apiUrl}. Will retry...`;
-      }
-
-      cleanup();
-      reconnectAttempts++;
-
-      if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
-        scheduleReconnect();
+        consecutiveErrors++;
+      } else if (response.status === 403) {
+        lastError = 'Access denied. Your API key may not have permission for scrape tasks.';
+        consecutiveErrors++;
       } else {
-        lastError = `Max reconnection attempts reached for ${apiUrl}. Please check your settings and reconnect manually.`;
-        console.error('[WS] Max reconnect attempts reached');
+        lastError = `API error: ${response.status}`;
+        consecutiveErrors++;
       }
-    };
 
-    ws.onerror = (event) => {
-      isConnecting = false;
-      console.error('[WS] Error:', event);
-      // Check for common URL mistakes
-      if (apiUrl && !apiUrl.includes('api.skillomatic.technology') && apiUrl.includes('skillomatic.technology')) {
-        lastError = `WebSocket connection error. Wrong URL? Use api.skillomatic.technology instead of ${new URL(apiUrl).host}`;
-      } else {
-        lastError = `WebSocket connection error to ${apiUrl}. Check if the API server is running.`;
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        stopPolling();
+        lastError = `Stopped polling after ${MAX_CONSECUTIVE_ERRORS} consecutive errors. Last error: ${lastError}`;
       }
-      cleanup();
-    };
-  } catch (err) {
-    isConnecting = false;
-    console.error('[WS] Connection error:', err);
-    scheduleReconnect();
-  }
-}
-
-function disconnect() {
-  cleanup();
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
-}
-
-function cleanup() {
-  if (pingIntervalId) {
-    clearInterval(pingIntervalId);
-    pingIntervalId = null;
-  }
-  if (reconnectTimeoutId) {
-    clearTimeout(reconnectTimeoutId);
-    reconnectTimeoutId = null;
-  }
-}
-
-function scheduleReconnect() {
-  if (reconnectTimeoutId || !apiKey) return;
-
-  console.log(`[WS] Reconnecting in ${RECONNECT_DELAY_MS}ms...`);
-  reconnectTimeoutId = setTimeout(() => {
-    reconnectTimeoutId = null;
-    connect();
-  }, RECONNECT_DELAY_MS);
-}
-
-function startPingInterval() {
-  if (pingIntervalId) {
-    clearInterval(pingIntervalId);
-  }
-  pingIntervalId = setInterval(() => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'ping' }));
+      return;
     }
-  }, PING_INTERVAL_MS);
+
+    // Reset error state on success
+    consecutiveErrors = 0;
+    lastError = null;
+
+    const data = await response.json();
+
+    if (data.task) {
+      console.log('[Poll] Claimed task:', data.task.id);
+      await handleTaskAssignment(data.task);
+    }
+  } catch (err) {
+    console.error('[Poll] Error:', err);
+    consecutiveErrors++;
+
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      lastError = `Cannot reach ${apiUrl}. Check your internet connection.`;
+    } else {
+      lastError = `Polling error: ${err.message}`;
+    }
+
+    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+      stopPolling();
+      lastError = `Stopped polling after ${MAX_CONSECUTIVE_ERRORS} consecutive errors. Last error: ${lastError}`;
+    }
+  }
 }
 
 // ============ Helpers ============
@@ -229,9 +166,6 @@ async function processTask(task) {
   processingTask = task;
 
   try {
-    // Mark task as processing
-    await updateTask(task.id, 'processing');
-
     // Random throttle before scraping (150-250ms)
     await randomThrottle();
 
@@ -673,26 +607,26 @@ function extractGenericContent() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GET_STATUS') {
     sendResponse({
-      connected: ws && ws.readyState === WebSocket.OPEN,
-      connecting: isConnecting,
+      connected: isPolling && !lastError,
+      connecting: false,
       apiKey: apiKey ? `${apiKey.slice(0, 10)}...` : null,
       apiUrl,
       processingTask: processingTask ? { id: processingTask.id, url: processingTask.url } : null,
       lastError,
-      reconnectAttempts,
+      isPolling,
     });
     return true;
   }
 
   if (message.type === 'SET_CONFIG') {
     saveConfig(message.apiKey, message.apiUrl).then(() => {
-      // Reset error state and reconnect attempts
+      // Reset error state
       lastError = null;
-      reconnectAttempts = 0;
-      // Disconnect existing connection and reconnect with new config
-      disconnect();
+      consecutiveErrors = 0;
+      // Stop existing polling and restart with new config
+      stopPolling();
       if (message.apiKey) {
-        connect();
+        startPolling();
       }
       sendResponse({ success: true });
     });
@@ -701,18 +635,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'CLEAR_ERROR') {
     lastError = null;
+    consecutiveErrors = 0;
     sendResponse({ success: true });
     return true;
   }
 
   if (message.type === 'CONNECT') {
-    connect();
+    startPolling();
     sendResponse({ success: true });
     return true;
   }
 
   if (message.type === 'DISCONNECT') {
-    disconnect();
+    stopPolling();
     sendResponse({ success: true });
     return true;
   }
@@ -723,9 +658,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function init() {
   await loadConfig();
   if (apiKey) {
-    connect();
+    startPolling();
   }
-  console.log('[Skillomatic] Scraper initialized');
+  console.log('[Skillomatic] Scraper initialized (polling mode)');
 }
 
 init();
