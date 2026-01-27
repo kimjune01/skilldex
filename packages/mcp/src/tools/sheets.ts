@@ -18,7 +18,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SkillomaticClient } from '../api-client.js';
-import type { TabConfig, TabsResponse } from '../types.js';
+import type { DerivedTab, TabsResponse } from '../types.js';
 
 /**
  * Convert a tab title or column name to a slug for tool/field names.
@@ -83,18 +83,34 @@ Example:
 - Purpose: "Track business contacts and leads"
 - Columns: ["Name", "Company", "Email", "Phone", "Stage", "Notes"]
 
+Or create tabs directly in your Google Sheet with:
+- Tab name format: "TableName | Purpose description"
+- Primary key: add * to column header (e.g., "Email*")
+
 View your data: ${response.spreadsheetUrl}`;
   }
 
-  const tableList = response.tabs
-    .map((tab) => {
-      const slug = toSlug(tab.title);
+  // Handle slug collisions for duplicate base names
+  const slugCounts = new Map<string, number>();
+  const tabsWithSlugs = response.tabs.map((tab) => {
+    let slug = toSlug(tab.baseName);
+    const count = slugCounts.get(slug) || 0;
+    if (count > 0) slug = `${slug}_${count}`;
+    slugCounts.set(toSlug(tab.baseName), count + 1);
+    return { tab, slug };
+  });
+
+  const tableList = tabsWithSlugs
+    .map(({ tab, slug }) => {
+      const purposeLine = tab.purpose ? `**Purpose:** ${tab.purpose}` : '';
+      const pkLine = tab.primaryKey ? `**Primary Key:** ${tab.primaryKey}` : '';
       return [
-        `## ${tab.title}`,
-        `**Purpose:** ${tab.purpose}`,
+        `## ${tab.baseName}`,
+        purposeLine,
         `**Columns:** ${tab.columns.join(', ')}`,
+        pkLine,
         `**Tools:** ${slug}_add, ${slug}_list, ${slug}_search, ${slug}_update, ${slug}_delete`,
-      ].join('\n');
+      ].filter(Boolean).join('\n');
     })
     .join('\n\n---\n\n');
 
@@ -189,14 +205,15 @@ After creating a table, new tools will be available: {tablename}_add, {tablename
           primaryKey: args.primaryKey,
         });
 
-        const slug = toSlug(tab.title);
+        const slug = toSlug(tab.baseName);
         const pkInfo = tab.primaryKey ? `\nPrimary key: ${tab.primaryKey} (used for upsert)` : '';
+        const purposeInfo = tab.purpose ? `\nPurpose: ${tab.purpose}` : '';
         return {
           content: [
             {
               type: 'text' as const,
               text: [
-                `Created table "${tab.title}" with ${tab.columns.length} columns.`,
+                `Created table "${tab.baseName}" with ${tab.columns.length} columns.`,
                 '',
                 `**New tools will be available after restart:**`,
                 `- ${slug}_add: Add a new row`,
@@ -206,7 +223,7 @@ After creating a table, new tools will be available: {tablename}_add, {tablename
                 `- ${slug}_update: Update a row`,
                 `- ${slug}_delete: Delete a row`,
                 '',
-                `Columns: ${tab.columns.join(', ')}${pkInfo}`,
+                `Columns: ${tab.columns.join(', ')}${pkInfo}${purposeInfo}`,
                 '',
                 `⚠️ **Restart required:** Please restart your MCP connection (or Claude Code) to use the new ${slug}_* tools.`,
               ].join('\n'),
@@ -254,14 +271,16 @@ Note: Column changes only affect the header row. Existing data rows are NOT modi
           purpose: args.purpose,
         });
 
+        const pkInfo = tab.primaryKey ? `Primary key: ${tab.primaryKey}` : '';
         return {
           content: [
             {
               type: 'text' as const,
               text: [
-                `Updated schema for "${tab.title}".`,
+                `Updated schema for "${tab.baseName}".`,
                 `Columns: ${tab.columns.join(', ')}`,
-                args.purpose ? `Purpose: ${tab.purpose}` : '',
+                tab.purpose ? `Purpose: ${tab.purpose}` : '',
+                pkInfo,
               ].filter(Boolean).join('\n'),
             },
           ],
@@ -330,17 +349,21 @@ WARNING: This permanently deletes the table and all its data.`,
 
 /**
  * Register CRUD tools for a specific table.
- * Each table gets 5 tools: {slug}_add, {slug}_list, {slug}_search, {slug}_update, {slug}_delete
+ * Each table gets 6 tools: {slug}_add, {slug}_upsert, {slug}_list, {slug}_search, {slug}_update, {slug}_delete
  *
  * Note: "tab" in code = "table" in user-facing descriptions
+ *
+ * @param slug - Pre-computed slug (handles collisions for duplicate base names)
  */
 export function registerToolsForTab(
   server: McpServer,
   client: SkillomaticClient,
-  tab: TabConfig
+  tab: DerivedTab,
+  slug: string
 ): string[] {
-  const slug = toSlug(tab.title);
   const registeredTools: string[] = [];
+  const purposeLine = tab.purpose ? `\nPurpose: ${tab.purpose}` : '';
+  const pkInfo = tab.primaryKey ? ` (primary key: ${tab.primaryKey})` : '';
 
   // Build collision-safe field map for columns
   const fieldMap = buildColumnFieldMap(tab.columns);
@@ -355,10 +378,9 @@ export function registerToolsForTab(
   // {slug}_add - Add a new row
   server.tool(
     `${slug}_add`,
-    `Add a new row to your ${tab.title} table.
-
-Purpose: ${tab.purpose}
-Columns: ${tab.columns.join(', ')}`,
+    `Add a new row to your ${tab.baseName} table.
+${purposeLine}
+Columns: ${tab.columns.join(', ')}${pkInfo}`,
     addSchema,
     async (args) => {
       try {
@@ -411,26 +433,24 @@ Columns: ${tab.columns.join(', ')}`,
   }
 
   const upsertDescription = tab.primaryKey
-    ? `Find and update an existing row, or create a new one if not found.
+    ? `Find and update an existing row in ${tab.baseName}, or create a new one if not found.
 
 Matches by ${tab.primaryKey} (primary key) by default. Just provide the ${tab.primaryKey} value.
 
 Example: match_value="john@example.com" will:
 - If found: update that row with the provided fields
 - If not found: create a new row with all provided fields
-
-Purpose: ${tab.purpose}
+${purposeLine}
 Columns: ${tab.columns.join(', ')}
 Primary key: ${tab.primaryKey}`
-    : `Find and update an existing row, or create a new one if not found.
+    : `Find and update an existing row in ${tab.baseName}, or create a new one if not found.
 
 Use this to avoid duplicates. Searches by the match_field, updates if found, creates if not.
 
 Example: match_field="Email", match_value="john@example.com" will:
 - If found: update that row with the provided fields
 - If not found: create a new row with all provided fields
-
-Purpose: ${tab.purpose}
+${purposeLine}
 Columns: ${tab.columns.join(', ')}`;
 
   server.tool(
@@ -529,9 +549,8 @@ Columns: ${tab.columns.join(', ')}`;
   // {slug}_list - List rows
   server.tool(
     `${slug}_list`,
-    `List rows from your ${tab.title} table.
-
-Purpose: ${tab.purpose}`,
+    `List rows from your ${tab.baseName} table.
+${purposeLine}`,
     {
       limit: z.number().optional().default(50).describe('Maximum rows to return (default: 50)'),
       offset: z.number().optional().default(0).describe('Number of rows to skip'),
@@ -586,9 +605,8 @@ Purpose: ${tab.purpose}`,
   // {slug}_search - Search rows
   server.tool(
     `${slug}_search`,
-    `Search rows in your ${tab.title} table.
-
-Purpose: ${tab.purpose}
+    `Search rows in your ${tab.baseName} table.
+${purposeLine}
 Searches across all columns.`,
     {
       query: z.string().describe('Search term (searches all columns)'),
@@ -649,9 +667,8 @@ Searches across all columns.`,
 
   server.tool(
     `${slug}_update`,
-    `Update a row in your ${tab.title} table.
-
-Purpose: ${tab.purpose}
+    `Update a row in your ${tab.baseName} table.
+${purposeLine}
 Only fields you provide will be updated.`,
     updateSchema,
     async (args) => {
@@ -702,7 +719,7 @@ Only fields you provide will be updated.`,
   // {slug}_delete - Delete a row
   server.tool(
     `${slug}_delete`,
-    `Delete a row from your ${tab.title} table.
+    `Delete a row from your ${tab.baseName} table.
 
 WARNING: This permanently removes the row.`,
     {
@@ -750,8 +767,17 @@ export async function registerSheetsTools(
   // Fetch tabs and register per-tab tools
   try {
     const response = await client.listTabs();
+
+    // Handle slug collisions for duplicate base names
+    const slugCounts = new Map<string, number>();
+
     for (const tab of response.tabs) {
-      const tabTools = registerToolsForTab(server, client, tab);
+      let slug = toSlug(tab.baseName);
+      const count = slugCounts.get(slug) || 0;
+      if (count > 0) slug = `${slug}_${count}`;
+      slugCounts.set(toSlug(tab.baseName), count + 1);
+
+      const tabTools = registerToolsForTab(server, client, tab, slug);
       registeredTools.push(...tabTools);
     }
   } catch (error) {

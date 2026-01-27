@@ -1,14 +1,21 @@
 /**
  * Google Sheets Tab Management Routes
  *
- * Provides CRUD operations for tabs (sheets) within the user's Skillomatic spreadsheet.
- * Each tab represents a different data type (Contacts, Jobs, etc.) and generates
- * its own set of MCP tools for typed data access.
+ * The Google Sheet is the single source of truth - no PII stored in our database.
+ * All tab/column info is derived from the sheet on each request.
+ *
+ * Sheet Identification:
+ * - Sheet is found by searching for file named exactly "Skillomatic Data"
+ * - If not found, a new sheet is created with that name
+ *
+ * User-Editable Conventions (visible in Google Sheets):
+ * - Tab name: "TableName | Purpose description" (purpose after |)
+ * - Primary key: column header ends with * (e.g., "Email*")
  *
  * Tab Management:
- * - GET /v1/sheets/tabs - List all tabs with columns and version
+ * - GET /v1/sheets/tabs - List all tabs (derived from sheet)
  * - POST /v1/sheets/tabs - Create a new tab
- * - PUT /v1/sheets/tabs/:tabName - Update tab schema
+ * - PUT /v1/sheets/tabs/:tabName - Update tab (rename, update columns)
  * - DELETE /v1/sheets/tabs/:tabName - Delete a tab
  *
  * Tab Data:
@@ -36,21 +43,8 @@ v1SheetsRoutes.use('*', combinedAuth);
 
 // ============ Types ============
 
-interface TabConfig {
-  sheetId: number;
-  title: string;
-  purpose: string;
-  columns: string[];
-  primaryKey?: string;
-  createdAt: string;
-}
-
+/** Minimal metadata - only OAuth tokens, no user data */
 interface SheetsMetadata {
-  spreadsheetId: string;
-  spreadsheetUrl: string;
-  spreadsheetTitle: string;
-  tabsVersion: number;
-  tabs: TabConfig[];
   accessToken: string;
   refreshToken: string;
   expiresAt?: string;
@@ -58,11 +52,67 @@ interface SheetsMetadata {
   sheetsEmail?: string;
 }
 
+/** Tab derived from Google Sheet (not stored in our DB) */
+interface DerivedTab {
+  sheetId: number;
+  title: string;       // Raw: "CRM | Track consulting leads"
+  baseName: string;    // Parsed: "CRM"
+  purpose?: string;    // Parsed: "Track consulting leads"
+  columns: string[];   // ["Email", "Name", ...] (without *)
+  primaryKey?: string; // "Email" (from "Email*")
+}
+
+/** Spreadsheet info derived from Google Drive/Sheets API */
+interface SpreadsheetInfo {
+  spreadsheetId: string;
+  spreadsheetUrl: string;
+}
+
+const SPREADSHEET_NAME = 'Skillomatic Data';
+
 // ============ Helpers ============
 
 /**
+ * Parse tab name to extract base name and optional purpose.
+ * "CRM | Track consulting leads" → { baseName: "CRM", purpose: "Track consulting leads" }
+ * "Contacts" → { baseName: "Contacts", purpose: undefined }
+ */
+function parseTabName(title: string): { baseName: string; purpose?: string } {
+  const delimiterIndex = title.indexOf('|');
+  if (delimiterIndex === -1) {
+    return { baseName: title.trim() };
+  }
+  return {
+    baseName: title.slice(0, delimiterIndex).trim(),
+    purpose: title.slice(delimiterIndex + 1).trim() || undefined,
+  };
+}
+
+/**
+ * Parse column headers to extract column names and primary key.
+ * ["Email*", "Name", "Phone"] → { columns: ["Email", "Name", "Phone"], primaryKey: "Email" }
+ */
+function parseColumns(headerRow: string[]): { columns: string[]; primaryKey?: string } {
+  const columns: string[] = [];
+  let primaryKey: string | undefined;
+
+  for (const col of headerRow) {
+    const trimmed = col.trim();
+    if (trimmed.endsWith('*')) {
+      const colName = trimmed.slice(0, -1).trim();
+      columns.push(colName);
+      primaryKey = colName;
+    } else {
+      columns.push(trimmed);
+    }
+  }
+
+  return { columns, primaryKey };
+}
+
+/**
  * Get user's Google Sheets integration with valid token.
- * Returns metadata with refreshed token if needed.
+ * Returns only OAuth tokens - no user data stored.
  */
 async function getGoogleSheetsIntegration(
   userId: string
@@ -91,14 +141,6 @@ async function getGoogleSheetsIntegration(
     return null;
   }
 
-  // Ensure tabs array exists
-  if (!metadata.tabs) {
-    metadata.tabs = [];
-  }
-  if (metadata.tabsVersion === undefined) {
-    metadata.tabsVersion = 0;
-  }
-
   // Refresh token if needed
   if (isGoogleTokenExpired(metadata.expiresAt) && metadata.refreshToken) {
     const refreshResult = await refreshGoogleToken(metadata.refreshToken, metadata as unknown as Record<string, unknown>);
@@ -124,20 +166,6 @@ async function getGoogleSheetsIntegration(
   }
 
   return { integration: int, metadata };
-}
-
-/**
- * Save updated metadata back to database.
- */
-async function saveMetadata(integrationId: string, metadata: SheetsMetadata): Promise<void> {
-  metadata.tabsVersion = (metadata.tabsVersion || 0) + 1;
-  await db
-    .update(integrations)
-    .set({
-      metadata: JSON.stringify(metadata),
-      updatedAt: new Date(),
-    })
-    .where(eq(integrations.id, integrationId));
 }
 
 /**
@@ -181,9 +209,154 @@ async function sheetsRequest(
   }
 }
 
+/**
+ * Make authenticated request to Google Drive API.
+ */
+async function driveRequest(
+  accessToken: string,
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<{ ok: boolean; status: number; data?: unknown; error?: string }> {
+  const url = `https://www.googleapis.com/drive/v3${path}`;
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        error: data?.error?.message || `HTTP ${response.status}`,
+      };
+    }
+
+    return { ok: true, status: response.status, data };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 500,
+      error: error instanceof Error ? error.message : 'Network error',
+    };
+  }
+}
+
+/**
+ * Find or create the Skillomatic Data spreadsheet.
+ * Searches Drive for a file named exactly "Skillomatic Data", creates if not found.
+ */
+async function findOrCreateSheet(accessToken: string): Promise<SpreadsheetInfo | null> {
+  // Search for existing spreadsheet
+  const searchResponse = await driveRequest(
+    accessToken,
+    'GET',
+    `/files?q=name='${SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false&fields=files(id,name)`
+  );
+
+  if (!searchResponse.ok) {
+    log.error('sheets_drive_search_failed', { error: searchResponse.error });
+    return null;
+  }
+
+  const searchData = searchResponse.data as { files: Array<{ id: string; name: string }> };
+
+  if (searchData.files.length > 0) {
+    // Use first match
+    const spreadsheetId = searchData.files[0].id;
+    return {
+      spreadsheetId,
+      spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}`,
+    };
+  }
+
+  // Create new spreadsheet
+  const createResponse = await sheetsRequest(accessToken, 'POST', '/spreadsheets', {
+    properties: { title: SPREADSHEET_NAME },
+  });
+
+  if (!createResponse.ok) {
+    log.error('sheets_create_spreadsheet_failed', { error: createResponse.error });
+    return null;
+  }
+
+  const createData = createResponse.data as { spreadsheetId: string; spreadsheetUrl: string };
+  log.info('sheets_spreadsheet_created', { spreadsheetId: createData.spreadsheetId });
+
+  return {
+    spreadsheetId: createData.spreadsheetId,
+    spreadsheetUrl: createData.spreadsheetUrl,
+  };
+}
+
+/**
+ * Derive all tabs from the Google Sheet.
+ * Reads tab names and header rows, parses conventions (| for purpose, * for primary key).
+ */
+async function deriveTabs(accessToken: string, spreadsheetId: string): Promise<DerivedTab[]> {
+  // Get sheet metadata (tab names and sheetIds)
+  const metaResponse = await sheetsRequest(
+    accessToken,
+    'GET',
+    `/spreadsheets/${spreadsheetId}?fields=sheets.properties`
+  );
+
+  if (!metaResponse.ok) {
+    log.error('sheets_get_metadata_failed', { error: metaResponse.error });
+    return [];
+  }
+
+  const metaData = metaResponse.data as {
+    sheets: Array<{ properties: { sheetId: number; title: string } }>;
+  };
+
+  const tabs: DerivedTab[] = [];
+
+  for (const sheet of metaData.sheets) {
+    const { sheetId, title } = sheet.properties;
+
+    // Skip the default "Sheet1" - user should rename it
+    if (title === 'Sheet1') continue;
+
+    // Read header row
+    const headerResponse = await sheetsRequest(
+      accessToken,
+      'GET',
+      `/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(title)}!1:1`
+    );
+
+    if (!headerResponse.ok) {
+      log.warn('sheets_read_header_failed', { title, error: headerResponse.error });
+      continue;
+    }
+
+    const headerData = headerResponse.data as { values?: string[][] };
+    const headerRow = headerData.values?.[0] || [];
+
+    // Skip empty tabs (no header row)
+    if (headerRow.length === 0) continue;
+
+    // Parse tab name and columns
+    const { baseName, purpose } = parseTabName(title);
+    const { columns, primaryKey } = parseColumns(headerRow);
+
+    tabs.push({ sheetId, title, baseName, purpose, columns, primaryKey });
+  }
+
+  return tabs;
+}
+
 // ============ Tab Management Routes ============
 
-// GET /v1/sheets/tabs - List all tabs
+// GET /v1/sheets/tabs - List all tabs (derived from sheet)
 v1SheetsRoutes.get('/tabs', async (c) => {
   const user = c.get('user');
 
@@ -194,12 +367,20 @@ v1SheetsRoutes.get('/tabs', async (c) => {
 
   const { metadata } = result;
 
+  // Find or create the Skillomatic spreadsheet
+  const sheetInfo = await findOrCreateSheet(metadata.accessToken);
+  if (!sheetInfo) {
+    return c.json({ error: { message: 'Failed to access Google Sheets' } }, 500);
+  }
+
+  // Derive tabs from sheet
+  const tabs = await deriveTabs(metadata.accessToken, sheetInfo.spreadsheetId);
+
   return c.json({
     data: {
-      tabs: metadata.tabs,
-      version: metadata.tabsVersion,
-      spreadsheetId: metadata.spreadsheetId,
-      spreadsheetUrl: metadata.spreadsheetUrl,
+      tabs,
+      spreadsheetId: sheetInfo.spreadsheetId,
+      spreadsheetUrl: sheetInfo.spreadsheetUrl,
     },
   });
 });
@@ -207,10 +388,10 @@ v1SheetsRoutes.get('/tabs', async (c) => {
 // POST /v1/sheets/tabs - Create a new tab
 v1SheetsRoutes.post('/tabs', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<{ title: string; purpose: string; columns: string[]; primaryKey?: string }>();
+  const body = await c.req.json<{ title: string; purpose?: string; columns: string[]; primaryKey?: string }>();
 
-  if (!body.title || !body.purpose || !body.columns?.length) {
-    return c.json({ error: { message: 'title, purpose, and columns are required' } }, 400);
+  if (!body.title || !body.columns?.length) {
+    return c.json({ error: { message: 'title and columns are required' } }, 400);
   }
 
   // Validate primaryKey is in columns
@@ -223,24 +404,33 @@ v1SheetsRoutes.post('/tabs', async (c) => {
     return c.json({ error: { message: 'Google Sheets not connected' } }, 400);
   }
 
-  const { integration, metadata } = result;
+  const { metadata } = result;
 
-  // Check if tab already exists
-  if (metadata.tabs.some((t) => t.title.toLowerCase() === body.title.toLowerCase())) {
-    return c.json({ error: { message: `Tab "${body.title}" already exists` } }, 400);
+  // Find or create the Skillomatic spreadsheet
+  const sheetInfo = await findOrCreateSheet(metadata.accessToken);
+  if (!sheetInfo) {
+    return c.json({ error: { message: 'Failed to access Google Sheets' } }, 500);
   }
+
+  // Build tab title with purpose convention: "TableName | Purpose"
+  const tabTitle = body.purpose ? `${body.title} | ${body.purpose}` : body.title;
+
+  // Build header row with primary key convention: "Column*" marks primary key
+  const headerRow = body.columns.map((col) =>
+    body.primaryKey && col === body.primaryKey ? `${col}*` : col
+  );
 
   // Create tab in Google Sheets
   const addSheetResponse = await sheetsRequest(
     metadata.accessToken,
     'POST',
-    `/spreadsheets/${metadata.spreadsheetId}:batchUpdate`,
+    `/spreadsheets/${sheetInfo.spreadsheetId}:batchUpdate`,
     {
       requests: [
         {
           addSheet: {
             properties: {
-              title: body.title,
+              title: tabTitle,
             },
           },
         },
@@ -263,9 +453,9 @@ v1SheetsRoutes.post('/tabs', async (c) => {
   const writeHeaderResponse = await sheetsRequest(
     metadata.accessToken,
     'PUT',
-    `/spreadsheets/${metadata.spreadsheetId}/values/${encodeURIComponent(body.title)}!A1?valueInputOption=RAW`,
+    `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(tabTitle)}!A1?valueInputOption=RAW`,
     {
-      values: [body.columns],
+      values: [headerRow],
     }
   );
 
@@ -274,37 +464,31 @@ v1SheetsRoutes.post('/tabs', async (c) => {
     // Continue anyway - tab was created
   }
 
-  // Add tab to metadata
-  const newTab: TabConfig = {
+  log.info('sheets_tab_created', { userId: user.sub, title: tabTitle });
+
+  // Return derived tab info
+  const tab: DerivedTab = {
     sheetId: newSheetId,
-    title: body.title,
+    title: tabTitle,
+    baseName: body.title,
     purpose: body.purpose,
     columns: body.columns,
     primaryKey: body.primaryKey,
-    createdAt: new Date().toISOString(),
   };
 
-  metadata.tabs.push(newTab);
-  await saveMetadata(integration.id, metadata);
-
-  log.info('sheets_tab_created', { userId: user.sub, title: body.title });
-
   return c.json({
-    data: {
-      tab: newTab,
-      version: metadata.tabsVersion,
-    },
+    data: { tab },
   });
 });
 
-// PUT /v1/sheets/tabs/:tabName - Update tab schema
+// PUT /v1/sheets/tabs/:tabName - Update tab (rename, update columns/purpose/primaryKey)
 v1SheetsRoutes.put('/tabs/:tabName', async (c) => {
   const user = c.get('user');
   const tabName = c.req.param('tabName');
-  const body = await c.req.json<{ columns?: string[]; purpose?: string; primaryKey?: string | null }>();
+  const body = await c.req.json<{ columns?: string[]; purpose?: string; primaryKey?: string | null; baseName?: string }>();
 
-  if (!body.columns && !body.purpose && body.primaryKey === undefined) {
-    return c.json({ error: { message: 'columns, purpose, or primaryKey is required' } }, 400);
+  if (!body.columns && body.purpose === undefined && body.primaryKey === undefined && !body.baseName) {
+    return c.json({ error: { message: 'columns, purpose, primaryKey, or baseName is required' } }, 400);
   }
 
   const result = await getGoogleSheetsIntegration(user.sub);
@@ -312,69 +496,103 @@ v1SheetsRoutes.put('/tabs/:tabName', async (c) => {
     return c.json({ error: { message: 'Google Sheets not connected' } }, 400);
   }
 
-  const { integration, metadata } = result;
+  const { metadata } = result;
 
-  // Find the tab
-  const tabIndex = metadata.tabs.findIndex(
-    (t) => t.title.toLowerCase() === tabName.toLowerCase()
+  // Find or create the Skillomatic spreadsheet
+  const sheetInfo = await findOrCreateSheet(metadata.accessToken);
+  if (!sheetInfo) {
+    return c.json({ error: { message: 'Failed to access Google Sheets' } }, 500);
+  }
+
+  // Derive current tabs to find the one we're updating
+  const currentTabs = await deriveTabs(metadata.accessToken, sheetInfo.spreadsheetId);
+  const tab = currentTabs.find(
+    (t) => t.title.toLowerCase() === tabName.toLowerCase() || t.baseName.toLowerCase() === tabName.toLowerCase()
   );
-  if (tabIndex === -1) {
+
+  if (!tab) {
     return c.json({ error: { message: `Tab "${tabName}" not found` } }, 404);
   }
 
-  const tab = metadata.tabs[tabIndex];
+  // Determine new values
+  const newBaseName = body.baseName ?? tab.baseName;
+  const newPurpose = body.purpose !== undefined ? (body.purpose || undefined) : tab.purpose;
+  const newColumns = body.columns ?? tab.columns;
+  const newPrimaryKey = body.primaryKey !== undefined
+    ? (body.primaryKey === null ? undefined : body.primaryKey)
+    : tab.primaryKey;
 
-  // Update columns in Google Sheets if provided
-  if (body.columns) {
+  // Validate primaryKey is in columns
+  if (newPrimaryKey && !newColumns.includes(newPrimaryKey)) {
+    return c.json({ error: { message: `primaryKey "${newPrimaryKey}" must be one of the columns` } }, 400);
+  }
+
+  // Build new tab title: "BaseName | Purpose"
+  const newTitle = newPurpose ? `${newBaseName} | ${newPurpose}` : newBaseName;
+
+  // Build header row with primary key marker
+  const headerRow = newColumns.map((col) =>
+    newPrimaryKey && col === newPrimaryKey ? `${col}*` : col
+  );
+
+  // If title changed, rename the sheet
+  if (newTitle !== tab.title) {
+    const renameResponse = await sheetsRequest(
+      metadata.accessToken,
+      'POST',
+      `/spreadsheets/${sheetInfo.spreadsheetId}:batchUpdate`,
+      {
+        requests: [
+          {
+            updateSheetProperties: {
+              properties: {
+                sheetId: tab.sheetId,
+                title: newTitle,
+              },
+              fields: 'title',
+            },
+          },
+        ],
+      }
+    );
+
+    if (!renameResponse.ok) {
+      log.error('sheets_rename_tab_failed', { userId: user.sub, error: renameResponse.error });
+      return c.json({ error: { message: `Failed to rename tab: ${renameResponse.error}` } }, 500);
+    }
+  }
+
+  // Update header row if columns or primaryKey changed
+  if (body.columns || body.primaryKey !== undefined) {
     const writeHeaderResponse = await sheetsRequest(
       metadata.accessToken,
       'PUT',
-      `/spreadsheets/${metadata.spreadsheetId}/values/${encodeURIComponent(tab.title)}!A1?valueInputOption=RAW`,
+      `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(newTitle)}!A1?valueInputOption=RAW`,
       {
-        values: [body.columns],
+        values: [headerRow],
       }
     );
 
     if (!writeHeaderResponse.ok) {
-      log.error('sheets_update_columns_failed', {
-        userId: user.sub,
-        error: writeHeaderResponse.error,
-      });
+      log.error('sheets_update_columns_failed', { userId: user.sub, error: writeHeaderResponse.error });
       return c.json({ error: { message: `Failed to update columns: ${writeHeaderResponse.error}` } }, 500);
     }
-
-    tab.columns = body.columns;
   }
 
-  if (body.purpose) {
-    tab.purpose = body.purpose;
-  }
+  log.info('sheets_tab_updated', { userId: user.sub, title: newTitle });
 
-  // Handle primaryKey update (can be set, changed, or removed with null)
-  if (body.primaryKey !== undefined) {
-    if (body.primaryKey === null) {
-      // Remove primary key
-      delete tab.primaryKey;
-    } else {
-      // Validate primaryKey is in columns
-      const columnsToCheck = body.columns || tab.columns;
-      if (!columnsToCheck.includes(body.primaryKey)) {
-        return c.json({ error: { message: `primaryKey "${body.primaryKey}" must be one of the columns` } }, 400);
-      }
-      tab.primaryKey = body.primaryKey;
-    }
-  }
-
-  metadata.tabs[tabIndex] = tab;
-  await saveMetadata(integration.id, metadata);
-
-  log.info('sheets_tab_updated', { userId: user.sub, title: tab.title });
+  // Return updated tab info
+  const updatedTab: DerivedTab = {
+    sheetId: tab.sheetId,
+    title: newTitle,
+    baseName: newBaseName,
+    purpose: newPurpose,
+    columns: newColumns,
+    primaryKey: newPrimaryKey,
+  };
 
   return c.json({
-    data: {
-      tab,
-      version: metadata.tabsVersion,
-    },
+    data: { tab: updatedTab },
   });
 });
 
@@ -388,23 +606,29 @@ v1SheetsRoutes.delete('/tabs/:tabName', async (c) => {
     return c.json({ error: { message: 'Google Sheets not connected' } }, 400);
   }
 
-  const { integration, metadata } = result;
+  const { metadata } = result;
 
-  // Find the tab
-  const tabIndex = metadata.tabs.findIndex(
-    (t) => t.title.toLowerCase() === tabName.toLowerCase()
-  );
-  if (tabIndex === -1) {
-    return c.json({ error: { message: `Tab "${tabName}" not found` } }, 404);
+  // Find or create the Skillomatic spreadsheet
+  const sheetInfo = await findOrCreateSheet(metadata.accessToken);
+  if (!sheetInfo) {
+    return c.json({ error: { message: 'Failed to access Google Sheets' } }, 500);
   }
 
-  const tab = metadata.tabs[tabIndex];
+  // Derive current tabs to find the one we're deleting
+  const currentTabs = await deriveTabs(metadata.accessToken, sheetInfo.spreadsheetId);
+  const tab = currentTabs.find(
+    (t) => t.title.toLowerCase() === tabName.toLowerCase() || t.baseName.toLowerCase() === tabName.toLowerCase()
+  );
+
+  if (!tab) {
+    return c.json({ error: { message: `Tab "${tabName}" not found` } }, 404);
+  }
 
   // Delete tab from Google Sheets
   const deleteSheetResponse = await sheetsRequest(
     metadata.accessToken,
     'POST',
-    `/spreadsheets/${metadata.spreadsheetId}:batchUpdate`,
+    `/spreadsheets/${sheetInfo.spreadsheetId}:batchUpdate`,
     {
       requests: [
         {
@@ -421,21 +645,40 @@ v1SheetsRoutes.delete('/tabs/:tabName', async (c) => {
     return c.json({ error: { message: `Failed to delete tab: ${deleteSheetResponse.error}` } }, 500);
   }
 
-  // Remove from metadata
-  metadata.tabs.splice(tabIndex, 1);
-  await saveMetadata(integration.id, metadata);
-
   log.info('sheets_tab_deleted', { userId: user.sub, title: tab.title });
 
   return c.json({
     data: {
       deleted: tab.title,
-      version: metadata.tabsVersion,
     },
   });
 });
 
 // ============ Tab Data Routes ============
+
+/**
+ * Helper to get spreadsheet and find a specific tab by name.
+ */
+async function getTabByName(
+  accessToken: string,
+  tabName: string
+): Promise<{ sheetInfo: SpreadsheetInfo; tab: DerivedTab } | { error: string; status: number }> {
+  const sheetInfo = await findOrCreateSheet(accessToken);
+  if (!sheetInfo) {
+    return { error: 'Failed to access Google Sheets', status: 500 };
+  }
+
+  const tabs = await deriveTabs(accessToken, sheetInfo.spreadsheetId);
+  const tab = tabs.find(
+    (t) => t.title.toLowerCase() === tabName.toLowerCase() || t.baseName.toLowerCase() === tabName.toLowerCase()
+  );
+
+  if (!tab) {
+    return { error: `Tab "${tabName}" not found`, status: 404 };
+  }
+
+  return { sheetInfo, tab };
+}
 
 // GET /v1/sheets/tabs/:tabName/rows - Read rows
 v1SheetsRoutes.get('/tabs/:tabName/rows', async (c) => {
@@ -452,16 +695,17 @@ v1SheetsRoutes.get('/tabs/:tabName/rows', async (c) => {
   const { metadata } = result;
 
   // Find the tab
-  const tab = metadata.tabs.find((t) => t.title.toLowerCase() === tabName.toLowerCase());
-  if (!tab) {
-    return c.json({ error: { message: `Tab "${tabName}" not found` } }, 404);
+  const tabResult = await getTabByName(metadata.accessToken, tabName);
+  if ('error' in tabResult) {
+    return c.json({ error: { message: tabResult.error } }, tabResult.status as 404 | 500);
   }
+  const { sheetInfo, tab } = tabResult;
 
   // Read all data from the tab
   const readResponse = await sheetsRequest(
     metadata.accessToken,
     'GET',
-    `/spreadsheets/${metadata.spreadsheetId}/values/${encodeURIComponent(tab.title)}?majorDimension=ROWS`
+    `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(tab.title)}?majorDimension=ROWS`
   );
 
   if (!readResponse.ok) {
@@ -522,10 +766,11 @@ v1SheetsRoutes.post('/tabs/:tabName/rows', async (c) => {
   }
 
   // Find the tab
-  const tab = metadata.tabs.find((t) => t.title.toLowerCase() === tabName.toLowerCase());
-  if (!tab) {
-    return c.json({ error: { message: `Tab "${tabName}" not found` } }, 404);
+  const tabResult = await getTabByName(metadata.accessToken, tabName);
+  if ('error' in tabResult) {
+    return c.json({ error: { message: tabResult.error } }, tabResult.status as 404 | 500);
   }
+  const { sheetInfo, tab } = tabResult;
 
   // Build row values in column order
   const rowValues = tab.columns.map((col) => body.data[col] || '');
@@ -534,7 +779,7 @@ v1SheetsRoutes.post('/tabs/:tabName/rows', async (c) => {
   const appendResponse = await sheetsRequest(
     metadata.accessToken,
     'POST',
-    `/spreadsheets/${metadata.spreadsheetId}/values/${encodeURIComponent(tab.title)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(tab.title)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
     {
       values: [rowValues],
     }
@@ -587,17 +832,18 @@ v1SheetsRoutes.put('/tabs/:tabName/rows/:rowNum', async (c) => {
   }
 
   // Find the tab
-  const tab = metadata.tabs.find((t) => t.title.toLowerCase() === tabName.toLowerCase());
-  if (!tab) {
-    return c.json({ error: { message: `Tab "${tabName}" not found` } }, 404);
+  const tabResult = await getTabByName(metadata.accessToken, tabName);
+  if ('error' in tabResult) {
+    return c.json({ error: { message: tabResult.error } }, tabResult.status as 404 | 500);
   }
+  const { sheetInfo, tab } = tabResult;
 
   // Build row values - use existing value if not provided in update
   // First, read current row
   const readResponse = await sheetsRequest(
     metadata.accessToken,
     'GET',
-    `/spreadsheets/${metadata.spreadsheetId}/values/${encodeURIComponent(tab.title)}!A${rowNum}:${String.fromCharCode(64 + tab.columns.length)}${rowNum}`
+    `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(tab.title)}!A${rowNum}:${String.fromCharCode(64 + tab.columns.length)}${rowNum}`
   );
 
   if (!readResponse.ok) {
@@ -620,7 +866,7 @@ v1SheetsRoutes.put('/tabs/:tabName/rows/:rowNum', async (c) => {
   const writeResponse = await sheetsRequest(
     metadata.accessToken,
     'PUT',
-    `/spreadsheets/${metadata.spreadsheetId}/values/${encodeURIComponent(tab.title)}!A${rowNum}?valueInputOption=USER_ENTERED`,
+    `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(tab.title)}!A${rowNum}?valueInputOption=USER_ENTERED`,
     {
       values: [rowValues],
     }
@@ -664,16 +910,17 @@ v1SheetsRoutes.delete('/tabs/:tabName/rows/:rowNum', async (c) => {
   }
 
   // Find the tab
-  const tab = metadata.tabs.find((t) => t.title.toLowerCase() === tabName.toLowerCase());
-  if (!tab) {
-    return c.json({ error: { message: `Tab "${tabName}" not found` } }, 404);
+  const tabResult = await getTabByName(metadata.accessToken, tabName);
+  if ('error' in tabResult) {
+    return c.json({ error: { message: tabResult.error } }, tabResult.status as 404 | 500);
   }
+  const { sheetInfo, tab } = tabResult;
 
   // Delete row using batchUpdate
   const deleteResponse = await sheetsRequest(
     metadata.accessToken,
     'POST',
-    `/spreadsheets/${metadata.spreadsheetId}:batchUpdate`,
+    `/spreadsheets/${sheetInfo.spreadsheetId}:batchUpdate`,
     {
       requests: [
         {
@@ -724,16 +971,17 @@ v1SheetsRoutes.get('/tabs/:tabName/search', async (c) => {
   const { metadata } = result;
 
   // Find the tab
-  const tab = metadata.tabs.find((t) => t.title.toLowerCase() === tabName.toLowerCase());
-  if (!tab) {
-    return c.json({ error: { message: `Tab "${tabName}" not found` } }, 404);
+  const tabResult = await getTabByName(metadata.accessToken, tabName);
+  if ('error' in tabResult) {
+    return c.json({ error: { message: tabResult.error } }, tabResult.status as 404 | 500);
   }
+  const { sheetInfo, tab } = tabResult;
 
   // Read all data
   const readResponse = await sheetsRequest(
     metadata.accessToken,
     'GET',
-    `/spreadsheets/${metadata.spreadsheetId}/values/${encodeURIComponent(tab.title)}?majorDimension=ROWS`
+    `/spreadsheets/${sheetInfo.spreadsheetId}/values/${encodeURIComponent(tab.title)}?majorDimension=ROWS`
   );
 
   if (!readResponse.ok) {

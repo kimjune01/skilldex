@@ -136,31 +136,36 @@ export interface EmailMessage {
 // ============ Google Sheets Tab Types ============
 
 /**
- * Configuration for a single tab (sheet) in the user's Skillomatic spreadsheet.
- * Each tab represents a different data type (Contacts, Jobs, etc.).
+ * Tab derived from Google Sheet (not stored in our DB).
+ * All info is parsed from the sheet on each request.
+ *
+ * Conventions:
+ * - Tab name: "TableName | Purpose description" (purpose after |)
+ * - Primary key: column header ends with * (e.g., "Email*")
  */
-export interface TabConfig {
+export interface DerivedTab {
   /** Google's numeric sheet ID (for API operations) */
   sheetId: number;
-  /** Tab name (used for tool names, e.g., "Contacts" → contacts_add) */
+  /** Raw tab name including purpose (e.g., "CRM | Track consulting leads") */
   title: string;
-  /** Description for LLM context (what this tab is used for) */
-  purpose: string;
-  /** Column headers (all treated as strings) */
+  /** Parsed table name (e.g., "CRM") */
+  baseName: string;
+  /** Parsed purpose from after | (e.g., "Track consulting leads") */
+  purpose?: string;
+  /** Column headers (without * suffix) */
   columns: string[];
-  /** Optional: column to use as primary key for upsert operations */
+  /** Column marked with * suffix (e.g., "Email" from "Email*") */
   primaryKey?: string;
-  /** ISO timestamp when tab was created */
-  createdAt: string;
 }
 
+/** @deprecated Use DerivedTab instead */
+export type TabConfig = DerivedTab;
+
 /**
- * Response from listing tabs - includes version for tool regeneration detection.
+ * Response from listing tabs - derived from sheet on each request.
  */
 export interface TabsResponse {
-  tabs: TabConfig[];
-  /** Incremented on any tab/schema change - used to detect when tools need regeneration */
-  version: number;
+  tabs: DerivedTab[];
   /** User's spreadsheet ID */
   spreadsheetId: string;
   /** URL to the spreadsheet */
@@ -171,13 +176,13 @@ export interface TabsResponse {
  * Request body for creating a new tab.
  */
 export interface CreateTabRequest {
-  /** Tab name (e.g., "Contacts", "Jobs") */
+  /** Tab name (e.g., "Contacts", "Jobs") - will be combined with purpose as "Title | Purpose" */
   title: string;
-  /** What this tab tracks */
-  purpose: string;
-  /** Column headers to initialize */
+  /** What this tab tracks - will be appended to title with | delimiter */
+  purpose?: string;
+  /** Column headers to initialize (mark primary key with * suffix, e.g., "Email*") */
   columns: string[];
-  /** Optional: column to use as primary key for upsert (e.g., "Email") */
+  /** Column to use as primary key for upsert (will add * suffix in sheet) */
   primaryKey?: string;
 }
 
@@ -186,11 +191,13 @@ export interface CreateTabRequest {
  */
 export interface UpdateTabSchemaRequest {
   /** New column list (complete, in order) */
-  columns: string[];
-  /** Optional: update the purpose */
+  columns?: string[];
+  /** Update the purpose (text after |) */
   purpose?: string;
-  /** Optional: set or change the primary key column */
-  primaryKey?: string;
+  /** Update the base name (text before |) */
+  baseName?: string;
+  /** Set or change the primary key column (will update * suffix) */
+  primaryKey?: string | null;
 }
 
 /**

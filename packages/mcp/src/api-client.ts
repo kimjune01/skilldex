@@ -15,7 +15,7 @@ import type {
   EmailDraft,
   SentEmail,
   EmailSearchResult,
-  TabConfig,
+  DerivedTab,
   TabsResponse,
   CreateTabRequest,
   UpdateTabSchemaRequest,
@@ -35,7 +35,7 @@ export type {
   EmailDraft,
   SentEmail,
   EmailSearchResult,
-  TabConfig,
+  DerivedTab,
   TabsResponse,
   CreateTabRequest,
   UpdateTabSchemaRequest,
@@ -413,7 +413,7 @@ export class SkillomaticClient {
 
   /**
    * List all tabs in the user's Skillomatic spreadsheet.
-   * Returns tabs with their purposes, columns, and a version number for tool regeneration.
+   * Returns tabs derived from the sheet (no metadata stored in our DB).
    */
   async listTabs(): Promise<TabsResponse> {
     return this.request<TabsResponse>('/v1/sheets/tabs');
@@ -422,8 +422,8 @@ export class SkillomaticClient {
   /**
    * Create a new tab in the user's spreadsheet.
    */
-  async createTab(config: CreateTabRequest): Promise<TabConfig> {
-    const response = await this.request<{ tab: TabConfig; version: number }>('/v1/sheets/tabs', {
+  async createTab(config: CreateTabRequest): Promise<DerivedTab> {
+    const response = await this.request<{ tab: DerivedTab }>('/v1/sheets/tabs', {
       method: 'POST',
       body: JSON.stringify(config),
     });
@@ -431,10 +431,10 @@ export class SkillomaticClient {
   }
 
   /**
-   * Update a tab's schema (columns and optionally purpose).
+   * Update a tab's schema (columns, purpose, or primaryKey).
    */
-  async updateTabSchema(tabName: string, data: UpdateTabSchemaRequest): Promise<TabConfig> {
-    const response = await this.request<{ tab: TabConfig; version: number }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}`, {
+  async updateTabSchema(tabName: string, data: UpdateTabSchemaRequest): Promise<DerivedTab> {
+    const response = await this.request<{ tab: DerivedTab }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -444,8 +444,8 @@ export class SkillomaticClient {
   /**
    * Delete a tab from the user's spreadsheet.
    */
-  async deleteTab(tabName: string): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}`, {
+  async deleteTab(tabName: string): Promise<{ deleted: string }> {
+    return this.request<{ deleted: string }>(`/v1/sheets/tabs/${encodeURIComponent(tabName)}`, {
       method: 'DELETE',
     });
   }

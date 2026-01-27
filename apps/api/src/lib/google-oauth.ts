@@ -31,9 +31,10 @@ const GOOGLE_CALENDAR_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
-// Google Sheets scopes
+// Google Sheets scopes (includes Drive for file search/creation)
 const GOOGLE_SHEETS_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/drive.file', // Create/access files created by this app
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
