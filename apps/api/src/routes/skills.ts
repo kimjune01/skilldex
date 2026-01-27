@@ -298,54 +298,36 @@ skillsRoutes.get('/config', async (c) => {
         ? 'outlook-calendar'
         : undefined;
 
-  // Check which database providers are connected
-  let hasAirtable = false;
-  let hasGoogleSheets = false;
-  let hasGoogleDrive = false;
-  let hasGoogleDocs = false;
-  let hasGoogleForms = false;
-  let hasGoogleContacts = false;
-  let hasGoogleTasks = false;
+  // Get connected integrations (org users use three-way model, individual users check directly)
+  let connectedIntegrations: { provider: string }[] = [];
+  let allowAirtable = false;
 
   if (user.organizationId) {
-    // Organization user: use three-way intersection model
     const integrationsByCategory = await getUserIntegrationsByCategory(user.sub, user.organizationId);
-    const databaseIntegrations = integrationsByCategory.database;
-
-    // Check database access is not disabled
     const databaseEnabled = effectiveAccess
       ? effectiveAccess.database !== 'none' && effectiveAccess.database !== 'disabled'
       : false;
 
     if (databaseEnabled) {
-      hasAirtable = databaseIntegrations.some((int) => int.provider === 'airtable');
-      hasGoogleSheets = databaseIntegrations.some((int) => int.provider === 'google-sheets');
-      hasGoogleDrive = databaseIntegrations.some((int) => int.provider === 'google-drive');
-      hasGoogleDocs = databaseIntegrations.some((int) => int.provider === 'google-docs');
-      hasGoogleForms = databaseIntegrations.some((int) => int.provider === 'google-forms');
-      hasGoogleContacts = databaseIntegrations.some((int) => int.provider === 'google-contacts');
-      hasGoogleTasks = databaseIntegrations.some((int) => int.provider === 'google-tasks');
+      connectedIntegrations = integrationsByCategory.database;
+      allowAirtable = true;
     }
   } else {
-    // Individual user: check their connected integrations directly
-    const userIntegrations = await db
+    connectedIntegrations = await db
       .select()
       .from(integrations)
-      .where(
-        and(
-          eq(integrations.userId, user.sub),
-          eq(integrations.status, 'connected')
-        )
-      );
-
-    hasGoogleSheets = userIntegrations.some((int) => int.provider === 'google-sheets');
-    hasGoogleDrive = userIntegrations.some((int) => int.provider === 'google-drive');
-    hasGoogleDocs = userIntegrations.some((int) => int.provider === 'google-docs');
-    hasGoogleForms = userIntegrations.some((int) => int.provider === 'google-forms');
-    hasGoogleContacts = userIntegrations.some((int) => int.provider === 'google-contacts');
-    hasGoogleTasks = userIntegrations.some((int) => int.provider === 'google-tasks');
-    // Note: Airtable not allowed for individual users
+      .where(and(eq(integrations.userId, user.sub), eq(integrations.status, 'connected')));
   }
+
+  // Check which providers are connected
+  const hasProvider = (provider: string) => connectedIntegrations.some((int) => int.provider === provider);
+  const hasAirtable = allowAirtable && hasProvider('airtable');
+  const hasGoogleSheets = hasProvider('google-sheets');
+  const hasGoogleDrive = hasProvider('google-drive');
+  const hasGoogleDocs = hasProvider('google-docs');
+  const hasGoogleForms = hasProvider('google-forms');
+  const hasGoogleContacts = hasProvider('google-contacts');
+  const hasGoogleTasks = hasProvider('google-tasks');
 
   return c.json({
     data: {
