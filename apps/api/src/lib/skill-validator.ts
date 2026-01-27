@@ -9,6 +9,7 @@ import { db } from '@skillomatic/db';
 import { skills } from '@skillomatic/db/schema';
 import { eq, like } from 'drizzle-orm';
 import { parse as parseYaml } from 'yaml';
+import { containsInjectionPatterns } from './prompt-sanitizer.js';
 
 // Validation constants
 export const VALIDATION = {
@@ -120,6 +121,11 @@ export function validateSkillContent(content: string): ValidationResult {
     return { valid: false, error: `Skill description must be at most ${VALIDATION.DESCRIPTION_MAX_LENGTH} characters` };
   }
 
+  // Check for prompt injection patterns in description
+  if (containsInjectionPatterns(description)) {
+    return { valid: false, error: 'Skill description contains invalid formatting' };
+  }
+
   // Validate body (instructions) length
   if (body.length < VALIDATION.INSTRUCTIONS_MIN_LENGTH) {
     return { valid: false, error: `Skill instructions must be at least ${VALIDATION.INSTRUCTIONS_MIN_LENGTH} characters` };
@@ -130,9 +136,15 @@ export function validateSkillContent(content: string): ValidationResult {
     ? frontmatter.category.trim()
     : undefined;
 
-  const intent = typeof frontmatter.intent === 'string' && frontmatter.intent.trim()
-    ? frontmatter.intent.trim()
-    : undefined;
+  let intent: string | undefined;
+  if (typeof frontmatter.intent === 'string' && frontmatter.intent.trim()) {
+    const intentValue = frontmatter.intent.trim();
+    // Check for prompt injection patterns in intent
+    if (containsInjectionPatterns(intentValue)) {
+      return { valid: false, error: 'Skill intent contains invalid formatting' };
+    }
+    intent = intentValue;
+  }
 
   // Parse capabilities (must be array of strings)
   let capabilities: string[] | undefined;
@@ -141,6 +153,12 @@ export function validateSkillContent(content: string): ValidationResult {
       .filter((c): c is string => typeof c === 'string')
       .map(c => c.trim())
       .filter(c => c.length > 0);
+    // Check for prompt injection patterns in capabilities
+    for (const cap of validCaps) {
+      if (containsInjectionPatterns(cap)) {
+        return { valid: false, error: 'Skill capabilities contain invalid formatting' };
+      }
+    }
     if (validCaps.length > 0) {
       capabilities = validCaps;
     }

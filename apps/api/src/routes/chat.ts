@@ -24,6 +24,7 @@ import {
   type EmailCapability,
 } from '../lib/chat-actions.js';
 import { buildSystemPrompt } from '../lib/chat-prompts.js';
+import { wrapExternalResponse } from '../lib/prompt-sanitizer.js';
 
 export const chatRoutes = new Hono();
 
@@ -139,14 +140,16 @@ chatRoutes.post('/', async (c) => {
         const allowMoreActions = action.action === 'load_skill';
 
         // Get a follow-up response from the LLM with the action result
+        // Wrap external API responses in code blocks to prevent injection
+        const wrappedResult = wrapExternalResponse(action.action, result);
         const followUpMessages: LLMChatMessage[] = [
           ...currentMessages,
           { role: 'assistant', content: currentResponse },
           {
             role: 'user',
             content: allowMoreActions
-              ? `[SYSTEM: Action "${action.action}" completed. Result: ${JSON.stringify(result)}]\n\nNow execute the skill by using the appropriate action (e.g., scrape_url for LinkedIn searches). Include an action block.`
-              : `[SYSTEM: Action "${action.action}" completed. Result: ${JSON.stringify(result)}]\n\nPlease summarize the results for the user in a helpful way. Do not include another action block.`,
+              ? `[SYSTEM: ${wrappedResult}]\n\nNow execute the skill by using the appropriate action (e.g., scrape_url for LinkedIn searches). Include an action block.`
+              : `[SYSTEM: ${wrappedResult}]\n\nPlease summarize the results for the user in a helpful way. Do not include another action block.`,
           },
         ];
 

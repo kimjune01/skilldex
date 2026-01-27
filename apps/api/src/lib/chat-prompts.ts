@@ -1,6 +1,7 @@
 import { buildSkillsPromptSection, type SkillMetadata } from './skills.js';
 import { skillRequiresBrowser, type EmailCapability } from './chat-actions.js';
 import type { EffectiveAccess } from './integration-permissions.js';
+import { sanitizeEmail } from './prompt-sanitizer.js';
 
 /**
  * Build the system prompt for the chat assistant
@@ -52,7 +53,7 @@ ${
    - query: Gmail search query (e.g., "from:user@example.com", "subject:interview")
    - maxResults: (optional) Maximum results to return (default: 10)
 
-Your connected email: ${emailCapability.emailAddress || 'unknown'}${emailCapability.canSendEmail ? '' : '\n**Note**: Email sending is disabled by your admin. You can only search emails.'}
+Your connected email: ${sanitizeEmail(emailCapability.emailAddress || '')}${emailCapability.canSendEmail ? '' : '\n**Note**: Email sending is disabled by your admin. You can only search emails.'}
 `;
   }
 

@@ -163,6 +163,7 @@ function toSkillMetadata(skill: typeof skills.$inferSelect): SkillMetadata {
 
 import { type EffectiveAccess } from './integration-permissions.js';
 import { getSkillStatus, type SkillStatusResult } from './skill-access.js';
+import { sanitizeSkillMetadata } from './prompt-sanitizer.js';
 
 /**
  * Skill with status information for system prompt
@@ -203,24 +204,34 @@ export function buildSkillsPromptSection(
   const availableSkills = skillsWithStatus.filter(s => s.statusInfo.status === 'available');
   const limitedSkills = skillsWithStatus.filter(s => s.statusInfo.status === 'limited');
 
-  // Build available skills list
+  // Build available skills list (sanitize user-controlled metadata)
   const availableSkillsList = availableSkills
     .map(s => {
-      let entry = `- **${s.slug}**: ${s.description}`;
-      if (s.intent) {
-        entry += `\n  - *Use when*: ${s.intent}`;
+      const sanitized = sanitizeSkillMetadata({
+        description: s.description,
+        intent: s.intent,
+        capabilities: s.capabilities,
+      });
+      let entry = `- **${s.slug}**: ${sanitized.description}`;
+      if (sanitized.intent) {
+        entry += `\n  - *Use when*: ${sanitized.intent}`;
       }
-      if (s.capabilities.length > 0) {
-        entry += `\n  - *Can*: ${s.capabilities.join(', ')}`;
+      if (sanitized.capabilities && sanitized.capabilities.length > 0) {
+        entry += `\n  - *Can*: ${sanitized.capabilities.join(', ')}`;
       }
       return entry;
     })
     .join('\n');
 
-  // Build limited skills list with guidance
+  // Build limited skills list with guidance (sanitize user-controlled metadata)
   const limitedSkillsList = limitedSkills
     .map(s => {
-      let entry = `- **${s.slug}** (LIMITED): ${s.description}`;
+      const sanitized = sanitizeSkillMetadata({
+        description: s.description,
+        intent: s.intent,
+        capabilities: s.capabilities,
+      });
+      let entry = `- **${s.slug}** (LIMITED): ${sanitized.description}`;
       if (s.statusInfo.limitations && s.statusInfo.limitations.length > 0) {
         entry += `\n  - *Limitations*: ${s.statusInfo.limitations.join(', ')}`;
       }
