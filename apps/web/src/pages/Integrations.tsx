@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import Nango from '@nangohq/frontend';
 import { integrations, type IntegrationAccessLevel } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '@/components/ui/toast';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
 import { getProviders, getProvider, type IntegrationCategory, isProviderAllowedForIndividual, type PayIntentionTrigger } from '@skillomatic/shared';
 import { PayIntentionDialog } from '@/components/PayIntentionDialog';
@@ -76,7 +77,6 @@ const providerIcons: Partial<Record<IntegrationProvider | string, LucideIcon>> =
  * Google Workspace tools configuration
  */
 const GOOGLE_WORKSPACE_TOOLS = [
-  { id: 'google-sheets', name: 'Sheets', description: 'Spreadsheets for data' },
   { id: 'google-drive', name: 'Drive', description: 'File storage' },
   { id: 'google-docs', name: 'Docs', description: 'Documents' },
   { id: 'google-forms', name: 'Forms', description: 'Surveys & forms' },
@@ -112,7 +112,7 @@ function buildProviderConfigs(): {
   essentialProviders: ProviderConfig[];
   otherProviders: ProviderConfig[];
 } {
-  // Essential integrations - Gmail and Calendar (Google Workspace tools are separate)
+  // Essential integrations - Gmail, Calendar, and Sheets
   const essentialProviders: ProviderConfig[] = [
     {
       id: 'email',
@@ -125,6 +125,11 @@ function buildProviderConfigs(): {
       name: 'Calendar',
       description: 'Schedule meetings and check availability',
       subProviders: getSubProvidersForCategory('calendar'),
+    },
+    {
+      id: 'google-sheets',
+      name: 'Sheets',
+      description: 'Spreadsheets for tracking data',
     },
   ];
 
@@ -157,6 +162,7 @@ export default function Integrations() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const { isIndividual } = useAuth();
+  const { toast } = useToast();
 
   // Build provider configs from registry (memoized to avoid rebuilding on every render)
   const { essentialProviders, otherProviders } = useMemo(() => buildProviderConfigs(), []);
@@ -384,8 +390,7 @@ export default function Integrations() {
     try {
       await integrations.updateAccessLevel(integrationId, newLevel);
       await loadIntegrations();
-      setSuccessMessage(`Access level updated to ${newLevel === 'read-write' ? 'Full access' : 'Read only'}`);
-      setTimeout(() => setSuccessMessage(''), 5000);
+      toast(`Access level updated to ${newLevel === 'read-write' ? 'Full access' : 'Read only'}`, 'success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update access level');
     } finally {
@@ -476,15 +481,13 @@ export default function Integrations() {
         </p>
       </div>
 
-      {/* Onboarding: Show until email and calendar are connected */}
+      {/* Onboarding: Show until email, calendar, and sheets are connected */}
       {(() => {
         const hasEmail = integrationList.some(i => i.provider === 'email' && i.status === 'connected');
         const hasCalendar = integrationList.some(i => i.provider === 'calendar' && i.status === 'connected');
-        const hasAnyGoogleWorkspace = GOOGLE_WORKSPACE_TOOLS.some(tool =>
-          integrationList.some(i => i.provider === tool.id && i.status === 'connected')
-        );
-        const allConnected = hasEmail && hasCalendar && hasAnyGoogleWorkspace;
-        const noneConnected = !hasEmail && !hasCalendar && !hasAnyGoogleWorkspace;
+        const hasSheets = integrationList.some(i => i.provider === 'google-sheets' && i.status === 'connected');
+        const allConnected = hasEmail && hasCalendar && hasSheets;
+        const noneConnected = !hasEmail && !hasCalendar && !hasSheets;
 
         if (allConnected) return null;
 
@@ -537,12 +540,12 @@ export default function Integrations() {
                       </p>
                       <p className="text-amber-700">Schedule meetings and check availability</p>
                     </div>
-                    <div className={`rounded-md p-3 ${hasAnyGoogleWorkspace ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
+                    <div className={`rounded-md p-3 ${hasSheets ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
                       <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
-                        {hasAnyGoogleWorkspace && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                        3. Google Workspace
+                        {hasSheets && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                        3. Sheets
                       </p>
-                      <p className="text-amber-700">Sheets, Drive, Docs, Forms...</p>
+                      <p className="text-amber-700">Spreadsheets for tracking data</p>
                     </div>
                   </div>
                 )}
@@ -577,7 +580,7 @@ export default function Integrations() {
           })?.id;
 
           return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {essentialProviders.map((provider) => {
             const integration = getIntegrationStatus(provider.id);
             const isConnected = integration?.status === 'connected';
@@ -595,7 +598,23 @@ export default function Integrations() {
                         />
                       </div>
                       <div>
-                        <CardTitle className="text-base">{provider.name}</CardTitle>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          {provider.name}
+                          {provider.id === 'google-sheets' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSheetsInfoOpen(true);
+                              }}
+                              className="h-6 px-2 text-xs"
+                            >
+                              <Lightbulb className="h-3.5 w-3.5 mr-1 text-yellow-500" />
+                              How it works
+                            </Button>
+                          )}
+                        </CardTitle>
                         <CardDescription className="text-xs">{provider.description}</CardDescription>
                       </div>
                     </div>
@@ -624,7 +643,15 @@ export default function Integrations() {
                             disabled={updatingAccessLevel === integration.id}
                           >
                             <SelectTrigger className="h-7 w-[130px] text-xs">
-                              <SelectValue />
+                              {(integration.accessLevel || 'read-write') === 'read-write' ? (
+                                <span className="flex items-center gap-1">
+                                  <ShieldCheck className="h-3 w-3" /> Full access
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" /> Read only
+                                </span>
+                              )}
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="read-write">
@@ -681,26 +708,15 @@ export default function Integrations() {
 
       {/* Google Workspace Section */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Google Workspace</h2>
-            <p className="text-sm text-muted-foreground">Enable the tools you want to use</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSheetsInfoOpen(true)}
-            className="text-xs"
-          >
-            <Lightbulb className="h-3.5 w-3.5 mr-1 text-yellow-500" />
-            How it works
-          </Button>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Google Workspace</h2>
+          <p className="text-sm text-muted-foreground">Enable the tools you want to use</p>
         </div>
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-4">
               {GOOGLE_WORKSPACE_TOOLS.map((tool) => {
-                const integration = integrationList.find(i => i.provider === tool.id);
+                const integration = integrationList.find(i => i.provider === tool.id as typeof i.provider);
                 const isConnected = integration?.status === 'connected';
                 const Icon = providerIcons[tool.id] || Plug;
 
@@ -724,7 +740,15 @@ export default function Integrations() {
                           disabled={updatingAccessLevel === integration.id}
                         >
                           <SelectTrigger className="h-7 w-[110px] text-xs">
-                            <SelectValue />
+                            {(integration.accessLevel || 'read-write') === 'read-write' ? (
+                              <span className="flex items-center gap-1">
+                                <ShieldCheck className="h-3 w-3" /> Full
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Shield className="h-3 w-3" /> Read only
+                              </span>
+                            )}
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="read-write">
@@ -769,7 +793,7 @@ export default function Integrations() {
       {/* Other Connections Section */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Other Connections</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {otherProviders.map((provider) => {
             const integration = getIntegrationStatus(provider.id);
             const isConnected = integration?.status === 'connected';
@@ -880,7 +904,15 @@ export default function Integrations() {
                             disabled={updatingAccessLevel === integration.id}
                           >
                             <SelectTrigger className="h-7 w-[140px] text-xs">
-                              <SelectValue />
+                              {(integration.accessLevel || 'read-write') === 'read-write' ? (
+                                <span className="flex items-center gap-1">
+                                  <ShieldCheck className="h-3 w-3" /> Full access
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" /> Read only
+                                </span>
+                              )}
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="read-write">
@@ -1014,7 +1046,15 @@ export default function Integrations() {
               <Label>Access Level</Label>
               <Select value={selectedAccessLevel} onValueChange={(v) => setSelectedAccessLevel(v as IntegrationAccessLevel)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  {selectedAccessLevel === 'read-write' ? (
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="h-3 w-3" /> Full access
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <Shield className="h-3 w-3" /> Read only
+                    </span>
+                  )}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="read-write">
