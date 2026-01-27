@@ -2,7 +2,7 @@
 name: Skill Builder
 description: Create a new custom skill. Describe what you want and I'll help build it.
 category: Meta
-intent: I want to create a new skill, build a skill, make a custom skill
+intent: I want to create a new skill, build a skill, make a custom skill, save this as a skill, turn this into a skill, create skill from this
 capabilities:
   - Extract skill details from natural descriptions
   - Identify missing required fields
@@ -94,17 +94,24 @@ requires: [if integrations needed]
 
 Keep the structure minimal - only include optional fields if they add value.
 
+## Creating from Current Conversation
+
+When user wants to save the current conversation as a skill (e.g., "save this as a skill", "turn this into a skill"), you already have the full conversation in context. Apply your skill-building expertise to extract a reusable workflow - identify the core task, inputs, outputs, and steps.
+
 ## Saving the Skill
 
 Show the generated skill and ask: "Here's your skill. Save it, or make changes?"
 
-Save using the API (accepts full markdown with YAML frontmatter):
+Use the `create_skill` action to save:
 
-```bash
-curl -X POST "$SKILLOMATIC_API_URL/skills" \
-  -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d "$(jq -n --arg content "$SKILL_CONTENT" '{content: $content, visibility: "private"}')"
+```action
+{"action": "create_skill", "content": "<full skill markdown with YAML frontmatter>"}
+```
+
+If a skill with the same slug already exists and user wants to update it:
+
+```action
+{"action": "create_skill", "content": "<full skill markdown>", "force": true}
 ```
 
 The API extracts all fields from the YAML frontmatter automatically.
@@ -121,7 +128,7 @@ Tell the user:
 
 - **401**: Check Skillomatic connection
 - **400**: Show validation error, help fix it
-- **409**: Slug exists - suggest different name
+- **409**: Slug exists - ask user if they want to overwrite with `force: true`
 
 ## Tips for Good Skills
 

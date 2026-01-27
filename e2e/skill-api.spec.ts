@@ -119,3 +119,181 @@ test.describe('Skill API Flow', () => {
     expect(response.status()).toBe(401)
   })
 })
+
+test.describe('Create Skill API', () => {
+  let authToken: string
+  const testSkillSlug = `e2e-test-skill-${Date.now()}`
+  const testSkillName = `E2E Test Skill ${Date.now()}`
+
+  test.beforeAll(async () => {
+    const apiContext = await request.newContext({
+      baseURL: 'http://localhost:3000',
+    })
+
+    const loginResponse = await apiContext.post('/auth/login', {
+      data: { email: TEST_EMAIL, password: TEST_PASSWORD },
+    })
+    const loginData = await loginResponse.json()
+    authToken = loginData.data?.token
+    if (!authToken) {
+      throw new Error(`Login failed: ${JSON.stringify(loginData)}`)
+    }
+
+    await apiContext.dispose()
+  })
+
+  test.afterAll(async () => {
+    // Clean up test skill
+    const apiContext = await request.newContext({
+      baseURL: 'http://localhost:3000',
+    })
+    await apiContext.delete(`/skills/${testSkillSlug}`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
+    await apiContext.dispose()
+  })
+
+  test('should create a new skill', async () => {
+    const apiContext = await request.newContext({
+      baseURL: 'http://localhost:3000',
+    })
+
+    const skillContent = `---
+name: ${testSkillName}
+description: A skill created by E2E tests
+category: Productivity
+---
+
+# ${testSkillName}
+
+This skill was created by the E2E test suite.`
+
+    const response = await apiContext.post('/skills', {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: { content: skillContent },
+    })
+
+    expect(response.ok()).toBeTruthy()
+    const json = await response.json()
+    expect(json.data.name).toBe(testSkillName)
+    expect(json.data.slug).toBe(testSkillSlug)
+    expect(json.data.description).toBe('A skill created by E2E tests')
+  })
+
+  test('should fail to create duplicate skill without force flag', async () => {
+    const apiContext = await request.newContext({
+      baseURL: 'http://localhost:3000',
+    })
+
+    const skillContent = `---
+name: ${testSkillName}
+description: A duplicate skill
+category: Productivity
+---
+
+# ${testSkillName}
+
+This is a duplicate.`
+
+    const response = await apiContext.post('/skills', {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: { content: skillContent },
+    })
+
+    expect(response.status()).toBe(409)
+    const json = await response.json()
+    expect(json.error.message).toContain('already exists')
+  })
+
+  test('should update existing skill with force=true', async () => {
+    const apiContext = await request.newContext({
+      baseURL: 'http://localhost:3000',
+    })
+
+    const skillContent = `---
+name: ${testSkillName}
+description: Updated description via force
+category: Productivity
+---
+
+# ${testSkillName}
+
+This skill was updated with force=true.`
+
+    const response = await apiContext.post('/skills', {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: { content: skillContent, force: true },
+    })
+
+    expect(response.ok()).toBeTruthy()
+    const json = await response.json()
+    expect(json.data.name).toBe(testSkillName)
+    expect(json.data.slug).toBe(testSkillSlug)
+    expect(json.data.description).toBe('Updated description via force')
+  })
+
+  test('should reject skill creation without content', async () => {
+    const apiContext = await request.newContext({
+      baseURL: 'http://localhost:3000',
+    })
+
+    const response = await apiContext.post('/skills', {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: {},
+    })
+
+    expect(response.ok()).toBeFalsy()
+  })
+
+  test('should reject skill creation with invalid frontmatter', async () => {
+    const apiContext = await request.newContext({
+      baseURL: 'http://localhost:3000',
+    })
+
+    const response = await apiContext.post('/skills', {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      data: { content: 'No frontmatter here' },
+    })
+
+    expect(response.ok()).toBeFalsy()
+    const json = await response.json()
+    expect(json.error).toBeDefined()
+  })
+
+  test('should reject skill creation without auth', async () => {
+    const apiContext = await request.newContext({
+      baseURL: 'http://localhost:3000',
+    })
+
+    const skillContent = `---
+name: Unauthorized Skill
+description: Should fail
+---
+
+# Test`
+
+    const response = await apiContext.post('/skills', {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      data: { content: skillContent },
+    })
+
+    expect(response.status()).toBe(401)
+  })
+})

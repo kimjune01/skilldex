@@ -313,6 +313,8 @@ export interface SkillCreateRequest {
   category?: SkillCategory;
   /** Visibility: 'private' (default) or 'organization' */
   visibility?: SkillVisibility;
+  /** If true, update existing skill with same slug instead of failing */
+  force?: boolean;
 }
 
 /** Request body for updating a skill */

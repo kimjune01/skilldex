@@ -128,6 +128,18 @@ export class SkillomaticClient {
   }
 
   /**
+   * Create or update a skill.
+   * @param content - Full skill markdown with YAML frontmatter
+   * @param force - If true, update existing skill with same slug instead of creating new
+   */
+  async createSkill(content: string, force?: boolean): Promise<SkillPublic> {
+    return this.request<SkillPublic>('/skills', {
+      method: 'POST',
+      body: JSON.stringify({ content, force: force ?? false }),
+    });
+  }
+
+  /**
    * Get user's capability profile (which integrations are connected).
    */
   async getCapabilities(): Promise<ConfigResponse> {

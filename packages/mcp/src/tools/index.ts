@@ -98,6 +98,35 @@ export async function registerTools(
   );
   registeredTools.push('get_skill');
 
+  server.tool(
+    'create_skill',
+    'Create or update a skill. Use after designing a skill with the user. Params: content (full skill markdown with YAML frontmatter), force (optional, set true to overwrite existing skill with same slug).',
+    {
+      content: z.string().describe('Full skill markdown with YAML frontmatter'),
+      force: z.boolean().optional().describe('If true, overwrite existing skill with same slug'),
+    },
+    async (args) => {
+      try {
+        const skill = await client.createSkill(args.content, args.force);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Skill "${skill.name}" created successfully.\nSlug: ${skill.slug}\nView at: /skills/${skill.slug}`,
+            },
+          ],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text' as const, text: `Error creating skill: ${message}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+  registeredTools.push('create_skill');
+
   // ATS tools - only if ATS is connected
   if (profile.hasATS) {
     const atsProvider = profile.atsProvider || 'zoho-recruit';

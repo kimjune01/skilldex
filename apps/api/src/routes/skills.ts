@@ -516,8 +516,45 @@ skillsRoutes.post('/', async (c) => {
 
   const parsed = validation.parsed!;
 
-  // Generate unique slug from the parsed name
+  // Generate slug from the parsed name
   const baseSlug = slugify(parsed.name);
+
+  // Handle force upsert: check if skill exists and user owns it
+  if (body.force) {
+    const [existing] = await db
+      .select()
+      .from(skills)
+      .where(and(eq(skills.slug, baseSlug), eq(skills.userId, user.sub)))
+      .limit(1);
+
+    if (existing) {
+      // Update existing skill instead of creating new one
+      const now = new Date();
+      try {
+        const [updated] = await db
+          .update(skills)
+          .set({
+            name: parsed.name,
+            description: parsed.description,
+            category: body.category || parsed.category || existing.category,
+            intent: parsed.intent || null,
+            capabilities: parsed.capabilities ? JSON.stringify(parsed.capabilities) : null,
+            instructions: extractInstructions(body.content),
+            requiredIntegrations: parsed.requires ? JSON.stringify(parsed.requires) : null,
+            updatedAt: now,
+          })
+          .where(eq(skills.id, existing.id))
+          .returning();
+
+        console.log('[Skills] Skill updated (force):', { slug: baseSlug, skillId: updated.id, userId: user.sub, name: parsed.name });
+        return c.json({ data: toSkillPublic(updated, { userId: user.sub }) }, 200);
+      } catch (error) {
+        console.error('[Skills] Error updating skill (force):', { slug: baseSlug, userId: user.sub, name: parsed.name, error });
+        return c.json({ error: { message: 'Failed to update skill. Please try again.' } }, 500);
+      }
+    }
+    // If no existing skill found, continue with normal creation
+  }
 
   let slug: string;
   try {

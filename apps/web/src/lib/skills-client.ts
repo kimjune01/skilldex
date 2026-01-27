@@ -237,6 +237,7 @@ The system will execute the action and return the result. You will then see the 
 ## Available Actions
 
 - \`load_skill\` - Load a skill's full instructions
+- \`create_skill\` - Create or update a skill. Params: content (markdown with YAML frontmatter), force (optional, set true to overwrite existing)
 - \`search_candidates\` - Search ATS for candidates
 - \`get_candidate\` - Get candidate details
 - \`create_candidate\` - Create a new candidate

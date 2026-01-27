@@ -17,6 +17,7 @@ import { loadRenderedSkill } from './skills-client';
 // Action types
 export type ActionType =
   | 'load_skill'
+  | 'create_skill'
   | 'search_candidates'
   | 'get_candidate'
   | 'create_candidate'
@@ -94,6 +95,43 @@ async function executeLoadSkill(params: { slug: string }): Promise<ActionResult>
       success: false,
       action: 'load_skill',
       error: error instanceof Error ? error.message : 'Failed to load skill',
+    };
+  }
+}
+
+/**
+ * Execute create_skill action
+ * Creates or updates a skill via the API
+ */
+async function executeCreateSkill(
+  params: { content: string; force?: boolean }
+): Promise<ActionResult> {
+  try {
+    const result = await serverRequest<{
+      slug: string;
+      name: string;
+      description: string;
+    }>('/skills', {
+      method: 'POST',
+      body: JSON.stringify({
+        content: params.content,
+        force: params.force ?? false,
+      }),
+    });
+    return {
+      success: true,
+      action: 'create_skill',
+      data: {
+        slug: result.slug,
+        name: result.name,
+        message: `Skill "${result.name}" created successfully. View at /skills/${result.slug}`,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'create_skill',
+      error: error instanceof Error ? error.message : 'Failed to create skill',
     };
   }
 }
@@ -443,6 +481,9 @@ export async function executeAction(
     case 'load_skill':
       return executeLoadSkill(params as { slug: string });
 
+    case 'create_skill':
+      return executeCreateSkill(params as { content: string; force?: boolean });
+
     case 'search_candidates':
       return executeSearchCandidates(
         params as { query: string; limit?: number },
@@ -512,6 +553,12 @@ export function formatActionResult(result: ActionResult): string {
   if (result.action === 'load_skill' && result.data) {
     const data = result.data as { slug: string; name: string; instructions: string };
     return `Loaded skill "${data.name}":\n\n${data.instructions}`;
+  }
+
+  // Special formatting for create_skill
+  if (result.action === 'create_skill' && result.data) {
+    const data = result.data as { slug: string; name: string; message: string };
+    return data.message;
   }
 
   // Default JSON formatting
