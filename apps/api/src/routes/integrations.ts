@@ -453,8 +453,7 @@ integrationsRoutes.get('/callback', async (c) => {
     });
 
     /*
-     * INTEGRATION ONBOARDING: Advance user's onboarding when first integration connects.
-     * This is triggered by the OAuth callback after successful connection.
+     * INTEGRATION ONBOARDING: Advance user's onboarding based on which provider was connected.
      */
     const userId = int.userId;
     const [user] = await db
@@ -463,14 +462,27 @@ integrationsRoutes.get('/callback', async (c) => {
       .where(eq(users.id, userId))
       .limit(1);
 
-    if (user && user.onboardingStep < ONBOARDING_STEPS.ATS_CONNECTED) {
-      await db
-        .update(users)
-        .set({
-          onboardingStep: ONBOARDING_STEPS.ATS_CONNECTED,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userId));
+    if (user) {
+      let newStep: number | null = null;
+      const provider = int.provider;
+
+      if (provider === 'google-sheets' && user.onboardingStep < ONBOARDING_STEPS.SHEETS_CONNECTED) {
+        newStep = ONBOARDING_STEPS.SHEETS_CONNECTED;
+      } else if (provider === 'email' && user.onboardingStep < ONBOARDING_STEPS.EMAIL_CONNECTED) {
+        newStep = ONBOARDING_STEPS.EMAIL_CONNECTED;
+      } else if (provider === 'calendar' && user.onboardingStep < ONBOARDING_STEPS.CALENDAR_CONNECTED) {
+        newStep = ONBOARDING_STEPS.CALENDAR_CONNECTED;
+      }
+
+      if (newStep !== null) {
+        await db
+          .update(users)
+          .set({
+            onboardingStep: newStep,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, userId));
+      }
     }
   }
 

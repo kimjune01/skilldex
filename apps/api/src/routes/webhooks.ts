@@ -107,8 +107,7 @@ webhooksRoutes.post('/nango', async (c) => {
           console.log(`[Nango Webhook] Updated integration:`, result);
 
           /*
-           * INTEGRATION ONBOARDING: Advance user's onboarding when first integration connects.
-           * This is triggered by Nango webhook after successful OAuth.
+           * INTEGRATION ONBOARDING: Advance user's onboarding based on which provider was connected.
            */
           const [user] = await db
             .select()
@@ -116,15 +115,31 @@ webhooksRoutes.post('/nango', async (c) => {
             .where(eq(users.id, userId))
             .limit(1);
 
-          if (user && user.onboardingStep < ONBOARDING_STEPS.ATS_CONNECTED) {
-            await db
-              .update(users)
-              .set({
-                onboardingStep: ONBOARDING_STEPS.ATS_CONNECTED,
-                updatedAt: new Date(),
-              })
-              .where(eq(users.id, userId));
-            console.log(`[Nango Webhook] Advanced onboarding for user ${userId} to ATS_CONNECTED`);
+          if (user) {
+            let newStep: number | null = null;
+            let stepName = '';
+
+            if (provider === 'google-sheets' && user.onboardingStep < ONBOARDING_STEPS.SHEETS_CONNECTED) {
+              newStep = ONBOARDING_STEPS.SHEETS_CONNECTED;
+              stepName = 'SHEETS_CONNECTED';
+            } else if (provider === 'email' && user.onboardingStep < ONBOARDING_STEPS.EMAIL_CONNECTED) {
+              newStep = ONBOARDING_STEPS.EMAIL_CONNECTED;
+              stepName = 'EMAIL_CONNECTED';
+            } else if (provider === 'calendar' && user.onboardingStep < ONBOARDING_STEPS.CALENDAR_CONNECTED) {
+              newStep = ONBOARDING_STEPS.CALENDAR_CONNECTED;
+              stepName = 'CALENDAR_CONNECTED';
+            }
+
+            if (newStep !== null) {
+              await db
+                .update(users)
+                .set({
+                  onboardingStep: newStep,
+                  updatedAt: new Date(),
+                })
+                .where(eq(users.id, userId));
+              console.log(`[Nango Webhook] Advanced onboarding for user ${userId} to ${stepName}`);
+            }
           }
         } else if (!authPayload.success) {
           console.error('[Nango Webhook] Connection creation failed:', authPayload.error);

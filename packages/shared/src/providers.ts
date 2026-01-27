@@ -7,7 +7,7 @@
 
 // ============ Types ============
 
-export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database';
+export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'scheduling';
 export type AuthType = 'bearer' | 'basic' | 'api-key';
 export type OAuthFlow = 'nango' | 'google-direct' | 'none';
 
@@ -217,6 +217,18 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     order: 3,
   },
 
+  // ==================== Scheduling ====================
+  'cal-com': {
+    id: 'cal-com',
+    displayName: 'Cal.com',
+    category: 'scheduling',
+    oauthFlow: 'nango',
+    nangoKey: 'cal-com-v2',
+    apiBaseUrl: 'https://api.cal.com/v2',
+    apiAuth: { type: 'bearer' },
+    order: 1,
+  },
+
   // ==================== Database ====================
   airtable: {
     id: 'airtable',
@@ -362,7 +374,7 @@ export function getApiBaseUrl(providerId: string): string | undefined {
  * Get all categories
  */
 export function getAllCategories(): IntegrationCategory[] {
-  return ['ats', 'email', 'calendar', 'database'];
+  return ['ats', 'email', 'calendar', 'database', 'scheduling'];
 }
 
 // ============ Individual Account Restrictions ============
@@ -388,13 +400,15 @@ export const INDIVIDUAL_ALLOWED_PROVIDERS = [
   'outlook-calendar',
   // Database (only Google Sheets, NOT Airtable)
   'google-sheets',
+  // Scheduling
+  'cal-com',
 ] as const;
 
 /**
  * Categories that individual accounts have FULL access to.
  * Note: 'database' is partially allowed (google-sheets only, not airtable)
  */
-export const INDIVIDUAL_FULL_ACCESS_CATEGORIES: IntegrationCategory[] = ['email', 'calendar'];
+export const INDIVIDUAL_FULL_ACCESS_CATEGORIES: IntegrationCategory[] = ['email', 'calendar', 'scheduling'];
 
 /**
  * Check if a provider is allowed for individual (free) accounts.
@@ -424,6 +438,7 @@ export const FREE_PROVIDERS = [
   'google-calendar',
   'calendly',
   'google-sheets',
+  'cal-com',
 ] as const;
 
 /**

@@ -38,21 +38,29 @@ import { relations } from 'drizzle-orm';
  * To get the max step value:
  *   Math.max(...Object.values(ONBOARDING_STEPS))
  */
+/**
+ * To insert a new step: bisect the two surrounding values.
+ * Example: to add a step between 1 and 2, use 1.5
+ */
 export const ONBOARDING_STEPS = {
   /** User just created account, hasn't started onboarding */
   NOT_STARTED: 0,
   /** User has selected individual or organization account type */
   ACCOUNT_TYPE_SELECTED: 0.5,
-  /** User has connected their ATS integration */
-  ATS_CONNECTED: 1,
+  /** User has connected Google Sheets */
+  SHEETS_CONNECTED: 1,
+  /** User has connected Email */
+  EMAIL_CONNECTED: 1.5,
+  /** User has connected Calendar */
+  CALENDAR_CONNECTED: 2,
   /** User has generated their API key for desktop chat */
-  API_KEY_GENERATED: 2,
+  API_KEY_GENERATED: 3,
   /** User has installed the browser extension */
-  EXTENSION_INSTALLED: 2.5,
+  EXTENSION_INSTALLED: 3.5,
   /** User has configured deployment mode (web UI or desktop) */
-  DEPLOYMENT_CONFIGURED: 3,
+  DEPLOYMENT_CONFIGURED: 4,
   /** Onboarding complete */
-  COMPLETE: 4,
+  COMPLETE: 5,
 } as const;
 
 export type OnboardingStep = typeof ONBOARDING_STEPS[keyof typeof ONBOARDING_STEPS];

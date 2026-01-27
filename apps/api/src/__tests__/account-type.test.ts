@@ -78,9 +78,9 @@ describe('Account Type Selection', () => {
       expect(typeof ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED).toBe('number');
     });
 
-    it('should have ACCOUNT_TYPE_SELECTED between NOT_STARTED and ATS_CONNECTED', () => {
+    it('should have ACCOUNT_TYPE_SELECTED between NOT_STARTED and SHEETS_CONNECTED', () => {
       expect(ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED).toBeGreaterThan(ONBOARDING_STEPS.NOT_STARTED);
-      expect(ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED).toBeLessThan(ONBOARDING_STEPS.ATS_CONNECTED);
+      expect(ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED).toBeLessThan(ONBOARDING_STEPS.SHEETS_CONNECTED);
     });
 
     it('should progress from NOT_STARTED to ACCOUNT_TYPE_SELECTED', () => {

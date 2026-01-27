@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
 import { getProviders, getProvider, type IntegrationCategory, isProviderAllowedForIndividual, type PayIntentionTrigger } from '@skillomatic/shared';
 import { PayIntentionDialog } from '@/components/PayIntentionDialog';
+import { GoogleSheetsInfoDialog } from '@/components/GoogleSheetsInfoDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,10 +31,8 @@ import {
 import { Label } from '@/components/ui/label';
 import {
   Briefcase,
-  Linkedin,
   Mail,
   Calendar,
-  FileText,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -47,20 +46,18 @@ import {
   Table2,
   Lock,
   Sparkles,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 
 /**
  * Icon mapping for integration providers.
- * Uses category-based icons with provider-specific overrides.
  */
-const providerIcons: Record<IntegrationProvider, LucideIcon> = {
+const providerIcons: Partial<Record<IntegrationProvider, LucideIcon>> = {
   ats: Briefcase,
-  linkedin: Linkedin,
   email: Mail,
   calendar: Calendar,
-  granola: FileText,
-  airtable: Table2,
+  scheduling: Calendar,
   'google-sheets': Table2,
 };
 
@@ -92,48 +89,43 @@ function buildProviderConfigs(): {
   essentialProviders: ProviderConfig[];
   otherProviders: ProviderConfig[];
 } {
-  // Essential integrations - core recruiting workflow
+  // Essential integrations - core workflow
   const essentialProviders: ProviderConfig[] = [
+    {
+      id: 'google-sheets',
+      name: 'Google Sheets',
+      description: 'Your data lives here—contacts, leads, invoices',
+    },
     {
       id: 'email',
       name: 'Email',
-      description: 'Email integration for outreach',
+      description: 'Send messages and follow-ups',
       subProviders: getSubProvidersForCategory('email'),
     },
     {
       id: 'calendar',
       name: 'Calendar',
-      description: 'Calendar integration for scheduling',
+      description: 'Schedule meetings and check availability',
       subProviders: getSubProvidersForCategory('calendar'),
-    },
-    {
-      id: 'linkedin',
-      name: 'LinkedIn',
-      description: 'LinkedIn profile lookup (via browser extension)',
     },
   ];
 
   // Other integrations - specialized tools
-  // Database providers from registry (e.g., Airtable)
-  const databaseProviders = getProviders({ category: 'database' });
-
   const otherProviders: ProviderConfig[] = [
+    {
+      id: 'scheduling',
+      name: 'Scheduling',
+      description: 'Let clients book time with you',
+      subProviders: [
+        { id: 'calendly', name: 'Calendly' },
+        { id: 'cal-com', name: 'Cal.com' },
+      ],
+    },
     {
       id: 'ats',
       name: 'ATS',
       description: 'Connect your Applicant Tracking System',
       subProviders: getSubProvidersForCategory('ats'),
-    },
-    // Add each database provider as a standalone integration
-    ...databaseProviders.map((p) => ({
-      id: p.id as IntegrationProvider,
-      name: p.displayName,
-      description: `Connect your ${p.displayName} account`,
-    })),
-    {
-      id: 'granola',
-      name: 'Granola',
-      description: 'Meeting notes sync',
     },
   ];
 
@@ -176,6 +168,9 @@ export default function Integrations() {
     triggerProvider?: string;
     providerName?: string;
   }>({ open: false, triggerType: 'premium_integration' });
+
+  // Google Sheets info dialog state
+  const [sheetsInfoOpen, setSheetsInfoOpen] = useState(false);
 
   // Nango Connect UI ref
   const nangoConnectRef = useRef<ReturnType<Nango['openConnectUI']> | null>(null);
@@ -234,10 +229,14 @@ export default function Integrations() {
   /**
    * Check if a provider is allowed for the current user.
    * Individual users have restricted access to certain providers.
+   * For providers with sub-providers, blocked only if ALL sub-providers are blocked.
    */
-  const isProviderBlocked = (providerId: string): boolean => {
+  const isProviderBlocked = (provider: { id: string; subProviders?: { id: string }[] }): boolean => {
     if (!isIndividual) return false;
-    return !isProviderAllowedForIndividual(providerId);
+    if (provider.subProviders) {
+      return provider.subProviders.every(sub => !isProviderAllowedForIndividual(sub.id));
+    }
+    return !isProviderAllowedForIndividual(provider.id);
   };
 
   const handleConnect = (provider: (typeof availableProviders)[0]) => {
@@ -453,64 +452,60 @@ export default function Integrations() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Integrations</h1>
+        <h1 className="text-2xl font-bold">Connections</h1>
         <p className="text-muted-foreground mt-1">
           Connect your tools so Skillomatic can help you work faster
         </p>
       </div>
 
-      {/* Individual account upgrade banner */}
-      {isIndividual && (
-        <div className="bg-gradient-to-r from-primary/10 to-purple-100 border-primary/20 rounded-lg p-5 border">
-          <div className="flex items-start gap-3">
-            <Sparkles className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="font-semibold text-primary mb-1">
-                You're on a Free Individual Account
-              </p>
-              <p className="text-sm text-muted-foreground mb-3">
-                Individual accounts include email, calendar, and Google Sheets.
-                Create or join an organization to unlock ATS integrations and team features.
-              </p>
-              <Link to="/onboarding/account-type">
-                <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/5">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Upgrade to Organization
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Onboarding: Show until email, sheets, and calendar are connected */}
+      {(() => {
+        const hasEmail = integrationList.some(i => i.provider === 'email' && i.status === 'connected');
+        const hasSheets = integrationList.some(i => i.provider === 'google-sheets' && i.status === 'connected');
+        const hasCalendar = integrationList.some(i => i.provider === 'calendar' && i.status === 'connected');
+        const allConnected = hasEmail && hasSheets && hasCalendar;
 
-      {/* Motivation + conceptual explanation */}
-      <div className="bg-amber-50 border-amber-200 rounded-lg p-5 border">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-semibold text-amber-900 mb-2">
-              Skillomatic needs your tools to work
-            </p>
-            <p className="text-sm text-amber-800 mb-4">
-              Without connections, there's no candidate data to search, nowhere to track progress, and no way to send emails. Connect at least one tool from each category below to unlock the full experience.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="bg-white/60 rounded-md p-3">
-                <p className="font-medium text-amber-900 mb-1">1. Where candidates live</p>
-                <p className="text-amber-700">Your ATS or a spreadsheet—this is your source of truth</p>
-              </div>
-              <div className="bg-white/60 rounded-md p-3">
-                <p className="font-medium text-amber-900 mb-1">2. How you reach them</p>
-                <p className="text-amber-700">Email to send outreach and follow-ups</p>
-              </div>
-              <div className="bg-white/60 rounded-md p-3">
-                <p className="font-medium text-amber-900 mb-1">3. How you schedule</p>
-                <p className="text-amber-700">Calendar to book interviews and check availability</p>
+        if (allConnected) return null;
+
+        return (
+          <div className="bg-amber-50 border-amber-200 rounded-lg p-5 border">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-900 mb-2">
+                  Connect your tools to get started
+                </p>
+                <p className="text-sm text-amber-800 mb-4">
+                  Skillomatic works best when it can access your data. Connect these three essentials to unlock the full experience.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className={`rounded-md p-3 ${hasSheets ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
+                    <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
+                      {hasSheets && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                      1. Google Sheets
+                    </p>
+                    <p className="text-amber-700">Your data lives here—contacts, leads, invoices</p>
+                  </div>
+                  <div className={`rounded-md p-3 ${hasEmail ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
+                    <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
+                      {hasEmail && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                      2. Email
+                    </p>
+                    <p className="text-amber-700">Send messages and follow-ups</p>
+                  </div>
+                  <div className={`rounded-md p-3 ${hasCalendar ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
+                    <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
+                      {hasCalendar && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                      3. Calendar
+                    </p>
+                    <p className="text-amber-700">Schedule meetings and check availability</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {error && (
         <Alert variant="destructive">
@@ -529,11 +524,20 @@ export default function Integrations() {
       {/* Essentials Section */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Essentials</h2>
+        {(() => {
+          // Find first unconnected essential (in order: sheets, email, calendar)
+          const firstUnconnected = essentialProviders.find((p) => {
+            const integration = getIntegrationStatus(p.id);
+            return integration?.status !== 'connected';
+          })?.id;
+
+          return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {essentialProviders.map((provider) => {
             const integration = getIntegrationStatus(provider.id);
             const isConnected = integration?.status === 'connected';
-            const Icon = providerIcons[provider.id];
+            const Icon = providerIcons[provider.id] || Plug;
+            const showBadge = provider.id === firstUnconnected;
 
             return (
               <Card key={provider.id} className={isConnected ? 'border-green-200 bg-green-50/30' : ''}>
@@ -594,52 +598,62 @@ export default function Integrations() {
                       )}
                     </div>
                   ) : (
-                    <Button
-                      className="w-full"
-                      size="sm"
-                      onClick={() => handleConnect(provider)}
-                      disabled={isConnecting}
-                    >
-                      {isConnecting ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Plug className="h-4 w-4 mr-2" />
-                          Connect
-                        </>
+                    <div className="relative">
+                      <Button
+                        className="w-full"
+                        size="sm"
+                        onClick={() => handleConnect(provider)}
+                        disabled={isConnecting}
+                      >
+                        {isConnecting ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Plug className="h-4 w-4 mr-2" />
+                            Connect
+                          </>
+                        )}
+                      </Button>
+                      {showBadge && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                        </span>
                       )}
-                    </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
             );
           })}
         </div>
+          );
+        })()}
       </div>
 
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Other Integrations Section */}
+      {/* Other Connections Section */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Other Integrations</h2>
+        <h2 className="text-lg font-semibold mb-4">Other Connections</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {otherProviders.map((provider) => {
             const integration = getIntegrationStatus(provider.id);
             const isConnected = integration?.status === 'connected';
-            const Icon = providerIcons[provider.id];
-            const blocked = isProviderBlocked(provider.id);
+            const Icon = providerIcons[provider.id] || Plug;
+            const blocked = isProviderBlocked(provider);
 
             return (
               <Card
                 key={provider.id}
-                className={
+                className={`flex flex-col ${
                   isConnected
                     ? 'border-green-200 bg-green-50/30'
                     : blocked
                       ? 'opacity-60 border-dashed'
                       : ''
-                }
+                }`}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -652,11 +666,30 @@ export default function Integrations() {
                       <div>
                         <CardTitle className="text-lg flex items-center gap-2">
                           {provider.name}
+                          {provider.id === 'scheduling' && (
+                            <Badge className="text-xs bg-gradient-to-r from-violet-500 to-purple-500 text-white border-0">
+                              Pro
+                            </Badge>
+                          )}
                           {blocked && (
                             <Badge variant="secondary" className="text-xs">
                               <Lock className="h-3 w-3 mr-1" />
                               Org Only
                             </Badge>
+                          )}
+                          {provider.id === 'google-sheets' && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSheetsInfoOpen(true);
+                              }}
+                              className="h-7 px-2 text-xs"
+                            >
+                              <Lightbulb className="h-3.5 w-3.5 mr-1 text-yellow-500" />
+                              How it works
+                            </Button>
                           )}
                         </CardTitle>
                         <CardDescription>{provider.description}</CardDescription>
@@ -668,7 +701,7 @@ export default function Integrations() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 flex flex-col justify-end">
                   {blocked ? (
                     <div className="space-y-3">
                       <p className="text-sm text-muted-foreground">
@@ -734,28 +767,71 @@ export default function Integrations() {
                       )}
                     </div>
                   ) : (
-                    <Button
-                      className="w-full"
-                      onClick={() => handleConnect(provider)}
-                      disabled={isConnecting}
-                    >
-                      {isConnecting ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Connecting...
-                        </>
-                      ) : (
-                        <>
-                          <Plug className="h-4 w-4 mr-2" />
-                          Connect
-                        </>
+                    <div className="space-y-2">
+                      {provider.id === 'scheduling' && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Don't have an account?{' '}
+                          <a href="https://calendly.com/signup" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Calendly</a>
+                          {' · '}
+                          <a href="https://cal.com/signup" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Cal.com</a>
+                        </p>
                       )}
-                    </Button>
+                      <Button
+                        className="w-full"
+                        onClick={() => handleConnect(provider)}
+                        disabled={isConnecting}
+                      >
+                        {isConnecting ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <Plug className="h-4 w-4 mr-2" />
+                            Connect
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
             );
           })}
+
+          {/* Placeholder for requesting new integrations */}
+          <Card className="border-dashed">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">I wanna connect my app!</CardTitle>
+                    <CardDescription>Missing an integration? Let us know what you need.</CardDescription>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground text-center">
+                See what's possible:{' '}
+                <a href="https://nango.dev/integrations" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  250+ integrations
+                  <ExternalLink className="h-3 w-3 inline ml-1" />
+                </a>
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-complain-dialog'))}
+              >
+                Complain
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -772,6 +848,16 @@ export default function Integrations() {
           </AlertDialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Pro feature notice for scheduling */}
+            {connectDialogProvider?.id === 'scheduling' && (
+              <Alert className="border-violet-200 bg-violet-50">
+                <Sparkles className="h-4 w-4 text-violet-600" />
+                <AlertDescription className="text-violet-900">
+                  <span className="font-medium">Pro feature:</span> Free accounts are limited to 5 scheduling requests per day. Upgrade anytime for unlimited access.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Sub-provider selection (if applicable) */}
             {connectDialogProvider?.subProviders && (
               <div className="space-y-2">
@@ -864,6 +950,12 @@ export default function Integrations() {
         triggerType={payIntentionDialog.triggerType}
         triggerProvider={payIntentionDialog.triggerProvider}
         providerName={payIntentionDialog.providerName}
+      />
+
+      {/* Google Sheets Info Dialog - Educational modal */}
+      <GoogleSheetsInfoDialog
+        open={sheetsInfoOpen}
+        onClose={() => setSheetsInfoOpen(false)}
       />
     </div>
   );

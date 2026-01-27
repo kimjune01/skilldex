@@ -36,7 +36,7 @@ const client = createClient({
 });
 
 // Fixed IDs for consistency across deploys
-const DEFAULT_ORG_ID = 'org-default';
+// Note: No default org - users start as individuals (null organizationId)
 
 // User IDs
 const SUPER_ADMIN_ID = 'user-super-admin';
@@ -143,20 +143,8 @@ async function seed() {
   console.log('Seeding production database (idempotent)...');
   console.log(`Database: ${TURSO_URL}`);
 
-  // 1. Upsert default organization
-  console.log('\n1. Ensuring default organization exists...');
-  await client.execute({
-    sql: `INSERT INTO organizations (id, name, slug, web_ui_enabled, desktop_enabled, created_at, updated_at)
-          VALUES (?, ?, ?, 1, 1, unixepoch(), unixepoch())
-          ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            updated_at = unixepoch()`,
-    args: [DEFAULT_ORG_ID, 'Default Organization', 'default'],
-  });
-  console.log('   ✓ Default organization');
-
-  // 2. Create roles
-  console.log('\n2. Ensuring roles exist...');
+  // 1. Create roles
+  console.log('\n1. Ensuring roles exist...');
   const roles = [
     { id: ADMIN_ROLE_ID, name: 'admin', description: 'Full system access' },
     { id: RECRUITER_ROLE_ID, name: 'recruiter', description: 'Standard recruiter access' },
@@ -175,8 +163,8 @@ async function seed() {
     console.log(`   ✓ Role: ${role.name}`);
   }
 
-  // 3. Create users for each role type
-  console.log('\n3. Ensuring users exist...');
+  // 2. Create users (no organization - they're individuals)
+  console.log('\n2. Ensuring users exist...');
   const passwordHash = hashSync(DEFAULT_PASSWORD, 10);
 
   const users = [
@@ -209,7 +197,7 @@ async function seed() {
   for (const user of users) {
     await client.execute({
       sql: `INSERT INTO users (id, email, password_hash, name, is_admin, is_super_admin, organization_id, onboarding_step, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 4, unixepoch(), unixepoch())
+            VALUES (?, ?, ?, ?, ?, ?, NULL, 4, unixepoch(), unixepoch())
             ON CONFLICT(id) DO UPDATE SET
               email = excluded.email,
               password_hash = excluded.password_hash,
@@ -217,9 +205,9 @@ async function seed() {
               is_admin = excluded.is_admin,
               is_super_admin = excluded.is_super_admin,
               updated_at = unixepoch()`,
-      args: [user.id, user.email, passwordHash, user.name, user.isAdmin, user.isSuperAdmin, DEFAULT_ORG_ID],
+      args: [user.id, user.email, passwordHash, user.name, user.isAdmin, user.isSuperAdmin],
     });
-    console.log(`   ✓ User: ${user.email} (${user.isSuperAdmin ? 'super admin' : user.isAdmin ? 'org admin' : 'member'})`);
+    console.log(`   ✓ User: ${user.email} (${user.isSuperAdmin ? 'super admin' : user.isAdmin ? 'admin' : 'member'}, individual)`);
 
     // Assign role to user
     await client.execute({
@@ -230,8 +218,8 @@ async function seed() {
     });
   }
 
-  // 4. Seed skills from SKILL.md files
-  console.log('\n4. Ensuring skills exist...');
+  // 3. Seed skills from SKILL.md files
+  console.log('\n3. Ensuring skills exist...');
   for (const skillDef of SKILLS) {
     const frontmatter = parseSkillFrontmatter(skillDef.slug);
     const skillId = `skill-${skillDef.slug}`;
@@ -272,33 +260,33 @@ async function seed() {
     console.log(`   ✓ Skill: ${frontmatter.name} (${skillDef.isEnabled ? 'enabled' : 'disabled'})`);
   }
 
-  // 5. Upsert API key for super admin
-  console.log('\n5. Ensuring super admin API key exists...');
+  // 4. Upsert API key for super admin
+  console.log('\n4. Ensuring super admin API key exists...');
   await client.execute({
     sql: `INSERT INTO api_keys (id, user_id, organization_id, key, name, created_at)
-          VALUES (?, ?, ?, ?, ?, unixepoch())
+          VALUES (?, ?, NULL, ?, ?, unixepoch())
           ON CONFLICT(id) DO UPDATE SET
             key = excluded.key,
             revoked_at = NULL`,
-    args: [SUPER_ADMIN_API_KEY_ID, SUPER_ADMIN_ID, DEFAULT_ORG_ID, SUPER_ADMIN_API_KEY, 'Production Debug Key'],
+    args: [SUPER_ADMIN_API_KEY_ID, SUPER_ADMIN_ID, SUPER_ADMIN_API_KEY, 'Production Debug Key'],
   });
   console.log('   ✓ Super admin API key');
 
-  // 6. Verify the setup
-  console.log('\n6. Verifying setup...');
+  // 5. Verify the setup
+  console.log('\n5. Verifying setup...');
   const verifyUsers = await client.execute({
     sql: `SELECT u.id, u.email, u.is_admin, u.is_super_admin, r.name as role_name
           FROM users u
           LEFT JOIN user_roles ur ON ur.user_id = u.id
           LEFT JOIN roles r ON r.id = ur.role_id
-          WHERE u.organization_id = ?
+          WHERE u.id IN (?, ?, ?)
           ORDER BY u.is_super_admin DESC, u.is_admin DESC`,
-    args: [DEFAULT_ORG_ID],
+    args: [SUPER_ADMIN_ID, ORG_ADMIN_ID, MEMBER_ID],
   });
 
-  console.log('\n   Users in Default Organization:');
+  console.log('\n   Seeded users:');
   for (const row of verifyUsers.rows) {
-    const type = row.is_super_admin ? 'super admin' : row.is_admin ? 'org admin' : 'member';
+    const type = row.is_super_admin ? 'super admin' : row.is_admin ? 'admin' : 'member';
     console.log(`   - ${row.email} (${type}, role: ${row.role_name || 'none'})`);
   }
 

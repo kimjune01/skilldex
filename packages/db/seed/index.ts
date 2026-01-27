@@ -71,35 +71,22 @@ async function seed() {
 
   // ============ ORGANIZATIONS ============
 
-  // Create default organization
-  const defaultOrgId = 'org-default';
+  // Create test organization (for testing org-specific features)
   const acmeOrgId = 'org-acme';
   // Fixed user IDs for consistent foreign key references
   const superAdminIdFixed = 'user-super-admin';
 
-  const orgData = [
-    {
-      id: defaultOrgId,
-      name: 'Default Organization',
-      slug: 'default',
-      logoUrl: null,
-    },
-    {
-      id: acmeOrgId,
-      name: 'Acme Corp',
-      slug: 'acme',
-      logoUrl: null,
-    },
-  ];
-
-  for (const org of orgData) {
-    await db.insert(organizations).values(org).onConflictDoNothing();
-  }
-  console.log('Created organizations');
+  await db.insert(organizations).values({
+    id: acmeOrgId,
+    name: 'Acme Corp',
+    slug: 'acme',
+    logoUrl: null,
+  }).onConflictDoNothing();
+  console.log('Created test organization (Acme Corp)');
 
   // ============ USERS ============
 
-  // Create super admin user (system-wide admin)
+  // Create super admin user (system-wide admin, no org)
   // Use fixed ID for consistent foreign key references
   const superAdminId = superAdminIdFixed;
   const adminPassword = process.env.ADMIN_PASSWORD || 'changeme';
@@ -111,41 +98,13 @@ async function seed() {
     name: 'Super Admin',
     isAdmin: true,
     isSuperAdmin: true,
-    organizationId: defaultOrgId,
+    organizationId: null,
   }).onConflictDoNothing();
 
   console.log('Created super admin user');
 
-  // Create org admin for Default Org
-  const defaultOrgAdminId = randomUUID();
-  await db.insert(users).values({
-    id: defaultOrgAdminId,
-    email: 'orgadmin@example.com',
-    passwordHash: hashSync('changeme', 10),
-    name: 'Org Admin',
-    isAdmin: true,
-    isSuperAdmin: false,
-    organizationId: defaultOrgId,
-  }).onConflictDoNothing();
-
-  console.log('Created org admin user');
-
-  // Create regular member for Default Org
-  const defaultMemberId = randomUUID();
-  await db.insert(users).values({
-    id: defaultMemberId,
-    email: 'member@example.com',
-    passwordHash: hashSync('changeme', 10),
-    name: 'Member User',
-    isAdmin: false,
-    isSuperAdmin: false,
-    organizationId: defaultOrgId,
-  }).onConflictDoNothing();
-
-  console.log('Created member user');
-
-  // Create org admin for Acme Corp
-  const acmeOrgAdminId = randomUUID();
+  // Create org admin for Acme Corp (fixed ID for FK references)
+  const acmeOrgAdminId = 'user-acme-admin';
   await db.insert(users).values({
     id: acmeOrgAdminId,
     email: 'admin@acme.com',
@@ -159,7 +118,7 @@ async function seed() {
   console.log('Created Acme org admin');
 
   // Create member for Acme Corp
-  const acmeMemberId = randomUUID();
+  const acmeMemberId = 'user-acme-member';
   await db.insert(users).values({
     id: acmeMemberId,
     email: 'recruiter@acme.com',
@@ -172,7 +131,7 @@ async function seed() {
 
   console.log('Created Acme member');
 
-  // Create demo user for dev environment
+  // Create demo user for dev environment (individual user, no org)
   const demoUserId = 'user-demo';
   await db.insert(users).values({
     id: demoUserId,
@@ -181,24 +140,24 @@ async function seed() {
     name: 'Demo User',
     isAdmin: false,
     isSuperAdmin: false,
-    organizationId: defaultOrgId,
+    organizationId: null,
   }).onConflictDoNothing();
 
   console.log('Created demo user');
 
   // ============ SAMPLE INVITE ============
 
-  // Create a sample pending invite (for demo purposes)
+  // Create a sample pending invite for Acme Corp (for demo purposes)
   const inviteToken = randomUUID().replace(/-/g, ''); // Remove hyphens for cleaner token
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
 
   await db.insert(organizationInvites).values({
     id: randomUUID(),
-    organizationId: defaultOrgId,
+    organizationId: acmeOrgId,
     email: 'newuser@example.com',
     role: 'member',
     token: inviteToken,
-    invitedBy: superAdminId,
+    invitedBy: acmeOrgAdminId,
     expiresAt,
   }).onConflictDoNothing();
 
@@ -388,26 +347,22 @@ async function seed() {
   console.log('========================================\n');
 
   console.log('Organizations:');
-  console.log('  - Default Organization (slug: default)');
   console.log('  - Acme Corp (slug: acme)');
 
   console.log('\nUsers:');
   console.log('  Demo User:');
-  console.log('    - demo@skillomatic.technology / demopassword123 (member, Default Org)');
+  console.log('    - demo@skillomatic.technology / demopassword123 (individual, no org)');
   console.log('  Super Admin (password: changeme):');
-  console.log('    - admin@example.com (super admin, Default Org)');
-  console.log('  Org Admins (password: changeme):');
-  console.log('    - orgadmin@example.com (org admin, Default Org)');
-  console.log('    - admin@acme.com (org admin, Acme Corp)');
-  console.log('  Members (password: changeme):');
-  console.log('    - member@example.com (member, Default Org)');
-  console.log('    - recruiter@acme.com (member, Acme Corp)');
+  console.log('    - admin@example.com (super admin, no org)');
+  console.log('  Acme Corp (password: changeme):');
+  console.log('    - admin@acme.com (org admin)');
+  console.log('    - recruiter@acme.com (member)');
 
   console.log('\nSample Invite:');
   console.log(`  URL: http://localhost:5173/invite/${inviteToken}`);
   console.log('  Email: newuser@example.com');
   console.log('  Role: member');
-  console.log('  Org: Default Organization');
+  console.log('  Org: Acme Corp');
 }
 
 seed().catch(console.error);

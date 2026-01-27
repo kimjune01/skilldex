@@ -98,11 +98,11 @@ export default function Dashboard() {
 
     const currentStep = onboardingStatus?.currentStep ?? 0;
 
-    // Always need at least one integration connected (step 1)
+    // Connect all three essential integrations (Sheets, Email, Calendar)
     steps.push({
       id: 'integration',
-      label: 'Connect integration',
-      done: currentStep >= ONBOARDING_STEPS.ATS_CONNECTED || connectedIntegrations.length > 0,
+      label: 'Connect integrations',
+      done: currentStep >= ONBOARDING_STEPS.CALENDAR_CONNECTED,
       icon: Plug,
       route: '/integrations',
       actionLabel: 'Connect',
