@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Home, Bot, Bug } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Home, Bot, Bug, Loader2 } from 'lucide-react';
+import { complaints } from '../lib/api';
 
 const EMOJIS = [
   '🤖', '⚙️', '🔧', '🎰', '💥', '✨', '🚀', '💀', '🔥', '😱', '🫠', '💫', '🎉', '💣', '⭐',
@@ -35,6 +37,36 @@ export function ErrorFallback({ code, title, subtitle, error }: ErrorFallbackPro
     scale: 1,
   });
   const [isBroken, setIsBroken] = useState(false);
+  const [complainDialogOpen, setComplainDialogOpen] = useState(false);
+  const [complainMessage, setComplainMessage] = useState(
+    error ? `Error: ${error.message}\n\nStack trace:\n${error.stack}` : ''
+  );
+  const [isSubmittingComplaint, setIsSubmittingComplaint] = useState(false);
+  const [submitResult, setSubmitResult] = useState<'success' | 'error' | null>(null);
+
+  const handleComplainSubmit = async () => {
+    if (!complainMessage.trim()) return;
+
+    setIsSubmittingComplaint(true);
+    try {
+      await complaints.create({
+        message: complainMessage.trim(),
+        pageUrl: window.location.href,
+        userAgent: navigator.userAgent,
+        screenSize: `${window.innerWidth}x${window.innerHeight}`,
+      });
+      setSubmitResult('success');
+      setTimeout(() => {
+        setComplainMessage('');
+        setComplainDialogOpen(false);
+        setSubmitResult(null);
+      }, 1500);
+    } catch {
+      setSubmitResult('error');
+    } finally {
+      setIsSubmittingComplaint(false);
+    }
+  };
 
   const spawnEmojis = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (isBroken) return;
@@ -198,9 +230,7 @@ export function ErrorFallback({ code, title, subtitle, error }: ErrorFallbackPro
           <Button
             variant="outline"
             size="lg"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-complain-dialog', {
-              detail: error ? `Error: ${error.message}\n\nStack trace:\n${error.stack}` : undefined
-            }))}
+            onClick={() => setComplainDialogOpen(true)}
             className="gap-2"
           >
             <Bug className="h-4 w-4" />
@@ -217,6 +247,61 @@ export function ErrorFallback({ code, title, subtitle, error }: ErrorFallbackPro
           </Link>
         </div>
       </div>
+
+      {/* Complain Dialog */}
+      <Dialog open={complainDialogOpen} onOpenChange={setComplainDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bug className="h-5 w-5 text-amber-600" />
+              Report an Issue
+            </DialogTitle>
+            <DialogDescription>
+              Something went wrong? Let us know what happened.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {submitResult === 'success' ? (
+              <p className="text-center text-green-600 font-medium">Bug report submitted! Thanks for the feedback.</p>
+            ) : submitResult === 'error' ? (
+              <p className="text-center text-red-600 font-medium">Failed to submit. Please try again.</p>
+            ) : (
+              <textarea
+                value={complainMessage}
+                onChange={(e) => setComplainMessage(e.target.value)}
+                placeholder="Describe the issue you're experiencing..."
+                className="w-full h-32 px-3 py-2 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                autoFocus
+              />
+            )}
+          </div>
+          {!submitResult && (
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setComplainDialogOpen(false)}
+                disabled={isSubmittingComplaint}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleComplainSubmit}
+                disabled={!complainMessage.trim() || isSubmittingComplaint}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {isSubmittingComplaint ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Bug Report'
+                )}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
