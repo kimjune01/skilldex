@@ -1,8 +1,7 @@
 import { randomBytes, randomUUID } from 'crypto';
 import { db } from '@skillomatic/db';
 import { apiKeys, users } from '@skillomatic/db/schema';
-import { eq, isNull } from 'drizzle-orm';
-import { encryptApiKey, decryptApiKey, isEncrypted } from './encryption.js';
+import { eq } from 'drizzle-orm';
 
 const API_KEY_PREFIX_LIVE = 'sk_live_';
 const API_KEY_PREFIX_TEST = 'sk_test_';
@@ -38,21 +37,15 @@ export function generateApiKey(isTest = false): string {
  */
 export async function createDefaultApiKey(userId: string, organizationId: string | null): Promise<void> {
   const key = generateApiKey();
-  const encryptedKey = encryptApiKey(key);
 
   await db.insert(apiKeys).values({
     id: randomUUID(),
     userId,
     organizationId,
-    key: encryptedKey,
+    key,
     name: 'Default Key',
   });
 }
-
-/**
- * Encrypt an API key for storage
- */
-export { encryptApiKey };
 
 /**
  * Extract the key from Authorization header
@@ -77,69 +70,48 @@ export function extractApiKey(authHeader: string | undefined): string | null {
  * Validate API key and return user info
  * Returns null if key is invalid or revoked
  *
- * SECURITY: Keys are stored encrypted. This function:
- * 1. Fetches all non-revoked keys for comparison
- * 2. Decrypts each and compares to the provided key
- * 3. Handles both encrypted (new) and plaintext (legacy) keys
- *
- * Note: This is O(n) in the number of active keys, but API keys are
- * typically few per user and the encryption is fast.
+ * Keys are stored as plaintext (Turso encrypts at rest).
+ * This allows direct DB lookup instead of O(n) decryption.
  */
 export async function validateApiKey(key: string): Promise<ApiKeyUser | null> {
   if (!key || !isValidApiKeyFormat(key)) {
     return null;
   }
 
-  // Fetch all non-revoked keys with user data
-  // We need to decrypt each to find a match (can't query encrypted data directly)
-  const results = await db
+  // Direct lookup - keys stored as plaintext
+  const [result] = await db
     .select()
     .from(apiKeys)
     .innerJoin(users, eq(apiKeys.userId, users.id))
-    .where(isNull(apiKeys.revokedAt));
+    .where(eq(apiKeys.key, key))
+    .limit(1);
 
-  // Find matching key by decrypting and comparing
-  for (const row of results) {
-    const storedKey = row.api_keys.key;
-    if (!storedKey) continue;
-
-    try {
-      const decryptedKey = decryptApiKey(storedKey);
-      if (decryptedKey === key) {
-        const apiKey = row.api_keys;
-        const user = row.users;
-
-        // Update last used timestamp (fire and forget)
-        db.update(apiKeys)
-          .set({ lastUsedAt: new Date() })
-          .where(eq(apiKeys.id, apiKey.id))
-          .execute()
-          .catch(console.error);
-
-        // Migrate legacy plaintext key to encrypted (fire and forget)
-        if (!isEncrypted(storedKey)) {
-          db.update(apiKeys)
-            .set({ key: encryptApiKey(key) })
-            .where(eq(apiKeys.id, apiKey.id))
-            .execute()
-            .catch(console.error);
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          isAdmin: user.isAdmin,
-          apiKeyId: apiKey.id,
-          organizationId: user.organizationId,
-          onboardingStep: user.onboardingStep ?? 0,
-        };
-      }
-    } catch {
-      // Decryption failed - skip this key (might be corrupted)
-      continue;
-    }
+  if (!result) {
+    return null;
   }
 
-  return null;
+  const apiKey = result.api_keys;
+  const user = result.users;
+
+  // Check if revoked
+  if (apiKey.revokedAt) {
+    return null;
+  }
+
+  // Update last used timestamp (fire and forget)
+  db.update(apiKeys)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(apiKeys.id, apiKey.id))
+    .execute()
+    .catch(console.error);
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    isAdmin: user.isAdmin,
+    apiKeyId: apiKey.id,
+    organizationId: user.organizationId,
+    onboardingStep: user.onboardingStep ?? 0,
+  };
 }
