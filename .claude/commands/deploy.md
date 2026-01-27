@@ -7,6 +7,11 @@ Deploy Skillomatic to production using SST.
 
 Run these commands in sequence. Stop if any fails.
 
+0. Check upload speed (Docker image is ~300MB, need decent upload for MCP changes):
+```bash
+dd if=/dev/zero of=/tmp/speedtest.bin bs=1M count=2 2>/dev/null && curl -s -w "%{speed_upload}" -X POST -H "Content-Type: application/octet-stream" --data-binary @/tmp/speedtest.bin "https://speed.cloudflare.com/__up" -o /dev/null | awk '{mbps = $1 * 8 / 1000000; if (mbps < 10) printf "WARNING: Upload speed is %.1f Mbps - Docker push may take 5+ mins. Consider switching networks.\n", mbps; else printf "OK: Upload speed is %.1f Mbps\n", mbps}'
+```
+
 1. Check git is clean and get hash:
 ```bash
 git diff --quiet && git diff --cached --quiet || echo "ERROR: Uncommitted changes"
