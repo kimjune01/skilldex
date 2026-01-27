@@ -168,21 +168,16 @@ export default function Dashboard() {
     return { steps, completed, total: steps.length, isFullyOnboarded: isComplete, allPreviousStepsDone };
   }, [apiKeyList, connectedIntegrations, deploymentSettings, onboardingStatus]);
 
-  // Handler for completing onboarding - shows confetti only on manual completion
+  // Handler for completing onboarding - shows confetti on Finish click
   const handleCompleteOnboarding = async () => {
     setIsCompletingOnboarding(true);
     try {
       const status = await onboarding.completeStep('COMPLETE');
       setOnboardingStatus(status);
-      // Refresh user to update isOnboarded state and remove nav badge
       await refreshUser();
-      // Show confetti only when user manually clicks Finish
-      // Check localStorage to ensure confetti shows only once ever
-      if (!localStorage.getItem('onboarding-confetti-shown')) {
-        localStorage.setItem('onboarding-confetti-shown', 'true');
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 100);
-      }
+      // Show confetti
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 100);
     } catch (err) {
       console.error('Failed to complete onboarding:', err);
     } finally {
