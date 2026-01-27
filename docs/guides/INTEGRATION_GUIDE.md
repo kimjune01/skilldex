@@ -473,8 +473,8 @@ Never log raw error messages or response bodies (PII risk).
 
 | Provider | Category | OAuth | Manifest | Proxy |
 |----------|----------|-------|----------|-------|
-| Greenhouse | ATS | Nango | Yes (28 ops) | v1/ats |
-| Zoho Recruit | ATS | Nango | Yes (26 ops) | v1/ats |
+| Greenhouse | ATS | Nango | Yes | v1/ats |
+| Zoho Recruit | ATS | Nango | Yes | v1/ats |
 | Lever | ATS | Nango | Planned | v1/ats |
 | Ashby | ATS | Nango | Planned | v1/ats |
 | Workable | ATS | Nango | Planned | v1/ats |
@@ -483,7 +483,15 @@ Never log raw error messages or response bodies (PII risk).
 | Google Calendar | Calendar | Direct | No | v1/calendar |
 | Outlook Calendar | Calendar | Nango | Planned | v1/calendar |
 | Calendly | Calendar | Nango | Yes | v1/calendar |
-| Airtable | Database | Nango | Yes (14 ops) | v1/data |
-| Google Sheets | Database | Direct | Yes (dynamic) | v1/data |
 | Cal.com | Scheduling | Nango | Planned | v1/scheduling |
-| Mock ATS | ATS (dev) | None | Yes (14 ops) | v1/ats |
+| Google Sheets | Database | Direct | Yes | v1/data |
+| Google Drive | Database | Direct | Yes | v1/data |
+| Google Contacts | Database | Direct | Yes | v1/data |
+| Google Tasks | Database | Direct | Yes | v1/data |
+| Notion | Database | Nango | Yes | v1/data |
+| Trello | Database | Nango | Yes | v1/data |
+| GitHub | Database | Nango | Yes | v1/data |
+| Airtable | Database | Nango | Yes | v1/data |
+| Mock ATS | ATS (dev) | None | Yes | v1/ats |
+
+See `packages/shared/src/providers.ts` for the full configuration and `FREE_PROVIDERS` for pricing tiers.

@@ -1,11 +1,11 @@
 /**
  * Pricing Page
  *
- * Consulting-first pricing with self-serve secondary.
- * Easter eggs throughout for the curious.
+ * Freemium model: Generous free tier with Google integrations,
+ * paid tier for business integrations (ATS, CRM, etc.)
  */
 import { useState, useEffect } from 'react';
-import { CheckCircle, Calendar, ArrowRight, Zap, Users, Bot } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Zap, Building2, Bot, X, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
@@ -34,109 +34,101 @@ interface EmojiParticle {
   originY: number;
 }
 
-const consultingServices = [
-  {
-    name: 'Discovery Call',
-    price: 'Free',
-    description: "30 minutes to understand your workflow and see if I can help.",
-    features: [
-      'Understand your current process',
-      'Identify automation opportunities',
-      'Honest assessment of what I can build',
-      'No commitment required',
-    ],
-    cta: 'Book a Call',
-    ctaHref: 'https://cal.com/june-kim-mokzq0/30min',
-    highlight: false,
-  },
-  {
-    name: 'Automation Build',
-    price: '$500',
-    priceNote: 'No charge until it works',
-    description: 'I build a complete automation for one workflow, connected to your tools.',
-    features: [
-      'End-to-end workflow automation',
-      'Connected to your real systems',
-      'Works in Claude Desktop, ChatGPT, etc.',
-      'Documentation and training',
-      'Done in 1-2 days',
-      "You don't pay until you're using it",
-      'Then $29/mo to run it (Pro plan)',
-    ],
-    cta: 'Book a Call',
-    ctaHref: 'https://cal.com/june-kim-mokzq0/30min',
-    highlight: true,
-  },
-  {
-    name: 'Multiple Automations',
-    price: '$500',
-    priceNote: 'per automation',
-    description: 'Need more than one workflow automated? Same deal, same guarantee.',
-    features: [
-      'Each automation built to spec',
-      'Bundle discount for 3+',
-      'Team plan ($99/mo) for heavy usage',
-      'Priority support included',
-    ],
-    cta: 'Book a Call',
-    ctaHref: 'https://cal.com/june-kim-mokzq0/30min',
-    highlight: false,
-  },
-];
-
-const selfServeTiers = [
+const pricingTiers = [
   {
     name: 'Free',
     price: '$0',
-    period: '/month',
-    description: 'Try before you buy',
+    period: '/forever',
+    description: 'Everything you need to run your business with AI',
     features: [
-      '500 tool calls/month',
-      'Basic integrations',
-      'Community support',
+      { text: 'Full Google Workspace (Gmail, Calendar, Sheets, Drive, Contacts, Tasks)', included: true },
+      { text: 'Notion, Trello, GitHub', included: true },
+      { text: 'Calendly & Cal.com', included: true },
+      { text: 'Unlimited tool calls', included: true },
+      { text: 'Works with Claude, ChatGPT, etc.', included: true },
     ],
-    cta: 'Get Started',
+    cta: 'Get Started Free',
     ctaHref: '/login',
     icon: Zap,
+    highlight: false,
   },
   {
     name: 'Pro',
     price: '$29',
     period: '/month',
-    description: 'Most consulting clients',
+    description: 'Add business integrations when you need them',
     features: [
-      '5,000 tool calls/month',
-      'All integrations',
-      'Email support',
-      '$0.01/call after limit',
+      { text: 'Everything in Free', included: true },
+      { text: 'Stripe (payments & invoices)', included: true },
+      { text: 'Outlook & Outlook Calendar', included: true },
+      { text: 'Airtable', included: true },
+      { text: 'ATS integrations (Greenhouse, Lever, etc.)', included: true },
+      { text: 'Priority support', included: true },
+      { text: 'Custom integrations on request', included: true },
     ],
-    cta: 'Get Started',
+    cta: 'Start Free, Upgrade Later',
     ctaHref: '/login',
-    icon: Users,
-    recommended: true,
+    icon: Building2,
+    highlight: true,
+    badge: 'Most Popular',
   },
 ];
 
+const comparisonData = {
+  free: {
+    name: 'Free',
+    integrations: [
+      // Google stack
+      { name: 'Gmail', icon: '📧' },
+      { name: 'Google Calendar', icon: '📅' },
+      { name: 'Google Sheets', icon: '📊' },
+      { name: 'Google Drive', icon: '📁' },
+      { name: 'Google Contacts', icon: '👥' },
+      { name: 'Google Tasks', icon: '✓' },
+      // Scheduling
+      { name: 'Calendly', icon: '🗓️' },
+      { name: 'Cal.com', icon: '📆' },
+      // Third party (full-featured free)
+      { name: 'Notion', icon: '📝' },
+      { name: 'Trello', icon: '📋' },
+      { name: 'GitHub', icon: '🐙' },
+    ],
+  },
+  pro: {
+    name: 'Pro',
+    integrations: [
+      { name: 'Stripe', icon: '💳' },
+      { name: 'Outlook', icon: '📬' },
+      { name: 'Airtable', icon: '🗄️' },
+      { name: 'Greenhouse', icon: '🌱' },
+      { name: 'Lever', icon: '🔧' },
+      { name: 'Ashby', icon: '📋' },
+      { name: 'Workable', icon: '💼' },
+      { name: 'Zoho Recruit', icon: '🎯' },
+    ],
+  },
+};
+
 const faqs = [
   {
-    q: "What's included in an automation build?",
-    a: "Everything needed to get your workflow running: connecting to your tools (email, calendar, spreadsheets, etc.), building the automation logic, testing it with real data, documentation, and training your team to use it.",
+    q: 'Is the free tier really unlimited?',
+    a: "Yes. No hidden limits on tool calls, no trial period that expires. Google Workspace, Notion, Trello, and GitHub are free forever. We only charge when you need business integrations like Stripe or ATS systems.",
   },
   {
-    q: "What if I want to do it myself?",
-    a: "Totally fine! Self-serve is always available. Sign up, connect your integrations, and use it with your AI app. The free tier gives you 500 calls/month to try it out.",
+    q: "What if I'm not sure which tier I need?",
+    a: "Start free. You get 11 integrations including the full Google stack, Notion, Trello, and GitHub. If you later need Stripe or ATS integrations, upgrade then. You won't lose any data.",
   },
   {
-    q: "How long does an automation build take?",
-    a: "Most builds take 1-2 days from kickoff to delivery. Simpler workflows can be faster; complex multi-system integrations might take a bit longer.",
+    q: 'Why are some integrations free and others paid?',
+    a: "Simple rule: if the service has a full-featured free tier, it's free on Skillomatic. Google, Notion, Trello, GitHub all have generous free tiers. ATS systems like Greenhouse are paid-only services, so we charge for those.",
   },
   {
-    q: "What tools can you connect to?",
-    a: "Email (Gmail, Outlook), calendars, Google Sheets, Airtable, Stripe, CRMs (Salesforce, HubSpot), and many more. If it has an API, I can probably connect to it.",
+    q: 'Can I cancel anytime?',
+    a: "Yes. Cancel Pro anytime and you keep free tier access. All 11 free integrations keep working. No lock-in, no data hostage.",
   },
   {
-    q: "Do I need to be technical?",
-    a: "No. Once I build the automation, you just use it by chatting with your AI app. Say what you want to do, and it does it.",
+    q: 'Do you offer team or enterprise pricing?',
+    a: "Yes. For teams of 5+ or enterprise needs, book a call and we'll create a custom plan. Volume discounts available.",
   },
 ];
 
@@ -193,79 +185,159 @@ export default function Pricing() {
       {/* Hero Section */}
       <section className="pt-32 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 font-bold">
-            Simple Pricing
+          <Badge className="mb-4 bg-emerald-100 text-emerald-700 border-emerald-200 font-bold">
+            <Sparkles className="h-3 w-3 mr-1" />
+            Generous Free Tier
           </Badge>
           <h1 className="text-4xl md:text-5xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
-            Consulting or Self-Serve.{' '}
+            Free for Google.{' '}
             <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
-              Your Choice.
+              Pro for Business.
             </span>
           </h1>
           <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
-            Want it done for you? I'll build it. Prefer to DIY? Self-serve is always available.
-          </p>
-          <p className="text-sm text-[hsl(220_15%_60%)] mt-2">
-            Prices may change with one month notice.
+            Gmail, Calendar, and Sheets are free forever. Only upgrade when you need
+            Stripe, Outlook, or ATS integrations.
           </p>
         </div>
       </section>
 
-      {/* Consulting Services */}
+      {/* Pricing Cards */}
       <section className="py-12 px-6">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-black text-[hsl(220_30%_15%)] mb-8 text-center">
-            Done-for-You Consulting
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6 items-stretch">
-            {consultingServices.map((service) => (
-              <div
-                key={service.name}
-                className={`rounded-2xl p-6 flex flex-col ${
-                  service.highlight
-                    ? 'robot-panel ring-2 ring-primary'
-                    : 'card-robot'
-                }`}
-              >
-                <h3 className="text-xl font-black text-[hsl(220_30%_15%)] mb-1">
-                  {service.name}
-                </h3>
-                <div className="mb-4">
-                  <span className="text-3xl font-black text-[hsl(220_30%_15%)]">
-                    {service.price}
-                  </span>
-                  {service.priceNote && (
-                    <span className="text-sm text-emerald-600 font-bold ml-2">
-                      {service.priceNote}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-[hsl(220_15%_45%)] mb-6">
-                  {service.description}
-                </p>
-                <ul className="space-y-2 mb-6 flex-1">
-                  {service.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-[hsl(220_15%_40%)]">
-                      <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <a
-                  href={service.ctaHref}
-                  target={service.ctaHref.startsWith('http') ? '_blank' : undefined}
-                  rel={service.ctaHref.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold tracking-wide transition-all ${
-                    service.highlight
-                      ? 'robot-button text-white border-0'
-                      : 'bg-[hsl(220_15%_95%)] text-[hsl(220_20%_30%)] hover:bg-[hsl(220_15%_90%)]'
+        <div className="max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8">
+            {pricingTiers.map((tier) => {
+              const Icon = tier.icon;
+              return (
+                <div
+                  key={tier.name}
+                  className={`rounded-2xl p-8 flex flex-col relative ${
+                    tier.highlight
+                      ? 'robot-panel ring-2 ring-primary'
+                      : 'card-robot'
                   }`}
                 >
-                  <Calendar className="h-4 w-4" />
-                  {service.cta}
-                </a>
+                  {tier.badge && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">
+                        {tier.badge}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
+                      tier.highlight ? 'bg-primary/20' : 'bg-[hsl(220_20%_92%)]'
+                    }`}>
+                      <Icon className={`h-6 w-6 ${tier.highlight ? 'text-primary' : 'text-[hsl(220_15%_45%)]'}`} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-[hsl(220_30%_15%)]">
+                        {tier.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <span className="text-4xl font-black text-[hsl(220_30%_15%)]">
+                      {tier.price}
+                    </span>
+                    <span className="text-[hsl(220_15%_50%)]">{tier.period}</span>
+                  </div>
+
+                  <p className="text-sm text-[hsl(220_15%_45%)] mb-6">
+                    {tier.description}
+                  </p>
+
+                  <ul className="space-y-3 mb-8 flex-1">
+                    {tier.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm">
+                        {feature.included ? (
+                          <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <X className="h-5 w-5 text-gray-300 mt-0.5 flex-shrink-0" />
+                        )}
+                        <span className={feature.included ? 'text-[hsl(220_15%_35%)]' : 'text-gray-400'}>
+                          {feature.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    to={tier.ctaHref}
+                    className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold tracking-wide transition-all ${
+                      tier.highlight
+                        ? 'robot-button text-white border-0'
+                        : 'bg-[hsl(220_15%_95%)] text-[hsl(220_20%_30%)] hover:bg-[hsl(220_15%_90%)]'
+                    }`}
+                  >
+                    {tier.cta}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Integration Comparison */}
+      <section className="py-16 px-6 bg-[hsl(220_20%_97%)]">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl font-black text-[hsl(220_30%_15%)] mb-2 text-center">
+            What's Included
+          </h2>
+          <p className="text-center text-[hsl(220_15%_45%)] mb-10">
+            Free tier covers the essentials. Pro unlocks business tools.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Free Tier */}
+            <div className="bg-white rounded-2xl p-6 border-2 border-emerald-200">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg font-black text-emerald-600">Free Forever</span>
+                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">
+                  NO CREDIT CARD
+                </span>
               </div>
-            ))}
+              <div className="grid grid-cols-2 gap-3">
+                {comparisonData.free.integrations.map((integration) => (
+                  <div
+                    key={integration.name}
+                    className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-100"
+                  >
+                    <span className="text-xl">{integration.icon}</span>
+                    <span className="text-sm font-medium text-[hsl(220_20%_30%)]">
+                      {integration.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="bg-white rounded-2xl p-6 border-2 border-primary/30">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg font-black text-primary">Pro Additions</span>
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
+                  $29/MONTH
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {comparisonData.pro.integrations.map((integration) => (
+                  <div
+                    key={integration.name}
+                    className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10"
+                  >
+                    <span className="text-xl">{integration.icon}</span>
+                    <span className="text-sm font-medium text-[hsl(220_20%_30%)]">
+                      {integration.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -304,68 +376,49 @@ export default function Pricing() {
             </div>
             <div className="flex-1 h-px bg-[hsl(220_15%_85%)]" />
           </div>
-          <span className="text-sm font-bold text-[hsl(220_15%_50%)] mt-2 block">THEN PAY FOR WHAT YOU USE</span>
         </div>
       </section>
 
-      {/* Self-Serve Tiers */}
-      <section className="py-12 px-6 bg-[hsl(220_20%_97%)]">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-black text-[hsl(220_30%_15%)] mb-2 text-center">
-            Usage Plans
+      {/* The Math Section */}
+      <section className="py-16 px-6">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-black text-[hsl(220_30%_15%)] mb-8 text-center">
+            The Math
           </h2>
-          <p className="text-center text-[hsl(220_15%_45%)] mb-8">
-            After setup, you pay for usage. Same plans whether I built it or you did.
-          </p>
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {selfServeTiers.map((tier) => {
-              const Icon = tier.icon;
-              return (
-                <div key={tier.name} className={`card-robot rounded-2xl p-6 ${tier.recommended ? 'ring-2 ring-primary' : ''}`}>
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-black text-[hsl(220_30%_15%)]">
-                      {tier.name}
-                    </h3>
-                    {tier.recommended && (
-                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                        RECOMMENDED
-                      </span>
-                    )}
-                  </div>
-                  <div className="mb-2">
-                    <span className="text-2xl font-black text-[hsl(220_30%_15%)]">
-                      {tier.price}
-                    </span>
-                    <span className="text-[hsl(220_15%_50%)]">{tier.period}</span>
-                  </div>
-                  <p className="text-sm text-[hsl(220_15%_50%)] mb-4">{tier.description}</p>
-                  <ul className="space-y-2 mb-6">
-                    {tier.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-[hsl(220_15%_45%)]">
-                        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    to={tier.ctaHref}
-                    className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[hsl(220_15%_95%)] text-[hsl(220_20%_30%)] font-bold text-sm hover:bg-[hsl(220_15%_90%)] transition-colors"
-                  >
-                    {tier.cta}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              );
-            })}
+          <div className="card-robot rounded-2xl p-8">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center pb-4 border-b border-[hsl(220_15%_90%)]">
+                <span className="text-[hsl(220_15%_40%)]">Skillomatic Free</span>
+                <span className="font-black text-emerald-600">$0/mo</span>
+              </div>
+              <div className="flex justify-between items-center pb-4 border-b border-[hsl(220_15%_90%)]">
+                <span className="text-[hsl(220_15%_40%)]">CRM software you'd use once a week</span>
+                <span className="font-black text-[hsl(220_15%_30%)]">$30-100/mo</span>
+              </div>
+              <div className="flex justify-between items-center pb-4 border-b border-[hsl(220_15%_90%)]">
+                <span className="text-[hsl(220_15%_40%)]">Invoicing software you'd forget to check</span>
+                <span className="font-black text-[hsl(220_15%_30%)]">$20-50/mo</span>
+              </div>
+              <div className="flex justify-between items-center pb-4 border-b border-[hsl(220_15%_90%)]">
+                <span className="text-[hsl(220_15%_40%)]">Task management tool you'd ignore</span>
+                <span className="font-black text-[hsl(220_15%_30%)]">$10-30/mo</span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="font-black text-[hsl(220_30%_15%)]">Your current AI subscription</span>
+                <span className="font-black text-[hsl(220_30%_15%)]">$20/mo</span>
+              </div>
+            </div>
+            <div className="mt-8 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+              <p className="text-center text-emerald-800 font-bold">
+                Skip the SaaS. Just use Claude + Skillomatic Free.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="py-20 px-6">
+      <section className="py-16 px-6 bg-[hsl(220_20%_97%)]">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-2xl font-black text-[hsl(220_30%_15%)] mb-8 text-center">
             Common Questions
@@ -385,20 +438,29 @@ export default function Pricing() {
       <section className="py-20 px-6 bg-gradient-to-br from-primary to-amber-500">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-            Not Sure Which Option?
+            Start Free. Upgrade When You Need To.
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            Book a free discovery call. I'll learn about your workflow and recommend the best path forward.
+            Connect Gmail, Calendar, and Sheets in 5 minutes. No credit card required.
           </p>
-          <a
-            href="https://cal.com/june-kim-mokzq0/30min"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-primary font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
-          >
-            <Calendar className="h-5 w-5" />
-            Book a Discovery Call
-          </a>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              to="/login"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-primary font-black tracking-wide text-lg hover:bg-white/90 transition-colors shadow-lg"
+            >
+              Get Started Free
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+            <a
+              href="https://cal.com/june-kim-mokzq0/30min"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/10 text-white font-bold tracking-wide text-lg hover:bg-white/20 transition-colors border border-white/20"
+            >
+              <Calendar className="h-5 w-5" />
+              Talk to a Human
+            </a>
+          </div>
         </div>
       </section>
 

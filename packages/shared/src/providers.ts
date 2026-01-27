@@ -254,6 +254,79 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     order: 2,
     hasManifest: true,
   },
+
+  'google-drive': {
+    id: 'google-drive',
+    displayName: 'Google Drive',
+    category: 'database',
+    oauthFlow: 'google-direct',
+    apiBaseUrl: 'https://www.googleapis.com/drive/v3',
+    apiAuth: { type: 'bearer' },
+    order: 3,
+    hasManifest: true,
+  },
+
+  'google-contacts': {
+    id: 'google-contacts',
+    displayName: 'Google Contacts',
+    category: 'database',
+    oauthFlow: 'google-direct',
+    apiBaseUrl: 'https://people.googleapis.com/v1',
+    apiAuth: { type: 'bearer' },
+    order: 4,
+    hasManifest: true,
+  },
+
+  'google-tasks': {
+    id: 'google-tasks',
+    displayName: 'Google Tasks',
+    category: 'database',
+    oauthFlow: 'google-direct',
+    apiBaseUrl: 'https://tasks.googleapis.com/tasks/v1',
+    apiAuth: { type: 'bearer' },
+    order: 5,
+    hasManifest: true,
+  },
+
+  // ==================== Notes/Knowledge ====================
+  notion: {
+    id: 'notion',
+    displayName: 'Notion',
+    category: 'database',
+    oauthFlow: 'nango',
+    nangoKey: 'notion',
+    apiBaseUrl: 'https://api.notion.com/v1',
+    apiAuth: { type: 'bearer' },
+    rateLimit: { requests: 3, windowSeconds: 1 },
+    order: 6,
+    hasManifest: true,
+  },
+
+  // ==================== Project Boards ====================
+  trello: {
+    id: 'trello',
+    displayName: 'Trello',
+    category: 'database',
+    oauthFlow: 'nango',
+    nangoKey: 'trello',
+    apiBaseUrl: 'https://api.trello.com/1',
+    apiAuth: { type: 'bearer' },
+    order: 7,
+    hasManifest: true,
+  },
+
+  // ==================== Developer Tools ====================
+  github: {
+    id: 'github',
+    displayName: 'GitHub',
+    category: 'database',
+    oauthFlow: 'nango',
+    nangoKey: 'github',
+    apiBaseUrl: 'https://api.github.com',
+    apiAuth: { type: 'bearer' },
+    order: 8,
+    hasManifest: true,
+  },
 };
 
 // ============ Query Functions ============
@@ -398,8 +471,15 @@ export const INDIVIDUAL_ALLOWED_PROVIDERS = [
   'google-calendar',
   'calendly',
   'outlook-calendar',
-  // Database (only Google Sheets, NOT Airtable)
+  // Database - Google stack (free)
   'google-sheets',
+  'google-drive',
+  'google-contacts',
+  'google-tasks',
+  // Database - Third party (full-featured free tiers)
+  'notion',
+  'trello',
+  'github',
   // Scheduling
   'cal-com',
 ] as const;
@@ -434,11 +514,20 @@ export function getProvidersBlockedForIndividual(): ProviderConfig[] {
  * Users can connect these without adding a payment method.
  */
 export const FREE_PROVIDERS = [
+  // Google stack (free with Google account)
   'gmail',
   'google-calendar',
-  'calendly',
   'google-sheets',
+  'google-drive',
+  'google-contacts',
+  'google-tasks',
+  // Scheduling (free tiers)
+  'calendly',
   'cal-com',
+  // Third party (full-featured free tiers)
+  'notion',
+  'trello',
+  'github',
 ] as const;
 
 /**

@@ -38,7 +38,25 @@ const GOOGLE_SHEETS_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
-// Combined Google scopes for one-click onboarding (Gmail + Calendar + Sheets)
+// Google Drive scopes (read-only for security)
+const GOOGLE_DRIVE_SCOPES = [
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ');
+
+// Google Contacts scopes (read-only for CRM-lite)
+const GOOGLE_CONTACTS_SCOPES = [
+  'https://www.googleapis.com/auth/contacts.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ');
+
+// Google Tasks scopes
+const GOOGLE_TASKS_SCOPES = [
+  'https://www.googleapis.com/auth/tasks',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ');
+
+// Combined Google scopes for one-click onboarding (full Google stack)
 const GOOGLE_ALL_SCOPES = [
   // Gmail
   'https://www.googleapis.com/auth/gmail.readonly',
@@ -48,9 +66,14 @@ const GOOGLE_ALL_SCOPES = [
   // Calendar
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
-  // Sheets + Drive
+  // Sheets + Drive (read-write for sheets, read-only for general drive)
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.readonly',
+  // Contacts (read-only)
+  'https://www.googleapis.com/auth/contacts.readonly',
+  // Tasks
+  'https://www.googleapis.com/auth/tasks',
   // Shared
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
@@ -152,7 +175,7 @@ export function getUrlsFromRequest(c: Context) {
 }
 
 // Google OAuth configuration for different services
-export type GoogleService = 'gmail' | 'google-calendar' | 'google-sheets';
+export type GoogleService = 'gmail' | 'google-calendar' | 'google-sheets' | 'google-drive' | 'google-contacts' | 'google-tasks';
 
 const GOOGLE_SERVICE_CONFIG: Record<GoogleService, {
   scopes: string;
@@ -181,6 +204,27 @@ const GOOGLE_SERVICE_CONFIG: Record<GoogleService, {
     stateType: 'google_sheets_oauth',
     emailField: 'sheetsEmail',
     displayName: 'Google Sheets',
+  },
+  'google-drive': {
+    scopes: GOOGLE_DRIVE_SCOPES,
+    provider: 'google-drive',
+    stateType: 'google_drive_oauth',
+    emailField: 'driveEmail',
+    displayName: 'Google Drive',
+  },
+  'google-contacts': {
+    scopes: GOOGLE_CONTACTS_SCOPES,
+    provider: 'google-contacts',
+    stateType: 'google_contacts_oauth',
+    emailField: 'contactsEmail',
+    displayName: 'Google Contacts',
+  },
+  'google-tasks': {
+    scopes: GOOGLE_TASKS_SCOPES,
+    provider: 'google-tasks',
+    stateType: 'google_tasks_oauth',
+    emailField: 'tasksEmail',
+    displayName: 'Google Tasks',
   },
 };
 
@@ -372,7 +416,7 @@ async function handleGoogleCombinedOAuthCallback(
         : undefined,
     };
 
-    // Create all three integrations with the same tokens
+    // Create all Google integrations with the same tokens
     const integrationsToCreate: Array<{
       provider: string;
       metadata: Record<string, unknown>;
@@ -404,6 +448,33 @@ async function handleGoogleCombinedOAuthCallback(
           sheetsEmail: userEmail,
           tabs: [],
           tabsVersion: 0,
+        },
+      },
+      {
+        provider: 'google-drive',
+        metadata: {
+          ...baseMetadata,
+          accessLevel: 'read-only', // Drive is read-only for security
+          subProvider: 'google-drive',
+          driveEmail: userEmail,
+        },
+      },
+      {
+        provider: 'google-contacts',
+        metadata: {
+          ...baseMetadata,
+          accessLevel: 'read-only', // Contacts is read-only
+          subProvider: 'google-contacts',
+          contactsEmail: userEmail,
+        },
+      },
+      {
+        provider: 'google-tasks',
+        metadata: {
+          ...baseMetadata,
+          accessLevel: 'read-write',
+          subProvider: 'google-tasks',
+          tasksEmail: userEmail,
         },
       },
     ];
@@ -510,7 +581,7 @@ async function handleGoogleCombinedOAuthCallback(
         .where(eq(users.id, userId));
     }
 
-    return c.redirect(`${webUrl}/integrations?success=${encodeURIComponent('Google connected successfully (Gmail, Calendar, Sheets)')}`);
+    return c.redirect(`${webUrl}/integrations?success=${encodeURIComponent('Google connected successfully (Gmail, Calendar, Sheets, Drive, Contacts, Tasks)')}`);
   } catch (err) {
     console.error('Google combined OAuth error:', err);
     return c.redirect(`${webUrl}/integrations?error=oauth_failed`);
@@ -845,11 +916,17 @@ export function createGoogleOAuthRoutes() {
   routes.get('/gmail/connect', (c) => handleGoogleOAuthConnect(c, 'gmail'));
   routes.get('/google-calendar/connect', (c) => handleGoogleOAuthConnect(c, 'google-calendar'));
   routes.get('/google-sheets/connect', (c) => handleGoogleOAuthConnect(c, 'google-sheets'));
+  routes.get('/google-drive/connect', (c) => handleGoogleOAuthConnect(c, 'google-drive'));
+  routes.get('/google-contacts/connect', (c) => handleGoogleOAuthConnect(c, 'google-contacts'));
+  routes.get('/google-tasks/connect', (c) => handleGoogleOAuthConnect(c, 'google-tasks'));
 
   // Individual callback routes (no auth middleware - uses state token)
   routes.get('/gmail/callback', (c) => handleGoogleOAuthCallback(c, 'gmail'));
   routes.get('/google-calendar/callback', (c) => handleGoogleOAuthCallback(c, 'google-calendar'));
   routes.get('/google-sheets/callback', (c) => handleGoogleOAuthCallback(c, 'google-sheets'));
+  routes.get('/google-drive/callback', (c) => handleGoogleOAuthCallback(c, 'google-drive'));
+  routes.get('/google-contacts/callback', (c) => handleGoogleOAuthCallback(c, 'google-contacts'));
+  routes.get('/google-tasks/callback', (c) => handleGoogleOAuthCallback(c, 'google-tasks'));
 
   return routes;
 }
@@ -864,6 +941,9 @@ export function createGoogleOAuthTokenRoutes() {
   routes.get('/gmail/token', (c) => handleGoogleTokenRequest(c, 'gmail'));
   routes.get('/google-calendar/token', (c) => handleGoogleTokenRequest(c, 'google-calendar'));
   routes.get('/google-sheets/token', (c) => handleGoogleTokenRequest(c, 'google-sheets'));
+  routes.get('/google-drive/token', (c) => handleGoogleTokenRequest(c, 'google-drive'));
+  routes.get('/google-contacts/token', (c) => handleGoogleTokenRequest(c, 'google-contacts'));
+  routes.get('/google-tasks/token', (c) => handleGoogleTokenRequest(c, 'google-tasks'));
 
   return routes;
 }

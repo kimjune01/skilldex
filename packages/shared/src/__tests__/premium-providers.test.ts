@@ -23,6 +23,22 @@ describe('Premium Provider Detection', () => {
       expect(FREE_PROVIDERS).toContain('google-sheets');
     });
 
+    it('should include expanded Google stack', () => {
+      expect(FREE_PROVIDERS).toContain('google-drive');
+      expect(FREE_PROVIDERS).toContain('google-contacts');
+      expect(FREE_PROVIDERS).toContain('google-tasks');
+    });
+
+    it('should include Cal.com', () => {
+      expect(FREE_PROVIDERS).toContain('cal-com');
+    });
+
+    it('should include Notion, Trello, GitHub (full-featured free tiers)', () => {
+      expect(FREE_PROVIDERS).toContain('notion');
+      expect(FREE_PROVIDERS).toContain('trello');
+      expect(FREE_PROVIDERS).toContain('github');
+    });
+
     it('should NOT include ATS providers', () => {
       expect(FREE_PROVIDERS).not.toContain('greenhouse');
       expect(FREE_PROVIDERS).not.toContain('lever');
@@ -45,6 +61,13 @@ describe('Premium Provider Detection', () => {
       expect(isPremiumProvider('google-calendar')).toBe(false);
       expect(isPremiumProvider('calendly')).toBe(false);
       expect(isPremiumProvider('google-sheets')).toBe(false);
+      expect(isPremiumProvider('google-drive')).toBe(false);
+      expect(isPremiumProvider('google-contacts')).toBe(false);
+      expect(isPremiumProvider('google-tasks')).toBe(false);
+      expect(isPremiumProvider('cal-com')).toBe(false);
+      expect(isPremiumProvider('notion')).toBe(false);
+      expect(isPremiumProvider('trello')).toBe(false);
+      expect(isPremiumProvider('github')).toBe(false);
     });
 
     it('should return true for ATS providers', () => {

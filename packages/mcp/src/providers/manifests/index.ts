@@ -5,12 +5,23 @@
  */
 
 import type { ProviderManifest } from '../types.js';
+// ATS providers
 import { greenhouseManifest } from './greenhouse.js';
 import { zohoRecruitManifest } from './zoho-recruit.js';
 import { mockAtsManifest } from './mock-ats.js';
+// Calendar providers
 import { calendlyManifest } from './calendly.js';
+// Data providers - Airtable
 import { airtableManifest } from './airtable.js';
+// Data providers - Google stack
 import { googleSheetsManifest } from './google-sheets.js';
+import { googleDriveManifest } from './google-drive.js';
+import { googleContactsManifest } from './google-contacts.js';
+import { googleTasksManifest } from './google-tasks.js';
+// Data providers - Third party (free tier)
+import { notionManifest } from './notion.js';
+import { trelloManifest } from './trello.js';
+import { githubManifest } from './github.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -26,9 +37,16 @@ export const manifests: Record<string, ProviderManifest> = {
   ...(isDev ? { 'mock-ats': mockAtsManifest } : {}),
   // Calendar providers
   calendly: calendlyManifest,
-  // Data providers
+  // Data providers - Google stack
   airtable: airtableManifest,
   'google-sheets': googleSheetsManifest,
+  'google-drive': googleDriveManifest,
+  'google-contacts': googleContactsManifest,
+  'google-tasks': googleTasksManifest,
+  // Data providers - Third party (free tier)
+  notion: notionManifest,
+  trello: trelloManifest,
+  github: githubManifest,
 };
 
 /**
@@ -52,4 +70,17 @@ export function isProviderSupported(provider: string): boolean {
   return provider in manifests;
 }
 
-export { greenhouseManifest, zohoRecruitManifest, mockAtsManifest, calendlyManifest, airtableManifest, googleSheetsManifest };
+export {
+  greenhouseManifest,
+  zohoRecruitManifest,
+  mockAtsManifest,
+  calendlyManifest,
+  airtableManifest,
+  googleSheetsManifest,
+  googleDriveManifest,
+  googleContactsManifest,
+  googleTasksManifest,
+  notionManifest,
+  trelloManifest,
+  githubManifest,
+};

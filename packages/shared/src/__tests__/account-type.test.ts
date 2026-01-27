@@ -109,6 +109,18 @@ describe('Individual Account Provider Restrictions', () => {
       expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('google-sheets');
     });
 
+    it('should include expanded Google stack', () => {
+      expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('google-drive');
+      expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('google-contacts');
+      expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('google-tasks');
+    });
+
+    it('should include Notion, Trello, GitHub (full-featured free tiers)', () => {
+      expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('notion');
+      expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('trello');
+      expect(INDIVIDUAL_ALLOWED_PROVIDERS).toContain('github');
+    });
+
     it('should NOT include ATS providers', () => {
       expect(INDIVIDUAL_ALLOWED_PROVIDERS).not.toContain('greenhouse');
       expect(INDIVIDUAL_ALLOWED_PROVIDERS).not.toContain('lever');
@@ -135,6 +147,18 @@ describe('Individual Account Provider Restrictions', () => {
 
     it('should return true for Google Sheets', () => {
       expect(isProviderAllowedForIndividual('google-sheets')).toBe(true);
+    });
+
+    it('should return true for expanded Google stack', () => {
+      expect(isProviderAllowedForIndividual('google-drive')).toBe(true);
+      expect(isProviderAllowedForIndividual('google-contacts')).toBe(true);
+      expect(isProviderAllowedForIndividual('google-tasks')).toBe(true);
+    });
+
+    it('should return true for Notion, Trello, GitHub', () => {
+      expect(isProviderAllowedForIndividual('notion')).toBe(true);
+      expect(isProviderAllowedForIndividual('trello')).toBe(true);
+      expect(isProviderAllowedForIndividual('github')).toBe(true);
     });
 
     it('should return false for ATS providers', () => {
@@ -182,6 +206,16 @@ describe('Individual Account Provider Restrictions', () => {
 
       // Should not include Google Sheets
       expect(blockedIds).not.toContain('google-sheets');
+
+      // Should not include expanded Google stack
+      expect(blockedIds).not.toContain('google-drive');
+      expect(blockedIds).not.toContain('google-contacts');
+      expect(blockedIds).not.toContain('google-tasks');
+
+      // Should not include Notion, Trello, GitHub
+      expect(blockedIds).not.toContain('notion');
+      expect(blockedIds).not.toContain('trello');
+      expect(blockedIds).not.toContain('github');
     });
   });
 });
