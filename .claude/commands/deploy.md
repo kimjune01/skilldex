@@ -14,14 +14,14 @@ git diff --quiet && git diff --cached --quiet || echo "ERROR: Uncommitted change
 
 2. Check extension zip version matches manifest, rebuild if needed:
 ```bash
-MANIFEST_VERSION=$(grep '"version"' apps/skillomatic-scraper/manifest.json | sed 's/.*"\([0-9.]*\)".*/\1/')
-ZIP_VERSION=$(unzip -p apps/web/public/skillomatic-scraper.zip manifest.json 2>/dev/null | grep '"version"' | sed 's/.*"\([0-9.]*\)".*/\1/')
+MANIFEST_VERSION=$(grep '"version"' apps/skillomatic-scraper/manifest.json | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+ZIP_VERSION=$(unzip -p apps/web/public/skillomatic-scraper.zip manifest.json 2>/dev/null | grep '"version"' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
 if [ "$MANIFEST_VERSION" != "$ZIP_VERSION" ]; then
-  echo "Extension zip version ($ZIP_VERSION) doesn't match manifest ($MANIFEST_VERSION). Rebuilding..."
+  echo "Extension zip version [$ZIP_VERSION] doesn't match manifest [$MANIFEST_VERSION]. Rebuilding..."
   cd apps/skillomatic-scraper && rm -f ../web/public/skillomatic-scraper.zip && zip -r ../web/public/skillomatic-scraper.zip . -x 'node_modules/*' -x '*.git*' -x '*.DS_Store' && cd ../..
   echo "Rebuilt extension zip with version $MANIFEST_VERSION"
 else
-  echo "OK: Extension zip version matches ($MANIFEST_VERSION)"
+  echo "OK: Extension zip version matches [$MANIFEST_VERSION]"
 fi
 ```
 
@@ -86,7 +86,7 @@ curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 curl -s "https://mcp.skillomatic.technology/health" | jq -r '.gitHash'
 ```
 ```bash
-curl -s "https://skillomatic.technology" | grep 'git-hash' | sed 's/.*content="\([^"]*\)".*/\1/'
+curl -s "https://skillomatic.technology" | grep 'git-hash' | grep -o 'content="[^"]*"' | grep -o '"[^"]*"$' | tr -d '"'
 ```
 
 All three hashes must match the local commit. Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't rolled over (ECS rolling deployment can take up to 2 minutes).
