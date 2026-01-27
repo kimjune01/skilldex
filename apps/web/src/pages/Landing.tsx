@@ -674,7 +674,7 @@ export default function Landing() {
             Not Just Answers — Actions
           </Badge>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
-            AI That Handles
+            Just Tell AI To Do
             <br />
             <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
               The Paperwork
