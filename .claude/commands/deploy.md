@@ -12,7 +12,20 @@ Run these commands in sequence. Stop if any fails.
 git diff --quiet && git diff --cached --quiet || echo "ERROR: Uncommitted changes"
 ```
 
-2. Check what changed since last deploy:
+2. Check extension zip version matches manifest, rebuild if needed:
+```bash
+MANIFEST_VERSION=$(grep '"version"' apps/skillomatic-scraper/manifest.json | sed 's/.*"\([0-9.]*\)".*/\1/')
+ZIP_VERSION=$(unzip -p apps/web/public/skillomatic-scraper.zip manifest.json 2>/dev/null | grep '"version"' | sed 's/.*"\([0-9.]*\)".*/\1/')
+if [ "$MANIFEST_VERSION" != "$ZIP_VERSION" ]; then
+  echo "Extension zip version ($ZIP_VERSION) doesn't match manifest ($MANIFEST_VERSION). Rebuilding..."
+  cd apps/skillomatic-scraper && rm -f ../web/public/skillomatic-scraper.zip && zip -r ../web/public/skillomatic-scraper.zip . -x 'node_modules/*' -x '*.git*' -x '*.DS_Store' && cd ../..
+  echo "Rebuilt extension zip with version $MANIFEST_VERSION"
+else
+  echo "OK: Extension zip version matches ($MANIFEST_VERSION)"
+fi
+```
+
+3. Check what changed since last deploy:
 ```bash
 git tag --list '[0-9]*' --sort=-v:refname | head -1
 ```
@@ -34,19 +47,19 @@ Analyze the changed files to determine if deployment is needed:
 | `sst.config.ts` | All services |
 | `skills/` | None (runtime data) |
 
-If NO changes affect deployable services (e.g., only docs, .claude/, skills/), skip to step 8 and report "No deployment needed."
+If NO changes affect deployable services (e.g., only docs, .claude/, skills/), skip to step 9 and report "No deployment needed."
 
-3. Run typecheck:
+4. Run typecheck:
 ```bash
 pnpm typecheck
 ```
 
-4. Push schema to prod (skip if no `packages/db/` changes):
+5. Push schema to prod (skip if no `packages/db/` changes):
 ```bash
 pnpm db:push:prod
 ```
 
-5. Deploy with git hash:
+6. Deploy with git hash:
 
 ```bash
 SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production
@@ -54,7 +67,7 @@ SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --
 
 > **Note:** Always run a full deploy (no `--target` flag). SST v3's `--target` flag has known issues where Lambda code may not update reliably. The MCP Docker build is cached when unchanged, so full deploys are fast.
 
-6. Verify services are responding and git hashes match (call in parallel):
+7. Verify services are responding and git hashes match (call in parallel):
 ```bash
 curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 ```
@@ -67,7 +80,7 @@ curl -s "https://skillomatic.technology" | grep 'git-hash' | sed 's/.*content="\
 
 All three hashes must match the local commit. Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't rolled over (ECS rolling deployment can take up to 2 minutes).
 
-7. Create and push incremented version tag:
+8. Create and push incremented version tag:
 ```bash
 git tag --list '[0-9]*' --sort=-v:refname | head -1
 ```
@@ -76,7 +89,7 @@ Increment the tag number manually (e.g., if output is `17`, use `18`):
 git tag <NEW_TAG> && git push origin <NEW_TAG>
 ```
 
-8. Report success with deployed services, git hashes, and the new version tag.
+9. Report success with deployed services, git hashes, and the new version tag.
 
 Stops on first failure. Always runs full deploy (MCP Docker is cached when unchanged). Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
