@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
-import { skills } from '@skillomatic/db/schema';
+import { skills, integrations } from '@skillomatic/db/schema';
 import { eq, or, and, isNotNull } from 'drizzle-orm';
 import { combinedAuth } from '../middleware/combinedAuth.js';
 import type { SkillPublic, SkillAccessInfo, SkillCreateRequest, SkillVisibilityRequest } from '@skillomatic/shared';
@@ -308,6 +308,7 @@ skillsRoutes.get('/config', async (c) => {
   let hasGoogleTasks = false;
 
   if (user.organizationId) {
+    // Organization user: use three-way intersection model
     const integrationsByCategory = await getUserIntegrationsByCategory(user.sub, user.organizationId);
     const databaseIntegrations = integrationsByCategory.database;
 
@@ -325,6 +326,25 @@ skillsRoutes.get('/config', async (c) => {
       hasGoogleContacts = databaseIntegrations.some((int) => int.provider === 'google-contacts');
       hasGoogleTasks = databaseIntegrations.some((int) => int.provider === 'google-tasks');
     }
+  } else {
+    // Individual user: check their connected integrations directly
+    const userIntegrations = await db
+      .select()
+      .from(integrations)
+      .where(
+        and(
+          eq(integrations.userId, user.sub),
+          eq(integrations.status, 'connected')
+        )
+      );
+
+    hasGoogleSheets = userIntegrations.some((int) => int.provider === 'google-sheets');
+    hasGoogleDrive = userIntegrations.some((int) => int.provider === 'google-drive');
+    hasGoogleDocs = userIntegrations.some((int) => int.provider === 'google-docs');
+    hasGoogleForms = userIntegrations.some((int) => int.provider === 'google-forms');
+    hasGoogleContacts = userIntegrations.some((int) => int.provider === 'google-contacts');
+    hasGoogleTasks = userIntegrations.some((int) => int.provider === 'google-tasks');
+    // Note: Airtable not allowed for individual users
   }
 
   return c.json({
