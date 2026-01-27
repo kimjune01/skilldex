@@ -464,6 +464,7 @@ export default function Integrations() {
         const hasSheets = integrationList.some(i => i.provider === 'google-sheets' && i.status === 'connected');
         const hasCalendar = integrationList.some(i => i.provider === 'calendar' && i.status === 'connected');
         const allConnected = hasEmail && hasSheets && hasCalendar;
+        const noneConnected = !hasEmail && !hasSheets && !hasCalendar;
 
         if (allConnected) return null;
 
@@ -471,36 +472,60 @@ export default function Integrations() {
           <div className="bg-amber-50 border-amber-200 rounded-lg p-5 border">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div>
+              <div className="flex-1">
                 <p className="font-semibold text-amber-900 mb-2">
                   Connect your tools to get started
                 </p>
                 <p className="text-sm text-amber-800 mb-4">
-                  Skillomatic works best when it can access your data. Connect these three essentials to unlock the full experience.
+                  {noneConnected
+                    ? "One click connects Gmail, Calendar, and Sheets—everything you need to get started."
+                    : "Skillomatic works best when it can access your data. Connect these three essentials to unlock the full experience."}
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className={`rounded-md p-3 ${hasSheets ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
-                    <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
-                      {hasSheets && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                      1. Google Sheets
-                    </p>
-                    <p className="text-amber-700">Your data lives here—contacts, leads, invoices</p>
+
+                {/* Show one-click button if nothing is connected yet */}
+                {noneConnected ? (
+                  <Button
+                    size="lg"
+                    onClick={() => {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+                      const token = localStorage.getItem('token');
+                      window.location.href = `${apiUrl}/integrations/google/connect?token=${encodeURIComponent(token || '')}`;
+                    }}
+                    disabled={isConnecting}
+                    className="w-full sm:w-auto"
+                  >
+                    {isConnecting ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plug className="h-4 w-4 mr-2" />
+                    )}
+                    Connect Google (Gmail, Calendar, Sheets)
+                  </Button>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className={`rounded-md p-3 ${hasSheets ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
+                      <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
+                        {hasSheets && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                        1. Google Sheets
+                      </p>
+                      <p className="text-amber-700">Your data lives here—contacts, leads, invoices</p>
+                    </div>
+                    <div className={`rounded-md p-3 ${hasEmail ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
+                      <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
+                        {hasEmail && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                        2. Email
+                      </p>
+                      <p className="text-amber-700">Send messages and follow-ups</p>
+                    </div>
+                    <div className={`rounded-md p-3 ${hasCalendar ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
+                      <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
+                        {hasCalendar && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                        3. Calendar
+                      </p>
+                      <p className="text-amber-700">Schedule meetings and check availability</p>
+                    </div>
                   </div>
-                  <div className={`rounded-md p-3 ${hasEmail ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
-                    <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
-                      {hasEmail && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                      2. Email
-                    </p>
-                    <p className="text-amber-700">Send messages and follow-ups</p>
-                  </div>
-                  <div className={`rounded-md p-3 ${hasCalendar ? 'bg-green-100 border border-green-300' : 'bg-white/60'}`}>
-                    <p className="font-medium text-amber-900 mb-1 flex items-center gap-2">
-                      {hasCalendar && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                      3. Calendar
-                    </p>
-                    <p className="text-amber-700">Schedule meetings and check availability</p>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

@@ -2,21 +2,31 @@
 
 ## Market Position
 
-**Core insight:** One-person businesses are exploding (29.8M in U.S., rising). They're drowning in admin tasks across fragmented tools. AI makes it possible to run a business solo, but existing tools (Zapier, Lindy) are complex or expensive.
+**Core insight:** Solopreneurs and freelancers are told they need 10 SaaS subscriptions to run a business: CRM, invoicing, task management, expense tracking, scheduling. They don't want to sign up for all that. They don't want to learn new UIs. They just want to talk and have it handled.
 
-**Positioning:** "Claude that actually runs your business"
+**Positioning:** "You don't need 10 SaaS tools. You need Claude + one Google account."
 
-**Key differentiator:** We don't just read your data - we update it. Mark invoices paid. Log expenses. Add tasks. Close the loop.
+**Key differentiator:** No new signups. No new UIs. Just talk to Claude – it reads and writes to your Google Sheets, Gmail, and Calendar. Sheets is the silent backend they never have to open.
 
 ## Target Audiences
 
-### Primary: Solopreneurs (Scale Play)
+### Primary: Anti-SaaS Solopreneurs
 
-| Segment | Pain | What they use now |
-|---------|------|-------------------|
-| Digital solopreneurs | Tool fragmentation, admin overwhelm | Sheets, Stripe, Gmail |
-| Solo trades (plumbers, electricians, etc.) | Hate paperwork, no time to learn software | Sheets, Calendar |
-| Freelancers/consultants | Client management, invoicing follow-up | Sheets, Gmail, Calendly |
+People who need to track clients, invoices, and tasks but **refuse to sign up for more software**.
+
+| Segment | Pain | What they do now |
+|---------|------|------------------|
+| Freelancers (designers, writers, devs) | Client management, invoicing, follow-ups | Notes app, memory, chaos |
+| Creatives (photographers, videographers) | Tracking shoots, payments, deliverables | Paper, scattered notes |
+| Coaches/consultants | Client notes, scheduling, session tracking | Basic calendar, nothing else |
+| Content creators | Brand deals, posting schedule, income | Spreadsheets they hate or ignore |
+
+**What they have in common:**
+- Already have a Google account
+- Already pay for Claude or ChatGPT
+- Hate admin, hate learning new tools
+- Would rather text than click through a UI
+- Don't want another monthly subscription
 
 **Market size:** 29.8M solopreneurs in U.S., 50.9% of workforce will be freelancers by 2027
 
@@ -24,7 +34,6 @@
 - 60% underestimated how many hats they'd wear
 - 90% feel burdened by tasks they could automate
 - 40% spend 4+ hours/week on manual invoicing
-- They already pay for Claude/ChatGPT - we make it 10x more valuable
 
 ### Secondary: Founders (Credibility Play)
 
@@ -212,25 +221,26 @@ This is the differentiator. Show the spreadsheet updating in real-time if possib
 - "Automation platform" (sounds complex)
 - "Workflow builder" (they don't want to build)
 - "Integrates with" (passive, boring)
+- "Your spreadsheet becomes smart" (they don't want to think about spreadsheets)
 
 ### Do Say
-- "Claude that actually updates your data"
-- "Your spreadsheet becomes smart"
-- "Ask questions, get answers, close the loop"
-- "You don't need to learn software. Just ask."
-- "Works with what you already use"
+- "You don't need a CRM. Just tell Claude."
+- "Skip the software. Just talk."
+- "No new signups. No new UIs. Just ask."
+- "Claude + Google account. That's your whole stack."
+- "Stop paying for tools you hate using."
 
 ### Key Differentiators
-1. **Writes back, not just reads** - Actually updates your spreadsheet
-2. **No new tools to learn** - Uses your existing Sheets
-3. **Conversational** - Just ask, don't configure
-4. **Closes the loop** - Read → Decide → Update → Done
+1. **Anti-SaaS** - Replace 10 subscriptions with one conversation
+2. **Zero UI** - They never have to open a spreadsheet
+3. **No onboarding** - Already have Google, already have Claude
+4. **Conversational** - Just talk, don't configure
 
 ### One-liner Options
-- "Claude that runs your business ops"
-- "Your spreadsheet, but smart"
-- "AI that actually updates your data"
-- "Stop copy-pasting. Start asking."
+- "You don't need 10 SaaS tools. You need Claude."
+- "Your business backend, invisible."
+- "Skip the software. Just talk."
+- "CRM, invoicing, tasks – all in one conversation."
 
 ## Pricing Strategy
 
@@ -279,17 +289,19 @@ This is the differentiator. Show the spreadsheet updating in real-time if possib
 
 | Competitor | Positioning | Weakness |
 |------------|-------------|----------|
+| HubSpot, Pipedrive | CRM | Another signup, another UI, overkill for solopreneurs |
+| QuickBooks, Wave | Invoicing/accounting | Complex, intimidating, monthly fee |
+| Asana, Todoist, Notion | Task/project management | Yet another tool to check |
 | Zapier/Make | Automation platform | Complex setup, not conversational |
 | Lindy AI | AI employee | Expensive, inconsistent, steep learning curve |
 | ChatGPT/Claude alone | General AI | No tool connections, can't update data |
 | Virtual assistants | Human help | $2-5k/month, async, training required |
-| Vertical tools (Jobber, etc.) | Trade-specific | Complex, expensive, low adoption |
 
 **Our angle:**
-- Simpler than Zapier (just talk to it)
-- Cheaper than Lindy or VA
-- **Actually updates your data** (unlike raw ChatGPT)
-- No learning curve (unlike vertical software)
+- **Anti-SaaS** - Don't sign up for 10 tools, just use Claude
+- **Zero UI** - Never open a spreadsheet, just talk
+- **Already have everything** - Google account + Claude subscription
+- **Actually updates your data** - Unlike raw ChatGPT
 
 ## Integration Strategy
 
@@ -331,11 +343,12 @@ Sheets is the database. Everything writes back to Sheets.
 ## Key Principles
 
 1. **Show the write** - Every demo should update data, not just read it
-2. **Sheets is the database** - No new tools, use what they have
-3. **Ship demos fast** - Stop researching, start posting
-4. **Simple onboarding** - Gmail + Calendar + one Sheet, that's it
-5. **Kill fast** - If it's not working in 2 weeks, move on
-6. **Double down on winners** - When something works, do more of it
+2. **Sheets is invisible** - They never see the spreadsheet, just the conversation
+3. **Anti-SaaS messaging** - "You don't need X tool, just tell Claude"
+4. **Ship demos fast** - Stop researching, start posting
+5. **Zero onboarding** - Gmail + Calendar, that's it (Sheets created automatically)
+6. **Kill fast** - If it's not working in 2 weeks, move on
+7. **Double down on winners** - When something works, do more of it
 
 ## Available Skills (for demos)
 
@@ -356,8 +369,9 @@ Sheets is the database. Everything writes back to Sheets.
 ## Notes
 
 - Solopreneur market is 29.8M in U.S. and growing
-- Trades are high-pain but need dead-simple onboarding (<10 min)
+- Target: people who refuse to sign up for more software
 - Founders are lighthouse customers, not primary revenue
 - Slack API locked down May 2025 - not viable without Marketplace approval
 - They already pay for Claude/ChatGPT - we make that subscription more valuable
-- **Sheets as database is the key insight** - no new tools, just smarter existing tools
+- **Sheets is invisible infrastructure** - they talk to Claude, never open the spreadsheet
+- **Anti-SaaS positioning** - replace CRM + invoicing + tasks with one conversation

@@ -314,6 +314,33 @@ export default function Dashboard() {
                         {isCompletingOnboarding ? 'Completing...' : step.actionLabel}
                         <PartyPopper className="h-4 w-4 ml-2" />
                       </Button>
+                    ) : step.id === 'integration' ? (
+                      // Integration step: show quick connect options
+                      <div className="flex items-center gap-2">
+                        {/* Show Connect Google if no Google integrations connected */}
+                        {!integrationList.some(i =>
+                          ['email', 'calendar', 'google-sheets'].includes(i.provider) && i.status === 'connected'
+                        ) && (
+                          <Button
+                            size="sm"
+                            className="robot-button border-0"
+                            onClick={() => {
+                              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+                              const token = localStorage.getItem('token');
+                              window.location.href = `${apiUrl}/integrations/google/connect?token=${encodeURIComponent(token || '')}`;
+                            }}
+                          >
+                            Connect Google
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        )}
+                        {/* Always show link to integrations page for other options */}
+                        <Link to={step.route}>
+                          <Button size="sm" variant="outline">
+                            {integrationList.some(i => i.status === 'connected') ? 'More' : 'Other'}
+                          </Button>
+                        </Link>
+                      </div>
                     ) : (
                       <Link to={step.route}>
                         <Button size="sm" className="robot-button border-0">
