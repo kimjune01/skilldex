@@ -19,7 +19,6 @@ import { jwtAuth, superAdminOnly } from '../middleware/auth.js';
 import { db } from '@skillomatic/db';
 import { payIntentions, users } from '@skillomatic/db/schema';
 import { eq, desc, and, gte } from 'drizzle-orm';
-import { createSetupCheckout, isStripeConfigured } from '../lib/stripe.js';
 import { createLogger } from '../lib/logger.js';
 import type {
   CreatePayIntentionRequest,
@@ -48,17 +47,6 @@ payIntentionsRoutes.post('/', async (c) => {
     return c.json({ error: { message: 'Invalid trigger type' } }, 400);
   }
 
-  // Check if Stripe is configured
-  if (!isStripeConfigured()) {
-    log.warn('stripe_not_configured', { userId: user.sub });
-    return c.json({
-      error: {
-        message: 'Payment system is not configured. Please contact support.',
-        code: 'STRIPE_NOT_CONFIGURED',
-      },
-    }, 503);
-  }
-
   // Check if user already has a confirmed pay intention for this trigger
   const existing = await db
     .select()
@@ -81,7 +69,7 @@ payIntentionsRoutes.post('/', async (c) => {
     }, 400);
   }
 
-  // Create pay intention record
+  // Create pay intention record - immediately confirmed (no Stripe)
   const payIntentionId = crypto.randomUUID();
   const now = new Date();
 
@@ -90,61 +78,34 @@ payIntentionsRoutes.post('/', async (c) => {
     userId: user.sub,
     triggerType: body.triggerType,
     triggerProvider: body.triggerProvider,
-    status: 'pending',
+    status: 'confirmed',
+    confirmedAt: now,
     createdAt: now,
     updatedAt: now,
   });
 
-  // Create Stripe checkout
-  try {
-    const checkout = await createSetupCheckout({
-      userId: user.sub,
-      email: user.email,
+  // Update user's hasConfirmedPayIntention flag
+  await db
+    .update(users)
+    .set({
+      hasConfirmedPayIntention: true,
+      updatedAt: now,
+    })
+    .where(eq(users.id, user.sub));
+
+  log.info('pay_intention_confirmed', {
+    payIntentionId,
+    userId: user.sub,
+    triggerType: body.triggerType,
+    triggerProvider: body.triggerProvider,
+  });
+
+  return c.json({
+    data: {
       payIntentionId,
-      triggerType: body.triggerType,
-      triggerProvider: body.triggerProvider,
-    });
-
-    // Update with Stripe IDs
-    await db
-      .update(payIntentions)
-      .set({
-        stripeCustomerId: checkout.customerId,
-        stripeSetupIntentId: checkout.setupIntentId,
-        updatedAt: new Date(),
-      })
-      .where(eq(payIntentions.id, payIntentionId));
-
-    log.info('pay_intention_created', {
-      payIntentionId,
-      userId: user.sub,
-      triggerType: body.triggerType,
-      triggerProvider: body.triggerProvider,
-    });
-
-    return c.json({
-      data: {
-        payIntentionId,
-        stripeCheckoutUrl: checkout.checkoutUrl,
-      },
-    });
-  } catch (err) {
-    // Clean up the pay intention record if Stripe fails
-    await db.delete(payIntentions).where(eq(payIntentions.id, payIntentionId));
-
-    log.error('stripe_checkout_failed', {
-      payIntentionId,
-      userId: user.sub,
-      error: err instanceof Error ? err.message : 'Unknown error',
-    });
-
-    return c.json({
-      error: {
-        message: 'Failed to create checkout session. Please try again.',
-        code: 'STRIPE_ERROR',
-      },
-    }, 500);
-  }
+      confirmed: true,
+    },
+  });
 });
 
 // Valid trigger types for validation

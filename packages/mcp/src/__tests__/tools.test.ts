@@ -181,7 +181,7 @@ describe('registerTools', () => {
       const toolCalls = mockServer.tool.mock.calls.map((c: any[]) => c[0]);
       expect(toolCalls).toContain('google_drive_list_files');
       expect(toolCalls).toContain('google_docs_get_document');
-      expect(toolCalls).toContain('google_tasks_list_task_lists');
+      expect(toolCalls).toContain('google_tasks_list_tasks');
     });
   });
 

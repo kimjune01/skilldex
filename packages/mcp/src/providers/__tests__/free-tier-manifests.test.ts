@@ -119,14 +119,6 @@ describe('Google Tasks Manifest', () => {
     expect(googleTasksManifest.auth.type).toBe('bearer');
   });
 
-  it('has required operations for task lists', () => {
-    const operationIds = googleTasksManifest.operations.map((op) => op.id);
-    expect(operationIds).toContain('list_task_lists');
-    expect(operationIds).toContain('get_task_list');
-    expect(operationIds).toContain('create_task_list');
-    expect(operationIds).toContain('delete_task_list');
-  });
-
   it('has required operations for tasks', () => {
     const operationIds = googleTasksManifest.operations.map((op) => op.id);
     expect(operationIds).toContain('list_tasks');

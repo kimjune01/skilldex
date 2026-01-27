@@ -59,20 +59,13 @@ export function PayIntentionDialog({
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.error?.code === 'STRIPE_NOT_CONFIGURED') {
-          // Stripe not set up - grant access anyway for now
-          setError('Payment system is being set up. You have been granted temporary access.');
-          setTimeout(() => {
-            onClose();
-            window.location.reload();
-          }, 2000);
-          return;
-        }
-        throw new Error(data.error?.message || 'Failed to create checkout session');
+        throw new Error(data.error?.message || 'Failed to confirm subscription');
       }
 
-      if (data.data?.stripeCheckoutUrl) {
-        window.location.href = data.data.stripeCheckoutUrl;
+      // Pay intention confirmed - reload to refresh state
+      if (data.data?.confirmed) {
+        onClose();
+        window.location.reload();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
