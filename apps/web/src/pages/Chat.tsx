@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { MessageList, ChatInput, ChatSidebar } from '@/components/chat';
 import { skills } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Download, Menu, KeyRound, MessageSquare, ExternalLink, ChevronRight } from 'lucide-react';
+import { AlertCircle, Loader2, Download, Menu, KeyRound, MessageSquare, ExternalLink, ChevronRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
@@ -181,45 +181,90 @@ function ChatContent() {
   if (!hasOrgLLM && !userLLMConfig) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center p-8">
-        <div className="max-w-md w-full">
-          {/* Main setup card */}
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
-              <KeyRound className="h-8 w-8 text-amber-600" />
-            </div>
-            <h2 className="text-xl font-bold text-amber-900 mb-2">LLM API Key Required</h2>
-            <p className="text-amber-700 mb-6">
-              Web Chat needs an LLM API key (Anthropic, OpenAI, or Groq) to work.
-              You can configure this in the sidebar.
-            </p>
+        <div className="max-w-lg w-full">
+          <h2 className="text-2xl font-bold text-center mb-2">Choose how to power your AI</h2>
+          <p className="text-muted-foreground text-center mb-6">
+            Web Chat needs an LLM to work. Pick an option below.
+          </p>
 
-            <Button
-              onClick={() => setSidebarOpen(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              <KeyRound className="h-4 w-4 mr-2" />
-              Configure API Key
-            </Button>
-          </div>
-
-          {/* Alternative: Desktop Chat */}
-          <div className="mt-6 p-4 bg-muted/50 rounded-xl border">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <ExternalLink className="h-4 w-4 text-primary" />
+          <div className="grid gap-4">
+            {/* Option 1: Subscribe (recommended) */}
+            <div className="relative bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary rounded-2xl p-6">
+              <div className="absolute -top-3 left-4">
+                <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full">
+                  Recommended
+                </span>
               </div>
-              <div>
-                <h3 className="font-semibold text-sm">Alternative: Use Desktop Chat</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Desktop apps like Claude Desktop use your own API keys and don't require org configuration.
-                </p>
-                <a
-                  href="/desktop-chat"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-                >
-                  Set up Desktop Chat
-                  <ChevronRight className="h-3 w-3" />
-                </a>
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-primary/10 rounded-xl">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg">Subscribe to Skillomatic</h3>
+                  <p className="text-sm text-muted-foreground mt-1 mb-4">
+                    We handle everything. No API keys, no usage tracking, no surprise bills.
+                    Just chat.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open-complain-dialog', {
+                        detail: 'I want to subscribe! Please let me know when subscriptions are available.'
+                      }));
+                    }}
+                    className="w-full"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Join Waitlist
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Coming soon - we'll notify you
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Option 2: BYOK */}
+            <div className="bg-muted/30 border rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-muted rounded-xl">
+                  <KeyRound className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg">Bring Your Own Key</h3>
+                  <p className="text-sm text-muted-foreground mt-1 mb-4">
+                    Use your own Anthropic, OpenAI, or Groq API key. You pay them directly.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSidebarOpen(true)}
+                    className="w-full"
+                  >
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Configure API Key
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Option 3: Desktop Chat */}
+            <div className="p-4 bg-muted/20 rounded-xl border border-dashed">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-muted rounded-lg">
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Or use Desktop Chat</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Claude Desktop and other apps work without web configuration.
+                  </p>
+                  <a
+                    href="/desktop-chat"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                  >
+                    Set up Desktop Chat
+                    <ChevronRight className="h-3 w-3" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
