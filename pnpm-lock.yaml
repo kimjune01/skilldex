@@ -50,6 +50,9 @@ importers:
       '@skillomatic/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@skillomatic/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@skillomatic/shared':
         specifier: workspace:*
         version: link:../../packages/shared

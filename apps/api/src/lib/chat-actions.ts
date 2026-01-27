@@ -13,6 +13,13 @@ import { GmailClient, type EmailMessage } from './gmail.js';
 import { getNangoClient, PROVIDER_CONFIG_KEYS } from './nango.js';
 import { assignTaskToExtension } from './scrape-events.js';
 import { normalizeUrl, hashUrl, parseRecipients, waitForScrapeTask } from './chat-helpers.js';
+import { refreshGoogleToken, isGoogleTokenExpired } from './google-oauth.js';
+import {
+  buildAuthHeader,
+  isPathBlocked,
+  getGoogleWorkspaceManifest,
+  isGoogleWorkspaceProvider,
+} from '@skillomatic/shared';
 
 // ============ Action Types ============
 
@@ -38,6 +45,14 @@ export type ChatAction =
       maxResults?: number;
       topic?: 'general' | 'news';
       includeAnswer?: boolean;
+    }
+  // Google Workspace - generic action for all Google services
+  | {
+      action: 'google_workspace';
+      provider: 'google-sheets' | 'google-drive' | 'google-docs' | 'google-forms' | 'google-contacts' | 'google-tasks';
+      operation: string;
+      params?: Record<string, unknown>;
+      body?: Record<string, unknown>;
     };
 
 // ============ Email Capability ============
@@ -46,6 +61,295 @@ export interface EmailCapability {
   hasEmail: boolean;
   canSendEmail: boolean;
   emailAddress?: string;
+}
+
+// ============ Google Workspace Capability ============
+
+export interface GoogleWorkspaceCapability {
+  hasGoogleSheets: boolean;
+  hasGoogleDrive: boolean;
+  hasGoogleDocs: boolean;
+  hasGoogleForms: boolean;
+  hasGoogleContacts: boolean;
+  hasGoogleTasks: boolean;
+}
+
+/**
+ * Get Google Workspace capabilities for the user
+ */
+export async function getGoogleWorkspaceCapability(
+  userId: string
+): Promise<GoogleWorkspaceCapability> {
+  const userIntegrations = await db
+    .select()
+    .from(integrations)
+    .where(and(eq(integrations.userId, userId), eq(integrations.status, 'connected')));
+
+  const connectedProviders = new Set(userIntegrations.map((int) => int.provider));
+
+  return {
+    hasGoogleSheets: connectedProviders.has('google-sheets'),
+    hasGoogleDrive: connectedProviders.has('google-drive'),
+    hasGoogleDocs: connectedProviders.has('google-docs'),
+    hasGoogleForms: connectedProviders.has('google-forms'),
+    hasGoogleContacts: connectedProviders.has('google-contacts'),
+    hasGoogleTasks: connectedProviders.has('google-tasks'),
+  };
+}
+
+/**
+ * Execute a Google Workspace API call using manifests from @skillomatic/shared
+ */
+async function executeGoogleWorkspaceAction(
+  userId: string,
+  provider: string,
+  operation: string,
+  params?: Record<string, unknown>,
+  body?: Record<string, unknown>
+): Promise<unknown> {
+  // Check provider is valid Google Workspace provider
+  if (!isGoogleWorkspaceProvider(provider)) {
+    return { error: `Unsupported provider: ${provider}` };
+  }
+
+  // Get manifest from shared
+  const manifest = getGoogleWorkspaceManifest(provider);
+  if (!manifest) {
+    return { error: `Manifest not found for provider: ${provider}` };
+  }
+
+  // Find the operation in the manifest
+  const op = manifest.operations.find((o) => o.id === operation);
+  if (!op) {
+    const availableOps = manifest.operations.map((o) => o.id).join(', ');
+    return { error: `Unknown operation: ${operation}. Available: ${availableOps}` };
+  }
+
+  // Get the user's integration
+  const [integration] = await db
+    .select()
+    .from(integrations)
+    .where(
+      and(
+        eq(integrations.userId, userId),
+        eq(integrations.provider, provider),
+        eq(integrations.status, 'connected')
+      )
+    )
+    .limit(1);
+
+  if (!integration) {
+    return { error: `${provider} is not connected. Please connect it in the integrations page.` };
+  }
+
+  let metadata: Record<string, unknown> = {};
+  try {
+    metadata = integration.metadata ? JSON.parse(integration.metadata) : {};
+  } catch {
+    return { error: 'Invalid integration metadata' };
+  }
+
+  // Check access level
+  const accessLevel = (metadata.accessLevel as string) || 'read-write';
+  const requiresWrite = op.access === 'write' || op.access === 'delete';
+  if (requiresWrite && accessLevel === 'read-only') {
+    return { error: `You have read-only access to ${provider}. This operation requires write access.` };
+  }
+
+  // Get access token
+  let accessToken = metadata.accessToken as string | undefined;
+  const refreshToken = metadata.refreshToken as string | undefined;
+  const expiresAt = metadata.expiresAt as string | undefined;
+
+  if (!accessToken) {
+    return { error: `${provider} integration not properly configured` };
+  }
+
+  // Refresh token if expired
+  if (isGoogleTokenExpired(expiresAt) && refreshToken) {
+    const refreshResult = await refreshGoogleToken(refreshToken, metadata);
+
+    if (refreshResult) {
+      accessToken = refreshResult.accessToken;
+      await db
+        .update(integrations)
+        .set({
+          metadata: JSON.stringify(refreshResult.metadata),
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(integrations.id, integration.id));
+    } else {
+      await db
+        .update(integrations)
+        .set({ status: 'error', updatedAt: new Date() })
+        .where(eq(integrations.id, integration.id));
+      return { error: `Token expired - please reconnect ${provider}` };
+    }
+  }
+
+  // Categorize params using manifest definitions
+  const allParams = { ...params };
+  const pathParamNames = new Set([...op.path.matchAll(/\{(\w+)\}/g)].map((m) => m[1]));
+
+  const pathParams: Record<string, unknown> = {};
+  const queryParams: Record<string, unknown> = {};
+  let bodyParams: Record<string, unknown> = { ...body };
+
+  for (const [key, value] of Object.entries(allParams)) {
+    if (value === undefined) continue;
+    if (pathParamNames.has(key)) {
+      pathParams[key] = value;
+    } else if (op.body && key in op.body) {
+      bodyParams[key] = value;
+    } else if (op.params && key in op.params) {
+      queryParams[key] = value;
+    }
+  }
+
+  // Interpolate path parameters
+  let path = op.path;
+  for (const [key, value] of Object.entries(pathParams)) {
+    path = path.replace(`{${key}}`, encodeURIComponent(String(value)));
+  }
+
+  // Check if path is blocked
+  if (isPathBlocked(provider, path)) {
+    return { error: 'Access to this endpoint is not allowed' };
+  }
+
+  // Transform body for special request types (batchUpdate APIs)
+  const requestType = op.meta?.requestType as string | undefined;
+  if (requestType) {
+    bodyParams = transformRequestBody(requestType, bodyParams);
+  }
+
+  // Build URL
+  const baseUrl = manifest.baseUrl.replace(/\/+$/, '');
+  const url = new URL(baseUrl + path);
+
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (value !== undefined && value !== null) {
+      if (Array.isArray(value)) {
+        value.forEach((v) => url.searchParams.append(key, String(v)));
+      } else {
+        url.searchParams.set(key, String(value));
+      }
+    }
+  }
+
+  // Build headers
+  const authHeaders = buildAuthHeader(provider, accessToken, (s) => Buffer.from(s).toString('base64'));
+  const requestHeaders: Record<string, string> = {
+    ...authHeaders,
+    'Content-Type': 'application/json',
+  };
+
+  // Make request
+  const hasBody = Object.keys(bodyParams).length > 0;
+  const methodsWithBody = ['POST', 'PUT', 'PATCH'];
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: op.method.toUpperCase(),
+      headers: requestHeaders,
+      body: hasBody && methodsWithBody.includes(op.method.toUpperCase())
+        ? JSON.stringify(bodyParams)
+        : undefined,
+    });
+
+    let responseData: unknown;
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      responseData = await response.text();
+    }
+
+    if (!response.ok) {
+      return {
+        error: `API returned ${response.status}`,
+        status: response.status,
+        details: responseData,
+      };
+    }
+
+    return responseData;
+  } catch (error) {
+    return {
+      error: `Failed to communicate with ${provider}`,
+      details: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Transform request body for batch operations (Google Docs, Sheets, Forms)
+ */
+function transformRequestBody(
+  requestType: string,
+  body: Record<string, unknown>
+): Record<string, unknown> {
+  switch (requestType) {
+    case 'appendText':
+      return {
+        requests: [{
+          insertText: {
+            location: { index: 1 },
+            text: body.text,
+          },
+        }],
+      };
+
+    case 'addSheet':
+      return {
+        requests: [{
+          addSheet: {
+            properties: { title: body.sheetTitle },
+          },
+        }],
+      };
+
+    case 'deleteSheet':
+      return {
+        requests: [{
+          deleteSheet: { sheetId: body.sheetId },
+        }],
+      };
+
+    case 'addQuestion': {
+      const questionType = (body.questionType as string) || 'TEXT';
+      return {
+        requests: [{
+          createItem: {
+            item: {
+              title: body.title,
+              questionItem: {
+                question: {
+                  required: body.required || false,
+                  ...(questionType === 'TEXT' || questionType === 'PARAGRAPH_TEXT'
+                    ? { textQuestion: { paragraph: questionType === 'PARAGRAPH_TEXT' } }
+                    : {}),
+                  ...(['MULTIPLE_CHOICE', 'CHECKBOX', 'DROPDOWN'].includes(questionType)
+                    ? {
+                        choiceQuestion: {
+                          type: questionType === 'DROPDOWN' ? 'DROP_DOWN' : questionType.replace('_', ''),
+                          options: ((body.options as string[]) || []).map((o) => ({ value: o })),
+                        },
+                      }
+                    : {}),
+                },
+              },
+            },
+            location: { index: 0 },
+          },
+        }],
+      };
+    }
+
+    default:
+      return body;
+  }
 }
 
 /**
@@ -472,6 +776,40 @@ export async function executeAction(
         };
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Web search failed';
+        return { error: msg };
+      }
+    }
+
+    // Google Workspace actions
+    case 'google_workspace': {
+      if (!userId) {
+        return { error: 'Authentication required for Google Workspace' };
+      }
+
+      const validProviders = [
+        'google-sheets',
+        'google-drive',
+        'google-docs',
+        'google-forms',
+        'google-contacts',
+        'google-tasks',
+      ];
+
+      if (!validProviders.includes(action.provider)) {
+        return { error: `Invalid provider: ${action.provider}` };
+      }
+
+      try {
+        const result = await executeGoogleWorkspaceAction(
+          userId,
+          action.provider,
+          action.operation,
+          action.params,
+          action.body
+        );
+        return result;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Google Workspace action failed';
         return { error: msg };
       }
     }

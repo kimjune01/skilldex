@@ -8,9 +8,11 @@
 
 import { describe, it, expect } from 'vitest';
 import { notionManifest } from '../manifests/notion.js';
-import { googleDriveManifest } from '../manifests/google-drive.js';
-import { googleContactsManifest } from '../manifests/google-contacts.js';
-import { googleTasksManifest } from '../manifests/google-tasks.js';
+import {
+  googleDriveManifest,
+  googleContactsManifest,
+  googleTasksManifest,
+} from '@skillomatic/shared';
 
 describe('Notion Manifest', () => {
   it('has correct provider metadata', () => {

@@ -317,6 +317,8 @@ describe('Google OAuth', () => {
         hasCalendar: hasScope('calendar'),
         hasSheets: hasScope('spreadsheets'),
         hasDrive: hasScope('drive'),
+        hasDocs: hasScope('documents'),
+        hasForms: hasScope('forms'),
         hasContacts: hasScope('contacts'),
         hasTasks: hasScope('tasks'),
       };
@@ -329,6 +331,8 @@ describe('Google OAuth', () => {
         'https://www.googleapis.com/auth/calendar',
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/documents',
+        'https://www.googleapis.com/auth/forms.body.readonly',
         'https://www.googleapis.com/auth/contacts.readonly',
         'https://www.googleapis.com/auth/tasks',
         'https://www.googleapis.com/auth/userinfo.email',
@@ -340,6 +344,8 @@ describe('Google OAuth', () => {
       expect(result.hasCalendar).toBe(true);
       expect(result.hasSheets).toBe(true);
       expect(result.hasDrive).toBe(true);
+      expect(result.hasDocs).toBe(true);
+      expect(result.hasForms).toBe(true);
       expect(result.hasContacts).toBe(true);
       expect(result.hasTasks).toBe(true);
     });
@@ -357,6 +363,8 @@ describe('Google OAuth', () => {
       expect(result.hasCalendar).toBe(true);
       expect(result.hasSheets).toBe(false);
       expect(result.hasDrive).toBe(false);
+      expect(result.hasDocs).toBe(false);
+      expect(result.hasForms).toBe(false);
       expect(result.hasContacts).toBe(false);
       expect(result.hasTasks).toBe(false);
     });
@@ -373,6 +381,8 @@ describe('Google OAuth', () => {
       expect(result.hasCalendar).toBe(false);
       expect(result.hasSheets).toBe(false);
       expect(result.hasDrive).toBe(true);
+      expect(result.hasDocs).toBe(false);
+      expect(result.hasForms).toBe(false);
       expect(result.hasContacts).toBe(false);
       expect(result.hasTasks).toBe(false);
     });
@@ -384,6 +394,8 @@ describe('Google OAuth', () => {
       expect(result.hasCalendar).toBe(false);
       expect(result.hasSheets).toBe(false);
       expect(result.hasDrive).toBe(false);
+      expect(result.hasDocs).toBe(false);
+      expect(result.hasForms).toBe(false);
       expect(result.hasContacts).toBe(false);
       expect(result.hasTasks).toBe(false);
     });
@@ -395,6 +407,8 @@ describe('Google OAuth', () => {
       expect(result.hasCalendar).toBe(false);
       expect(result.hasSheets).toBe(false);
       expect(result.hasDrive).toBe(false);
+      expect(result.hasDocs).toBe(false);
+      expect(result.hasForms).toBe(false);
       expect(result.hasContacts).toBe(false);
       expect(result.hasTasks).toBe(false);
     });
@@ -411,6 +425,21 @@ describe('Google OAuth', () => {
 
       expect(result.hasSheets).toBe(true);
       expect(result.hasDrive).toBe(true); // drive.file contains 'drive'
+    });
+
+    it('should detect Docs and Forms scopes', () => {
+      const scopeString = [
+        'https://www.googleapis.com/auth/documents',
+        'https://www.googleapis.com/auth/forms.body.readonly',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ].join(' ');
+
+      const result = parseGrantedScopes(scopeString);
+
+      expect(result.hasDocs).toBe(true);
+      expect(result.hasForms).toBe(true);
+      expect(result.hasGmail).toBe(false);
+      expect(result.hasSheets).toBe(false);
     });
   });
 });

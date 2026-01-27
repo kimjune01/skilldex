@@ -7,7 +7,7 @@
  * @see https://developers.google.com/tasks/reference/rest
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const googleTasksManifest: ProviderManifest = {
   provider: 'google-tasks',

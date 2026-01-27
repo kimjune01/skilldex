@@ -6,9 +6,8 @@
  */
 
 import { z, ZodTypeAny } from 'zod';
-import type { ProviderManifest, ProviderOperation, ParameterDef } from './types.js';
+import type { ProviderManifest, ProviderOperation, ParameterDef, AccessLevel } from './types.js';
 import { filterOperationsByAccess } from './types.js';
-import type { AccessLevel } from './permissions.js';
 
 /**
  * Generated tool definition ready for MCP registration

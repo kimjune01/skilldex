@@ -7,7 +7,7 @@
  * @see https://developers.google.com/workspace/sheets/api/reference/rest
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const googleSheetsManifest: ProviderManifest = {
   provider: 'google-sheets',
@@ -21,15 +21,13 @@ export const googleSheetsManifest: ProviderManifest = {
   },
 
   rateLimit: {
-    requests: 60, // Google Sheets: 60 read requests per minute per user
+    requests: 60,
     windowSeconds: 60,
   },
 
-  // Security blocklist - no sensitive endpoints for Sheets
   blocklist: [],
 
   operations: [
-    // ==================== SPREADSHEETS ====================
     {
       id: 'create_spreadsheet',
       method: 'POST',
@@ -77,7 +75,6 @@ export const googleSheetsManifest: ProviderManifest = {
       responseHints: ['spreadsheetId', 'properties', 'sheets', 'title'],
     },
 
-    // ==================== VALUES (READ) ====================
     {
       id: 'read_range',
       method: 'GET',
@@ -144,7 +141,6 @@ export const googleSheetsManifest: ProviderManifest = {
       responseHints: ['spreadsheetId', 'valueRanges', 'range', 'values'],
     },
 
-    // ==================== VALUES (WRITE) ====================
     {
       id: 'write_range',
       method: 'PUT',
@@ -294,7 +290,6 @@ export const googleSheetsManifest: ProviderManifest = {
       responseHints: ['spreadsheetId', 'totalUpdatedRows', 'totalUpdatedColumns', 'totalUpdatedCells', 'responses'],
     },
 
-    // ==================== VALUES (CLEAR) ====================
     {
       id: 'clear_range',
       method: 'POST',
@@ -317,14 +312,12 @@ export const googleSheetsManifest: ProviderManifest = {
       responseHints: ['spreadsheetId', 'clearedRange'],
     },
 
-    // ==================== SHEETS (TABS) ====================
     {
       id: 'add_sheet',
       method: 'POST',
       path: '/spreadsheets/{spreadsheetId}:batchUpdate',
       access: 'write',
-      description:
-        'Add a new sheet (tab) to the spreadsheet.',
+      description: 'Add a new sheet (tab) to the spreadsheet.',
       params: {
         spreadsheetId: {
           type: 'string',
@@ -340,7 +333,6 @@ export const googleSheetsManifest: ProviderManifest = {
         },
       },
       meta: {
-        // Special handling needed - wrap in batchUpdate request format
         requestType: 'addSheet',
       },
       responseHints: ['spreadsheetId', 'replies', 'addSheet', 'properties', 'sheetId', 'title'],

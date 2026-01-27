@@ -20,7 +20,7 @@ import {
 } from '../generator.js';
 import { filterOperationsByAccess } from '../types.js';
 import { getManifest, isProviderSupported } from '../manifests/index.js';
-import type { AccessLevel } from '../permissions.js';
+import type { AccessLevel } from '../types.js';
 
 // ============ Mock Data Structures ============
 

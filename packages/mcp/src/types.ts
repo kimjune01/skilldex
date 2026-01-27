@@ -25,14 +25,14 @@ export interface RenderedSkill extends SkillPublic {
   instructions: string;
 }
 
-// Re-export from providers to avoid duplication
-export type { AccessLevel } from './providers/permissions.js';
+// Re-export from shared
+export type { AccessLevel } from '@skillomatic/shared';
 
 export interface EffectiveAccess {
-  ats: import('./providers/permissions.js').AccessLevel;
-  email: import('./providers/permissions.js').AccessLevel;
-  calendar: import('./providers/permissions.js').AccessLevel;
-  database: import('./providers/permissions.js').AccessLevel;
+  ats: import('@skillomatic/shared').AccessLevel;
+  email: import('@skillomatic/shared').AccessLevel;
+  calendar: import('@skillomatic/shared').AccessLevel;
+  database: import('@skillomatic/shared').AccessLevel;
 }
 
 export interface CapabilityProfile {

@@ -7,7 +7,7 @@
  * @see https://developers.google.com/people/api/rest
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const googleContactsManifest: ProviderManifest = {
   provider: 'google-contacts',

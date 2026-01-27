@@ -8,8 +8,7 @@
  */
 
 // Types
-export type { ProviderManifest, ProviderOperation, ParameterDef, OperationAccess, HttpMethod } from './types.js';
-export type { AccessLevel } from './permissions.js';
+export type { ProviderManifest, ProviderOperation, ParameterDef, OperationAccess, HttpMethod, AccessLevel } from './types.js';
 export { filterOperationsByAccess, isOperationAllowed } from './types.js';
 
 // Manifests

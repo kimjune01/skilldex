@@ -1,5 +1,5 @@
 import { buildSkillsPromptSection, type SkillMetadata } from './skills.js';
-import { skillRequiresBrowser, type EmailCapability } from './chat-actions.js';
+import { skillRequiresBrowser, type EmailCapability, type GoogleWorkspaceCapability } from './chat-actions.js';
 import type { EffectiveAccess } from './integration-permissions.js';
 import { sanitizeEmail } from './prompt-sanitizer.js';
 
@@ -10,7 +10,8 @@ export function buildSystemPrompt(
   skillsMetadata: SkillMetadata[],
   emailCapability?: EmailCapability,
   effectiveAccess?: EffectiveAccess,
-  disabledSkills?: string[]
+  disabledSkills?: string[],
+  googleWorkspaceCapability?: GoogleWorkspaceCapability
 ): string {
   const skillsSection = buildSkillsPromptSection(skillsMetadata, effectiveAccess, disabledSkills);
 
@@ -75,6 +76,9 @@ Your connected email: ${sanitizeEmail(emailCapability.emailAddress || '')}${emai
    - Gathering competitive intelligence
    - Any question requiring up-to-date information
 `;
+
+  // Build Google Workspace actions section
+  const googleWorkspaceSection = buildGoogleWorkspaceSection(googleWorkspaceCapability);
 
   return `You are a recruiting assistant with direct access to the ATS (Applicant Tracking System) and various recruiting skills. You can execute actions to help users manage candidates, jobs, and applications.
 
@@ -155,6 +159,7 @@ The system ONLY executes code blocks marked as \`\`\`action. Any other format wi
    - After loading, follow the skill's instructions
 ${emailActionsSection}
 ${webSearchSection}
+${googleWorkspaceSection}
 ## Skills Requiring Browser Extension
 These skills require the Skillomatic browser extension:
 ${browserSkills || 'None'}
@@ -168,4 +173,167 @@ ${browserSkills || 'None'}
 - For WRITE operations: Ask for confirmation first.${emailCapability?.hasEmail && emailCapability?.canSendEmail ? '\n- For EMAIL SEND operations: ALWAYS confirm with the user before sending.' : ''}
 - Keep your initial response brief. The action results will be shown to the user automatically.
 - Be conversational and helpful.`;
+}
+
+/**
+ * Build Google Workspace actions section based on connected services
+ */
+function buildGoogleWorkspaceSection(capability?: GoogleWorkspaceCapability): string {
+  if (!capability) return '';
+
+  const hasAnyGoogle =
+    capability.hasGoogleSheets ||
+    capability.hasGoogleDrive ||
+    capability.hasGoogleDocs ||
+    capability.hasGoogleForms ||
+    capability.hasGoogleContacts ||
+    capability.hasGoogleTasks;
+
+  if (!hasAnyGoogle) return '';
+
+  let section = `
+### Google Workspace Actions
+Use the **google_workspace** action to interact with Google services. Format:
+\`\`\`action
+{"action": "google_workspace", "provider": "<provider>", "operation": "<operation>", "params": {...}, "body": {...}}
+\`\`\`
+`;
+
+  // Google Sheets
+  if (capability.hasGoogleSheets) {
+    section += `
+#### Google Sheets (provider: "google-sheets")
+- **read_range** - Read data from a spreadsheet
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-sheets", "operation": "read_range", "params": {"spreadsheetId": "abc123", "range": "Sheet1!A1:D10"}}
+  \`\`\`
+- **write_range** - Write data to cells (overwrites existing)
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-sheets", "operation": "write_range", "params": {"spreadsheetId": "abc123", "range": "Sheet1!A1", "valueInputOption": "USER_ENTERED"}, "body": {"values": [["Name", "Email"], ["John", "john@example.com"]]}}
+  \`\`\`
+- **append_rows** - Add rows to the end of data
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-sheets", "operation": "append_rows", "params": {"spreadsheetId": "abc123", "range": "Sheet1!A:D", "valueInputOption": "USER_ENTERED"}, "body": {"values": [["New", "Row", "Data"]]}}
+  \`\`\`
+- **get_spreadsheet** - Get spreadsheet metadata (sheet names, properties)
+- **create_spreadsheet** - Create a new spreadsheet
+- **clear_range** - Clear cell values (keeps formatting)
+`;
+  }
+
+  // Google Drive
+  if (capability.hasGoogleDrive) {
+    section += `
+#### Google Drive (provider: "google-drive") - READ ONLY
+- **list_files** - Search/list files
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-drive", "operation": "list_files", "params": {"q": "name contains 'report'", "pageSize": 20}}
+  \`\`\`
+- **get_file** - Get file metadata
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-drive", "operation": "get_file", "params": {"fileId": "abc123"}}
+  \`\`\`
+- **export_file** - Export Google Docs/Sheets/Slides to text/PDF
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-drive", "operation": "export_file", "params": {"fileId": "abc123", "mimeType": "text/plain"}}
+  \`\`\`
+`;
+  }
+
+  // Google Docs
+  if (capability.hasGoogleDocs) {
+    section += `
+#### Google Docs (provider: "google-docs")
+- **create_document** - Create a new document
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-docs", "operation": "create_document", "body": {"title": "Meeting Notes"}}
+  \`\`\`
+- **get_document** - Read document content
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-docs", "operation": "get_document", "params": {"documentId": "abc123"}}
+  \`\`\`
+- **append_text** - Append text to document
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-docs", "operation": "append_text", "params": {"documentId": "abc123"}, "body": {"text": "New content to add"}}
+  \`\`\`
+`;
+  }
+
+  // Google Forms
+  if (capability.hasGoogleForms) {
+    section += `
+#### Google Forms (provider: "google-forms")
+- **create_form** - Create a new form
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-forms", "operation": "create_form", "body": {"info": {"title": "Feedback Survey"}}}
+  \`\`\`
+- **get_form** - Get form structure and questions
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-forms", "operation": "get_form", "params": {"formId": "abc123"}}
+  \`\`\`
+- **list_responses** - Get form responses
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-forms", "operation": "list_responses", "params": {"formId": "abc123"}}
+  \`\`\`
+- **add_question** - Add a question to the form
+`;
+  }
+
+  // Google Contacts
+  if (capability.hasGoogleContacts) {
+    section += `
+#### Google Contacts (provider: "google-contacts") - READ ONLY
+- **list_contacts** - List all contacts
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-contacts", "operation": "list_contacts", "params": {"pageSize": 50, "personFields": "names,emailAddresses,phoneNumbers,organizations"}}
+  \`\`\`
+- **search_contacts** - Search by name, email, or phone
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-contacts", "operation": "search_contacts", "params": {"query": "John", "readMask": "names,emailAddresses,phoneNumbers"}}
+  \`\`\`
+- **get_contact** - Get contact details
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-contacts", "operation": "get_contact", "params": {"resourceName": "people/c1234567890", "personFields": "names,emailAddresses,phoneNumbers"}}
+  \`\`\`
+`;
+  }
+
+  // Google Tasks
+  if (capability.hasGoogleTasks) {
+    section += `
+#### Google Tasks (provider: "google-tasks")
+- **list_tasks** - List all tasks
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-tasks", "operation": "list_tasks", "params": {"showCompleted": true}}
+  \`\`\`
+- **create_task** - Create a new task
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-tasks", "operation": "create_task", "body": {"title": "Follow up with candidate", "notes": "Discussed salary expectations", "due": "2025-02-01T10:00:00Z"}}
+  \`\`\`
+- **update_task** - Update a task
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-tasks", "operation": "update_task", "params": {"task": "task123"}, "body": {"title": "Updated title"}}
+  \`\`\`
+- **complete_task** - Mark task as completed
+  \`\`\`action
+  {"action": "google_workspace", "provider": "google-tasks", "operation": "complete_task", "params": {"task": "task123"}, "body": {"status": "completed"}}
+  \`\`\`
+- **delete_task** - Delete a task
+`;
+  }
+
+  // Add connected services summary
+  const connectedServices: string[] = [];
+  if (capability.hasGoogleSheets) connectedServices.push('Sheets');
+  if (capability.hasGoogleDrive) connectedServices.push('Drive');
+  if (capability.hasGoogleDocs) connectedServices.push('Docs');
+  if (capability.hasGoogleForms) connectedServices.push('Forms');
+  if (capability.hasGoogleContacts) connectedServices.push('Contacts');
+  if (capability.hasGoogleTasks) connectedServices.push('Tasks');
+
+  section += `
+**Connected Google services:** ${connectedServices.join(', ')}
+`;
+
+  return section;
 }

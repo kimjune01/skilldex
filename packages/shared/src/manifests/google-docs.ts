@@ -6,7 +6,7 @@
  * @see https://developers.google.com/docs/api/reference/rest
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const googleDocsManifest: ProviderManifest = {
   provider: 'google-docs',

@@ -6,7 +6,7 @@
  * @see https://developers.google.com/forms/api/reference/rest
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const googleFormsManifest: ProviderManifest = {
   provider: 'google-forms',

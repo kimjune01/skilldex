@@ -70,6 +70,11 @@ const GOOGLE_ALL_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/drive.readonly',
+  // Docs
+  'https://www.googleapis.com/auth/documents',
+  // Forms (read-only)
+  'https://www.googleapis.com/auth/forms.body.readonly',
+  'https://www.googleapis.com/auth/forms.responses.readonly',
   // Contacts (read-only)
   'https://www.googleapis.com/auth/contacts.readonly',
   // Tasks
@@ -407,13 +412,15 @@ async function handleGoogleCombinedOAuthCallback(
     const hasCalendar = hasScope('calendar');
     const hasSheets = hasScope('spreadsheets');
     const hasDrive = hasScope('drive');
+    const hasDocs = hasScope('documents');
+    const hasForms = hasScope('forms');
     const hasContacts = hasScope('contacts');
     const hasTasks = hasScope('tasks');
 
     log.info('google_oauth_scopes_granted', {
       userId,
       grantedScopes: tokens.scope,
-      hasGmail, hasCalendar, hasSheets, hasDrive, hasContacts, hasTasks
+      hasGmail, hasCalendar, hasSheets, hasDrive, hasDocs, hasForms, hasContacts, hasTasks
     });
 
     // Get user info to verify email
@@ -494,6 +501,30 @@ async function handleGoogleCombinedOAuthCallback(
           accessLevel: 'read-only', // Drive is read-only for security
           subProvider: 'google-drive',
           driveEmail: userEmail,
+        },
+      });
+    }
+
+    if (hasDocs) {
+      integrationsToCreate.push({
+        provider: 'google-docs',
+        metadata: {
+          ...baseMetadata,
+          accessLevel: 'read-write',
+          subProvider: 'google-docs',
+          docsEmail: userEmail,
+        },
+      });
+    }
+
+    if (hasForms) {
+      integrationsToCreate.push({
+        provider: 'google-forms',
+        metadata: {
+          ...baseMetadata,
+          accessLevel: 'read-only', // Forms is read-only
+          subProvider: 'google-forms',
+          formsEmail: userEmail,
         },
       });
     }

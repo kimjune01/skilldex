@@ -7,7 +7,7 @@
  * @see https://developers.google.com/drive/api/reference/rest/v3
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const googleDriveManifest: ProviderManifest = {
   provider: 'google-drive',

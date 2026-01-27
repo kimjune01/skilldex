@@ -13,13 +13,15 @@ import { mockAtsManifest } from './mock-ats.js';
 import { calendlyManifest } from './calendly.js';
 // Data providers - Airtable
 import { airtableManifest } from './airtable.js';
-// Data providers - Google stack
-import { googleSheetsManifest } from './google-sheets.js';
-import { googleDriveManifest } from './google-drive.js';
-import { googleDocsManifest } from './google-docs.js';
-import { googleFormsManifest } from './google-forms.js';
-import { googleContactsManifest } from './google-contacts.js';
-import { googleTasksManifest } from './google-tasks.js';
+// Data providers - Google stack (from shared)
+import {
+  googleSheetsManifest,
+  googleDriveManifest,
+  googleDocsManifest,
+  googleFormsManifest,
+  googleContactsManifest,
+  googleTasksManifest,
+} from '@skillomatic/shared';
 // Data providers - Third party (free tier)
 import { notionManifest } from './notion.js';
 

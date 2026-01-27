@@ -20,6 +20,7 @@ import {
   executeAction,
   parseAction,
   getGmailClientForUser,
+  getGoogleWorkspaceCapability,
   skillRequiresBrowser,
   type EmailCapability,
 } from '../lib/chat-actions.js';
@@ -82,6 +83,12 @@ chatRoutes.post('/', async (c) => {
       ? await getEmailCapability(user.id, user.organizationId)
       : undefined;
 
+  // Get Google Workspace capability for the user
+  const googleWorkspaceCapability =
+    user?.id
+      ? await getGoogleWorkspaceCapability(user.id)
+      : undefined;
+
   // Get effective access and disabled skills for skill status display
   let effectiveAccess: EffectiveAccess | undefined;
   let disabledSkills: string[] | undefined;
@@ -95,7 +102,8 @@ chatRoutes.post('/', async (c) => {
     skillsMetadata,
     emailCapability,
     effectiveAccess,
-    disabledSkills
+    disabledSkills,
+    googleWorkspaceCapability
   );
   const chatMessages: LLMChatMessage[] = [
     { role: 'system', content: systemPrompt },
