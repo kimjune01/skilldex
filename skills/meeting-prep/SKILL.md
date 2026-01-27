@@ -11,7 +11,7 @@ capabilities:
 requires:
   calendar: read-only
   email: read-only
-  airtable: read-only
+  sheets: read-only
 allowed-tools:
   - Bash
   - Read
@@ -52,10 +52,10 @@ curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
   -d '{"query": "from:attendee@company.com OR to:attendee@company.com", "maxResults": 10}'
 ```
 
-### Get Notes from Airtable
+### Get Notes from Sheets
 ```bash
 curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  "{{SKILLOMATIC_API_URL}}/api/v1/airtable/records?base=...&table=Notes&filter=client=Acme"
+  "{{SKILLOMATIC_API_URL}}/api/v1/sheets/read?spreadsheetId=...&range=Notes!A:E"
 ```
 
 ## Output Format

@@ -464,10 +464,12 @@ export const INDIVIDUAL_ALLOWED_PROVIDERS = [
   // Email
   'gmail',
   'outlook',
+  'email', // Generic alias (stored in DB for Google OAuth integrations)
   // Calendar
   'google-calendar',
   'calendly',
   'outlook-calendar',
+  'calendar', // Generic alias (stored in DB for Google OAuth integrations)
   // Database - Google stack (free)
   'google-sheets',
   'google-drive',

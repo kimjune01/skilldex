@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import Nango from '@nangohq/frontend';
 import { integrations, type IntegrationAccessLevel } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
+import { ONBOARDING_STEPS } from '@skillomatic/shared';
 import { useToast } from '@/components/ui/toast';
 import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared';
 import { getProviders, getProvider, type IntegrationCategory, isProviderAllowedForIndividual, type PayIntentionTrigger } from '@skillomatic/shared';
@@ -162,7 +163,7 @@ export default function Integrations() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const { isIndividual } = useAuth();
+  const { user, isIndividual, refreshUser } = useAuth();
   const { toast } = useToast();
 
   // Build provider configs from registry (memoized to avoid rebuilding on every render)
@@ -222,6 +223,23 @@ export default function Integrations() {
     loadIntegrations();
   }, []);
 
+  // Check if Google is connected and advance onboarding if needed
+  // This handles the case where the user returns to /integrations after connecting
+  useEffect(() => {
+    if (!user || isLoading) return;
+
+    // If user hasn't completed GOOGLE_CONNECTED step, check if Google is now connected
+    if (user.onboardingStep < ONBOARDING_STEPS.GOOGLE_CONNECTED) {
+      const hasGoogleConnected = integrationList.some(
+        i => ['email', 'calendar', 'google-sheets'].includes(i.provider) && i.status === 'connected'
+      );
+      if (hasGoogleConnected) {
+        // Backend should have updated onboardingStep, refresh to get latest
+        refreshUser();
+      }
+    }
+  }, [user, integrationList, isLoading, refreshUser]);
+
   // Handle OAuth callback and pay intention query params
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -237,6 +255,7 @@ export default function Integrations() {
     if (successParam) {
       setSuccessMessage(successParam);
       loadIntegrations(); // Refresh list after successful connection
+      refreshUser(); // Refresh user to update onboarding step
       searchParams.delete('success');
       setSearchParams(searchParams, { replace: true });
 
