@@ -291,6 +291,10 @@ export const skills = sqliteTable('skills', {
   requiredScopes: text('required_scopes'), // JSON array
 
   isEnabled: integer('is_enabled', { mode: 'boolean' }).notNull().default(true),
+
+  // Automation settings (pay intention tracking for cron/event triggers)
+  automationEnabled: integer('automation_enabled', { mode: 'boolean' }).notNull().default(false),
+
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({

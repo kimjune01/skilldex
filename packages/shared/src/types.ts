@@ -285,6 +285,8 @@ export interface SkillPublic {
   hasPendingVisibilityRequest?: boolean;
   /** Access status info (included when requested) */
   accessInfo?: SkillAccessInfo;
+  /** Whether automation (cron/event triggers) is enabled for this skill */
+  automationEnabled?: boolean;
 }
 
 export type SkillCategory = 'sourcing' | 'ats' | 'communication' | 'scheduling' | 'productivity' | 'system';
@@ -843,8 +845,9 @@ export interface JoinOrgResponse {
  * - individual_ats: Individual user tried to access ATS integration
  * - premium_integration: User tried to connect a premium integration
  * - subscription: User wants to subscribe instead of BYOK
+ * - automation: User enabled automation (cron/event triggers) on a skill
  */
-export type PayIntentionTrigger = 'individual_ats' | 'premium_integration' | 'subscription';
+export type PayIntentionTrigger = 'individual_ats' | 'premium_integration' | 'subscription' | 'automation';
 
 /**
  * Status of the pay intention.

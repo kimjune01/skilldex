@@ -110,7 +110,7 @@ payIntentionsRoutes.post('/', async (c) => {
 });
 
 // Valid trigger types for validation
-const VALID_TRIGGER_TYPES: PayIntentionTrigger[] = ['individual_ats', 'premium_integration', 'subscription'];
+const VALID_TRIGGER_TYPES: PayIntentionTrigger[] = ['individual_ats', 'premium_integration', 'subscription', 'automation'];
 
 /**
  * GET /pay-intentions/status
@@ -200,6 +200,7 @@ payIntentionsRoutes.get('/admin/stats', superAdminOnly, async (c) => {
     individual_ats: allIntentions.filter((i) => i.pay_intentions.triggerType === 'individual_ats').length,
     premium_integration: allIntentions.filter((i) => i.pay_intentions.triggerType === 'premium_integration').length,
     subscription: allIntentions.filter((i) => i.pay_intentions.triggerType === 'subscription').length,
+    automation: allIntentions.filter((i) => i.pay_intentions.triggerType === 'automation').length,
   };
 
   // Recent intentions with user info (top 50)

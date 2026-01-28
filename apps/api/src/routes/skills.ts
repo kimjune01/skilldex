@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
-import { skills, integrations } from '@skillomatic/db/schema';
+import { skills, integrations, payIntentions, users } from '@skillomatic/db/schema';
 import { eq, or, and, isNotNull } from 'drizzle-orm';
 import { combinedAuth } from '../middleware/combinedAuth.js';
 import type { SkillPublic, SkillAccessInfo, SkillCreateRequest, SkillVisibilityRequest } from '@skillomatic/shared';
@@ -151,6 +151,8 @@ function toSkillPublic(
     isOwner,
     canEdit: isOwner || (skill.visibility === 'organization' && !skill.isGlobal),
     hasPendingVisibilityRequest: !!skill.pendingVisibility,
+    // Automation settings
+    automationEnabled: skill.automationEnabled || false,
   };
 }
 
@@ -671,6 +673,54 @@ skillsRoutes.put('/:slug', async (c) => {
   // Category and isEnabled can be overridden separately
   if (body.category !== undefined) updates.category = body.category;
   if (body.isEnabled !== undefined) updates.isEnabled = body.isEnabled;
+
+  // Handle automation toggle with pay intention tracking
+  if (body.automationEnabled !== undefined) {
+    // If enabling automation (false -> true), check/create pay intention
+    if (body.automationEnabled === true && !existingSkill.automationEnabled) {
+      // Check if user already has confirmed automation pay intention
+      const existingIntention = await db
+        .select()
+        .from(payIntentions)
+        .where(
+          and(
+            eq(payIntentions.userId, user.sub),
+            eq(payIntentions.triggerType, 'automation'),
+            eq(payIntentions.status, 'confirmed')
+          )
+        )
+        .limit(1);
+
+      // If no confirmed intention, create one (auto-confirmed like other pay intentions)
+      if (existingIntention.length === 0) {
+        const payIntentionId = randomUUID();
+        const now = new Date();
+        await db.insert(payIntentions).values({
+          id: payIntentionId,
+          userId: user.sub,
+          triggerType: 'automation',
+          triggerProvider: existingSkill.slug,
+          status: 'confirmed',
+          confirmedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        // Update user's hasConfirmedPayIntention flag
+        await db
+          .update(users)
+          .set({ hasConfirmedPayIntention: true, updatedAt: now })
+          .where(eq(users.id, user.sub));
+
+        console.log('[Skills] Automation pay intention created', {
+          skillSlug: existingSkill.slug,
+          userId: user.sub,
+          payIntentionId,
+        });
+      }
+    }
+    updates.automationEnabled = body.automationEnabled;
+  }
 
   updates.updatedAt = new Date();
 

@@ -19,6 +19,10 @@
     "./tools": {
       "import": "./dist/tools/index.js",
       "types": "./src/tools/index.ts"
+    },
+    "./traced-server": {
+      "import": "./dist/traced-server.js",
+      "types": "./src/traced-server.ts"
     }
   },
   "files": [

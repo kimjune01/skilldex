@@ -60,6 +60,10 @@ export default function AdminBilling() {
         return 'ATS Access';
       case 'premium_integration':
         return 'Premium Integration';
+      case 'subscription':
+        return 'Subscription';
+      case 'automation':
+        return 'Automation';
       default:
         return triggerType;
     }

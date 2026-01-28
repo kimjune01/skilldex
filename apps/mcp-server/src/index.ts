@@ -21,6 +21,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 // Import from packages/mcp to reuse all the tool logic
 import { SkillomaticClient } from '@skillomatic/mcp/api-client';
 import { registerTools } from '@skillomatic/mcp/tools';
+import { wrapWithTracing } from '@skillomatic/mcp/traced-server';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const API_URL = process.env.SKILLOMATIC_API_URL || 'http://localhost:3000';
@@ -68,11 +69,12 @@ async function createMcpServerForUser(apiKey: string): Promise<{ server: McpServ
   const { profile: capabilities } = await client.getCapabilities();
   console.log(`[MCP Server] Capabilities: ATS=${capabilities.hasATS}, Email=${capabilities.hasEmail}, Calendar=${capabilities.hasCalendar}`);
 
-  // Create MCP server
-  const server = new McpServer(
+  // Create MCP server with tracing wrapper for tool call logging
+  const mcpServer = new McpServer(
     { name: 'skillomatic', version: MCP_VERSION },
     { capabilities: { tools: { listChanged: true } } }
   );
+  const server = wrapWithTracing(mcpServer);
 
   // Register all tools based on user's capabilities
   await registerTools(server, client, capabilities);
