@@ -59,7 +59,12 @@ If NO changes affect deployable services (e.g., only docs, .claude/, skills/), s
 pnpm typecheck
 ```
 
-5. Push schema to prod (ALWAYS run - schema drift can occur even without local changes):
+5. Check Turso auth before schema push:
+```bash
+turso auth whoami || (echo "ERROR: Not logged into Turso. Run 'turso auth login' first." && exit 1)
+```
+
+6. Push schema to prod (ALWAYS run - schema drift can occur even without local changes):
 ```bash
 pnpm db:push:prod
 ```
@@ -76,7 +81,7 @@ If Drizzle warns about data-loss (e.g., adding NOT NULL column without default),
 - Text columns with default: `TEXT NOT NULL DEFAULT '<value>'`
 - Nullable text: `TEXT` (no NOT NULL, no DEFAULT needed)
 
-6. Bump Docker cache bust if MCP-related changes (packages/mcp/, apps/mcp-server/, packages/db/):
+7. Bump Docker cache bust if MCP-related changes (packages/mcp/, apps/mcp-server/, packages/db/):
 ```bash
 # Check current cache bust version
 grep 'CACHEBUST=v' apps/mcp-server/Dockerfile
@@ -87,7 +92,7 @@ sed -i '' 's/CACHEBUST=v[0-9]*/CACHEBUST=v<NEW_VERSION>/' apps/mcp-server/Docker
 git add apps/mcp-server/Dockerfile && git commit -m "Bump Docker cache bust" && git push
 ```
 
-7. Deploy with git hash:
+8. Deploy with git hash:
 
 ```bash
 SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --stage production
@@ -95,7 +100,7 @@ SKILLOMATIC_DEPLOY=1 GIT_HASH="$(git rev-parse --short HEAD)" pnpm sst deploy --
 
 > **Note:** Always run a full deploy (no `--target` flag). SST v3's `--target` flag has known issues where Lambda code may not update reliably. The MCP Docker build is cached when unchanged, so full deploys are fast.
 
-8. Verify services are responding and git hashes match (call in parallel):
+9. Verify services are responding and git hashes match (call in parallel):
 ```bash
 curl -s "https://api.skillomatic.technology/health" | jq -r '.gitHash'
 ```
@@ -108,7 +113,7 @@ curl -s "https://skillomatic.technology" | grep 'git-hash' | grep -o 'content="[
 
 All three hashes must match the local commit. Retry with exponential backoff (2-64s) if CDN hasn't propagated or MCP hasn't rolled over (ECS rolling deployment can take up to 2 minutes).
 
-9. Create and push incremented version tag:
+10. Create and push incremented version tag:
 ```bash
 git tag --list '[0-9]*' --sort=-v:refname | head -1
 ```
@@ -117,7 +122,7 @@ Increment the tag number manually (e.g., if output is `17`, use `18`):
 git tag <NEW_TAG> && git push origin <NEW_TAG>
 ```
 
-10. Report success with deployed services, git hashes, and the new version tag.
+11. Report success with deployed services, git hashes, and the new version tag.
 
 Stops on first failure. Always runs full deploy (MCP Docker is cached when unchanged). Uses exponential backoff (2-64s) for CDN propagation. Uses `drizzle-kit push` to sync schema to Turso.
 
