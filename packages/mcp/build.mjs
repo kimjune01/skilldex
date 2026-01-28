@@ -23,6 +23,7 @@ await esbuild.build({
   entryPoints: [
     'src/api-client.ts',
     'src/tools/index.ts',
+    'src/traced-server.ts',
   ],
   bundle: true,
   platform: 'node',
