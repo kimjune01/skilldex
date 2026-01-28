@@ -19,7 +19,6 @@ export {
   isProviderSupported,
   greenhouseManifest,
   zohoRecruitManifest,
-  mockAtsManifest,
   calendlyManifest,
   airtableManifest,
   notionManifest,

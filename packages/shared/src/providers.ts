@@ -146,19 +146,6 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     order: 5,
   },
 
-  'mock-ats': {
-    id: 'mock-ats',
-    displayName: 'Mock ATS (Dev)',
-    category: 'ats',
-    oauthFlow: 'none',
-    // Note: apiBaseUrl can be overridden at runtime via getMockAtsUrl()
-    apiBaseUrl: 'http://localhost:3001',
-    apiAuth: { type: 'bearer' },
-    order: 0,
-    devOnly: true,
-    hasManifest: true,
-  },
-
   // ==================== Email ====================
   gmail: {
     id: 'gmail',

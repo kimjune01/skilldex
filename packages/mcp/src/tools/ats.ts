@@ -50,28 +50,40 @@ export function registerAtsTools(server: McpServer, client: SkillomaticClient): 
     'Search for candidates in the connected ATS system',
     searchCandidatesSchema,
     async (args) => {
-      const result = await client.searchCandidates({
-        q: args.query,
-        tags: args.tags,
-        limit: args.limit,
-      });
+      try {
+        const result = await client.searchCandidates({
+          q: args.query,
+          tags: args.tags,
+          limit: args.limit,
+        });
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(
-              {
-                candidates: result.candidates,
-                total: result.total,
-                query: args.query || '(all)',
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  candidates: result.candidates,
+                  total: result.total,
+                  query: args.query || '(all)',
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Error searching candidates: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -80,15 +92,27 @@ export function registerAtsTools(server: McpServer, client: SkillomaticClient): 
     'Get detailed information about a specific candidate',
     getCandidateSchema,
     async (args) => {
-      const candidate = await client.getCandidate(args.id);
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(candidate, null, 2),
-          },
-        ],
-      };
+      try {
+        const candidate = await client.getCandidate(args.id);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(candidate, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Error fetching candidate: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -97,33 +121,45 @@ export function registerAtsTools(server: McpServer, client: SkillomaticClient): 
     'Add a new candidate to the ATS system',
     createCandidateSchema,
     async (args) => {
-      const candidate = await client.createCandidate({
-        firstName: args.firstName,
-        lastName: args.lastName,
-        email: args.email,
-        phone: args.phone,
-        headline: args.headline,
-        summary: args.summary,
-        source: args.source,
-        tags: args.tags,
-      });
+      try {
+        const candidate = await client.createCandidate({
+          firstName: args.firstName,
+          lastName: args.lastName,
+          email: args.email,
+          phone: args.phone,
+          headline: args.headline,
+          summary: args.summary,
+          source: args.source,
+          tags: args.tags,
+        });
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(
-              {
-                success: true,
-                message: `Created candidate: ${candidate.firstName} ${candidate.lastName}`,
-                candidate,
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  success: true,
+                  message: `Created candidate: ${candidate.firstName} ${candidate.lastName}`,
+                  candidate,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Error creating candidate: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -132,25 +168,37 @@ export function registerAtsTools(server: McpServer, client: SkillomaticClient): 
     'Update an existing candidate in the ATS system',
     updateCandidateSchema,
     async (args) => {
-      const { id, ...updates } = args;
-      const candidate = await client.updateCandidate(id, updates);
+      try {
+        const { id, ...updates } = args;
+        const candidate = await client.updateCandidate(id, updates);
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(
-              {
-                success: true,
-                message: `Updated candidate: ${candidate.firstName} ${candidate.lastName}`,
-                candidate,
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  success: true,
+                  message: `Updated candidate: ${candidate.firstName} ${candidate.lastName}`,
+                  candidate,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Error updating candidate: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   );
 }

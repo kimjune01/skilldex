@@ -14,7 +14,6 @@ export {
   // ATS manifests
   greenhouseManifest,
   zohoRecruitManifest,
-  mockAtsManifest,
   // Calendar manifests
   calendlyManifest,
   // Database manifests

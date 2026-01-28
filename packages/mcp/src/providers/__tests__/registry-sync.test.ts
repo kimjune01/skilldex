@@ -53,10 +53,6 @@ describe('Provider Registry and Manifest Sync', () => {
       'registry entry "%s" with hasManifest=true has a manifest',
       (providerId) => {
         const manifest = getManifest(providerId);
-        // Note: mock-ats is only available in dev mode, so we skip if not found
-        if (providerId === 'mock-ats' && !manifest) {
-          return; // Skip - mock-ats only in dev
-        }
         expect(manifest).toBeDefined();
       }
     );
@@ -130,8 +126,7 @@ Registry Sync Summary:
       `);
 
       // Basic sanity check - we should have manifests for providers that claim to have them
-      // (excluding mock-ats which is dev-only)
-      expect(manifestCount).toBeGreaterThanOrEqual(withManifestFlag - 1);
+      expect(manifestCount).toBeGreaterThanOrEqual(withManifestFlag);
     });
   });
 });

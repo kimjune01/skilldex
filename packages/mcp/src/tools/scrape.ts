@@ -32,28 +32,40 @@ export function registerScrapeTools(server: McpServer, client: SkillomaticClient
     'Create a web scrape task. The browser extension will process it. Use get_scrape_task to check status.',
     createScrapeTaskSchema,
     async (args) => {
-      const task = await client.createScrapeTask(args.url);
+      try {
+        const task = await client.createScrapeTask(args.url);
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(
-              {
-                success: true,
-                message: 'Scrape task created. Use get_scrape_task to check status.',
-                task: {
-                  id: task.id,
-                  url: task.url,
-                  status: task.status,
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  success: true,
+                  message: 'Scrape task created. Use get_scrape_task to check status.',
+                  task: {
+                    id: task.id,
+                    url: task.url,
+                    status: task.status,
+                  },
                 },
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Error creating scrape task: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -62,31 +74,43 @@ export function registerScrapeTools(server: McpServer, client: SkillomaticClient
     'Get the status and result of a scrape task',
     getScrapeTaskSchema,
     async (args) => {
-      const task = await client.getScrapeTask(args.id);
+      try {
+        const task = await client.getScrapeTask(args.id);
 
-      const response: Record<string, unknown> = {
-        id: task.id,
-        url: task.url,
-        status: task.status,
-        createdAt: task.createdAt,
-      };
+        const response: Record<string, unknown> = {
+          id: task.id,
+          url: task.url,
+          status: task.status,
+          createdAt: task.createdAt,
+        };
 
-      if (task.status === 'completed') {
-        response.result = task.result;
-        response.completedAt = task.completedAt;
-      } else if (task.status === 'failed') {
-        response.error = task.errorMessage;
-        response.suggestion = task.suggestion;
+        if (task.status === 'completed') {
+          response.result = task.result;
+          response.completedAt = task.completedAt;
+        } else if (task.status === 'failed') {
+          response.error = task.errorMessage;
+          response.suggestion = task.suggestion;
+        }
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(response, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Error fetching scrape task: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+          isError: true,
+        };
       }
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(response, null, 2),
-          },
-        ],
-      };
     }
   );
 
@@ -95,39 +119,51 @@ export function registerScrapeTools(server: McpServer, client: SkillomaticClient
     'Scrape a URL and wait for the result. Useful for LinkedIn profile lookups.',
     scrapeAndWaitSchema,
     async (args) => {
-      // Create the task
-      const task = await client.createScrapeTask(args.url);
+      try {
+        // Create the task
+        const task = await client.createScrapeTask(args.url);
 
-      // Wait for completion
-      const result = await client.waitForScrapeResult(task.id, {
-        timeout: args.timeout,
-      });
+        // Wait for completion
+        const result = await client.waitForScrapeResult(task.id, {
+          timeout: args.timeout,
+        });
 
-      if (result.status === 'completed') {
+        if (result.status === 'completed') {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: result.result || 'Scrape completed but no content returned.',
+              },
+            ],
+          };
+        } else if (result.status === 'failed') {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Scrape failed: ${result.errorMessage || 'Unknown error'}${result.suggestion ? `\n\nSuggestion: ${result.suggestion}` : ''}`,
+              },
+            ],
+            isError: true,
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Scrape task status: ${result.status}. The browser extension may not be running or connected.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      } catch (error) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: result.result || 'Scrape completed but no content returned.',
-            },
-          ],
-        };
-      } else if (result.status === 'failed') {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Scrape failed: ${result.errorMessage || 'Unknown error'}${result.suggestion ? `\n\nSuggestion: ${result.suggestion}` : ''}`,
-            },
-          ],
-          isError: true,
-        };
-      } else {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Scrape task status: ${result.status}. The browser extension may not be running or connected.`,
+              text: `Error scraping URL: ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
           isError: true,

@@ -2,48 +2,49 @@
 
 ## Market Position
 
-**Core insight:** Solopreneurs and freelancers are told they need 10 SaaS subscriptions to run a business: CRM, invoicing, task management, expense tracking, scheduling. They don't want to sign up for all that. They don't want to learn new UIs. They just want to talk and have it handled.
+**Core insight:** Solopreneurs and freelancers have fragmented tools that don't talk to each other. They're trapped by inertia — their "good enough" system took forever to set up and switching isn't worth the marginal gains. They use ChatGPT daily but haven't realized it could be the control center for everything.
 
-**Positioning:** "You don't need 10 SaaS tools. You need Claude + one Google account."
+**Positioning:** "Ask ChatGPT to handle your business busywork."
 
-**Key differentiator:** No new signups. No new UIs. Just talk to Claude – it reads and writes to your Google Sheets, Gmail, and Calendar. Sheets is the silent backend they never have to open.
+**Key differentiator:** Automation without configuration. No workflow builders, no "if this then that" setup. Just describe what you want and it happens. Like it? Schedule it to repeat forever.
+
+**The journey they experience:**
+1. "ChatGPT, do this annoying thing for me" → relief
+2. It works → surprise/delight
+3. "Wait, it can do this *every week*?" → magic
+
+Automation isn't the pitch. It's the unexpected payoff after they're already happy.
 
 ## Target Audiences
 
-### Primary: Anti-SaaS Solopreneurs
+### Primary: Founders / Freelancers / Consultants with Email History
 
-People who need to track clients, invoices, and tasks but **refuse to sign up for more software**.
+People with years of relationships buried in email who want to activate them without data entry.
 
 | Segment | Pain | What they do now |
 |---------|------|------------------|
-| Freelancers (designers, writers, devs) | Client management, invoicing, follow-ups | Notes app, memory, chaos |
-| Creatives (photographers, videographers) | Tracking shoots, payments, deliverables | Paper, scattered notes |
-| Coaches/consultants | Client notes, scheduling, session tracking | Basic calendar, nothing else |
-| Content creators | Brand deals, posting schedule, income | Spreadsheets they hate or ignore |
+| Founders | Pipeline, follow-ups, admin | Scattered across tools |
+| Freelancers (designers, writers, devs) | Client management, invoicing | Notes app, memory, chaos |
+| Consultants | Client notes, warm outreach | Basic calendar, email search |
 
 **What they have in common:**
-- Already have a Google account
-- Already pay for Claude or ChatGPT
-- Hate admin, hate learning new tools
-- Would rather text than click through a UI
-- Don't want another monthly subscription
+- Already use ChatGPT or Claude daily
+- Trapped by inertia (system took forever to set up)
+- Context-switching fatigue (alt-tabbing between doing work and tracking work)
+- Haven't realized AI could handle the busywork
 
-**Market size:** 29.8M solopreneurs in U.S., 50.9% of workforce will be freelancers by 2027
+**Market tailwind:** Economic uncertainty creates more solopreneurs. They'll grow into paid tiers as their needs multiply.
 
-**Key stats:**
-- 60% underestimated how many hats they'd wear
-- 90% feel burdened by tasks they could automate
-- 40% spend 4+ hours/week on manual invoicing
+### ICP for First Skill (Warm Contacts CRM)
 
-### Secondary: Founders (Credibility Play)
+People with years of relationships buried in email who want to:
+1. Surface warm contacts without manual data entry
+2. Run outreach campaigns
+3. Track campaign stages conversationally
 
-| Why | Role |
-|-----|------|
-| Influential - share tools they use | Lighthouse customers |
-| High willingness to pay | Case studies |
-| Less crowded than recruiting/sales | Testimonials |
+### Secondary: Users who grow into Pro tier
 
-**Strategy:** A few happy founders → organic distribution → credibility for solopreneur marketing
+Multi-person businesses who start on Free/Basic and eventually need CRM, ATS, or accounting integrations.
 
 ## Demo Strategy
 
@@ -175,18 +176,21 @@ This is what separates us from ChatGPT - we close the loop.
 ## Distribution Channels
 
 ### Tier 1 (Primary)
-- **Twitter/X** - Solopreneurs, indie hackers, founders
-- **TikTok** - Trades, lifestyle solopreneurs, high reach
+- **Warm outreach** - Use the product to sell the product. First paying customer comes from here.
 
 ### Tier 2 (Secondary)
-- **YouTube Shorts** - Searchable, evergreen
-- **LinkedIn** - Founders, professional solopreneurs
+- **LinkedIn** - Where ICP hangs out, but they're not looking for AI products
 
-### Tier 3 (Community)
-- **Reddit** - r/solopreneur, r/Entrepreneur, r/freelance, trade-specific subs
-- **Facebook Groups** - Trade communities (huge and active)
-- **Indie Hackers** - Builder community
-- **Hacker News** - Technical credibility
+### Tier 3 (Tertiary)
+- **Reddit** - Astroturfed, low trust, long game at best
+
+**Key insight:** These people use ChatGPT daily but don't seek out AI products. They won't find you — you have to reach them directly.
+
+**Channel strategy:**
+1. Build the warm contacts skill
+2. Use it on yourself
+3. Reach out to your own network
+4. First paying customer validates everything
 
 ## Demo Production Guidelines
 
@@ -220,37 +224,46 @@ This is the differentiator. Show the spreadsheet updating in real-time if possib
 - "AI assistant" (generic, crowded)
 - "Automation platform" (sounds complex)
 - "Workflow builder" (they don't want to build)
-- "Integrates with" (passive, boring)
+- "Anti-SaaS" (made up, not validated)
 - "Your spreadsheet becomes smart" (they don't want to think about spreadsheets)
 
 ### Do Say
-- "You don't need a CRM. Just tell Claude."
-- "Skip the software. Just talk."
-- "No new signups. No new UIs. Just ask."
-- "Claude + Google account. That's your whole stack."
-- "Stop paying for tools you hate using."
+- "Ask ChatGPT to handle it."
+- "Automation without configuration."
+- "No new system to learn. No migration. Just ask."
+- "Like it? Schedule it to repeat forever."
+- "ChatGPT + $5/mo = your whole business backend."
 
 ### Key Differentiators
-1. **Anti-SaaS** - Replace 10 subscriptions with one conversation
-2. **Zero UI** - They never have to open a spreadsheet
-3. **No onboarding** - Already have Google, already have Claude
-4. **Conversational** - Just talk, don't configure
+1. **Works with ChatGPT** - The AI they already use daily
+2. **Automation without configuration** - No workflow builders, no "if this then that"
+3. **No migration** - Works with their existing tools
+4. **The magic reveal** - Automation is the unexpected payoff, not the pitch
 
-### One-liner Options
-- "You don't need 10 SaaS tools. You need Claude."
-- "Your business backend, invisible."
-- "Skip the software. Just talk."
-- "CRM, invoicing, tasks – all in one conversation."
+### One-liner
+"Ask ChatGPT to handle your business busywork."
+
+### The Journey
+1. They ask for help with something tedious
+2. It gets done
+3. Later they discover it can just... keep happening
 
 ## Pricing Strategy
 
-| Segment | Target Price | Rationale |
-|---------|--------------|-----------|
-| Solopreneurs | $50-100/month | Less than VA, comparable to other tools |
-| Trades | $30-50/month | More price-sensitive, ROI must be obvious |
-| Founders | $100-200/month | Higher willingness to pay |
+| Tier | Price | Integrations | Limits | Who |
+|------|-------|--------------|--------|-----|
+| Free | $0 | GSuite, Calendly/Cal.com, time tracking | 10 calls/week, 3 cron jobs | Trying it out |
+| Basic | $5/month | Same as free | Unlimited | One-person businesses |
+| Pro | $50/month | + CRM, ATS, Accounting, Finance | Unlimited | Multi-person businesses |
 
-**Positioning:** "If it helps you collect one overdue invoice, it pays for itself"
+**Consulting:** $500 one-time custom build. Validates demand for Pro tier.
+
+**Conversion logic:**
+- Free: Try everything, capped usage
+- $5: You're using it regularly, worth a coffee/month
+- $50: You need multiplayer integrations
+
+**The moat:** User's configured skills + cron jobs. 12 automations later, they're locked in by their own setup.
 
 ## Content Calendar
 

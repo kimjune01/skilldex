@@ -52,7 +52,7 @@ const faqItems: FAQItem[] = [
     category: 'Getting Started',
     question: 'Which AI apps work with Skillomatic?',
     answer:
-      'Claude Desktop has native MCP support and works best. ChatGPT works via our browser extension. Other MCP-compatible apps like Cursor also work. As more AI apps adopt MCP, they\'ll work automatically.',
+      'ChatGPT (via Developer Mode) and Claude Desktop both have native MCP support. Other MCP-compatible apps like Cursor also work. As more AI apps adopt MCP, they\'ll work automatically.',
   },
   {
     category: 'Getting Started',
@@ -116,27 +116,27 @@ const faqItems: FAQItem[] = [
   // Pricing
   {
     category: 'Pricing',
-    question: 'How much does consulting cost?',
+    question: 'How much does it cost?',
     answer:
-      'Custom pricing based on complexity. Book a discovery call (free) and I\'ll give you a quote after understanding your workflow. No commitment required.',
+      'Free tier: 10 tool calls/week and 3 scheduled automations. Basic: $5/month for unlimited usage. Pro: $50/month adds CRM, ATS, and accounting integrations. Consulting is $500 for custom builds.',
   },
   {
     category: 'Pricing',
     question: 'Is there a free option?',
     answer:
-      'Self-serve has a free tier with 500 tool calls/month. Good for trying things out or light usage. Consulting always starts with a free discovery call.',
+      'Yes. Free tier includes Gmail, Calendar, Sheets, Calendly, and time tracking. You get 10 tool calls/week and 3 scheduled automations. Perfect for trying things out.',
   },
   {
     category: 'Pricing',
-    question: 'What\'s a "tool call"?',
+    question: 'What\'s a "scheduled automation"?',
     answer:
-      'Each action Skillomatic takes on your behalf — searching your CRM, adding a record, sending an email — is one tool call. Reading and writing each count separately.',
+      'When you like what the AI did, you can tell it to repeat — "do this every Monday" or "check this daily". Free tier allows 3 of these. Basic and Pro are unlimited.',
   },
   {
     category: 'Pricing',
-    question: 'Can I switch between self-serve and consulting?',
+    question: 'Why are some integrations only on Pro?',
     answer:
-      'Yes. Many people start with self-serve to try things out, then reach out for consulting when they want custom workflows. You can also go the other way.',
+      'Pro integrations are "multiplayer" tools — CRMs, ATS systems, accounting software. These are business tools with multiple users. If you\'re a one-person business, you probably don\'t need them.',
   },
 
   // Using Skillomatic

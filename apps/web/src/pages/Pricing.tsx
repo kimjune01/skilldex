@@ -5,7 +5,7 @@
  * paid tier for business integrations (ATS, CRM, etc.)
  */
 import { useState, useEffect } from 'react';
-import { CheckCircle, Calendar, ArrowRight, Zap, Building2, Bot, X, Sparkles } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Zap, Building2, Bot, X, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
@@ -39,13 +39,14 @@ const pricingTiers = [
     name: 'Free',
     price: '$0',
     period: '/forever',
-    description: 'Everything you need to run your business with AI',
+    description: 'Try it out with your Google tools',
     features: [
-      { text: 'Full Google Workspace (Gmail, Calendar, Sheets, Drive, Contacts, Tasks)', included: true },
-      { text: 'Notion, Trello, GitHub', included: true },
+      { text: 'Google Workspace (Gmail, Calendar, Sheets)', included: true },
       { text: 'Calendly & Cal.com', included: true },
-      { text: 'Unlimited tool calls', included: true },
-      { text: 'Works with Claude, ChatGPT, etc.', included: true },
+      { text: 'Time tracking', included: true },
+      { text: '10 tool calls/week', included: true },
+      { text: '3 scheduled automations', included: true },
+      { text: 'Works with ChatGPT & Claude', included: true },
     ],
     cta: 'Get Started Free',
     ctaHref: '/login',
@@ -53,82 +54,91 @@ const pricingTiers = [
     highlight: false,
   },
   {
-    name: 'Pro',
-    price: '$29',
+    name: 'Basic',
+    price: '$5',
     period: '/month',
-    description: 'Add business integrations when you need them',
+    description: 'For one-person businesses',
     features: [
       { text: 'Everything in Free', included: true },
-      { text: 'Stripe (payments & invoices)', included: true },
-      { text: 'Outlook & Outlook Calendar', included: true },
-      { text: 'Airtable', included: true },
-      { text: 'ATS integrations (Greenhouse, Lever, etc.)', included: true },
-      { text: 'Priority support', included: true },
-      { text: 'Custom integrations on request', included: true },
+      { text: 'Unlimited tool calls', included: true },
+      { text: 'Unlimited scheduled automations', included: true },
+      { text: 'Email support', included: true },
     ],
-    cta: 'Start Free, Upgrade Later',
+    cta: 'Upgrade to Basic',
     ctaHref: '/login',
-    icon: Building2,
+    icon: Users,
     highlight: true,
     badge: 'Most Popular',
+  },
+  {
+    name: 'Pro',
+    price: '$50',
+    period: '/month',
+    description: 'For multi-person businesses',
+    features: [
+      { text: 'Everything in Basic', included: true },
+      { text: 'CRM integrations (Salesforce, HubSpot)', included: true },
+      { text: 'ATS integrations (Greenhouse, Lever)', included: true },
+      { text: 'Accounting (QuickBooks, Xero)', included: true },
+      { text: 'Finance tools (Stripe, etc.)', included: true },
+      { text: 'Priority support', included: true },
+    ],
+    cta: 'Upgrade to Pro',
+    ctaHref: '/login',
+    icon: Building2,
+    highlight: false,
   },
 ];
 
 const comparisonData = {
   free: {
-    name: 'Free',
+    name: 'Free & Basic',
     integrations: [
       // Google stack
       { name: 'Gmail', icon: '📧' },
       { name: 'Google Calendar', icon: '📅' },
       { name: 'Google Sheets', icon: '📊' },
-      { name: 'Google Drive', icon: '📁' },
-      { name: 'Google Contacts', icon: '👥' },
-      { name: 'Google Tasks', icon: '✓' },
       // Scheduling
       { name: 'Calendly', icon: '🗓️' },
       { name: 'Cal.com', icon: '📆' },
-      // Third party (full-featured free)
-      { name: 'Notion', icon: '📝' },
-      { name: 'Trello', icon: '📋' },
-      { name: 'GitHub', icon: '🐙' },
+      // Time tracking
+      { name: 'Time Tracking', icon: '⏱️' },
     ],
   },
   pro: {
-    name: 'Pro',
+    name: 'Pro (Multiplayer)',
     integrations: [
-      { name: 'Stripe', icon: '💳' },
-      { name: 'Outlook', icon: '📬' },
-      { name: 'Airtable', icon: '🗄️' },
+      { name: 'Salesforce', icon: '☁️' },
+      { name: 'HubSpot', icon: '🧡' },
       { name: 'Greenhouse', icon: '🌱' },
       { name: 'Lever', icon: '🔧' },
-      { name: 'Ashby', icon: '📋' },
-      { name: 'Workable', icon: '💼' },
-      { name: 'Zoho Recruit', icon: '🎯' },
+      { name: 'QuickBooks', icon: '📒' },
+      { name: 'Xero', icon: '💙' },
+      { name: 'Stripe', icon: '💳' },
     ],
   },
 };
 
 const faqs = [
   {
-    q: 'Is the free tier really unlimited?',
-    a: "Yes. No hidden limits on tool calls, no trial period that expires. Google Workspace, Notion, Trello, and GitHub are free forever. We only charge when you need business integrations like Stripe or ATS systems.",
+    q: 'What are the limits on the free tier?',
+    a: "Free tier gives you 10 tool calls per week and 3 scheduled automations (cron jobs). Perfect for trying things out. If you use it regularly, Basic at $5/month removes all limits.",
+  },
+  {
+    q: "What's a scheduled automation?",
+    a: "When you like what the AI did, you can tell it to repeat automatically — 'do this every Monday' or 'check this daily'. Free tier allows 3 of these. Basic and Pro are unlimited.",
   },
   {
     q: "What if I'm not sure which tier I need?",
-    a: "Start free. You get 11 integrations including the full Google stack, Notion, Trello, and GitHub. If you later need Stripe or ATS integrations, upgrade then. You won't lose any data.",
+    a: "Start free. You get Gmail, Calendar, Sheets, Calendly, and time tracking. If you hit the weekly limit, upgrade to Basic. If you need CRM, ATS, or accounting integrations, that's Pro.",
   },
   {
-    q: 'Why are some integrations free and others paid?',
-    a: "Simple rule: if the service has a full-featured free tier, it's free on Skillomatic. Google, Notion, Trello, GitHub all have generous free tiers. ATS systems like Greenhouse are paid-only services, so we charge for those.",
+    q: 'Why are some integrations only on Pro?',
+    a: "Pro integrations are 'multiplayer' tools — CRMs, ATS systems, accounting software. These are business tools with multiple users, not solo tools. If you're a one-person business, you probably don't need them.",
   },
   {
     q: 'Can I cancel anytime?',
-    a: "Yes. Cancel Pro anytime and you keep free tier access. All 11 free integrations keep working. No lock-in, no data hostage.",
-  },
-  {
-    q: 'Do you offer team or enterprise pricing?',
-    a: "Yes. For teams of 5+ or enterprise needs, book a call and we'll create a custom plan. Volume discounts available.",
+    a: "Yes. Cancel anytime and drop back to free tier. Your scheduled automations beyond the first 3 will pause, but your data stays. No lock-in.",
   },
 ];
 
@@ -190,22 +200,22 @@ export default function Pricing() {
             Generous Free Tier
           </Badge>
           <h1 className="text-4xl md:text-5xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
-            Free for Google.{' '}
+            Free to Try.{' '}
             <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
-              Pro for Business.
+              $5 to Use.
             </span>
           </h1>
           <p className="text-lg text-[hsl(220_15%_45%)] max-w-2xl mx-auto">
-            Gmail, Calendar, and Sheets are free forever. Only upgrade when you need
-            Stripe, Outlook, or ATS integrations.
+            Start free with Gmail, Calendar, and Sheets. Upgrade to Basic when you use it regularly.
+            Pro adds multiplayer business tools.
           </p>
         </div>
       </section>
 
       {/* Pricing Cards */}
       <section className="py-12 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6">
             {pricingTiers.map((tier) => {
               const Icon = tier.icon;
               return (
@@ -289,16 +299,16 @@ export default function Pricing() {
             What's Included
           </h2>
           <p className="text-center text-[hsl(220_15%_45%)] mb-10">
-            Free tier covers the essentials. Pro unlocks business tools.
+            Free & Basic for solo tools. Pro for multiplayer business tools.
           </p>
 
           <div className="grid md:grid-cols-2 gap-8">
-            {/* Free Tier */}
+            {/* Free & Basic Tier */}
             <div className="bg-white rounded-2xl p-6 border-2 border-emerald-200">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-lg font-black text-emerald-600">Free Forever</span>
+                <span className="text-lg font-black text-emerald-600">Free & Basic</span>
                 <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">
-                  NO CREDIT CARD
+                  SOLO TOOLS
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -321,7 +331,7 @@ export default function Pricing() {
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg font-black text-primary">Pro Additions</span>
                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
-                  $29/MONTH
+                  $50/MONTH
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -388,8 +398,8 @@ export default function Pricing() {
           <div className="card-robot rounded-2xl p-8">
             <div className="space-y-6">
               <div className="flex justify-between items-center pb-4 border-b border-[hsl(220_15%_90%)]">
-                <span className="text-[hsl(220_15%_40%)]">Skillomatic Free</span>
-                <span className="font-black text-emerald-600">$0/mo</span>
+                <span className="text-[hsl(220_15%_40%)]">Skillomatic Basic</span>
+                <span className="font-black text-emerald-600">$5/mo</span>
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-[hsl(220_15%_90%)]">
                 <span className="text-[hsl(220_15%_40%)]">CRM software you'd use once a week</span>
@@ -410,7 +420,7 @@ export default function Pricing() {
             </div>
             <div className="mt-8 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
               <p className="text-center text-emerald-800 font-bold">
-                Skip the SaaS. Just use Claude + Skillomatic Free.
+                Skip the SaaS. ChatGPT + $5/mo = your whole business backend.
               </p>
             </div>
           </div>

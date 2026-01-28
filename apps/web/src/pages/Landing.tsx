@@ -674,7 +674,7 @@ export default function Landing() {
             If AI Can Do It, AI Should
           </Badge>
           <p className="text-lg md:text-xl text-[hsl(220_15%_45%)] mb-4">
-            You didn't start your business to do administration.
+            You didn't start your business to do busywork.
           </p>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[hsl(220_30%_15%)] tracking-tight mb-6">
             Just Tell AI To Do
@@ -717,14 +717,14 @@ export default function Landing() {
             Sound familiar?
           </h2>
           <p className="text-[hsl(220_15%_50%)] text-center mb-10 max-w-xl mx-auto">
-            You're running your business solo. The admin never ends.
+            Your tools don't talk to each other. You're the middleware.
           </p>
           <div className="grid sm:grid-cols-2 gap-5 text-left max-w-3xl mx-auto">
             {[
-              { text: "You're copy-pasting invoices between Gmail and spreadsheets like it's 2005.", emoji: "💸" },
-              { text: "End of day, you're too tired to log the job. It never makes it to the books.", emoji: "😴" },
-              { text: "Before every call, you're digging through email to remember where things left off.", emoji: "🔍" },
-              { text: "Your 'system' is 4 browser tabs and a prayer.", emoji: "🙏" },
+              { text: "You're copy-pasting between apps because nothing connects to anything.", emoji: "📋" },
+              { text: "You have a 'system' that took forever to set up. It's slow and annoying, but switching isn't worth it.", emoji: "🔒" },
+              { text: "Alt-tabbing between doing work and tracking work. The overhead competes with productivity.", emoji: "🔄" },
+              { text: "You use ChatGPT daily, but it can't see your email, calendar, or spreadsheets.", emoji: "🤖" },
             ].map((pain, i) => (
               <div
                 key={i}
@@ -739,10 +739,10 @@ export default function Landing() {
           </div>
           <div className="mt-12 text-center">
             <p className="text-lg text-[hsl(220_15%_40%)] mb-2">
-              You already use ChatGPT or Claude. But it can't see your data.
+              What if ChatGPT could see your data — and actually update it?
             </p>
             <p className="text-xl font-black text-[hsl(220_30%_20%)]">
-              What if it could — and actually update it too?
+              No new system to learn. No migration. Just ask.
             </p>
           </div>
         </div>

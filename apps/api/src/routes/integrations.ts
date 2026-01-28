@@ -33,60 +33,6 @@ integrationsRoutes.use('*', jwtAuth);
 integrationsRoutes.route('/', createGoogleOAuthTokenRoutes());
 
 // ============================================================================
-// Mock ATS - Development only, instant connect without OAuth
-// ============================================================================
-const isDev = process.env.NODE_ENV !== 'production';
-
-// POST /integrations/mock-ats/connect - Instantly connect mock ATS (dev only)
-integrationsRoutes.post('/mock-ats/connect', async (c) => {
-  if (!isDev) {
-    return c.json({ error: { message: 'Mock ATS only available in development' } }, 403);
-  }
-
-  const user = c.get('user');
-
-  // Check if already connected
-  const existing = await db
-    .select()
-    .from(integrations)
-    .where(and(eq(integrations.userId, user.sub), eq(integrations.provider, 'ats')))
-    .limit(1);
-
-  const metadata = {
-    accessLevel: 'read-write',
-    subProvider: 'mock-ats',
-  };
-
-  if (existing.length === 0) {
-    await db.insert(integrations).values({
-      id: randomUUID(),
-      userId: user.sub,
-      organizationId: user.organizationId,
-      provider: 'ats',
-      status: 'connected',
-      metadata: JSON.stringify(metadata),
-      lastSyncAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-  } else {
-    await db
-      .update(integrations)
-      .set({
-        status: 'connected',
-        metadata: JSON.stringify(metadata),
-        lastSyncAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(integrations.id, existing[0].id));
-  }
-
-  log.info('mock_ats_connected', { userId: user.sub });
-
-  return c.json({ data: { message: 'Mock ATS connected successfully' } });
-});
-
-// ============================================================================
 // API Key Connect - For providers using API key authentication (e.g., Clockify)
 // ============================================================================
 

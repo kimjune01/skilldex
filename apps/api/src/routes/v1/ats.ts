@@ -28,7 +28,6 @@ export const v1AtsRoutes = new Hono();
 // All routes require auth (JWT or API key)
 v1AtsRoutes.use('*', combinedAuth);
 
-const MOCK_ATS_URL = process.env.MOCK_ATS_URL || 'http://localhost:3001';
 const USE_ZOHO = process.env.USE_ZOHO_ATS === 'true';
 
 /**
@@ -120,17 +119,6 @@ function classifyAtsError(error: unknown): ErrorCode {
   return 'UNKNOWN_ERROR';
 }
 
-/**
- * Extract a user-friendly error message from an error.
- * Safe to return to clients as it doesn't expose internal details.
- */
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return 'Unknown error occurred';
-}
-
 // Helper to log skill usage (uses error codes instead of raw messages for ephemerality)
 async function logUsage(
   userId: string,
@@ -158,37 +146,9 @@ async function logUsage(
   }
 }
 
-// Helper to proxy requests to mock ATS
-async function proxyToMockAts(path: string, options?: RequestInit) {
-  const url = `${MOCK_ATS_URL}${path}`;
-
-  let response: Response;
-  try {
-    response = await fetch(url, options);
-  } catch (error) {
-    // Network error - mock ATS likely not running
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    if (message.includes('ECONNREFUSED') || message.includes('fetch failed')) {
-      throw new Error(`Mock ATS server not reachable at ${MOCK_ATS_URL}. Is it running? (pnpm dev:ats)`);
-    }
-    throw new Error(`Network error connecting to ATS: ${message}`);
-  }
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    // ATS returned an error response
-    const errorMessage = data?.error?.message || `ATS returned ${response.status}`;
-    throw new Error(errorMessage);
-  }
-
-  return data;
-}
-
 // GET /v1/ats/candidates - Search candidates
 v1AtsRoutes.get('/candidates', async (c) => {
   const query = c.req.query();
-  const params = new URLSearchParams(query);
   const user = c.get('user');
   const startTime = Date.now();
 
@@ -238,15 +198,9 @@ v1AtsRoutes.get('/candidates', async (c) => {
     }
   }
 
-  // Fallback to mock ATS
-  try {
-    const data = await proxyToMockAts(`/api/candidates?${params}`);
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-search', 'success', Date.now() - startTime);
-    return c.json(data);
-  } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-search', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: `Failed to fetch candidates: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  logUsage(user.id, user.apiKeyId, 'ats-candidate-search', 'error', Date.now() - startTime, 'INTEGRATION_NOT_CONNECTED');
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // GET /v1/ats/candidates/:id - Get candidate by ID
@@ -284,14 +238,9 @@ v1AtsRoutes.get('/candidates/:id', async (c) => {
     }
   }
 
-  try {
-    const data = await proxyToMockAts(`/api/candidates/${id}`);
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
-    return c.json(data);
-  } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: `Failed to fetch candidate: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, 'INTEGRATION_NOT_CONNECTED');
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // POST /v1/ats/candidates - Create candidate
@@ -332,18 +281,9 @@ v1AtsRoutes.post('/candidates', async (c) => {
     }
   }
 
-  try {
-    const data = await proxyToMockAts('/api/candidates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
-    return c.json(data, 201);
-  } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: `Failed to create candidate: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, 'INTEGRATION_NOT_CONNECTED');
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // PUT /v1/ats/candidates/:id - Update candidate
@@ -383,18 +323,9 @@ v1AtsRoutes.put('/candidates/:id', async (c) => {
     }
   }
 
-  try {
-    const data = await proxyToMockAts(`/api/candidates/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
-    return c.json(data);
-  } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: `Failed to update candidate: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, 'INTEGRATION_NOT_CONNECTED');
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // DELETE /v1/ats/candidates/:id - Delete candidate
@@ -429,16 +360,9 @@ v1AtsRoutes.delete('/candidates/:id', async (c) => {
     }
   }
 
-  try {
-    const data = await proxyToMockAts(`/api/candidates/${id}`, {
-      method: 'DELETE',
-    });
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'success', Date.now() - startTime);
-    return c.json(data);
-  } catch (error) {
-    logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, classifyAtsError(error));
-    return c.json({ error: { message: `Failed to delete candidate: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  logUsage(user.id, user.apiKeyId, 'ats-candidate-crud', 'error', Date.now() - startTime, 'INTEGRATION_NOT_CONNECTED');
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // GET /v1/ats/jobs - List jobs
@@ -467,12 +391,8 @@ v1AtsRoutes.get('/jobs', async (c) => {
     }
   }
 
-  try {
-    const data = await proxyToMockAts('/api/jobs');
-    return c.json(data);
-  } catch (error) {
-    return c.json({ error: { message: `Failed to fetch jobs: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // GET /v1/ats/jobs/:id - Get job by ID
@@ -506,18 +426,13 @@ v1AtsRoutes.get('/jobs/:id', async (c) => {
     }
   }
 
-  try {
-    const data = await proxyToMockAts(`/api/jobs/${id}`);
-    return c.json(data);
-  } catch (error) {
-    return c.json({ error: { message: `Failed to fetch job: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // GET /v1/ats/applications - List applications
 v1AtsRoutes.get('/applications', async (c) => {
   const query = c.req.query();
-  const params = new URLSearchParams(query);
   const user = c.get('user');
 
   // Demo mode returns mock data
@@ -556,12 +471,8 @@ v1AtsRoutes.get('/applications', async (c) => {
     }
   }
 
-  try {
-    const data = await proxyToMockAts(`/api/applications?${params}`);
-    return c.json(data);
-  } catch (error) {
-    return c.json({ error: { message: `Failed to fetch applications: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // POST /v1/ats/applications/:id/stage - Move application to new stage
@@ -602,25 +513,14 @@ v1AtsRoutes.post('/applications/:id/stage', async (c) => {
     }
   }
 
-  try {
-    const data = await proxyToMockAts(`/api/applications/${id}/stage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    return c.json(data);
-  } catch (error) {
-    return c.json({ error: { message: `Failed to update application stage: ${getErrorMessage(error)}` } }, 502);
-  }
+  // No ATS provider connected
+  return c.json({ error: { message: 'No ATS provider connected. Please connect Greenhouse or Zoho Recruit.' } }, 400);
 });
 
 // ============ Dynamic Tool Proxy ============
 
-const isDev = process.env.NODE_ENV !== 'production';
-
 /**
  * Provider-specific base URLs and auth configuration
- * Note: mock-ats is only available in development mode
  */
 const PROVIDER_CONFIG: Record<string, {
   getBaseUrl: (region?: string) => string;
@@ -650,16 +550,6 @@ const PROVIDER_CONFIG: Record<string, {
     }),
     requiresNango: true,
   },
-  // Only include mock-ats in development
-  ...(isDev ? {
-    'mock-ats': {
-      getBaseUrl: () => process.env.MOCK_ATS_URL || 'http://localhost:3001',
-      getAuthHeader: (token: string) => ({
-        'Authorization': `Bearer ${token}`,
-      }),
-      requiresNango: false,
-    },
-  } : {}),
 };
 
 /**
@@ -735,7 +625,7 @@ v1AtsRoutes.post('/proxy', async (c) => {
   const providerConfig = PROVIDER_CONFIG[provider];
   if (!providerConfig) {
     // This could indicate a client bug or attempt to use unsupported provider
-    log.warn('proxy_unsupported_provider', { userId: user.id, provider, isDev });
+    log.warn('proxy_unsupported_provider', { userId: user.id, provider });
     return c.json({ error: { message: `Unsupported provider: ${provider}` } }, 400);
   }
 
@@ -769,8 +659,7 @@ v1AtsRoutes.post('/proxy', async (c) => {
   }
 
   // Get the user's ATS integration - look for specific provider or any ATS provider
-  // Note: mock-ats is only included in development mode
-  const atsProviders = [provider, 'ats', 'greenhouse', 'zoho-recruit', ...(isDev ? ['mock-ats'] : [])];
+  const atsProviders = [provider, 'ats', 'greenhouse', 'zoho-recruit'];
   const [atsIntegration] = await db
     .select()
     .from(integrations)
@@ -803,52 +692,35 @@ v1AtsRoutes.post('/proxy', async (c) => {
     });
   }
 
-  // Get access token - mock-ats doesn't need Nango
+  // Get access token from Nango
+  if (!int.nangoConnectionId) {
+    log.error('proxy_missing_nango_connection', {
+      integrationId: int.id,
+      provider: int.provider,
+      userId: user.id,
+    });
+    return c.json({ error: { message: 'ATS integration not properly configured' } }, 400);
+  }
+
   let accessToken: string;
   let region: string | undefined;
 
-  if (providerConfig.requiresNango !== false) {
-    // OAuth providers: get token from Nango
-    if (!int.nangoConnectionId) {
-      // This is a configuration error - OAuth provider without Nango connection
-      log.error('proxy_missing_nango_connection', {
-        integrationId: int.id,
-        provider: int.provider,
-        userId: user.id,
-      });
-      return c.json({ error: { message: 'ATS integration not properly configured' } }, 400);
-    }
+  try {
+    const nango = getNangoClient();
+    const providerKey = (metadata.subProvider as string) || provider;
+    const providerConfigKey = PROVIDER_CONFIG_KEYS[providerKey] || providerKey;
 
-    try {
-      const nango = getNangoClient();
-      const providerKey = (metadata.subProvider as string) || provider;
-      const providerConfigKey = PROVIDER_CONFIG_KEYS[providerKey] || providerKey;
-
-      const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
-      accessToken = token.access_token;
-      region = (metadata.zohoRegion as string) || (metadata.region as string);
-    } catch (error) {
-      log.error('proxy_nango_token_failed', {
-        integrationId: int.id,
-        provider: int.provider,
-        userId: user.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return c.json({ error: { message: 'Failed to authenticate with ATS provider' } }, 502);
-    }
-  } else {
-    // Mock ATS or other non-OAuth providers: use mock token
-    // This should only happen in development
-    if (!isDev) {
-      log.unreachable('proxy_non_oauth_in_prod', {
-        provider,
-        integrationId: int.id,
-        userId: user.id,
-      });
-      return c.json({ error: { message: 'Provider not available' } }, 400);
-    }
-    accessToken = 'mock-token';
-    region = undefined;
+    const token = await nango.getToken(providerConfigKey, int.nangoConnectionId);
+    accessToken = token.access_token;
+    region = (metadata.zohoRegion as string) || (metadata.region as string);
+  } catch (error) {
+    log.error('proxy_nango_token_failed', {
+      integrationId: int.id,
+      provider: int.provider,
+      userId: user.id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return c.json({ error: { message: 'Failed to authenticate with ATS provider' } }, 502);
   }
 
   // Build the full URL

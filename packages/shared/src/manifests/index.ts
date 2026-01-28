@@ -11,7 +11,6 @@ export * from './types.js';
 // ATS manifests
 export { greenhouseManifest } from './greenhouse.js';
 export { zohoRecruitManifest } from './zoho-recruit.js';
-export { mockAtsManifest } from './mock-ats.js';
 
 // Calendar manifests
 export { calendlyManifest } from './calendly.js';
@@ -33,7 +32,6 @@ export { clockifyManifest } from './clockify.js';
 
 import { greenhouseManifest } from './greenhouse.js';
 import { zohoRecruitManifest } from './zoho-recruit.js';
-import { mockAtsManifest } from './mock-ats.js';
 import { calendlyManifest } from './calendly.js';
 import { airtableManifest } from './airtable.js';
 import { notionManifest } from './notion.js';
@@ -46,16 +44,12 @@ import { googleTasksManifest } from './google-tasks.js';
 import { clockifyManifest } from './clockify.js';
 import type { ProviderManifest } from './types.js';
 
-const isDev = process.env.NODE_ENV !== 'production';
-
 /**
  * ATS manifests keyed by provider ID
- * Note: mock-ats is only available in development mode
  */
 export const atsManifests: Record<string, ProviderManifest> = {
   greenhouse: greenhouseManifest,
   'zoho-recruit': zohoRecruitManifest,
-  ...(isDev ? { 'mock-ats': mockAtsManifest } : {}),
 };
 
 /**
