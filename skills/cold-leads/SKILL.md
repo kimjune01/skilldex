@@ -11,6 +11,7 @@ capabilities:
 requires:
   email: read-write
   sheets: read-write
+requiresInput: true
 allowed-tools:
   - Bash
   - Read

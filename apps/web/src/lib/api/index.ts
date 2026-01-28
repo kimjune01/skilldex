@@ -47,3 +47,6 @@ export { accountType } from './account-type';
 
 // Complaints (bug reports)
 export { complaints } from './complaints';
+
+// Automations
+export { automations } from './automations';

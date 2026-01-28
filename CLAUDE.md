@@ -32,6 +32,7 @@ docs/
 │   ├── EPHEMERAL_ARCHITECTURE.md   # Privacy/security model
 │   ├── DYNAMIC_TOOLS_ARCHITECTURE.md # MCP tool system
 │   ├── SKILLS_AND_CAPABILITIES.md  # Skill system
+│   ├── SKILL_CREATION.md  # Skill creation via chat + cron scheduling
 │   └── SECURITY.md        # Security considerations
 ├── guides/                # How to do things
 │   ├── BEST_PRACTICES.md  # Guardrails, common mistakes

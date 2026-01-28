@@ -92,7 +92,7 @@ export interface OnboardingStatus {
 
 // ============ LLM Provider Constants ============
 
-export type LLMProvider = 'anthropic' | 'openai' | 'groq';
+export type LLMProvider = 'anthropic' | 'openai' | 'groq' | 'gemini';
 
 /**
  * Default models for each LLM provider.
@@ -102,6 +102,7 @@ export const LLM_DEFAULT_MODELS: Record<LLMProvider, string> = {
   anthropic: 'claude-opus-4-5-20251101',
   openai: 'gpt-5.2',
   groq: 'llama-3.1-8b-instant',
+  gemini: 'gemini-3-flash-preview',
 } as const;
 
 /**
@@ -111,6 +112,7 @@ export const LLM_AVAILABLE_MODELS: Record<LLMProvider, readonly string[]> = {
   anthropic: ['claude-opus-4-5-20251101', 'claude-sonnet-4-5-20241022'],
   openai: ['gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-4.1', 'gpt-4.1-mini'],
   groq: ['llama-3.1-8b-instant', 'llama-3.1-70b-versatile', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],
+  gemini: ['gemini-3-flash-preview', 'gemini-2.0-flash', 'gemini-1.5-pro'],
 } as const;
 
 /**
@@ -297,6 +299,8 @@ export interface SkillPublic {
   accessInfo?: SkillAccessInfo;
   /** Whether automation (cron/event triggers) is enabled for this skill */
   automationEnabled?: boolean;
+  /** Whether the skill requires user input at runtime (cannot be automated) */
+  requiresInput?: boolean;
 }
 
 export type SkillCategory = 'sourcing' | 'ats' | 'communication' | 'scheduling' | 'productivity' | 'system';
@@ -317,7 +321,12 @@ export interface SkillMetadata {
   configuration?: Record<string, unknown>;
 }
 
-/** Request body for creating a new skill - accepts raw markdown with YAML frontmatter */
+/**
+ * Request body for creating a new skill - accepts raw markdown with YAML frontmatter
+ *
+ * SYNC: When updating this interface, see docs/architecture/SKILL_CREATION.md
+ * for the full list of files that must be updated together.
+ */
 export interface SkillCreateRequest {
   /** Raw markdown content with YAML frontmatter containing name, description, etc. */
   content: string;
@@ -327,6 +336,8 @@ export interface SkillCreateRequest {
   visibility?: SkillVisibility;
   /** If true, update existing skill with same slug instead of failing */
   force?: boolean;
+  /** Optional cron expression for scheduling (e.g., "0 9 * * 1" for Mondays at 9am). Defaults to null. */
+  cron?: string;
 }
 
 /** Request body for updating a skill */
@@ -924,4 +935,94 @@ export interface PayIntentionStats {
   pending: number;
   byTriggerType: Record<PayIntentionTrigger, number>;
   recentIntentions: PayIntentionWithUser[];
+}
+
+// ============================================================================
+// AUTOMATIONS
+// ============================================================================
+
+/**
+ * Automation run status.
+ */
+export type AutomationStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+/**
+ * What triggered the automation run.
+ */
+export type AutomationTriggerType = 'schedule' | 'manual';
+
+/**
+ * Automation as returned by the API.
+ */
+export interface AutomationPublic {
+  id: string;
+  name: string;
+  skillSlug: string;
+  skillParams: Record<string, unknown> | null;
+  cronExpression: string;
+  cronTimezone: string;
+  cronDescription: string;
+  outputEmail: string;
+  isEnabled: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  consecutiveFailures: number;
+  createdAt: string;
+  updatedAt: string;
+  /** Related skill info */
+  skill?: {
+    name: string;
+    description: string;
+    category: SkillCategory;
+  };
+}
+
+/**
+ * Automation run history entry as returned by the API.
+ */
+export interface AutomationRunPublic {
+  id: string;
+  status: AutomationStatus;
+  triggeredBy: AutomationTriggerType;
+  startedAt: string | null;
+  completedAt: string | null;
+  durationMs: number | null;
+  outputSummary: string | null;
+  errorCode: string | null;
+  retryCount: number;
+  createdAt: string;
+}
+
+/**
+ * Request body for creating an automation.
+ */
+export interface CreateAutomationRequest {
+  name: string;
+  skillSlug: string;
+  cronExpression: string;
+  outputEmail: string;
+  skillParams?: Record<string, unknown>;
+  cronTimezone?: string;
+}
+
+/**
+ * Request body for updating an automation.
+ */
+export interface UpdateAutomationRequest {
+  name?: string;
+  cronExpression?: string;
+  cronTimezone?: string;
+  outputEmail?: string;
+  skillParams?: Record<string, unknown>;
+  isEnabled?: boolean;
+}
+
+/**
+ * Response for listing automations.
+ */
+export interface ListAutomationsResponse {
+  automations: AutomationPublic[];
+  limit: number;
+  count: number;
+  remaining: number;
 }

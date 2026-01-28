@@ -1,3 +1,7 @@
+<!--
+SYNC: When updating create_skill params, see docs/architecture/SKILL_CREATION.md
+for the full list of files that must be updated together.
+-->
 ---
 name: Skill Builder
 description: Create a new custom skill. Describe what you want and I'll help build it.
@@ -8,6 +12,7 @@ capabilities:
   - Identify missing required fields
   - Generate skill markdown with proper frontmatter
   - Save skills to the user's account
+  - Schedule skills to run automatically
 allowed-tools:
   - Bash
   - Read
@@ -31,6 +36,7 @@ A complete skill needs:
 - **capabilities**: List of specific things the skill can do
 - **requires**: Integration requirements (ats, email, calendar + access level)
 - **visibility**: private (default) or organization
+- **cron**: Schedule expression (e.g., "0 9 * * 1" for Mondays at 9am, "0 9 * * *" for daily)
 
 ## Elicitation Approach
 
@@ -114,6 +120,18 @@ If a skill with the same slug already exists and user wants to update it:
 {"action": "create_skill", "content": "<full skill markdown>", "force": true}
 ```
 
+If user wants to schedule the skill to run automatically:
+
+```action
+{"action": "create_skill", "content": "<full skill markdown>", "cron": "0 9 * * 1"}
+```
+
+Common cron patterns:
+- `0 9 * * *` - Daily at 9am
+- `0 9 * * 1` - Every Monday at 9am
+- `0 9 * * 1-5` - Weekdays at 9am
+- `0 0 1 * *` - First of each month at midnight
+
 The API extracts all fields from the YAML frontmatter automatically.
 
 ## After Saving
@@ -123,12 +141,26 @@ Tell the user:
 2. Find it on the Skills page under "My Skills"
 3. Use it by typing the skill name in chat
 4. Can request org-wide visibility from Skills page if needed
+5. If scheduled, results will be emailed automatically
 
 ## Error Handling
 
 - **401**: Check Skillomatic connection
 - **400**: Show validation error, help fix it
 - **409**: Slug exists - ask user if they want to overwrite with `force: true`
+
+## Scheduling Skills
+
+After defining the skill, ask if they want it to run automatically:
+
+"Would you like this skill to run on a schedule? For example:
+- Daily at 9am
+- Every Monday morning
+- First of each month
+
+If yes, I'll set up the schedule and email you the results."
+
+If they want scheduling, include the `cron` parameter when saving. Results are automatically emailed to their account email.
 
 ## Tips for Good Skills
 

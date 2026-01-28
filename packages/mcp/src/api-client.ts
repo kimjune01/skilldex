@@ -149,13 +149,18 @@ export class SkillomaticClient {
 
   /**
    * Create or update a skill.
+   *
+   * SYNC: When updating params, see docs/architecture/SKILL_CREATION.md
+   * for the full list of files that must be updated together.
+   *
    * @param content - Full skill markdown with YAML frontmatter
    * @param force - If true, update existing skill with same slug instead of creating new
+   * @param cron - Optional cron expression to schedule the skill (e.g., "0 9 * * 1" for Mondays at 9am)
    */
-  async createSkill(content: string, force?: boolean): Promise<SkillPublic> {
+  async createSkill(content: string, force?: boolean, cron?: string): Promise<SkillPublic> {
     return this.request<SkillPublic>('/skills', {
       method: 'POST',
-      body: JSON.stringify({ content, force: force ?? false }),
+      body: JSON.stringify({ content, force: force ?? false, cron }),
     });
   }
 

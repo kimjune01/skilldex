@@ -109,8 +109,8 @@ export async function createSetupCheckout(options: CreateCheckoutOptions): Promi
     mode: 'setup',
     customer: customer.id,
     payment_method_types: ['card'],
-    success_url: `${webUrl}/integrations?pay_intention=success&id=${options.payIntentionId}`,
-    cancel_url: `${webUrl}/integrations?pay_intention=cancelled`,
+    success_url: `${webUrl}/connections?pay_intention=success&id=${options.payIntentionId}`,
+    cancel_url: `${webUrl}/connections?pay_intention=cancelled`,
     metadata: {
       payIntentionId: options.payIntentionId,
       userId: options.userId,

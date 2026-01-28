@@ -372,6 +372,80 @@ const PROVIDER_CONFIGS: Record<
       }
     },
   },
+
+  // gemini is an alias for google - they use the same API
+  // This is needed because the shared LLMProvider type includes 'gemini'
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
+    headers: (apiKey) => ({
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    }),
+    buildRequest: (messages, _model, _userContext) => {
+      const systemMessage = messages.find((m) => m.role === 'system');
+      const chatMessages = messages.filter((m) => m.role !== 'system');
+      const contents = chatMessages.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+      return {
+        contents,
+        ...(systemMessage && {
+          systemInstruction: { parts: [{ text: systemMessage.content }] },
+        }),
+        generationConfig: { maxOutputTokens: 4096 },
+      };
+    },
+    parseStream: async (reader, callbacks) => {
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullResponse = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+            const data = trimmed.slice(6);
+            if (data === '[DONE]') {
+              callbacks.onComplete(fullResponse);
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                fullResponse += text;
+                callbacks.onToken(text);
+              }
+              if (parsed.candidates?.[0]?.finishReason) {
+                callbacks.onComplete(fullResponse);
+                return;
+              }
+              if (parsed.error) {
+                throw new Error(parsed.error.message || 'Unknown Gemini error');
+              }
+            } catch (parseError) {
+              if (parseError instanceof SyntaxError) continue;
+              throw parseError;
+            }
+          }
+        }
+        callbacks.onComplete(fullResponse);
+      } catch (error) {
+        callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+      }
+    },
+  },
 };
 
 /**

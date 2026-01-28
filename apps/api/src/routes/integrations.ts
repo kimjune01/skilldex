@@ -483,13 +483,13 @@ integrationsRoutes.get('/callback', async (c) => {
   if (error) {
     // OAuth failed - redirect to integrations page with error
     log.warn('oauth_callback_error', { error, errorDescription, connectionId });
-    const errorUrl = new URL(`${webUrl}/integrations`);
+    const errorUrl = new URL(`${webUrl}/connections`);
     errorUrl.searchParams.set('error', errorDescription || error);
     return c.redirect(errorUrl.toString());
   }
 
   if (!connectionId) {
-    const errorUrl = new URL(`${webUrl}/integrations`);
+    const errorUrl = new URL(`${webUrl}/connections`);
     errorUrl.searchParams.set('error', 'Missing connection ID');
     return c.redirect(errorUrl.toString());
   }
@@ -562,7 +562,7 @@ integrationsRoutes.get('/callback', async (c) => {
   }
 
   // Redirect to integrations page with success
-  const successUrl = new URL(`${webUrl}/integrations`);
+  const successUrl = new URL(`${webUrl}/connections`);
   successUrl.searchParams.set('success', 'Integration connected successfully');
   return c.redirect(successUrl.toString());
 });

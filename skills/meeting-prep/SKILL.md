@@ -12,6 +12,7 @@ requires:
   calendar: read-only
   email: read-only
   sheets: read-only
+requiresInput: true
 allowed-tools:
   - Bash
   - Read

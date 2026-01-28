@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
-import { skills, integrations, payIntentions, users } from '@skillomatic/db/schema';
+import { skills, integrations, payIntentions, users, automations } from '@skillomatic/db/schema';
 import { eq, or, and, isNotNull } from 'drizzle-orm';
 import { combinedAuth } from '../middleware/combinedAuth.js';
 import type { SkillPublic, SkillAccessInfo, SkillCreateRequest, SkillVisibilityRequest } from '@skillomatic/shared';
@@ -23,6 +23,7 @@ import {
   ensureUniqueSlug,
   extractInstructions,
 } from '../lib/skill-validator.js';
+import { validateCronExpression, calculateNextRun } from '../lib/cron-utils.js';
 import { getUrlsFromRequest } from '../lib/google-oauth.js';
 import { randomUUID } from 'crypto';
 
@@ -153,6 +154,7 @@ function toSkillPublic(
     hasPendingVisibilityRequest: !!skill.pendingVisibility,
     // Automation settings
     automationEnabled: skill.automationEnabled || false,
+    requiresInput: skill.requiresInput || false,
   };
 }
 
@@ -497,7 +499,12 @@ skillsRoutes.get('/:slug/rendered', async (c) => {
   });
 });
 
-// POST /skills - Create a new user-generated skill from markdown content
+/**
+ * POST /skills - Create a new user-generated skill from markdown content
+ *
+ * SYNC: When updating request params, see docs/architecture/SKILL_CREATION.md
+ * for the full list of files that must be updated together.
+ */
 skillsRoutes.post('/', async (c) => {
   const user = c.get('user');
   const body = await c.req.json<SkillCreateRequest>();
@@ -517,6 +524,16 @@ skillsRoutes.post('/', async (c) => {
   }
 
   const parsed = validation.parsed!;
+
+  // Validate cron expression if provided
+  let cronExpression: string | null = null;
+  if (body.cron) {
+    const cronValidation = validateCronExpression(body.cron);
+    if (!cronValidation.valid) {
+      return c.json({ error: { message: `Invalid cron expression: ${cronValidation.error}` } }, 400);
+    }
+    cronExpression = body.cron;
+  }
 
   // Generate slug from the parsed name
   const baseSlug = slugify(parsed.name);
@@ -543,6 +560,7 @@ skillsRoutes.post('/', async (c) => {
             capabilities: parsed.capabilities ? JSON.stringify(parsed.capabilities) : null,
             instructions: extractInstructions(body.content),
             requiredIntegrations: parsed.requires ? JSON.stringify(parsed.requires) : null,
+            requiresInput: parsed.requiresInput || false,
             updatedAt: now,
           })
           .where(eq(skills.id, existing.id))
@@ -596,13 +614,40 @@ skillsRoutes.post('/', async (c) => {
         capabilities: parsed.capabilities ? JSON.stringify(parsed.capabilities) : null,
         instructions: extractInstructions(body.content),
         requiredIntegrations: parsed.requires ? JSON.stringify(parsed.requires) : null,
+        requiresInput: parsed.requiresInput || false,
         isEnabled: true,
+        automationEnabled: cronExpression ? true : false,
         createdAt: now,
         updatedAt: now,
       })
       .returning();
 
-    console.log('[Skills] Skill created:', { slug, skillId: newSkill.id, userId: user.sub, name: parsed.name, visibility });
+    // If cron expression provided, create an automation for this skill
+    if (cronExpression) {
+      const automationId = randomUUID();
+      const nextRunAt = calculateNextRun(cronExpression, 'UTC');
+
+      await db.insert(automations).values({
+        id: automationId,
+        userId: user.sub,
+        organizationId: user.organizationId || null,
+        name: `${parsed.name} - Scheduled`,
+        skillSlug: slug,
+        skillParams: null,
+        cronExpression,
+        cronTimezone: 'UTC',
+        outputEmail: user.email,
+        isEnabled: true,
+        nextRunAt,
+        consecutiveFailures: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      console.log('[Skills] Automation created for skill:', { slug, automationId, cron: cronExpression });
+    }
+
+    console.log('[Skills] Skill created:', { slug, skillId: newSkill.id, userId: user.sub, name: parsed.name, visibility, hasCron: !!cronExpression });
     return c.json({ data: toSkillPublic(newSkill, { userId: user.sub }) }, 201);
   } catch (error) {
     console.error('[Skills] Error creating skill:', { slug, userId: user.sub, name: parsed.name, error });
@@ -661,6 +706,7 @@ skillsRoutes.put('/:slug', async (c) => {
     updates.capabilities = parsed.capabilities ? JSON.stringify(parsed.capabilities) : null;
     updates.instructions = extractInstructions(body.content);
     updates.requiredIntegrations = parsed.requires ? JSON.stringify(parsed.requires) : null;
+    updates.requiresInput = parsed.requiresInput || false;
     if (parsed.category) updates.category = parsed.category;
   } else {
     // Individual field updates (when not using content)

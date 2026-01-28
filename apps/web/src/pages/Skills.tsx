@@ -33,6 +33,7 @@ import {
   XCircle,
   X,
   Lightbulb,
+  Timer,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -232,7 +233,7 @@ export default function Skills() {
 
   const getVisibilityBadge = (skill: SkillPublic) => {
     if (skill.isGlobal) {
-      return <Badge variant="outline" className="text-blue-600 border-blue-300">System</Badge>;
+      return <Badge variant="outline" className="text-blue-600 border-blue-300">Everyone</Badge>;
     }
     if (skill.visibility === 'organization') {
       return <Badge variant="outline" className="text-green-600 border-green-300">Org-wide</Badge>;
@@ -253,29 +254,34 @@ export default function Skills() {
     <div className="space-y-6">
       {/* Educational banner - explains Skills = Playbooks */}
       {showEducationBanner && (
-        <Alert className="bg-primary/5 border-primary/20">
-          <Lightbulb className="h-4 w-4 text-primary" />
-          <AlertDescription className="flex items-start justify-between gap-4">
-            <span>
-              <strong>Skills are pre-built automation playbooks.</strong> Each one automates a complete workflow—like
-              chasing overdue invoices or preparing for meetings. Browse below to see what's available.
-            </span>
-            <button
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <Lightbulb className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <strong>Skills are automation playbooks.</strong>
+              <ul className="list-disc list-inside text-sm text-muted-foreground ml-1">
+                <li>Each skill automates a complete workflow—like chasing invoices or preparing for meetings</li>
+                <li>Create your own by describing what you need in chat</li>
+                <li>Schedule any skill to run automatically</li>
+              </ul>
+            </div>
+          </div>
+          <div className="flex justify-start">
+            <Button
+              size="sm"
               onClick={dismissEducationBanner}
-              className="shrink-0 p-1 rounded hover:bg-primary/10 transition-colors"
-              aria-label="Dismiss"
             >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </AlertDescription>
-        </Alert>
+              Got it
+            </Button>
+          </div>
+        </div>
       )}
 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Skills</h1>
           <p className="text-muted-foreground mt-1">
-            {viewFilter === 'all' && 'Browse and download automation playbooks for your workflow'}
+            {viewFilter === 'all' && 'Browse automation playbooks for whatever you wanna get done'}
             {viewFilter === 'my' && 'Playbooks you have created'}
             {viewFilter === 'pending' && 'Playbooks awaiting visibility approval'}
           </p>
@@ -374,10 +380,10 @@ export default function Skills() {
                   Category
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Visibility
+                  For who?
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Integrations
+                  Connections
                 </th>
                 {isAdmin && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
@@ -426,6 +432,12 @@ export default function Skills() {
                             {isOwner && (
                               <Badge variant="secondary" className="ml-2 text-xs">
                                 Owner
+                              </Badge>
+                            )}
+                            {skill.automationEnabled && (
+                              <Badge variant="outline" className="ml-2 text-xs text-primary border-primary/30" title="Can be scheduled">
+                                <Timer className="h-3 w-3 mr-1" />
+                                Automatable
                               </Badge>
                             )}
                             {isLimited && (
@@ -546,12 +558,21 @@ export default function Skills() {
             </tbody>
           </table>
           {filteredSkills.length === 0 && (
-            <div className="text-center text-muted-foreground py-8">
-              {viewFilter === 'my'
-                ? "You haven't created any skills yet. Use the Chat to create new skills!"
-                : viewFilter === 'pending'
-                ? 'No pending visibility requests'
-                : 'No skills found for this category'}
+            <div className="text-center py-8 space-y-3">
+              <p className="text-muted-foreground">
+                {viewFilter === 'my'
+                  ? "You haven't created any skills yet."
+                  : viewFilter === 'pending'
+                  ? 'No pending visibility requests'
+                  : categoryFilter === 'available'
+                  ? 'No skills available yet. Add connections to unlock skills.'
+                  : 'No skills found for this category'}
+              </p>
+              {viewFilter === 'my' && (
+                <Button onClick={() => navigate('/chat/web')}>
+                  Create a skill in Chat
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

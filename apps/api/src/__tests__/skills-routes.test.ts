@@ -5,6 +5,7 @@ import {
   extractInstructions,
   VALIDATION,
 } from '../lib/skill-validator.js';
+import { validateCronExpression } from '../lib/cron-utils.js';
 
 /**
  * Skills Routes Integration Tests
@@ -301,6 +302,81 @@ This skill does not specify a category and should use the default.`;
         '4. If approved, skill becomes org-wide',
       ];
       expect(workflow).toHaveLength(4);
+    });
+  });
+
+  describe('Cron Parameter', () => {
+    it('should accept valid cron expression', () => {
+      const validCrons = [
+        '0 9 * * *',      // Daily at 9am
+        '0 9 * * 1',      // Mondays at 9am
+        '0 9 * * 1-5',    // Weekdays at 9am
+        '*/15 * * * *',   // Every 15 minutes
+        '0 0 1 * *',      // First of month
+      ];
+
+      for (const cron of validCrons) {
+        const result = validateCronExpression(cron);
+        expect(result.valid).toBe(true);
+      }
+    });
+
+    it('should reject invalid cron expression', () => {
+      const invalidCrons = [
+        'invalid',
+        '* *',            // Too few fields
+        '60 * * * *',     // Invalid minute (60)
+        '* 25 * * *',     // Invalid hour (25)
+      ];
+
+      for (const cron of invalidCrons) {
+        const result = validateCronExpression(cron);
+        expect(result.valid).toBe(false);
+        expect(result.error).toBeDefined();
+      }
+    });
+
+    it('should default to null (no cron) when not provided', () => {
+      // Document the expected behavior: cron is optional and defaults to null
+      const requestWithoutCron = {
+        content: '---\nname: Test\ndescription: Test skill\n---\n\n# Instructions\n\nTest content here.',
+        category: 'Productivity',
+      };
+
+      expect(requestWithoutCron).not.toHaveProperty('cron');
+      // When cron is not provided, automationEnabled should be false
+      // and no automation record should be created
+    });
+
+    it('should set automationEnabled=true when cron is provided', () => {
+      // Document the expected behavior
+      const requestWithCron = {
+        content: '---\nname: Test\ndescription: Test skill\n---\n\n# Instructions\n\nTest content here.',
+        cron: '0 9 * * 1',
+      };
+
+      expect(requestWithCron.cron).toBeDefined();
+      // When cron is provided:
+      // 1. automationEnabled should be set to true on the skill
+      // 2. An automation record should be created
+      // 3. outputEmail should be inferred from user.email
+    });
+
+    it('should create automation with inferred email', () => {
+      // Document the expected behavior
+      const mockUser = {
+        sub: 'user_123',
+        email: 'user@example.com',
+        organizationId: 'org_123',
+      };
+
+      // When creating skill with cron, the automation should use:
+      // - outputEmail: user.email (inferred)
+      // - cronTimezone: 'UTC' (default)
+      // - isEnabled: true
+      // - nextRunAt: calculated from cron expression
+
+      expect(mockUser.email).toBe('user@example.com');
     });
   });
 

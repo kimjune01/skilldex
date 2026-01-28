@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { skills } from '../lib/api';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, AlertCircle, RefreshCw, Copy, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, AlertCircle, RefreshCw, Copy, CheckCircle2, Download } from 'lucide-react';
 
 export default function SkillRaw() {
   const { slug } = useParams<{ slug: string }>();
@@ -11,6 +11,7 @@ export default function SkillRaw() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -41,6 +42,25 @@ export default function SkillRaw() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const handleDownload = useCallback(() => {
+    if (!content || !slug) return;
+    let url: string | null = null;
+    try {
+      const blob = new Blob([content], { type: 'text/markdown' });
+      url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${slug}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+    } finally {
+      if (url) URL.revokeObjectURL(url);
+    }
+  }, [content, slug]);
 
   if (isLoading) {
     return (
@@ -73,19 +93,34 @@ export default function SkillRaw() {
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to {slug}
         </Link>
-        <Button onClick={handleCopy} variant="outline" size="sm">
-          {copied ? (
-            <>
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4 mr-2" />
-              Copy
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleCopy} variant="outline" size="sm">
+            {copied ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </>
+            )}
+          </Button>
+          <Button onClick={handleDownload} variant="outline" size="sm">
+            {downloadSuccess ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Downloaded!
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="bg-muted rounded-lg border">

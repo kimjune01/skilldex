@@ -1,6 +1,6 @@
 /**
  * Multi-provider LLM client
- * Supports Groq, Anthropic, and OpenAI with runtime configuration
+ * Supports Groq, Anthropic, OpenAI, and Gemini with runtime configuration
  */
 
 import { db } from '@skillomatic/db';
@@ -31,6 +31,7 @@ const ENDPOINTS: Record<LLMProvider, string> = {
   groq: 'https://api.groq.com/openai/v1/chat/completions',
   openai: 'https://api.openai.com/v1/chat/completions',
   anthropic: 'https://api.anthropic.com/v1/messages',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/models',
 };
 
 /**
@@ -41,17 +42,20 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
   const settings = await db.select().from(systemSettings);
   const settingsMap = new Map(settings.map(s => [s.key, s.value]));
 
-  const providers = {
+  const providers: Record<LLMProvider, string | undefined> = {
     groq: settingsMap.get('llm.groq_api_key'),
     anthropic: settingsMap.get('llm.anthropic_api_key'),
     openai: settingsMap.get('llm.openai_api_key'),
+    gemini: settingsMap.get('llm.gemini_api_key'),
   };
 
   // If explicit provider requested
   if (options.provider) {
-    const apiKey = providers[options.provider];
+    // Check env var first for the requested provider
+    const envKey = `${options.provider.toUpperCase()}_API_KEY`;
+    const apiKey = providers[options.provider] || process.env[envKey];
     if (!apiKey) {
-      throw new Error(`Provider ${options.provider} is not configured. Please add an API key in Settings.`);
+      throw new Error(`Provider ${options.provider} is not configured. Please add an API key in Settings or as ${envKey} env var.`);
     }
     return {
       apiKey,
@@ -73,10 +77,11 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
   }
 
   // Fall back to env vars, prioritized by model capability (most powerful first)
-  // Priority: Anthropic (Claude) > OpenAI (GPT-4) > Groq (Llama)
-  const envFallbacks: Array<{ provider: 'anthropic' | 'openai' | 'groq'; envKey: string }> = [
+  // Priority: Anthropic (Claude) > OpenAI (GPT-4) > Gemini > Groq (Llama)
+  const envFallbacks: Array<{ provider: LLMProvider; envKey: string }> = [
     { provider: 'anthropic', envKey: 'ANTHROPIC_API_KEY' },
     { provider: 'openai', envKey: 'OPENAI_API_KEY' },
+    { provider: 'gemini', envKey: 'GEMINI_API_KEY' },
     { provider: 'groq', envKey: 'GROQ_API_KEY' },
   ];
 
@@ -92,7 +97,7 @@ async function getProviderConfig(options: LLMOptions = {}): Promise<ProviderConf
   }
 
   // Try any configured provider from settings (prioritized by capability)
-  const providerPriority: Array<'anthropic' | 'openai' | 'groq'> = ['anthropic', 'openai', 'groq'];
+  const providerPriority: LLMProvider[] = ['anthropic', 'openai', 'gemini', 'groq'];
   for (const provider of providerPriority) {
     const apiKey = providers[provider];
     if (apiKey) {
@@ -118,6 +123,8 @@ export async function* streamChat(
 
   if (config.provider === 'anthropic') {
     yield* streamAnthropic(messages, config, options);
+  } else if (config.provider === 'gemini') {
+    yield* streamGemini(messages, config, options);
   } else {
     // OpenAI-compatible (Groq, OpenAI)
     yield* streamOpenAICompatible(messages, config, options);
@@ -135,6 +142,8 @@ export async function chat(
 
   if (config.provider === 'anthropic') {
     return chatAnthropic(messages, config, options);
+  } else if (config.provider === 'gemini') {
+    return chatGemini(messages, config, options);
   } else {
     return chatOpenAICompatible(messages, config, options);
   }
@@ -348,4 +357,118 @@ async function chatAnthropic(
 
   const json = await response.json();
   return json.content?.[0]?.text || '';
+}
+
+// ============ Gemini Provider ============
+
+/**
+ * Stream chat completions from Gemini
+ * Uses Server-Sent Events format with ?alt=sse
+ */
+async function* streamGemini(
+  messages: LLMChatMessage[],
+  config: ProviderConfig,
+  options: LLMOptions
+): AsyncGenerator<string, void, unknown> {
+  const systemMessage = messages.find(m => m.role === 'system')?.content || '';
+  const nonSystemMessages = messages.filter(m => m.role !== 'system');
+
+  // Convert to Gemini format (user/model roles, parts array)
+  const contents = nonSystemMessages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const url = `${ENDPOINTS.gemini}/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKey}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents,
+      systemInstruction: systemMessage ? { parts: [{ text: systemMessage }] } : undefined,
+      generationConfig: {
+        temperature: options.temperature ?? 0.7,
+        maxOutputTokens: options.maxTokens ?? 2048,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Gemini API error: ${response.status} - ${error}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('No response body');
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+
+        try {
+          const json = JSON.parse(trimmed.slice(6));
+          const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) yield text;
+        } catch {
+          // Skip malformed JSON
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * Non-streaming chat completion from Gemini
+ */
+async function chatGemini(
+  messages: LLMChatMessage[],
+  config: ProviderConfig,
+  options: LLMOptions
+): Promise<string> {
+  const systemMessage = messages.find(m => m.role === 'system')?.content || '';
+  const nonSystemMessages = messages.filter(m => m.role !== 'system');
+
+  // Convert to Gemini format
+  const contents = nonSystemMessages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const url = `${ENDPOINTS.gemini}/${config.model}:generateContent?key=${config.apiKey}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents,
+      systemInstruction: systemMessage ? { parts: [{ text: systemMessage }] } : undefined,
+      generationConfig: {
+        temperature: options.temperature ?? 0.7,
+        maxOutputTokens: options.maxTokens ?? 2048,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Gemini API error: ${response.status} - ${error}`);
+  }
+
+  const json = await response.json();
+  return json.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }

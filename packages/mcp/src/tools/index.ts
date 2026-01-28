@@ -98,21 +98,29 @@ export async function registerTools(
   );
   registeredTools.push('get_skill');
 
+  /**
+   * create_skill tool - Create or update a skill
+   *
+   * SYNC: When updating params, see docs/architecture/SKILL_CREATION.md
+   * for the full list of files that must be updated together.
+   */
   server.tool(
     'create_skill',
-    'Create or update a skill. Use after designing a skill with the user. Params: content (full skill markdown with YAML frontmatter), force (optional, set true to overwrite existing skill with same slug).',
+    'Create or update a skill. Use after designing a skill with the user. Params: content (full skill markdown with YAML frontmatter), force (optional, set true to overwrite existing skill with same slug), cron (optional, schedule expression like "0 9 * * 1" for Mondays at 9am).',
     {
       content: z.string().describe('Full skill markdown with YAML frontmatter'),
       force: z.boolean().optional().describe('If true, overwrite existing skill with same slug'),
+      cron: z.string().optional().describe('Cron expression to schedule the skill (e.g., "0 9 * * 1" for Mondays at 9am, "0 9 * * *" for daily at 9am)'),
     },
     async (args) => {
       try {
-        const skill = await client.createSkill(args.content, args.force);
+        const skill = await client.createSkill(args.content, args.force, args.cron);
+        const cronMsg = args.cron ? `\nScheduled: ${args.cron}` : '';
         return {
           content: [
             {
               type: 'text' as const,
-              text: `Skill "${skill.name}" created successfully.\nSlug: ${skill.slug}\nView at: /skills/${skill.slug}`,
+              text: `Skill "${skill.name}" created successfully.\nSlug: ${skill.slug}${cronMsg}\nView at: /skills/${skill.slug}`,
             },
           ],
         };

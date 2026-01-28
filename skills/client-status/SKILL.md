@@ -12,6 +12,7 @@ requires:
   email: read-only
   stripe: read-only
   sheets: read-write
+requiresInput: true
 allowed-tools:
   - Bash
   - Read

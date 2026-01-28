@@ -16,6 +16,7 @@ function parseSkillFrontmatter(slug: string): {
   intent?: string;
   capabilities?: string[];
   requires?: Record<string, string>;
+  requiresInput?: boolean;
   instructions?: string;
   category?: string;
 } {
@@ -38,6 +39,7 @@ function parseSkillFrontmatter(slug: string): {
   let intent: string | undefined;
   let capabilities: string[] = [];
   let requires: Record<string, string> | undefined;
+  let requiresInput: boolean | undefined;
   let category: string | undefined;
 
   // Parse name
@@ -87,7 +89,13 @@ function parseSkillFrontmatter(slug: string): {
     }
   }
 
-  return { name, description, intent, capabilities, requires, instructions, category };
+  // Parse requiresInput (boolean)
+  const requiresInputMatch = frontmatter.match(/^requiresInput:\s*(.+)$/m);
+  if (requiresInputMatch) {
+    requiresInput = requiresInputMatch[1].trim().toLowerCase() === 'true';
+  }
+
+  return { name, description, intent, capabilities, requires, requiresInput, instructions, category };
 }
 
 // Auto-discover all skills from the skills/ directory
@@ -285,6 +293,7 @@ async function seed() {
       intent: frontmatter.intent || null,
       capabilities: frontmatter.capabilities?.length ? JSON.stringify(frontmatter.capabilities) : null,
       instructions: frontmatter.instructions || null,
+      requiresInput: frontmatter.requiresInput || false,
       isEnabled: true,
       isGlobal: true,
       organizationId: null,
@@ -298,6 +307,7 @@ async function seed() {
         capabilities: frontmatter.capabilities?.length ? JSON.stringify(frontmatter.capabilities) : null,
         instructions: frontmatter.instructions || null,
         requiredIntegrations,
+        requiresInput: frontmatter.requiresInput || false,
       },
     });
 

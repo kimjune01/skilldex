@@ -31,6 +31,7 @@ export interface ValidationResult {
     intent?: string;
     capabilities?: string[];
     requires?: Record<string, string>;
+    requiresInput?: boolean;
   };
 }
 
@@ -41,6 +42,7 @@ interface SkillFrontmatter {
   intent?: unknown;
   capabilities?: unknown;
   requires?: unknown;
+  requiresInput?: unknown;
 }
 
 /**
@@ -182,6 +184,9 @@ export function validateSkillContent(content: string): ValidationResult {
     }
   }
 
+  // Parse requiresInput (boolean - skills that need user input cannot be automated)
+  const requiresInput = frontmatter.requiresInput === true;
+
   return {
     valid: true,
     parsed: {
@@ -191,6 +196,7 @@ export function validateSkillContent(content: string): ValidationResult {
       intent,
       capabilities,
       requires,
+      requiresInput: requiresInput || undefined,
     },
   };
 }

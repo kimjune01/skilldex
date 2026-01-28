@@ -211,8 +211,8 @@ describe('Stripe Checkout Flow', () => {
     const webUrl = 'http://localhost:5173';
     const payIntentionId = 'pi_123';
 
-    const successUrl = `${webUrl}/integrations?pay_intention=success&id=${payIntentionId}`;
-    const cancelUrl = `${webUrl}/integrations?pay_intention=cancelled`;
+    const successUrl = `${webUrl}/connections?pay_intention=success&id=${payIntentionId}`;
+    const cancelUrl = `${webUrl}/connections?pay_intention=cancelled`;
 
     expect(successUrl).toContain('pay_intention=success');
     expect(successUrl).toContain(`id=${payIntentionId}`);

@@ -62,6 +62,7 @@ function parseSkillFrontmatter(slug: string): {
   intent?: string;
   capabilities?: string[];
   requires?: Record<string, string>;
+  requiresInput?: boolean;
   instructions?: string;
 } {
   const skillPath = join(skillsDir, slug, 'SKILL.md');
@@ -83,6 +84,7 @@ function parseSkillFrontmatter(slug: string): {
   let intent: string | undefined;
   let capabilities: string[] = [];
   let requires: Record<string, string> | undefined;
+  let requiresInput: boolean | undefined;
 
   // Parse name
   const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
@@ -124,7 +126,13 @@ function parseSkillFrontmatter(slug: string): {
     }
   }
 
-  return { name, description, intent, capabilities, requires, instructions };
+  // Parse requiresInput (boolean)
+  const requiresInputMatch = frontmatter.match(/^requiresInput:\s*(.+)$/m);
+  if (requiresInputMatch) {
+    requiresInput = requiresInputMatch[1].trim().toLowerCase() === 'true';
+  }
+
+  return { name, description, intent, capabilities, requires, requiresInput, instructions };
 }
 
 import { readdirSync, statSync } from 'fs';
@@ -264,8 +272,8 @@ async function seed() {
     const capabilities = frontmatter.capabilities?.length ? JSON.stringify(frontmatter.capabilities) : null;
 
     await client.execute({
-      sql: `INSERT INTO skills (id, slug, name, description, category, is_global, is_enabled, intent, capabilities, instructions, required_integrations, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
+      sql: `INSERT INTO skills (id, slug, name, description, category, is_global, is_enabled, intent, capabilities, instructions, required_integrations, requires_input, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
             ON CONFLICT(id) DO UPDATE SET
               name = excluded.name,
               description = excluded.description,
@@ -273,6 +281,7 @@ async function seed() {
               capabilities = excluded.capabilities,
               instructions = excluded.instructions,
               required_integrations = excluded.required_integrations,
+              requires_input = excluded.requires_input,
               is_enabled = excluded.is_enabled,
               updated_at = unixepoch()`,
       args: [
@@ -286,6 +295,7 @@ async function seed() {
         capabilities,
         frontmatter.instructions || null,
         requiredIntegrations,
+        frontmatter.requiresInput ? 1 : 0,
       ],
     });
     console.log(`   ✓ Skill: ${frontmatter.name} (${skillDef.isEnabled ? 'enabled' : 'disabled'})`);

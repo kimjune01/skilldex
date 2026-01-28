@@ -117,6 +117,7 @@ export const PROVIDER_LABELS: Record<LLMProvider, string> = {
   anthropic: 'Anthropic (Claude)',
   openai: 'OpenAI (GPT)',
   google: 'Google (Gemini)',
+  gemini: 'Google (Gemini)', // Alias for google
   groq: 'Groq (Llama)',
 };
 
@@ -127,5 +128,6 @@ export const PROVIDER_API_KEY_URLS: Record<LLMProvider, string> = {
   anthropic: 'https://console.anthropic.com/settings/keys',
   openai: 'https://platform.openai.com/api-keys',
   google: 'https://aistudio.google.com/app/apikey',
+  gemini: 'https://aistudio.google.com/app/apikey', // Alias for google
   groq: 'https://console.groq.com/keys',
 };

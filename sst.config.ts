@@ -21,6 +21,7 @@
  * - JwtSecret, TursoDatabaseUrl, TursoAuthToken
  * - NangoSecretKey, NangoPublicKey
  * - GoogleClientId, GoogleClientSecret
+ * - GeminiApiKey (for automation worker)
  */
 
 export default $config({
@@ -51,6 +52,7 @@ export default $config({
     const googleClientId = new sst.Secret("GoogleClientId");
     const googleClientSecret = new sst.Secret("GoogleClientSecret");
     const githubToken = new sst.Secret("GithubToken");
+    const geminiApiKey = new sst.Secret("GeminiApiKey");
 
     // Email - AWS SES for transactional emails
     const email = new sst.aws.Email("Email", {
@@ -158,6 +160,26 @@ export default $config({
         // MCP endpoint for ChatGPT web connector
         VITE_MCP_URL: useCustomDomain ? `https://${mcpDomain}/mcp` : `${mcpService.url}/mcp`,
       },
+    });
+
+    // Automation Worker - triggered every minute by EventBridge
+    // Processes scheduled skill automations via Gemini 3 Flash
+    const automationWorker = new sst.aws.Function("AutomationWorker", {
+      handler: "apps/api/src/jobs/automation-worker.handler",
+      runtime: "nodejs20.x",
+      timeout: "60 seconds", // Individual automation can take up to 60s
+      memory: "512 MB",
+      nodejs: {
+        // Install native deps for Lambda (Linux x64)
+        install: ["@libsql/linux-x64-gnu", "@libsql/client", "better-sqlite3", "cron-parser"],
+      },
+      link: [tursoUrl, tursoToken, email, geminiApiKey],
+    });
+
+    // EventBridge Cron to trigger automation worker every minute
+    new sst.aws.Cron("AutomationCron", {
+      schedule: "rate(1 minute)",
+      function: automationWorker,
     });
 
     return {

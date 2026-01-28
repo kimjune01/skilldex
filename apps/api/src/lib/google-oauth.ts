@@ -343,11 +343,11 @@ async function handleGoogleCombinedOAuthCallback(
 
   if (error) {
     log.warn('google_combined_oauth_error', { error });
-    return c.redirect(`${webUrl}/integrations?error=${encodeURIComponent(error)}`);
+    return c.redirect(`${webUrl}/connections?error=${encodeURIComponent(error)}`);
   }
 
   if (!code || !state) {
-    return c.redirect(`${webUrl}/integrations?error=missing_code_or_state`);
+    return c.redirect(`${webUrl}/connections?error=missing_code_or_state`);
   }
 
   // Verify state token to get user ID
@@ -361,11 +361,11 @@ async function handleGoogleCombinedOAuthCallback(
     userId = payload.sub as string;
   } catch (err) {
     log.warn('google_combined_oauth_invalid_state', { error: err instanceof Error ? err.message : 'Unknown' });
-    return c.redirect(`${webUrl}/integrations?error=invalid_state`);
+    return c.redirect(`${webUrl}/connections?error=invalid_state`);
   }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    return c.redirect(`${webUrl}/integrations?error=oauth_not_configured`);
+    return c.redirect(`${webUrl}/connections?error=oauth_not_configured`);
   }
 
   try {
@@ -385,7 +385,7 @@ async function handleGoogleCombinedOAuthCallback(
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('Google combined token exchange failed:', errorText);
-      return c.redirect(`${webUrl}/integrations?error=token_exchange_failed`);
+      return c.redirect(`${webUrl}/connections?error=token_exchange_failed`);
     }
 
     const tokens = await tokenResponse.json() as {
@@ -600,10 +600,10 @@ async function handleGoogleCombinedOAuthCallback(
         .where(eq(users.id, userId));
     }
 
-    return c.redirect(`${webUrl}/integrations?success=${encodeURIComponent('Google connected successfully (Gmail, Calendar, Sheets, Drive, Contacts, Tasks)')}`);
+    return c.redirect(`${webUrl}/connections?success=${encodeURIComponent('Google connected successfully (Gmail, Calendar, Sheets, Drive, Contacts, Tasks)')}`);
   } catch (err) {
     console.error('Google combined OAuth error:', err);
-    return c.redirect(`${webUrl}/integrations?error=oauth_failed`);
+    return c.redirect(`${webUrl}/connections?error=oauth_failed`);
   }
 }
 
@@ -622,11 +622,11 @@ async function handleGoogleOAuthCallback(
 
   if (error) {
     log.warn(`${service}_oauth_error`, { error });
-    return c.redirect(`${webUrl}/integrations?error=${encodeURIComponent(error)}`);
+    return c.redirect(`${webUrl}/connections?error=${encodeURIComponent(error)}`);
   }
 
   if (!code || !state) {
-    return c.redirect(`${webUrl}/integrations?error=missing_code_or_state`);
+    return c.redirect(`${webUrl}/connections?error=missing_code_or_state`);
   }
 
   // Verify state token to get user ID
@@ -640,11 +640,11 @@ async function handleGoogleOAuthCallback(
     userId = payload.sub as string;
   } catch (err) {
     log.warn(`${service}_oauth_invalid_state`, { error: err instanceof Error ? err.message : 'Unknown' });
-    return c.redirect(`${webUrl}/integrations?error=invalid_state`);
+    return c.redirect(`${webUrl}/connections?error=invalid_state`);
   }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    return c.redirect(`${webUrl}/integrations?error=oauth_not_configured`);
+    return c.redirect(`${webUrl}/connections?error=oauth_not_configured`);
   }
 
   try {
@@ -664,7 +664,7 @@ async function handleGoogleOAuthCallback(
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error(`${config.displayName} token exchange failed:`, errorText);
-      return c.redirect(`${webUrl}/integrations?error=token_exchange_failed`);
+      return c.redirect(`${webUrl}/connections?error=token_exchange_failed`);
     }
 
     const tokens = await tokenResponse.json() as {
@@ -820,10 +820,10 @@ async function handleGoogleOAuthCallback(
         .where(eq(users.id, userId));
     }
 
-    return c.redirect(`${webUrl}/integrations?success=${encodeURIComponent(config.displayName + ' connected successfully')}`);
+    return c.redirect(`${webUrl}/connections?success=${encodeURIComponent(config.displayName + ' connected successfully')}`);
   } catch (err) {
     console.error(`${config.displayName} OAuth error:`, err);
-    return c.redirect(`${webUrl}/integrations?error=oauth_failed`);
+    return c.redirect(`${webUrl}/connections?error=oauth_failed`);
   }
 }
 

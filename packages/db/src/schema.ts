@@ -297,6 +297,9 @@ export const skills = sqliteTable('skills', {
   // Automation settings (pay intention tracking for cron/event triggers)
   automationEnabled: integer('automation_enabled', { mode: 'boolean' }).notNull().default(false),
 
+  // Whether the skill requires user input at runtime (cannot be automated)
+  requiresInput: integer('requires_input', { mode: 'boolean' }).notNull().default(false),
+
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({
@@ -633,6 +636,109 @@ export const payIntentionsRelations = relations(payIntentions, ({ one }) => ({
   }),
 }));
 
+// ============ AUTOMATIONS ============
+
+/**
+ * Automations table - scheduled skill executions
+ *
+ * MVP: Cron-only automations with email output.
+ * Users limited to 3 automations (flat limit for now, future tiers will adjust).
+ *
+ * Lifecycle:
+ * 1. User creates automation with cron schedule
+ * 2. EventBridge triggers worker Lambda every minute
+ * 3. Worker queries for automations where nextRunAt <= now
+ * 4. Skill executed via Gemini 3 Flash, results emailed
+ * 5. nextRunAt updated to next cron occurrence
+ *
+ * @see docs/future/AUTOMATIONS_EXPLORATION.md for full design
+ */
+export const automations = sqliteTable('automations', {
+  id: text('id').primaryKey(), // UUID
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+
+  // What to run
+  name: text('name').notNull(),
+  skillSlug: text('skill_slug').notNull(), // References skill by slug (not FK for flexibility)
+  skillParams: text('skill_params'), // JSON - parameters to pass to skill
+
+  // Schedule configuration (cron only for MVP)
+  cronExpression: text('cron_expression').notNull(), // "0 9 * * MON" (5-field cron)
+  cronTimezone: text('cron_timezone').notNull().default('UTC'), // IANA timezone
+
+  // Output configuration (email only for MVP)
+  outputEmail: text('output_email').notNull(), // Recipient email address
+
+  // State
+  isEnabled: integer('is_enabled', { mode: 'boolean' }).notNull().default(true),
+  lastRunAt: integer('last_run_at', { mode: 'timestamp' }),
+  nextRunAt: integer('next_run_at', { mode: 'timestamp' }),
+  consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  userIdIdx: index('automations_user_id_idx').on(table.userId),
+  nextRunAtIdx: index('automations_next_run_at_idx').on(table.nextRunAt),
+  isEnabledIdx: index('automations_is_enabled_idx').on(table.isEnabled),
+}));
+
+/**
+ * Automation Runs table - execution history
+ *
+ * Stores run metadata (no PII in outputSummary).
+ * Used for debugging, retry tracking, and user visibility.
+ *
+ * Statuses:
+ * - 'pending': Queued for execution
+ * - 'running': Currently executing
+ * - 'completed': Successfully finished
+ * - 'failed': Execution failed (see errorCode)
+ */
+export const automationRuns = sqliteTable('automation_runs', {
+  id: text('id').primaryKey(), // UUID
+  automationId: text('automation_id').notNull().references(() => automations.id, { onDelete: 'cascade' }),
+
+  status: text('status').notNull(), // 'pending' | 'running' | 'completed' | 'failed'
+  triggeredBy: text('triggered_by').notNull(), // 'schedule' | 'manual'
+
+  // Execution details
+  startedAt: integer('started_at', { mode: 'timestamp' }),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+  durationMs: integer('duration_ms'),
+
+  // Output (ephemeral - no PII)
+  outputSummary: text('output_summary'), // Brief summary, e.g., "Sent report to user@example.com"
+  errorCode: text('error_code'), // Standardized error code (e.g., 'SKILL_NOT_FOUND', 'LLM_RATE_LIMITED')
+
+  retryCount: integer('retry_count').notNull().default(0),
+
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  automationIdIdx: index('automation_runs_automation_id_idx').on(table.automationId),
+  createdAtIdx: index('automation_runs_created_at_idx').on(table.createdAt),
+}));
+
+export const automationsRelations = relations(automations, ({ one, many }) => ({
+  user: one(users, {
+    fields: [automations.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [automations.organizationId],
+    references: [organizations.id],
+  }),
+  runs: many(automationRuns),
+}));
+
+export const automationRunsRelations = relations(automationRuns, ({ one }) => ({
+  automation: one(automations, {
+    fields: [automationRuns.automationId],
+    references: [automations.id],
+  }),
+}));
+
 // ============ TYPE EXPORTS ============
 
 export type Organization = typeof organizations.$inferSelect;
@@ -661,3 +767,7 @@ export type ErrorEvent = typeof errorEvents.$inferSelect;
 export type NewErrorEvent = typeof errorEvents.$inferInsert;
 export type PayIntention = typeof payIntentions.$inferSelect;
 export type NewPayIntention = typeof payIntentions.$inferInsert;
+export type Automation = typeof automations.$inferSelect;
+export type NewAutomation = typeof automations.$inferInsert;
+export type AutomationRun = typeof automationRuns.$inferSelect;
+export type NewAutomationRun = typeof automationRuns.$inferInsert;
