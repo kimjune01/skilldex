@@ -106,11 +106,50 @@ export async function registerTools(
    */
   server.tool(
     'create_skill',
-    'Create or update a skill. Use after designing a skill with the user. Params: content (full skill markdown with YAML frontmatter), force (optional, set true to overwrite existing skill with same slug), cron (optional, schedule expression like "0 9 * * 1" for Mondays at 9am).',
+    `Create or update a reusable skill (workflow template).
+
+WHEN TO USE: When user says "create a skill", "save this as a skill", "build a skill", "turn this into a skill", "automate this", "automate [task]", or describes a repeatable workflow they want to save.
+
+SKILL FORMAT (YAML frontmatter + markdown instructions):
+\`\`\`markdown
+---
+name: [3-100 chars, action-oriented]
+description: [10-500 chars, one sentence]
+category: [Sourcing|Outreach|Screening|Interview|Analytics|Productivity|Admin]
+intent: [optional - phrases that trigger this skill]
+capabilities: [optional - list of things it can do]
+requires: [optional - integrations needed]
+  ats: read-only|read-write
+  email: read-only|read-write
+  calendar: read-only|read-write
+---
+
+# [Skill Name]
+
+[Instructions - clear steps for how the skill works, 50+ chars]
+\`\`\`
+
+REQUIRED FIELDS: name, description, instructions (the markdown body)
+OPTIONAL FIELDS: category, intent, capabilities, requires
+
+PROCESS:
+1. Extract details from user's description (name, purpose, steps, integrations)
+2. If missing required fields, ask for just what's missing
+3. Generate the skill markdown with YAML frontmatter
+4. Show preview and confirm before saving
+5. Ask if they want scheduling (cron)
+
+CRON PATTERNS:
+- "0 9 * * *" = Daily at 9am
+- "0 9 * * 1" = Every Monday at 9am
+- "0 9 * * 1-5" = Weekdays at 9am
+- "0 0 1 * *" = First of each month
+
+If scheduled, results are emailed to the user automatically.`,
     {
-      content: z.string().describe('Full skill markdown with YAML frontmatter'),
-      force: z.boolean().optional().describe('If true, overwrite existing skill with same slug'),
-      cron: z.string().optional().describe('Cron expression to schedule the skill (e.g., "0 9 * * 1" for Mondays at 9am, "0 9 * * *" for daily at 9am)'),
+      content: z.string().describe('Full skill markdown with YAML frontmatter. Must include name, description in frontmatter and instructions in body.'),
+      force: z.boolean().optional().describe('If true, overwrite existing skill with same slug. Use when updating an existing skill.'),
+      cron: z.string().optional().describe('Cron expression to schedule automatic runs (e.g., "0 9 * * 1" for Mondays at 9am). Results emailed to user.'),
     },
     async (args) => {
       try {

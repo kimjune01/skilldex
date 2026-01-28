@@ -4,18 +4,18 @@ This document describes how skills are created through chat and optionally sched
 
 ## Overview
 
-Skills are created through a conversational interface. The Skill Builder skill guides users through defining their skill, then calls the `create_skill` MCP tool to persist it. Optionally, skills can be scheduled to run automatically with results emailed to the user.
+Skills are created through a conversational interface. The `create_skill` MCP tool handles the entire flow - the LLM extracts requirements from the user's description, generates proper markdown with YAML frontmatter, and persists it. Optionally, skills can be scheduled to run automatically with results emailed to the user.
 
 ## Data Flow
 
 ```
 User describes skill in chat
         ↓
-Skill Builder skill extracts requirements
+LLM extracts requirements from description
         ↓
 Generates skill markdown with YAML frontmatter
         ↓
-Asks user to confirm (and optionally schedule)
+Shows preview and asks user to confirm
         ↓
 Calls create_skill MCP tool
         ↓
@@ -30,25 +30,26 @@ POST /skills API endpoint
 
 ## Components
 
-### 1. Skill Builder Skill
-**File:** `skills/skill-builder/SKILL.md`
-
-The non-deterministic prompt that guides the LLM through skill creation:
-- Extracts skill details from natural language descriptions
-- Identifies missing required fields (name, description, instructions)
-- Generates skill markdown with proper YAML frontmatter
-- Asks if user wants to schedule the skill
-- Calls `create_skill` action with optional `cron` parameter
-
-### 2. MCP Tool: create_skill
+### 1. MCP Tool: create_skill
 **File:** `packages/mcp/src/tools/index.ts`
 
-Registered MCP tool that Claude calls to create skills:
+The MCP tool includes a comprehensive description that guides the LLM through skill creation:
+- When to use (trigger phrases like "create a skill", "save this as a skill")
+- Required fields (name, description, instructions)
+- Optional fields (category, intent, capabilities, requires)
+- YAML frontmatter format with examples
+- Common cron patterns for scheduling
 
 ```typescript
 server.tool(
   'create_skill',
-  'Create or update a skill...',
+  `Create or update a reusable skill (workflow template).
+
+   WHEN TO USE: When user says "create a skill", "save this as a skill"...
+   SKILL FORMAT: [YAML frontmatter + markdown instructions]
+   REQUIRED FIELDS: name, description, instructions
+   PROCESS: Extract → Ask for missing → Generate → Preview → Save
+   CRON PATTERNS: [examples]`,
   {
     content: z.string(),      // Full skill markdown with YAML frontmatter
     force: z.boolean(),       // Overwrite existing skill with same slug
@@ -58,7 +59,7 @@ server.tool(
 );
 ```
 
-### 3. API Client
+### 2. API Client
 **File:** `packages/mcp/src/api-client.ts`
 
 Sends the request to the API:
@@ -67,7 +68,7 @@ Sends the request to the API:
 async createSkill(content: string, force?: boolean, cron?: string): Promise<SkillPublic>
 ```
 
-### 4. API Endpoint
+### 3. API Endpoint
 **File:** `apps/api/src/routes/skills.ts`
 
 `POST /skills` handler:
@@ -79,7 +80,7 @@ async createSkill(content: string, force?: boolean, cron?: string): Promise<Skil
   - `nextRunAt` calculated from cron expression
   - `cronTimezone` defaulting to UTC
 
-### 5. Shared Types
+### 4. Shared Types
 **File:** `packages/shared/src/types.ts`
 
 ```typescript
@@ -126,8 +127,7 @@ When updating `create_skill` parameters, update ALL of these files:
 | `packages/shared/src/types.ts` | `SkillCreateRequest` interface |
 | `apps/api/src/routes/skills.ts` | POST /skills handler logic |
 | `packages/mcp/src/api-client.ts` | `createSkill()` method signature |
-| `packages/mcp/src/tools/index.ts` | `create_skill` tool registration |
-| `skills/skill-builder/SKILL.md` | Skill builder instructions |
+| `packages/mcp/src/tools/index.ts` | `create_skill` tool registration (includes full usage guide) |
 
 Each file has a `SYNC` comment listing the related files.
 
@@ -136,7 +136,7 @@ Each file has a `SYNC` comment listing the related files.
 ```
 User: I need a skill that sends me a weekly summary of new candidates
 
-Skill Builder: Got it - a weekly candidate summary skill. Here's what I have:
+Claude: Got it - a weekly candidate summary skill. Here's what I have:
 
 - Name: Weekly Candidate Summary
 - Description: Summarize new candidates added during the week
@@ -148,7 +148,7 @@ I still need:
 
 User: Include candidate names, roles they applied for, and current stage.
 
-Skill Builder: Here's the complete skill:
+Claude: Here's the complete skill:
 
 [Shows skill markdown preview]
 
@@ -157,7 +157,7 @@ for example, every Monday morning?
 
 User: Yes, run it Monday at 9am
 
-Skill Builder: [Calls create_skill with cron: "0 9 * * 1"]
+Claude: [Calls create_skill with cron: "0 9 * * 1"]
 
 Skill "Weekly Candidate Summary" created successfully.
 Scheduled: Every Monday at 9am
