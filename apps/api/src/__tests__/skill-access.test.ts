@@ -14,7 +14,7 @@ describe('skill-access', () => {
       ats: 'read-write',
       email: 'read-write',
       calendar: 'read-write',
-      database: 'read-write',
+      database: 'read-write', docs: 'read-write',
     };
 
     describe('when skill has no requirements', () => {
@@ -110,7 +110,7 @@ describe('skill-access', () => {
           ats: 'read-only',
           email: 'none',
           calendar: 'read-write',
-          database: 'read-write',
+          database: 'read-write', docs: 'read-write',
         };
         const result = checkSkillRequirements(requirements, access);
         expect(result.satisfied).toBe(false);
@@ -126,7 +126,7 @@ describe('skill-access', () => {
       ats: 'read-write',
       email: 'read-write',
       calendar: 'read-write',
-      database: 'read-write',
+      database: 'read-write', docs: 'read-write',
     };
 
     describe('disabled skills', () => {
@@ -291,7 +291,7 @@ describe('skill-access', () => {
       ats: 'read-write',
       email: 'read-only',
       calendar: 'none',
-      database: 'read-write',
+      database: 'read-write', docs: 'read-write',
     };
 
     describe('read actions', () => {

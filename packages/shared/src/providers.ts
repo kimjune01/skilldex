@@ -7,7 +7,7 @@
 
 // ============ Types ============
 
-export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'scheduling' | 'time-tracking';
+export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'docs' | 'scheduling' | 'time-tracking';
 export type AuthType = 'bearer' | 'basic' | 'api-key';
 export type OAuthFlow = 'nango' | 'google-direct' | 'api-key' | 'none';
 
@@ -259,11 +259,11 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
   'google-docs': {
     id: 'google-docs',
     displayName: 'Google Docs',
-    category: 'database',
+    category: 'docs',
     oauthFlow: 'google-direct',
     apiBaseUrl: 'https://docs.googleapis.com/v1',
     apiAuth: { type: 'bearer' },
-    order: 4,
+    order: 1,
     hasManifest: true,
   },
 
@@ -448,7 +448,7 @@ export function getApiBaseUrl(providerId: string): string | undefined {
  * Get all categories
  */
 export function getAllCategories(): IntegrationCategory[] {
-  return ['ats', 'email', 'calendar', 'database', 'scheduling', 'time-tracking'];
+  return ['ats', 'email', 'calendar', 'database', 'docs', 'scheduling', 'time-tracking'];
 }
 
 // ============ Individual Account Restrictions ============

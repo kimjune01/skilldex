@@ -36,7 +36,7 @@ import {
   canRead,
   canWrite,
   type EffectiveAccess,
-  type IntegrationCategory,
+  PERMISSION_CATEGORIES,
 } from './integration-permissions.js';
 import { LLM_DEFAULT_MODELS } from '@skillomatic/shared';
 import { createLogger } from './logger.js';
@@ -163,7 +163,7 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
   const nango = getNangoClient();
 
   // Fetch tokens for each category based on effective access
-  const categories: IntegrationCategory[] = ['ats', 'email', 'calendar'];
+  const categories = PERMISSION_CATEGORIES;
 
   for (const category of categories) {
     // Skip if no read access for this category

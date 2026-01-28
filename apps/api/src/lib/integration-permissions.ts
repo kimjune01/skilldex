@@ -33,9 +33,18 @@ const log = createLogger('Permissions');
 export type AccessLevel = 'read-write' | 'read-only' | 'disabled' | 'none';
 
 /**
- * Integration categories that can have permissions set
+ * Integration categories that can have permissions set.
+ * This is a subset of the provider categories in @skillomatic/shared.
+ * Some provider categories (like 'scheduling', 'time-tracking') don't have
+ * org-level permission controls yet.
  */
-export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database';
+export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'docs';
+
+/**
+ * All permission-controlled categories.
+ * Use this instead of hardcoding category lists.
+ */
+export const PERMISSION_CATEGORIES: IntegrationCategory[] = ['ats', 'email', 'calendar', 'database', 'docs'];
 
 /**
  * Org-level integration permissions
@@ -45,6 +54,7 @@ export interface OrgIntegrationPermissions {
   email: AccessLevel;
   calendar: AccessLevel;
   database: AccessLevel;
+  docs: AccessLevel;
 }
 
 /**
@@ -55,6 +65,7 @@ export interface EffectiveAccess {
   email: AccessLevel;
   calendar: AccessLevel;
   database: AccessLevel;
+  docs: AccessLevel;
 }
 
 /**
@@ -74,6 +85,7 @@ const DEFAULT_PERMISSIONS: OrgIntegrationPermissions = {
   email: 'read-write',
   calendar: 'read-write',
   database: 'read-write',
+  docs: 'read-write',
 };
 
 /**
@@ -99,6 +111,7 @@ export async function getOrgIntegrationPermissions(
       email: parsed.email || 'read-write',
       calendar: parsed.calendar || 'read-write',
       database: parsed.database || 'read-write',
+      docs: parsed.docs || 'read-write',
     };
   } catch {
     return DEFAULT_PERMISSIONS;
@@ -355,6 +368,7 @@ export async function getUserIntegrationsByCategory(
     email: [],
     calendar: [],
     database: [],
+    docs: [],
   };
 
   for (const int of all) {
@@ -401,6 +415,7 @@ export async function getEffectiveAccessForUser(
     email: getEffectiveAccess('email', orgPermissions, integrationsByCategory.email),
     calendar: getEffectiveAccess('calendar', orgPermissions, integrationsByCategory.calendar),
     database: getEffectiveAccess('database', orgPermissions, integrationsByCategory.database),
+    docs: getEffectiveAccess('docs', orgPermissions, integrationsByCategory.docs),
   };
 }
 
@@ -431,6 +446,7 @@ async function getIndividualEffectiveAccess(userId: string): Promise<EffectiveAc
     email: [],
     calendar: [],
     database: [],
+    docs: [],
   };
 
   for (const int of userIntegrations) {
@@ -455,6 +471,10 @@ async function getIndividualEffectiveAccess(userId: string): Promise<EffectiveAc
     // Database: only google-sheets (already filtered above)
     database: byCategory.database.length > 0
       ? getHighestUserAccessLevel(byCategory.database)
+      : 'none',
+    // Docs: google-docs if connected
+    docs: byCategory.docs.length > 0
+      ? getHighestUserAccessLevel(byCategory.docs)
       : 'none',
   };
 }

@@ -90,6 +90,8 @@ export const users = sqliteTable('users', {
   hasConfirmedPayIntention: integer('has_confirmed_pay_intention', { mode: 'boolean' }).notNull().default(false),
   /** User's membership tier: 'free' (default), 'free_beta' (beta access) */
   tier: text('tier').notNull().default('free'),
+  /** Skills the user has hidden from their view - JSON array of skill slugs */
+  hiddenSkills: text('hidden_skills'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

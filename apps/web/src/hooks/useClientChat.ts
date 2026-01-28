@@ -97,6 +97,7 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
   useEffect(() => {
     async function init() {
       setIsLoading(true);
+      setError(null); // Clear any previous errors
       try {
         // If user provided their own LLM config, use that instead of org config
         const [orgConfig, prompt] = await Promise.all([

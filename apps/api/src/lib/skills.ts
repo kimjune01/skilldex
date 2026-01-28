@@ -195,7 +195,7 @@ export function buildSkillsPromptSection(
     statusInfo: getSkillStatus(
       s.slug,
       s.requiredIntegrations,
-      effectiveAccess || { ats: 'read-write', email: 'read-write', calendar: 'read-write', database: 'read-write' },
+      effectiveAccess || { ats: 'read-write', email: 'read-write', calendar: 'read-write', database: 'read-write', docs: 'read-write' },
       disabledSkills || []
     ),
   }));

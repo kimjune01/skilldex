@@ -51,6 +51,7 @@ function ChatContent() {
   }>({ open: false, skill: null, instructions: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [payIntentionOpen, setPayIntentionOpen] = useState(false);
+  const [justSubscribed, setJustSubscribed] = useState(false);
 
   // Track whether org has LLM configured (separate from user config)
   const [hasOrgLLM, setHasOrgLLM] = useState<boolean | null>(null);
@@ -295,10 +296,12 @@ function ChatContent() {
         {/* Pay Intention Dialog for subscription */}
         <PayIntentionDialog
           open={payIntentionOpen}
-          onClose={() => {
+          onClose={async () => {
             setPayIntentionOpen(false);
             // Refresh user to get updated tier after pay intention confirmation
-            refreshUser();
+            await refreshUser();
+            // Mark as just subscribed to show thanks message
+            setJustSubscribed(true);
           }}
           triggerType="subscription"
           providerName="Skillomatic subscription"
@@ -381,8 +384,23 @@ function ChatContent() {
         </div>
       )}
 
+      {/* Thanks message after subscription */}
+      {justSubscribed && (
+        <div className={cn("px-4 pt-4", isMobile && "pt-16")}>
+          <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+            <Sparkles className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800 dark:text-green-200">
+              Thanks for subscribing! You now have beta access powered by Gemini. Start chatting below.
+              <Button variant="link" size="sm" className="ml-2 h-auto p-0 text-green-700" onClick={() => setJustSubscribed(false)}>
+                Dismiss
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {/* Error alert */}
-      {error && (
+      {error && !justSubscribed && (
         <div className={cn("px-4 pt-4", isMobile && "pt-16")}>
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />

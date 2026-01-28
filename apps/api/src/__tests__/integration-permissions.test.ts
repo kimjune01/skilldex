@@ -81,7 +81,7 @@ describe('integration-permissions', () => {
       ats: 'read-write',
       email: 'read-write',
       calendar: 'read-write',
-      database: 'read-write',
+      database: 'read-write', docs: 'read-write',
     };
 
     describe('when admin has disabled the category', () => {

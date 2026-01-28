@@ -106,4 +106,10 @@ export const skills = {
 
   // Get skill access info (permissions debug view)
   getAccessInfo: (slug: string) => request<SkillAccessInfo>(`/skills/${slug}/access`),
+
+  // Toggle skill visibility for current user (hide/unhide)
+  toggleHidden: (slug: string) =>
+    request<{ hidden: boolean; hiddenSkills: string[] }>(`/skills/${slug}/toggle-hidden`, {
+      method: 'POST',
+    }),
 };

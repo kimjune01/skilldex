@@ -11,7 +11,7 @@ import type { ProviderManifest } from './types.js';
 export const googleDocsManifest: ProviderManifest = {
   provider: 'google-docs',
   displayName: 'Google Docs',
-  category: 'database',
+  category: 'docs',
   baseUrl: 'https://docs.googleapis.com/v1',
   apiVersion: 'v1',
 

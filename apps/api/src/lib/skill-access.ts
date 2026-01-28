@@ -12,7 +12,7 @@
  * @see docs/SKILL_ACCESS.md for full documentation
  */
 
-import { type EffectiveAccess, type AccessLevel, canRead, canWrite } from './integration-permissions.js';
+import { type EffectiveAccess, type AccessLevel, canRead, canWrite, PERMISSION_CATEGORIES, type IntegrationCategory } from './integration-permissions.js';
 
 /**
  * Skill status
@@ -32,6 +32,7 @@ export interface SkillRequirements {
   email?: AccessLevel;
   calendar?: AccessLevel;
   database?: AccessLevel;
+  docs?: AccessLevel;
 }
 
 /**
@@ -193,11 +194,10 @@ export function parseSkillRequirements(frontmatter: Record<string, unknown>): Sk
       continue;
     }
 
-    if (key === 'ats' || key === 'email' || key === 'calendar' || key === 'database') {
-      result[key] = value;
-    } else if (key === 'sheets') {
-      // 'sheets' is an alias for 'database' category
-      result.database = value;
+    // Map 'sheets' to 'database' category
+    const category = key === 'sheets' ? 'database' : key;
+    if (PERMISSION_CATEGORIES.includes(category as IntegrationCategory)) {
+      result[category as keyof SkillRequirements] = value;
     }
   }
 

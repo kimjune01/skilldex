@@ -15,6 +15,7 @@ import {
   getOrgDisabledSkills,
   getEffectiveAccessForUser,
   getUserIntegrationsByCategory,
+  PERMISSION_CATEGORIES,
 } from '../lib/integration-permissions.js';
 import { getSkillStatus } from '../lib/skill-access.js';
 import {
@@ -244,7 +245,7 @@ skillsRoutes.get('/', async (c) => {
           for (const [key, value] of Object.entries(parsed)) {
             // Map 'sheets' to 'database' category for access check
             const category = key === 'sheets' ? 'database' : key;
-            if (['ats', 'email', 'calendar', 'database'].includes(category)) {
+            if (PERMISSION_CATEGORIES.includes(category as any)) {
               requirements[category] = value;
             }
           }
@@ -822,8 +823,10 @@ skillsRoutes.get('/:slug/access', combinedAuth, async (c) => {
     try {
       const parsed = JSON.parse(skill.requiredIntegrations) as Record<string, string>;
       for (const [key, value] of Object.entries(parsed)) {
-        if (['ats', 'email', 'calendar'].includes(key)) {
-          requirements[key] = value;
+        // Map 'sheets' to 'database' category for access check
+        const category = key === 'sheets' ? 'database' : key;
+        if (PERMISSION_CATEGORIES.includes(category as any)) {
+          requirements[category] = value;
         }
       }
     } catch {
@@ -1014,6 +1017,57 @@ skillsRoutes.post('/:slug/approve-visibility', async (c) => {
   } catch (error) {
     console.error('[Skills] Error approving visibility request:', { slug, skillId: existingSkill.id, adminId: user.sub, error });
     return c.json({ error: { message: 'Failed to approve visibility request. Please try again.' } }, 500);
+  }
+});
+
+// POST /skills/:slug/toggle-hidden - Toggle skill visibility for the current user
+skillsRoutes.post('/:slug/toggle-hidden', async (c) => {
+  const user = c.get('user');
+  const slug = c.req.param('slug');
+
+  // Get current hidden skills from user record
+  const [userRecord] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, user.sub))
+    .limit(1);
+
+  if (!userRecord) {
+    return c.json({ error: { message: 'User not found' } }, 404);
+  }
+
+  // Parse current hidden skills (JSON array of slugs)
+  let hiddenSkills: string[] = [];
+  if (userRecord.hiddenSkills) {
+    try {
+      hiddenSkills = JSON.parse(userRecord.hiddenSkills);
+    } catch {
+      hiddenSkills = [];
+    }
+  }
+
+  // Toggle: add if not present, remove if present
+  const isHidden = hiddenSkills.includes(slug);
+  if (isHidden) {
+    hiddenSkills = hiddenSkills.filter((s) => s !== slug);
+  } else {
+    hiddenSkills.push(slug);
+  }
+
+  // Update user record
+  try {
+    await db
+      .update(users)
+      .set({
+        hiddenSkills: JSON.stringify(hiddenSkills),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.sub));
+
+    return c.json({ data: { hidden: !isHidden, hiddenSkills } });
+  } catch (error) {
+    console.error('[Skills] Error toggling hidden skill:', { slug, userId: user.sub, error });
+    return c.json({ error: { message: 'Failed to update skill visibility' } }, 500);
   }
 });
 

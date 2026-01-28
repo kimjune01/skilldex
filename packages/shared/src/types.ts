@@ -185,6 +185,8 @@ export interface UserPublic {
   availableOrg?: { id: string; name: string };
   /** User's membership tier */
   tier: UserTier;
+  /** Skills the user has hidden from their view (array of slugs) */
+  hiddenSkills?: string[];
 }
 
 // ============ Organization Types ============

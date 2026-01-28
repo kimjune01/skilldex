@@ -24,7 +24,7 @@ describe('checkCapabilityRequirements', () => {
       ats: 'read-write',
       email: 'read-write',
       calendar: 'read-write',
-      database: 'read-write',
+      database: 'read-write', docs: 'read-write',
     },
   };
 
@@ -365,6 +365,7 @@ vi.mock('../lib/integration-permissions.js', () => ({
       email: 'read-write',
       calendar: 'read-write',
       database: 'read-write',
+      docs: 'read-write',
     })
   ),
   getUserIntegrationsByCategory: vi.fn(() =>
@@ -373,10 +374,12 @@ vi.mock('../lib/integration-permissions.js', () => ({
       email: [],
       calendar: [],
       database: [],
+      docs: [],
     })
   ),
   canRead: vi.fn((level: string) => level === 'read-write' || level === 'read-only'),
   canWrite: vi.fn((level: string) => level === 'read-write'),
+  PERMISSION_CATEGORIES: ['ats', 'email', 'calendar', 'database', 'docs'],
 }));
 
 describe('buildCapabilityProfile', () => {
@@ -500,6 +503,7 @@ describe('buildCapabilityProfile', () => {
       email: [],
       calendar: [{ id: 'int-1', provider: 'calendar', metadata: null }],
       database: [],
+      docs: [],
     });
 
     const mockGetToken = vi.fn().mockResolvedValue({

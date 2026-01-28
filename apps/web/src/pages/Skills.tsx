@@ -31,7 +31,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  X,
   Lightbulb,
   Timer,
 } from 'lucide-react';
@@ -67,6 +66,10 @@ export default function Skills() {
   const [error, setError] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<SkillCategory | 'available' | 'all'>('available');
   const [showDisabled, setShowDisabled] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+
+  // Track hidden skills locally (synced with user.hiddenSkills)
+  const [hiddenSkills, setHiddenSkills] = useState<string[]>(user?.hiddenSkills || []);
 
   // Visibility request dialog state
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
@@ -125,6 +128,11 @@ export default function Skills() {
       filtered = filtered.filter((s) => s.isEnabled);
     }
 
+    // Filter out hidden skills unless showHidden is enabled
+    if (!showHidden) {
+      filtered = filtered.filter((s) => !hiddenSkills.includes(s.slug));
+    }
+
     // Apply filter
     if (categoryFilter === 'available') {
       // Show only skills that are fully available (not limited)
@@ -135,7 +143,7 @@ export default function Skills() {
     }
 
     return filtered;
-  }, [skillList, categoryFilter, isAdmin, showDisabled]);
+  }, [skillList, categoryFilter, isAdmin, showDisabled, showHidden, hiddenSkills]);
 
   const handleToggleEnabled = async (skill: SkillPublic) => {
     try {
@@ -143,6 +151,15 @@ export default function Skills() {
       setSkillList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update skill');
+    }
+  };
+
+  const handleToggleHidden = async (skill: SkillPublic) => {
+    try {
+      const result = await skills.toggleHidden(skill.slug);
+      setHiddenSkills(result.hiddenSkills);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update skill visibility');
     }
   };
 
@@ -353,18 +370,32 @@ export default function Skills() {
           </Button>
         </div>
 
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <Switch
-              id="show-disabled"
-              checked={showDisabled}
-              onCheckedChange={setShowDisabled}
-            />
-            <Label htmlFor="show-disabled" className="text-sm text-muted-foreground">
-              Show disabled
-            </Label>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {hiddenSkills.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-hidden"
+                checked={showHidden}
+                onCheckedChange={setShowHidden}
+              />
+              <Label htmlFor="show-hidden" className="text-sm text-muted-foreground">
+                Show hidden ({hiddenSkills.length})
+              </Label>
+            </div>
+          )}
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-disabled"
+                checked={showDisabled}
+                onCheckedChange={setShowDisabled}
+              />
+              <Label htmlFor="show-disabled" className="text-sm text-muted-foreground">
+                Show disabled
+              </Label>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Skills Table */}
@@ -385,13 +416,8 @@ export default function Skills() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                   Connections
                 </th>
-                {isAdmin && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                    Status
-                  </th>
-                )}
                 <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                  Actions
+                  Enabled
                 </th>
               </tr>
             </thead>
@@ -483,29 +509,38 @@ export default function Skills() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {Object.keys(skill.requiredIntegrations).length > 0 ? (
-                          Object.entries(skill.requiredIntegrations).map(([integration, accessLevel]) => (
-                            <Badge key={integration} variant="secondary" className="gap-1">
+                      {Object.keys(skill.requiredIntegrations).length === 0 ? (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      ) : skill.accessInfo?.status === 'available' ? (
+                        <span title="All required connections are met">✓</span>
+                      ) : skill.accessInfo?.limitations && skill.accessInfo.limitations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {skill.accessInfo.limitations.map((limitation, idx) => (
+                            <Badge key={idx} variant="outline" className="gap-1 text-yellow-700 border-yellow-300">
                               <Plug className="h-3 w-3" />
-                              {integration} ({accessLevel})
+                              {limitation}
                             </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">None</span>
-                        )}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span title="All required connections are met">✓</span>
+                      )}
                     </td>
-                    {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <Switch
-                          checked={skill.isEnabled}
-                          onCheckedChange={() => handleToggleEnabled(skill)}
-                        />
-                      </td>
-                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Enabled toggle - for admins or skill owners */}
+                        {(isAdmin || isOwner) && (
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={`enabled-${skill.id}`} className="text-xs text-muted-foreground">
+                              Enabled
+                            </Label>
+                            <Switch
+                              id={`enabled-${skill.id}`}
+                              checked={skill.isEnabled}
+                              onCheckedChange={() => handleToggleEnabled(skill)}
+                            />
+                          </div>
+                        )}
                         {/* Request org-wide visibility for private skills owned by user */}
                         {isOwner && skill.visibility === 'private' && !hasPendingRequest && (
                           <Button
@@ -535,6 +570,13 @@ export default function Skills() {
                             <CheckCircle2 className="h-4 w-4 text-orange-500" />
                           </Button>
                         )}
+
+                        {/* Hide/Show skill for current user */}
+                        <Switch
+                          checked={!hiddenSkills.includes(skill.slug)}
+                          onCheckedChange={() => handleToggleHidden(skill)}
+                          title={hiddenSkills.includes(skill.slug) ? 'Show skill' : 'Hide skill'}
+                        />
 
                         {/* Delete for owners or admins (except system skills) */}
                         {(isOwner || (isAdmin && !skill.isGlobal)) && (

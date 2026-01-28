@@ -119,6 +119,7 @@ authRoutes.post('/login', loginRateLimit, async (c) => {
     onboardingStep: user[0].onboardingStep ?? 0,
     accountTypeSelected: user[0].accountTypeSelected ?? false,
     tier: (user[0].tier as UserTier) ?? 'free',
+    hiddenSkills: user[0].hiddenSkills ? JSON.parse(user[0].hiddenSkills) : undefined,
   };
 
   const token = await createToken(userPublic);
@@ -190,6 +191,7 @@ authRoutes.get('/me', async (c) => {
     accountTypeSelected: user[0].accountTypeSelected ?? false,
     availableOrg,
     tier: (user[0].tier as UserTier) ?? 'free',
+    hiddenSkills: user[0].hiddenSkills ? JSON.parse(user[0].hiddenSkills) : undefined,
   };
 
   return c.json({ data: userPublic });
@@ -360,6 +362,7 @@ authRoutes.get('/google/callback', async (c) => {
       onboardingStep: dbUser.onboardingStep ?? 0,
       accountTypeSelected: dbUser.accountTypeSelected ?? false,
       tier: (dbUser.tier as UserTier) ?? 'free',
+      hiddenSkills: dbUser.hiddenSkills ? JSON.parse(dbUser.hiddenSkills) : undefined,
     };
 
     const token = await createToken(userPublic);
