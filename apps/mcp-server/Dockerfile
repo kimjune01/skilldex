@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 
 # Force cache bust for package.json changes - change this value to force rebuild
-ARG CACHEBUST=v12
+ARG CACHEBUST=v13
 RUN echo "Cache bust: $CACHEBUST"
 
 # Copy package.json files for needed workspaces
