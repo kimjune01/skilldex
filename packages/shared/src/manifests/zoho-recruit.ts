@@ -4,7 +4,7 @@
  * @see https://www.zoho.com/recruit/developer-guide/apiv2/
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const zohoRecruitManifest: ProviderManifest = {
   provider: 'zoho-recruit',

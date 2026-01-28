@@ -55,8 +55,10 @@ import {
   ClipboardList,
   Users,
   ListTodo,
+  Timer,
   type LucideIcon,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 
 /**
@@ -67,6 +69,8 @@ const providerIcons: Partial<Record<IntegrationProvider | string, LucideIcon>> =
   email: Mail,
   calendar: Calendar,
   scheduling: Calendar,
+  'time-tracking': Timer,
+  clockify: Timer,
   'google-sheets': Table2,
   'google-drive': HardDrive,
   'google-docs': FileText,
@@ -113,6 +117,7 @@ type ProviderConfig = {
 function buildProviderConfigs(): {
   essentialProviders: ProviderConfig[];
   otherProviders: ProviderConfig[];
+  timeTrackingProviders: ProviderConfig[];
 } {
   // Essential integrations - Gmail, Calendar, and Sheets
   const essentialProviders: ProviderConfig[] = [
@@ -154,7 +159,16 @@ function buildProviderConfigs(): {
     },
   ];
 
-  return { essentialProviders, otherProviders };
+  // Time tracking integrations
+  const timeTrackingProviders: ProviderConfig[] = [
+    {
+      id: 'clockify',
+      name: 'Clockify',
+      description: 'Track time on projects and clients',
+    },
+  ];
+
+  return { essentialProviders, otherProviders, timeTrackingProviders };
 }
 
 export default function Integrations() {
@@ -167,10 +181,10 @@ export default function Integrations() {
   const { toast } = useToast();
 
   // Build provider configs from registry (memoized to avoid rebuilding on every render)
-  const { essentialProviders, otherProviders } = useMemo(() => buildProviderConfigs(), []);
+  const { essentialProviders, otherProviders, timeTrackingProviders } = useMemo(() => buildProviderConfigs(), []);
   const availableProviders = useMemo(
-    () => [...essentialProviders, ...otherProviders],
-    [essentialProviders, otherProviders]
+    () => [...essentialProviders, ...otherProviders, ...timeTrackingProviders],
+    [essentialProviders, otherProviders, timeTrackingProviders]
   );
 
   // Dialog states
@@ -197,6 +211,10 @@ export default function Integrations() {
 
   // Google Sheets info dialog state
   const [sheetsInfoOpen, setSheetsInfoOpen] = useState(false);
+
+  // API key input state (for api-key auth flow providers like Clockify)
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeyError, setApiKeyError] = useState('');
 
   // Google reconnect dialog state (when user tries to enable a tool we don't have access to)
   const [reconnectDialog, setReconnectDialog] = useState<{ open: boolean; toolName: string } | null>(null);
@@ -314,6 +332,10 @@ export default function Integrations() {
       }
     }
 
+    // Reset API key input state
+    setApiKeyInput('');
+    setApiKeyError('');
+
     if (provider.subProviders && provider.subProviders.length > 0) {
       // Show dialog to select sub-provider
       setConnectDialogProvider(provider);
@@ -367,6 +389,46 @@ export default function Integrations() {
         // Use direct Google OAuth instead of Nango
         const providerId = subProvider || provider;
         window.location.href = `${apiUrl}/integrations/${providerId}/connect?token=${encodeURIComponent(token || '')}`;
+        return;
+      }
+
+      if (oauthFlow === 'api-key') {
+        // API key authentication (e.g., Clockify)
+        const providerId = subProvider || provider;
+
+        if (!apiKeyInput || apiKeyInput.trim() === '') {
+          setApiKeyError('Please enter your API key');
+          setIsConnecting(false);
+          return;
+        }
+
+        const response = await fetch(`${apiUrl}/integrations/${providerId}/connect-api-key`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            apiKey: apiKeyInput.trim(),
+            accessLevel,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errorMessage = data.error?.message || `Failed to connect ${providerConfig?.displayName || providerId}`;
+          setApiKeyError(errorMessage);
+          setIsConnecting(false);
+          return;
+        }
+
+        setSuccessMessage(data.data?.message || `${providerConfig?.displayName || providerId} connected successfully`);
+        setApiKeyInput(''); // Clear the input
+        setApiKeyError('');
+        await loadIntegrations();
+        setIsConnecting(false);
+        setTimeout(() => setSuccessMessage(''), 5000);
         return;
       }
 
@@ -1064,6 +1126,156 @@ export default function Integrations() {
             );
           })}
 
+          {/* Time Tracking Section - inline in the grid */}
+          {timeTrackingProviders.map((provider) => {
+            const integration = getIntegrationStatus(provider.id as IntegrationProvider);
+            const isConnected = integration?.status === 'connected';
+            const Icon = providerIcons[provider.id] || Timer;
+            const blocked = isProviderBlocked(provider);
+
+            return (
+              <Card
+                key={provider.id}
+                className={`flex flex-col ${
+                  isConnected
+                    ? 'border-green-200 bg-green-50/30'
+                    : blocked
+                      ? 'opacity-60 border-dashed'
+                      : ''
+                }`}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isConnected ? 'bg-green-100' : blocked ? 'bg-muted/50' : 'bg-muted'}`}>
+                        <Icon
+                          className={`h-5 w-5 ${isConnected ? 'text-green-600' : 'text-muted-foreground'}`}
+                        />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {provider.name}
+                          {blocked && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Lock className="h-3 w-3 mr-1" />
+                              Org Only
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <CardDescription>{provider.description}</CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {!blocked && getStatusBadge(integration?.status || 'disconnected')}
+                      {isConnected && getAccessLevelBadge(integration?.accessLevel)}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col justify-end">
+                  {blocked ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        This integration requires an organization account.
+                      </p>
+                      <Link to="/onboarding/account-type">
+                        <Button variant="outline" className="w-full">
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Upgrade to Organization
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : integration && integration.status !== 'disconnected' ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          {integration.lastSyncAt && (
+                            <>
+                              <RefreshCw className="h-3 w-3 inline mr-1" />
+                              Last sync:{' '}
+                              {integration.lastSyncAt instanceof Date
+                                ? integration.lastSyncAt.toLocaleDateString()
+                                : new Date(integration.lastSyncAt).toLocaleDateString()}
+                            </>
+                          )}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDisconnectTarget({ id: integration.id, name: provider.name })}
+                        >
+                          <Unplug className="h-4 w-4 mr-1" />
+                          Disconnect
+                        </Button>
+                      </div>
+                      {/* Access level selector for connected integrations */}
+                      {isConnected && (
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs text-muted-foreground">Access level:</Label>
+                          <Select
+                            value={integration.accessLevel || 'read-write'}
+                            onValueChange={(value) => handleUpdateAccessLevel(integration.id, value as IntegrationAccessLevel)}
+                            disabled={updatingAccessLevel === integration.id}
+                          >
+                            <SelectTrigger className="h-7 w-[140px] text-xs">
+                              {(integration.accessLevel || 'read-write') === 'read-write' ? (
+                                <span className="flex items-center gap-1">
+                                  <ShieldCheck className="h-3 w-3" /> Full access
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" /> Read only
+                                </span>
+                              )}
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="read-write">
+                                <span className="flex items-center gap-1">
+                                  <ShieldCheck className="h-3 w-3" /> Full access
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="read-only">
+                                <span className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" /> Read only
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground text-center">
+                        Free time tracking.{' '}
+                        <a href="https://clockify.me/signup" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          Create account
+                        </a>
+                      </p>
+                      <Button
+                        className="w-full"
+                        onClick={() => handleConnect(provider)}
+                        disabled={isConnecting}
+                      >
+                        {isConnecting ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <Plug className="h-4 w-4 mr-2" />
+                            Connect
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+
           {/* Placeholder for requesting new integrations */}
           <Card className="border-dashed">
             <CardHeader>
@@ -1141,6 +1353,47 @@ export default function Integrations() {
               </div>
             )}
 
+            {/* API Key input (for api-key auth flow providers like Clockify) */}
+            {(() => {
+              const providerId = connectDialogProvider?.subProviders ? selectedSubProvider : connectDialogProvider?.id;
+              const providerConfig = providerId ? getProvider(providerId) : null;
+              const isApiKeyAuth = providerConfig?.oauthFlow === 'api-key';
+
+              if (!isApiKeyAuth) return null;
+
+              return (
+                <div className="space-y-2">
+                  <Label htmlFor="api-key">API Key</Label>
+                  <Input
+                    id="api-key"
+                    type="password"
+                    placeholder="Paste your API key here"
+                    value={apiKeyInput}
+                    onChange={(e) => {
+                      setApiKeyInput(e.target.value);
+                      setApiKeyError(''); // Clear error on input
+                    }}
+                    className={apiKeyError ? 'border-red-500' : ''}
+                  />
+                  {apiKeyError && (
+                    <p className="text-xs text-red-500">{apiKeyError}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Get your API key from{' '}
+                    <a
+                      href={providerConfig?.apiKeySetupUrl || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {providerConfig?.displayName} settings
+                      <ExternalLink className="h-3 w-3 inline ml-1" />
+                    </a>
+                  </p>
+                </div>
+              );
+            })()}
+
             {/* Access level selection */}
             <div className="space-y-2">
               <Label>Access Level</Label>
@@ -1185,10 +1438,32 @@ export default function Integrations() {
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmConnect}>
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Connect with OAuth
-            </AlertDialogAction>
+            {(() => {
+              const providerId = connectDialogProvider?.subProviders ? selectedSubProvider : connectDialogProvider?.id;
+              const providerConfig = providerId ? getProvider(providerId) : null;
+              const isApiKeyAuth = providerConfig?.oauthFlow === 'api-key';
+
+              return (
+                <AlertDialogAction onClick={handleConfirmConnect} disabled={isConnecting}>
+                  {isConnecting ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : isApiKeyAuth ? (
+                    <>
+                      <Plug className="h-4 w-4 mr-2" />
+                      Connect with API Key
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Connect with OAuth
+                    </>
+                  )}
+                </AlertDialogAction>
+              );
+            })()}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

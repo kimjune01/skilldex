@@ -11,11 +11,32 @@
 export type { ProviderManifest, ProviderOperation, ParameterDef, OperationAccess, HttpMethod, AccessLevel } from './types.js';
 export { filterOperationsByAccess, isOperationAllowed } from './types.js';
 
-// Manifests
-export { manifests, getManifest, getAvailableProviders, isProviderSupported } from './manifests/index.js';
-export { greenhouseManifest } from './manifests/greenhouse.js';
-export { zohoRecruitManifest } from './manifests/zoho-recruit.js';
-export { mockAtsManifest } from './manifests/mock-ats.js';
+// Manifests - all re-exported from shared via manifests/index.js
+export {
+  manifests,
+  getManifest,
+  getAvailableProviders,
+  isProviderSupported,
+  greenhouseManifest,
+  zohoRecruitManifest,
+  mockAtsManifest,
+  calendlyManifest,
+  airtableManifest,
+  notionManifest,
+  googleSheetsManifest,
+  googleDriveManifest,
+  googleDocsManifest,
+  googleFormsManifest,
+  googleContactsManifest,
+  googleTasksManifest,
+  clockifyManifest,
+  atsManifests,
+  calendarManifests,
+  databaseManifests,
+  googleWorkspaceManifests,
+  timeTrackingManifests,
+  allManifests,
+} from './manifests/index.js';
 
 // Generator
 export type { GeneratedTool } from './generator.js';

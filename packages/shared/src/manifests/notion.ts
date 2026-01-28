@@ -7,7 +7,7 @@
  * @see https://developers.notion.com/reference
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const notionManifest: ProviderManifest = {
   provider: 'notion',

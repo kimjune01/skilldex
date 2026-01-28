@@ -81,7 +81,7 @@ export interface ProviderManifest {
   displayName: string;
 
   /** Integration category */
-  category: 'ats' | 'crm' | 'email' | 'calendar' | 'database';
+  category: 'ats' | 'crm' | 'email' | 'calendar' | 'database' | 'time-tracking';
 
   /** Base API URL */
   baseUrl: string;

@@ -4,7 +4,7 @@
  * @see https://developer.calendly.com/api-docs
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const calendlyManifest: ProviderManifest = {
   provider: 'calendly',

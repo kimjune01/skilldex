@@ -86,6 +86,142 @@ integrationsRoutes.post('/mock-ats/connect', async (c) => {
   return c.json({ data: { message: 'Mock ATS connected successfully' } });
 });
 
+// ============================================================================
+// API Key Connect - For providers using API key authentication (e.g., Clockify)
+// ============================================================================
+
+// POST /integrations/:provider/connect-api-key - Connect provider using API key
+integrationsRoutes.post('/:provider/connect-api-key', async (c) => {
+  const user = c.get('user');
+  const provider = c.req.param('provider');
+
+  const body = await c.req.json<{
+    apiKey: string;
+    accessLevel?: 'read-write' | 'read-only';
+  }>();
+
+  if (!body.apiKey || typeof body.apiKey !== 'string' || body.apiKey.trim() === '') {
+    return c.json({ error: { message: 'API key is required' } }, 400);
+  }
+
+  const apiKey = body.apiKey.trim();
+  const accessLevel = body.accessLevel || 'read-write';
+
+  // Import provider config to validate
+  const { getProvider, getApiBaseUrl, buildAuthHeader } = await import('@skillomatic/shared');
+  const providerConfig = getProvider(provider);
+
+  if (!providerConfig) {
+    return c.json({ error: { message: `Unknown provider: ${provider}` } }, 400);
+  }
+
+  if (providerConfig.oauthFlow !== 'api-key') {
+    return c.json({ error: { message: `Provider ${provider} does not support API key authentication` } }, 400);
+  }
+
+  // Check if individual user is trying to connect a restricted provider
+  const isIndividual = !user.organizationId;
+  if (isIndividual && !isProviderAllowedForIndividual(provider)) {
+    return c.json({
+      error: {
+        message: 'This integration requires an organization account.',
+        code: 'INDIVIDUAL_ACCOUNT_RESTRICTION',
+      },
+    }, 403);
+  }
+
+  // Validate the API key by making a test request to the provider
+  // For Clockify, we call GET /user to verify the key works
+  const baseUrl = getApiBaseUrl(provider);
+  if (!baseUrl) {
+    return c.json({ error: { message: `Provider ${provider} not properly configured` } }, 500);
+  }
+
+  try {
+    const authHeaders = buildAuthHeader(provider, apiKey);
+    const testUrl = provider === 'clockify' ? `${baseUrl}/user` : baseUrl;
+
+    const response = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        ...authHeaders,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        return c.json({ error: { message: 'Invalid API key. Please check your key and try again.' } }, 401);
+      }
+      log.warn('api_key_validation_failed', { provider, status: response.status, userId: user.sub });
+      return c.json({ error: { message: 'Failed to validate API key with provider' } }, 502);
+    }
+
+    // For Clockify, extract user info from the response
+    let providerUserId: string | undefined;
+    let providerUserName: string | undefined;
+    if (provider === 'clockify') {
+      const userData = await response.json() as { id?: string; name?: string; email?: string };
+      providerUserId = userData.id;
+      providerUserName = userData.name || userData.email;
+    }
+
+    // Check if already connected
+    const existing = await db
+      .select()
+      .from(integrations)
+      .where(and(eq(integrations.userId, user.sub), eq(integrations.provider, provider)))
+      .limit(1);
+
+    const metadata = {
+      accessLevel,
+      apiKey, // Store the API key in metadata
+      providerUserId,
+      providerUserName,
+    };
+
+    if (existing.length === 0) {
+      await db.insert(integrations).values({
+        id: randomUUID(),
+        userId: user.sub,
+        organizationId: user.organizationId,
+        provider,
+        status: 'connected',
+        metadata: JSON.stringify(metadata),
+        lastSyncAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    } else {
+      await db
+        .update(integrations)
+        .set({
+          status: 'connected',
+          metadata: JSON.stringify(metadata),
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(integrations.id, existing[0].id));
+    }
+
+    log.info('api_key_connected', { provider, userId: user.sub, providerUserId });
+
+    return c.json({
+      data: {
+        message: `${providerConfig.displayName} connected successfully`,
+        providerUserName,
+      },
+    });
+  } catch (error) {
+    log.error('api_key_connect_error', {
+      provider,
+      userId: user.sub,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return c.json({ error: { message: 'Failed to connect. Please try again.' } }, 500);
+  }
+});
+
 // GET /integrations - List user's integrations
 integrationsRoutes.get('/', async (c) => {
   const user = c.get('user');

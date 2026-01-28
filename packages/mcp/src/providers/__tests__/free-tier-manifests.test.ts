@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { notionManifest } from '../manifests/notion.js';
 import {
+  notionManifest,
   googleDriveManifest,
   googleContactsManifest,
   googleTasksManifest,

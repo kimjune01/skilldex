@@ -7,9 +7,9 @@
 
 // ============ Types ============
 
-export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'scheduling';
+export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'scheduling' | 'time-tracking';
 export type AuthType = 'bearer' | 'basic' | 'api-key';
-export type OAuthFlow = 'nango' | 'google-direct' | 'none';
+export type OAuthFlow = 'nango' | 'google-direct' | 'api-key' | 'none';
 
 export interface ProviderConfig {
   /** Unique identifier (e.g., 'greenhouse', 'gmail', 'calendly') */
@@ -54,6 +54,9 @@ export interface ProviderConfig {
 
   /** Has MCP manifest with tool operations */
   hasManifest?: boolean;
+
+  /** URL where user can get their API key (for api-key auth flow) */
+  apiKeySetupUrl?: string;
 }
 
 // ============ Provider Registry ============
@@ -324,6 +327,20 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     hasManifest: true,
   },
 
+  // ==================== Time Tracking ====================
+  clockify: {
+    id: 'clockify',
+    displayName: 'Clockify',
+    category: 'time-tracking',
+    oauthFlow: 'api-key',
+    apiBaseUrl: 'https://api.clockify.me/api/v1',
+    apiAuth: { type: 'api-key', headerName: 'X-Api-Key' },
+    rateLimit: { requests: 10, windowSeconds: 1 },
+    order: 1,
+    hasManifest: true,
+    apiKeySetupUrl: 'https://app.clockify.me/user/preferences#advanced',
+  },
+
 };
 
 // ============ Query Functions ============
@@ -444,7 +461,7 @@ export function getApiBaseUrl(providerId: string): string | undefined {
  * Get all categories
  */
 export function getAllCategories(): IntegrationCategory[] {
-  return ['ats', 'email', 'calendar', 'database', 'scheduling'];
+  return ['ats', 'email', 'calendar', 'database', 'scheduling', 'time-tracking'];
 }
 
 // ============ Individual Account Restrictions ============
@@ -481,13 +498,15 @@ export const INDIVIDUAL_ALLOWED_PROVIDERS = [
   'notion',
   // Scheduling
   'cal-com',
+  // Time Tracking (free tier)
+  'clockify',
 ] as const;
 
 /**
  * Categories that individual accounts have FULL access to.
  * Note: 'database' is partially allowed (google-sheets only, not airtable)
  */
-export const INDIVIDUAL_FULL_ACCESS_CATEGORIES: IntegrationCategory[] = ['email', 'calendar', 'scheduling'];
+export const INDIVIDUAL_FULL_ACCESS_CATEGORIES: IntegrationCategory[] = ['email', 'calendar', 'scheduling', 'time-tracking'];
 
 /**
  * Check if a provider is allowed for individual (free) accounts.
@@ -527,6 +546,8 @@ export const FREE_PROVIDERS = [
   'cal-com',
   // Third party (full-featured free tiers)
   'notion',
+  // Time Tracking (free tier)
+  'clockify',
 ] as const;
 
 /**

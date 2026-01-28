@@ -7,7 +7,7 @@
  * @see https://airtable.com/developers/web/api/introduction
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const airtableManifest: ProviderManifest = {
   provider: 'airtable',

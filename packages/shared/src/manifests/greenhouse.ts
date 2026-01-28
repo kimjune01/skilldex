@@ -4,7 +4,7 @@
  * @see https://developers.greenhouse.io/harvest.html
  */
 
-import type { ProviderManifest } from '../types.js';
+import type { ProviderManifest } from './types.js';
 
 export const greenhouseManifest: ProviderManifest = {
   provider: 'greenhouse',
