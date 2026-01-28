@@ -111,13 +111,12 @@ export function getDefaultModel(provider: LLMProvider): string {
 }
 
 /**
- * Provider display names
+ * Provider display names (excludes aliases to avoid duplicates in dropdowns)
  */
-export const PROVIDER_LABELS: Record<LLMProvider, string> = {
+export const PROVIDER_LABELS: Record<Exclude<LLMProvider, 'gemini'>, string> = {
+  google: 'Google (Gemini)',
   anthropic: 'Anthropic (Claude)',
   openai: 'OpenAI (GPT)',
-  google: 'Google (Gemini)',
-  gemini: 'Google (Gemini)', // Alias for google
   groq: 'Groq (Llama)',
 };
 
@@ -131,3 +130,8 @@ export const PROVIDER_API_KEY_URLS: Record<LLMProvider, string> = {
   gemini: 'https://aistudio.google.com/app/apikey', // Alias for google
   groq: 'https://console.groq.com/keys',
 };
+
+/**
+ * Default provider for new users (Gemini is free-tier friendly)
+ */
+export const DEFAULT_PROVIDER: LLMProvider = 'google';

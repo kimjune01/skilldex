@@ -66,6 +66,7 @@ import {
   getDefaultModel,
   PROVIDER_LABELS,
   PROVIDER_API_KEY_URLS,
+  DEFAULT_PROVIDER,
   type UserLLMConfig,
 } from '@/lib/user-llm-config';
 import type { LLMProvider, LLMConfig } from '@/lib/llm-client';
@@ -116,13 +117,13 @@ export function ChatSidebar({
   // API Key settings state (for non-org users)
   const [apiKeyOpen, setApiKeyOpen] = useState(!hasOrgLLM && !userLLMConfig);
   const [apiKeyProvider, setApiKeyProvider] = useState<LLMProvider>(
-    userLLMConfig?.provider || loadUserLLMConfig()?.provider || 'anthropic'
+    userLLMConfig?.provider || loadUserLLMConfig()?.provider || DEFAULT_PROVIDER
   );
   const [apiKeyValue, setApiKeyValue] = useState(
     userLLMConfig?.apiKey || loadUserLLMConfig()?.apiKey || ''
   );
   const [apiKeyModel, setApiKeyModel] = useState(
-    userLLMConfig?.model || loadUserLLMConfig()?.model || getDefaultModel('anthropic')
+    userLLMConfig?.model || loadUserLLMConfig()?.model || getDefaultModel(DEFAULT_PROVIDER)
   );
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiKeyValidating, setApiKeyValidating] = useState(false);
@@ -214,8 +215,8 @@ export function ChatSidebar({
   const handleApiKeyClear = useCallback(() => {
     clearUserLLMConfig();
     setApiKeyValue('');
-    setApiKeyProvider('anthropic');
-    setApiKeyModel(getDefaultModel('anthropic'));
+    setApiKeyProvider(DEFAULT_PROVIDER);
+    setApiKeyModel(getDefaultModel(DEFAULT_PROVIDER));
     onUserLLMConfigChange?.(null);
     setApiKeyOpen(true);
   }, [onUserLLMConfigChange]);

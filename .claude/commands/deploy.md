@@ -59,10 +59,22 @@ If NO changes affect deployable services (e.g., only docs, .claude/, skills/), s
 pnpm typecheck
 ```
 
-5. Push schema to prod (skip if no `packages/db/` changes):
+5. Push schema to prod (ALWAYS run - schema drift can occur even without local changes):
 ```bash
 pnpm db:push:prod
 ```
+
+If Drizzle warns about data-loss (e.g., adding NOT NULL column without default), do NOT proceed with truncation. Instead:
+1. Add the column manually with a default value:
+   ```bash
+   turso db shell skillomatic "ALTER TABLE <table> ADD COLUMN <column> <TYPE> NOT NULL DEFAULT <value>;"
+   ```
+2. Then re-run `pnpm db:push:prod` - it should now show no changes or safe changes only.
+
+**Common columns that need manual addition:**
+- Boolean columns: `INTEGER NOT NULL DEFAULT 0` (0=false, 1=true)
+- Text columns with default: `TEXT NOT NULL DEFAULT '<value>'`
+- Nullable text: `TEXT` (no NOT NULL, no DEFAULT needed)
 
 6. Bump Docker cache bust if MCP-related changes (packages/mcp/, apps/mcp-server/, packages/db/):
 ```bash
@@ -160,6 +172,7 @@ Test credentials: `superadmin@skillomatic.technology` / `Skillomatic2024`
 |-------|-----|
 | "Invalid email or password" | Seed prod database (see above) |
 | "Failed query" with SQL | Schema out of sync - run `pnpm db:push:prod` |
+| "is not valid JSON" on login | Missing columns in prod DB - check schema with `turso db shell skillomatic "PRAGMA table_info(<table>);"` and add missing columns manually (see step 5) |
 | Lambda using stale secrets | Run `pnpm sst secret set TursoAuthToken "$(turso db tokens create skillomatic)" --stage production` |
 | Recreate database from scratch | `turso db destroy skillomatic --yes && turso db create skillomatic`, then push schema + seed + update SST secrets |
 
