@@ -19,8 +19,8 @@ git diff --quiet && git diff --cached --quiet || echo "ERROR: Uncommitted change
 
 2. Check extension zip version matches manifest, rebuild if needed:
 ```bash
-MANIFEST_VERSION=$(grep '"version"' apps/skillomatic-scraper/manifest.json | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
-ZIP_VERSION=$(unzip -p apps/web/public/skillomatic-scraper.zip manifest.json 2>/dev/null | grep '"version"' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+MANIFEST_VERSION=$(grep '"version"' apps/skillomatic-scraper/manifest.json | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+ZIP_VERSION=$(unzip -p apps/web/public/skillomatic-scraper.zip manifest.json 2>/dev/null | grep '"version"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
 if [ "$MANIFEST_VERSION" != "$ZIP_VERSION" ]; then
   echo "Extension zip version [$ZIP_VERSION] doesn't match manifest [$MANIFEST_VERSION]. Rebuilding..."
   cd apps/skillomatic-scraper && rm -f ../web/public/skillomatic-scraper.zip && zip -r ../web/public/skillomatic-scraper.zip . -x 'node_modules/*' -x '*.git*' -x '*.DS_Store' && cd ../..
