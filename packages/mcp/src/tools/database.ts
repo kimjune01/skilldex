@@ -20,109 +20,55 @@ const getTableSchemaSchema = {
 /**
  * Register database tools with the MCP server.
  * Only available for super admin users.
+ *
+ * Note: Tools can simply throw errors - TracedMcpServer handles conversion to MCP error responses.
  */
 export function registerDatabaseTools(server: McpServer, client: SkillomaticClient): void {
-  // List available tables
   server.tool(
     'list_database_tables',
     'List all tables available for querying in the production database',
     {},
     async () => {
-      try {
-        const result = await client.listDatabaseTables();
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error listing tables: ${message}` }],
-          isError: true,
-        };
-      }
+      const result = await client.listDatabaseTables();
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+      };
     }
   );
 
-  // Get table schema
   server.tool(
     'get_table_schema',
     'Get the schema (columns and types) for a specific database table',
     getTableSchemaSchema,
     async (args) => {
-      try {
-        const result = await client.getTableSchema(args.table);
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error getting schema: ${message}` }],
-          isError: true,
-        };
-      }
+      const result = await client.getTableSchema(args.table);
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+      };
     }
   );
 
-  // Execute SQL query
   server.tool(
     'query_database',
     'Execute a read-only SQL SELECT query against the production database. Only SELECT queries are allowed.',
     queryDatabaseSchema,
     async (args) => {
-      try {
-        const result = await client.queryDatabase(args.query, args.limit);
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error executing query: ${message}` }],
-          isError: true,
-        };
-      }
+      const result = await client.queryDatabase(args.query, args.limit);
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+      };
     }
   );
 
-  // Get database stats
   server.tool(
     'get_database_stats',
     'Get row counts for all tables in the database',
     {},
     async () => {
-      try {
-        const result = await client.getDatabaseStats();
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error getting stats: ${message}` }],
-          isError: true,
-        };
-      }
+      const result = await client.getDatabaseStats();
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+      };
     }
   );
 }

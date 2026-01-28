@@ -17,6 +17,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createRequire } from 'module';
 import { SkillomaticClient } from './api-client.js';
 import { registerTools } from './tools/index.js';
+import { wrapWithTracing } from './traced-server.js';
 import { log } from './logger.js';
 
 // Read version from package.json
@@ -112,8 +113,8 @@ async function main(): Promise<void> {
     };
   }
 
-  // Create MCP server
-  const server = new McpServer(
+  // Create MCP server with automatic tracing for all tool calls
+  const mcpServer = new McpServer(
     {
       name: 'skillomatic',
       version,
@@ -124,6 +125,7 @@ async function main(): Promise<void> {
       },
     }
   );
+  const server = wrapWithTracing(mcpServer);
 
   // Register tools (based on user capabilities)
   await registerTools(server, client, capabilities);

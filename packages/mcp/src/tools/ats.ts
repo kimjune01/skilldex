@@ -42,150 +42,115 @@ const updateCandidateSchema = {
 
 /**
  * Register ATS tools with the MCP server.
+ * Note: Errors are automatically caught and converted to MCP error responses by TracedMcpServer.
  */
 export function registerAtsTools(server: McpServer, client: SkillomaticClient): void {
-  // Search candidates
   server.tool(
     'search_ats_candidates',
     'Search for candidates in the connected ATS system',
     searchCandidatesSchema,
     async (args) => {
-      try {
-        const result = await client.searchCandidates({
-          q: args.query,
-          tags: args.tags,
-          limit: args.limit,
-        });
+      const result = await client.searchCandidates({
+        q: args.query,
+        tags: args.tags,
+        limit: args.limit,
+      });
 
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  candidates: result.candidates,
-                  total: result.total,
-                  query: args.query || '(all)',
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error searching candidates: ${message}` }],
-          isError: true,
-        };
-      }
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(
+              {
+                candidates: result.candidates,
+                total: result.total,
+                query: args.query || '(all)',
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
     }
   );
 
-  // Get candidate by ID
   server.tool(
     'get_ats_candidate',
     'Get detailed information about a specific candidate',
     getCandidateSchema,
     async (args) => {
-      try {
-        const candidate = await client.getCandidate(args.id);
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(candidate, null, 2),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error fetching candidate: ${message}` }],
-          isError: true,
-        };
-      }
+      const candidate = await client.getCandidate(args.id);
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(candidate, null, 2),
+          },
+        ],
+      };
     }
   );
 
-  // Create candidate
   server.tool(
     'create_ats_candidate',
     'Add a new candidate to the ATS system',
     createCandidateSchema,
     async (args) => {
-      try {
-        const candidate = await client.createCandidate({
-          firstName: args.firstName,
-          lastName: args.lastName,
-          email: args.email,
-          phone: args.phone,
-          headline: args.headline,
-          summary: args.summary,
-          source: args.source,
-          tags: args.tags,
-        });
+      const candidate = await client.createCandidate({
+        firstName: args.firstName,
+        lastName: args.lastName,
+        email: args.email,
+        phone: args.phone,
+        headline: args.headline,
+        summary: args.summary,
+        source: args.source,
+        tags: args.tags,
+      });
 
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  success: true,
-                  message: `Created candidate: ${candidate.firstName} ${candidate.lastName}`,
-                  candidate,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error creating candidate: ${message}` }],
-          isError: true,
-        };
-      }
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(
+              {
+                success: true,
+                message: `Created candidate: ${candidate.firstName} ${candidate.lastName}`,
+                candidate,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
     }
   );
 
-  // Update candidate
   server.tool(
     'update_ats_candidate',
     'Update an existing candidate in the ATS system',
     updateCandidateSchema,
     async (args) => {
-      try {
-        const { id, ...updates } = args;
-        const candidate = await client.updateCandidate(id, updates);
+      const { id, ...updates } = args;
+      const candidate = await client.updateCandidate(id, updates);
 
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  success: true,
-                  message: `Updated candidate: ${candidate.firstName} ${candidate.lastName}`,
-                  candidate,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error updating candidate: ${message}` }],
-          isError: true,
-        };
-      }
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(
+              {
+                success: true,
+                message: `Updated candidate: ${candidate.firstName} ${candidate.lastName}`,
+                candidate,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
     }
   );
 }

@@ -42,23 +42,33 @@ export type {
   TabRow,
 } from './types.js';
 
+// Default timeout for API requests (30 seconds)
+const DEFAULT_TIMEOUT_MS = 30000;
+
 export class SkillomaticClient {
   private baseUrl: string;
   private apiKey: string;
+  private timeoutMs: number;
 
-  constructor(options: { baseUrl: string; apiKey: string }) {
+  constructor(options: { baseUrl: string; apiKey: string; timeoutMs?: number }) {
     this.baseUrl = options.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.apiKey = options.apiKey;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     log.debug(`API request: ${options.method || 'GET'} ${path}`);
 
+    // Create an AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
     let response: Response;
     try {
       response = await fetch(url, {
         ...options,
+        signal: controller.signal,
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
@@ -66,6 +76,14 @@ export class SkillomaticClient {
         },
       });
     } catch (error) {
+      clearTimeout(timeoutId);
+      // Handle abort (timeout)
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(
+          `Request to ${path} timed out after ${this.timeoutMs}ms. ` +
+          `The API server may be overloaded or unreachable.`
+        );
+      }
       // Network-level errors (connection refused, DNS failure, etc.)
       const cause = error instanceof Error ? error.message : String(error);
       if (cause.includes('fetch failed') || cause.includes('ECONNREFUSED')) {
@@ -87,6 +105,8 @@ export class SkillomaticClient {
         );
       }
       throw new Error(`Network error connecting to ${this.baseUrl}: ${cause}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (!response.ok) {
