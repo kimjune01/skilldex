@@ -546,9 +546,13 @@ export interface SkillProposalReviewRequest {
 
 // ============ Complaint Types ============
 
+/** Complaint categories */
+export type ComplaintCategory = 'bug' | 'integration-request';
+
 /** Request to create a complaint (creates GitHub issue) */
 export interface ComplaintCreateRequest {
   message: string;
+  category?: ComplaintCategory;
   pageUrl?: string;
   userAgent?: string;
   screenSize?: string;

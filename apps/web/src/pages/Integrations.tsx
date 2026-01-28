@@ -9,6 +9,7 @@ import type { IntegrationPublic, IntegrationProvider } from '@skillomatic/shared
 import { getProviders, getProvider, type IntegrationCategory, isProviderAllowedForIndividual, type PayIntentionTrigger } from '@skillomatic/shared';
 import { PayIntentionDialog } from '@/components/PayIntentionDialog';
 import { GoogleSheetsInfoDialog } from '@/components/GoogleSheetsInfoDialog';
+import { IntegrationRequestDialog } from '@/components/IntegrationRequestDialog';
 import { OnboardingBadge } from '@/components/ui/onboarding-badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -212,6 +213,9 @@ export default function Integrations() {
   // Google Sheets info dialog state
   const [sheetsInfoOpen, setSheetsInfoOpen] = useState(false);
 
+  // Integration request dialog state
+  const [integrationRequestOpen, setIntegrationRequestOpen] = useState(false);
+
   // API key input state (for api-key auth flow providers like Clockify)
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [apiKeyError, setApiKeyError] = useState('');
@@ -257,6 +261,13 @@ export default function Integrations() {
       }
     }
   }, [user, integrationList, isLoading, refreshUser]);
+
+  // Listen for custom event to open integration request dialog
+  useEffect(() => {
+    const handleOpenDialog = () => setIntegrationRequestOpen(true);
+    window.addEventListener('open-complain-dialog', handleOpenDialog);
+    return () => window.removeEventListener('open-complain-dialog', handleOpenDialog);
+  }, []);
 
   // Handle OAuth callback and pay intention query params
   useEffect(() => {
@@ -1276,35 +1287,35 @@ export default function Integrations() {
             );
           })}
 
-          {/* Placeholder for requesting new integrations */}
+          {/* Request new integration card */}
           <Card className="border-dashed">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-muted">
-                    <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                    <Plug className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">I wanna connect my app!</CardTitle>
-                    <CardDescription>Missing an integration? Let us know what you need.</CardDescription>
+                    <CardTitle className="text-lg">Don't see your tool?</CardTitle>
+                    <CardDescription>Request an integration and we'll look into it.</CardDescription>
                   </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground text-center">
-                See what's possible:{' '}
+                We can connect to most tools -{' '}
                 <a href="https://nango.dev/integrations" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  250+ integrations
+                  250+ already supported
                   <ExternalLink className="h-3 w-3 inline ml-1" />
                 </a>
               </p>
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => window.dispatchEvent(new CustomEvent('open-complain-dialog'))}
+                onClick={() => setIntegrationRequestOpen(true)}
               >
-                Complain
+                Request Integration
               </Button>
             </CardContent>
           </Card>
@@ -1504,6 +1515,12 @@ export default function Integrations() {
       <GoogleSheetsInfoDialog
         open={sheetsInfoOpen}
         onClose={() => setSheetsInfoOpen(false)}
+      />
+
+      {/* Integration Request Dialog - Collect user requests for new integrations */}
+      <IntegrationRequestDialog
+        open={integrationRequestOpen}
+        onClose={() => setIntegrationRequestOpen(false)}
       />
 
       {/* Google Reconnect Dialog - When user tries to enable a tool they didn't grant access to */}

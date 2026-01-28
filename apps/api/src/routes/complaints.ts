@@ -72,8 +72,32 @@ complaintsRoutes.post('/', async (c) => {
     return c.json({ error: { message: 'Bug reporting is not configured' } }, 500);
   }
 
+  // Determine category and labels
+  const category = body.category || 'bug';
+  const isIntegrationRequest = category === 'integration-request';
+
   // Build issue body with context
-  const issueBody = `## Bug Report
+  const issueTitle = isIntegrationRequest
+    ? `[Integration Request] ${body.message.trim().slice(0, 60)}${body.message.length > 60 ? '...' : ''}`
+    : `[Bug] ${body.message.trim().slice(0, 60)}${body.message.length > 60 ? '...' : ''}`;
+
+  const issueBody = isIntegrationRequest
+    ? `## Integration Request
+
+**User ID:** \`${user.id}\`
+**Email:** ${user.email}
+**Organization:** ${user.organizationId ? `\`${user.organizationId}\`` : 'Individual user'}
+
+### Requested Integration
+${body.message.trim()}
+
+### Context
+- **Page URL:** ${body.pageUrl || 'Not provided'}
+- **Submitted:** ${new Date().toISOString()}
+
+---
+*Submitted via Integration Request form*`
+    : `## Bug Report
 
 **User ID:** \`${user.id}\`
 **Email:** ${user.email}
@@ -91,6 +115,10 @@ ${body.message.trim()}
 ---
 *Submitted via Complain button*`;
 
+  const labels = isIntegrationRequest
+    ? ['enhancement', 'integration-request', 'user-reported']
+    : ['bug', 'user-reported'];
+
   try {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`, {
       method: 'POST',
@@ -101,9 +129,9 @@ ${body.message.trim()}
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        title: `[Bug] ${body.message.trim().slice(0, 60)}${body.message.length > 60 ? '...' : ''}`,
+        title: issueTitle,
         body: issueBody,
-        labels: ['bug', 'user-reported'],
+        labels,
       }),
     });
 
