@@ -25,12 +25,12 @@ import { useToast } from '@/components/ui/toast';
 // Order: Home first, then chat options (how to connect), then configuration (what it can do)
 const navigation = [
   { name: 'Home', href: '/home', icon: Home },
-  { name: 'Desktop Chat', href: '/desktop-chat', icon: Key },
-  { name: 'Mobile Chat', href: '/mobile-chat', icon: Smartphone },
-  { name: 'Web Chat', href: '/chat', icon: MessageSquare },
   { name: 'Connections', href: '/connections', icon: Plug },
+  { name: 'Web Chat', href: '/chat', icon: MessageSquare },
+  { name: 'Mobile Chat', href: '/mobile-chat', icon: Smartphone },
+  { name: 'Desktop Chat', href: '/desktop-chat', icon: Key },
   { name: 'Skills', href: '/skills', icon: Zap },
-  { name: 'Extension', href: '/extension/install', icon: Chrome },
+  { name: 'Web Clipper', href: '/extension/install', icon: Chrome },
 ];
 
 // Admin navigation - visible only to users with isAdmin=true

@@ -1,7 +1,7 @@
 /**
- * Extension Install Page
+ * Web Clipper Install Page
  *
- * Authenticated page for installing the browser extension.
+ * Authenticated page for installing the Web Clipper browser extension.
  * Part of the onboarding flow with sideloading instructions.
  */
 import { useState } from 'react';
@@ -26,8 +26,8 @@ import { EXTENSION_VERSION, EXTENSION_MIN_CHROME_VERSION } from '@skillomatic/sh
 const steps = [
   {
     number: 1,
-    title: 'Download the extension',
-    description: 'Download the ZIP file containing the extension.',
+    title: 'Download the Web Clipper',
+    description: 'Download the ZIP file containing the clipper.',
     icon: Download,
   },
   {
@@ -51,14 +51,14 @@ const steps = [
   },
   {
     number: 5,
-    title: 'Load the extension',
+    title: 'Load the Web Clipper',
     description: 'Click "Load unpacked" and select the folder you extracted in step 2.',
     icon: Package,
   },
   {
     number: 6,
-    title: 'Configure the extension',
-    description: 'Click the extension icon in Chrome, then enter your API URL and key from the Desktop Chat page.',
+    title: 'Configure the Web Clipper',
+    description: 'Click the clipper icon in Chrome, then enter your API URL and key from the Desktop Chat page.',
     icon: Settings,
   },
 ];
@@ -85,14 +85,14 @@ export default function ExtensionInstall() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-[hsl(220_30%_20%)] tracking-tight">
-            Install Browser Extension
+            Install Web Clipper
           </h1>
           <p className="text-[hsl(220_15%_50%)] mt-1">
-            Enable web page extraction for your AI assistant
+            Clip web pages from your browser, even while chatting on mobile
           </p>
         </div>
         <Badge className="bg-amber-100 text-amber-700 border-amber-200">
-          Coming to Chrome Web Store
+          Coming soon
         </Badge>
       </div>
 
@@ -105,7 +105,7 @@ export default function ExtensionInstall() {
             </div>
             <div>
               <CardTitle className="font-black tracking-wide text-[hsl(220_30%_20%)]">
-                Skillomatic Scraper Extension
+                Skillomatic Web Clipper
               </CardTitle>
               <p className="text-sm text-[hsl(220_15%_50%)]">
                 Version {EXTENSION_VERSION} - Chrome {EXTENSION_MIN_CHROME_VERSION}+
@@ -118,7 +118,7 @@ export default function ExtensionInstall() {
             <a href="/skillomatic-scraper.zip" download className="w-full sm:w-auto">
               <Button className="robot-button border-0 w-full sm:w-auto gap-2">
                 <Download className="h-5 w-5" />
-                Download Extension (ZIP)
+                Download Web Clipper (ZIP)
               </Button>
             </a>
             <p className="text-sm text-[hsl(220_15%_50%)]">
@@ -169,7 +169,7 @@ export default function ExtensionInstall() {
               <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 border-2 border-green-200">
                 <CheckCircle className="h-6 w-6 text-green-500" />
                 <div className="flex-1">
-                  <p className="font-bold text-green-700">Extension step completed!</p>
+                  <p className="font-bold text-green-700">Web Clipper installed!</p>
                   <p className="text-sm text-green-600">You can continue with the next onboarding step.</p>
                 </div>
                 <Link to="/home">
@@ -182,7 +182,7 @@ export default function ExtensionInstall() {
             ) : (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="text-[hsl(220_15%_50%)]">
-                  Once you've installed and configured the extension, mark this step as complete.
+                  Once you've installed and configured the Web Clipper, mark this step as complete.
                 </p>
                 <Button
                   onClick={handleMarkComplete}
