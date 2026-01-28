@@ -28,7 +28,7 @@ const navigation = [
   { name: 'Desktop Chat', href: '/desktop-chat', icon: Key },
   { name: 'Mobile Chat', href: '/mobile-chat', icon: Smartphone },
   { name: 'Web Chat', href: '/chat', icon: MessageSquare },
-  { name: 'Connections', href: '/integrations', icon: Plug },
+  { name: 'Connections', href: '/connections', icon: Plug },
   { name: 'Skills', href: '/skills', icon: Zap },
   { name: 'Automations', href: '/automations', icon: Clock, comingSoon: true },
   { name: 'Extension', href: '/extension/install', icon: Chrome },

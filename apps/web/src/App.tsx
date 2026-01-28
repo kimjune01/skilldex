@@ -13,7 +13,7 @@
  * - /skills/:slug - Skill detail page (requires auth)
  * - /desktop-chat - Desktop chat app setup (requires auth)
  * - /mobile-chat - Mobile chat app setup (requires auth)
- * - /integrations - OAuth connections (requires auth)
+ * - /connections - OAuth connections (requires auth)
  * - /usage - Usage history (requires auth)
  * - /admin/* - Admin-only routes (requires admin role)
  *
@@ -226,7 +226,7 @@ export default function App() {
           <Route path="desktop-chat" element={<ApiKeys />} />
           <Route path="mobile-chat" element={<MobileChat />} />
           <Route path="get-api-key" element={<GetApiKey />} />
-          <Route path="integrations" element={<Integrations />} />
+          <Route path="connections" element={<Integrations />} />
           <Route path="automations" element={<Automations />} />
           <Route path="extension/install" element={<ExtensionInstall />} />
           <Route path="usage" element={<Usage />} />

@@ -104,7 +104,7 @@ export default function Dashboard() {
       label: 'Connect Google',
       done: currentStep >= ONBOARDING_STEPS.GOOGLE_CONNECTED,
       icon: Plug,
-      route: '/integrations',
+      route: '/connections',
       actionLabel: 'Connect',
     });
 
@@ -396,7 +396,7 @@ export default function Dashboard() {
               icon: Plug,
               active: connectedIntegrations.length > 0,
               ledColor: 'led-green',
-              link: '/integrations',
+              link: '/connections',
               linkText: connectedIntegrations.length > 0 ? 'Manage' : 'Link',
             },
             {
