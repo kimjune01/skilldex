@@ -88,6 +88,8 @@ export const users = sqliteTable('users', {
   stripeCustomerId: text('stripe_customer_id'),
   /** Quick flag to check if user has confirmed willingness to pay */
   hasConfirmedPayIntention: integer('has_confirmed_pay_intention', { mode: 'boolean' }).notNull().default(false),
+  /** User's membership tier: 'free' (default), 'free_beta' (beta access) */
+  tier: text('tier').notNull().default('free'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

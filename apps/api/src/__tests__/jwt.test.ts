@@ -9,6 +9,7 @@ describe('JWT', () => {
     isAdmin: false,
     onboardingStep: 0,
     accountTypeSelected: true,
+    tier: 'free' as const,
     createdAt: Date.now(),
   }
 

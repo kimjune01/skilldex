@@ -65,7 +65,7 @@ payIntentionsRoutes.post('/', async (c) => {
       data: {
         payIntentionId: existing[0].id,
         confirmed: true,
-        message: 'Thanks for your interest! This feature is coming soon.',
+        message: 'Thank you for your interest! Skillomatic is currently free while in beta.',
       },
     });
   }
@@ -85,11 +85,12 @@ payIntentionsRoutes.post('/', async (c) => {
     updatedAt: now,
   });
 
-  // Update user's hasConfirmedPayIntention flag
+  // Update user's hasConfirmedPayIntention flag and promote to free_beta tier
   await db
     .update(users)
     .set({
       hasConfirmedPayIntention: true,
+      tier: 'free_beta',
       updatedAt: now,
     })
     .where(eq(users.id, user.sub));
@@ -105,6 +106,7 @@ payIntentionsRoutes.post('/', async (c) => {
     data: {
       payIntentionId,
       confirmed: true,
+      message: 'Thank you for your interest! Skillomatic is currently free while in beta.',
     },
   });
 });

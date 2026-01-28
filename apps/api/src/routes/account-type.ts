@@ -23,6 +23,7 @@ import {
   getEmailDomain,
   type AccountTypeInfo,
   type UserPublic,
+  type UserTier,
   type CreateOrgRequest,
   type JoinOrgRequest,
 } from '@skillomatic/shared';
@@ -92,6 +93,7 @@ async function buildUserPublic(dbUser: typeof users.$inferSelect): Promise<UserP
     onboardingStep: dbUser.onboardingStep ?? 0,
     accountTypeSelected: dbUser.accountTypeSelected ?? false,
     availableOrg,
+    tier: (dbUser.tier as UserTier) ?? 'free',
   };
 }
 

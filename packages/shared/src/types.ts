@@ -158,6 +158,14 @@ export interface LoginResponse {
   user: UserPublic;
 }
 
+/**
+ * User membership tier.
+ * - free: Default tier for new users
+ * - free_beta: Beta users who expressed payment intent (full access during beta)
+ * Additional tiers may be added later (e.g., pro, enterprise)
+ */
+export type UserTier = 'free' | 'free_beta';
+
 export interface UserPublic {
   id: string;
   email: string;
@@ -173,6 +181,8 @@ export interface UserPublic {
   accountTypeSelected: boolean;
   /** Org that the user can join based on their email domain (for individual users) */
   availableOrg?: { id: string; name: string };
+  /** User's membership tier */
+  tier: UserTier;
 }
 
 // ============ Organization Types ============

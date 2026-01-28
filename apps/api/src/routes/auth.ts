@@ -8,7 +8,7 @@ import { createToken, verifyToken } from '../lib/jwt.js';
 import { sendWelcomeEmail } from '../lib/email.js';
 import { getUrlsFromRequest } from '../lib/google-oauth.js';
 import { createDefaultApiKey } from '../lib/api-keys.js';
-import type { LoginResponse, UserPublic } from '@skillomatic/shared';
+import type { LoginResponse, UserPublic, UserTier } from '@skillomatic/shared';
 import { loginRateLimit } from '../middleware/rate-limit.js';
 import { loginRequestSchema, validateBody, ValidationError } from '../lib/validation.js';
 
@@ -118,6 +118,7 @@ authRoutes.post('/login', loginRateLimit, async (c) => {
     organizationName,
     onboardingStep: user[0].onboardingStep ?? 0,
     accountTypeSelected: user[0].accountTypeSelected ?? false,
+    tier: (user[0].tier as UserTier) ?? 'free',
   };
 
   const token = await createToken(userPublic);
@@ -188,6 +189,7 @@ authRoutes.get('/me', async (c) => {
     onboardingStep: user[0].onboardingStep ?? 0,
     accountTypeSelected: user[0].accountTypeSelected ?? false,
     availableOrg,
+    tier: (user[0].tier as UserTier) ?? 'free',
   };
 
   return c.json({ data: userPublic });
@@ -357,6 +359,7 @@ authRoutes.get('/google/callback', async (c) => {
       organizationName,
       onboardingStep: dbUser.onboardingStep ?? 0,
       accountTypeSelected: dbUser.accountTypeSelected ?? false,
+      tier: (dbUser.tier as UserTier) ?? 'free',
     };
 
     const token = await createToken(userPublic);

@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import { hashSync } from 'bcrypt-ts';
 import { jwtAuth, adminOnly } from '../middleware/auth.js';
 import { withOrganization } from '../middleware/organization.js';
-import { validatePassword, type UserPublic } from '@skillomatic/shared';
+import { validatePassword, type UserPublic, type UserTier } from '@skillomatic/shared';
 import { createDefaultApiKey } from '../lib/api-keys.js';
 
 export const usersRoutes = new Hono();
@@ -50,6 +50,7 @@ usersRoutes.get('/', async (c) => {
     organizationName: row.organizations?.name ?? undefined,
     onboardingStep: row.users.onboardingStep ?? 0,
     accountTypeSelected: row.users.accountTypeSelected ?? false,
+    tier: (row.users.tier as UserTier) ?? 'free',
   }));
 
   return c.json({ data: publicUsers });
@@ -92,6 +93,7 @@ usersRoutes.get('/:id', async (c) => {
     organizationName: orgData?.name ?? undefined,
     onboardingStep: user.onboardingStep ?? 0,
     accountTypeSelected: user.accountTypeSelected ?? false,
+    tier: (user.tier as UserTier) ?? 'free',
   };
 
   return c.json({ data: publicUser });
@@ -181,6 +183,7 @@ usersRoutes.post('/', async (c) => {
     organizationName: targetOrg.name,
     onboardingStep: 0,
     accountTypeSelected: true, // Admin-created users join an org, so account type is selected
+    tier: 'free',
   };
 
   return c.json({ data: publicUser }, 201);

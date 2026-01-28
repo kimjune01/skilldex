@@ -23,8 +23,19 @@ import { loadUserLLMConfig, toFullLLMConfig } from '@/lib/user-llm-config';
 import type { LLMConfig } from '@/lib/llm-client';
 import { getLLMConfig } from '@/lib/skills-client';
 
+/**
+ * Shared LLM config for free_beta users during beta period.
+ * This allows beta users to use chat without providing their own API key.
+ * Using Gemini 3 Flash (preview) - see https://ai.google.dev/gemini-api/docs/gemini-3
+ */
+const SHARED_BETA_LLM_CONFIG: LLMConfig = {
+  provider: 'google',
+  apiKey: 'AIzaSyCvZhvqH5FKdSFpx3NyLbZVy7PbmLksYCA',
+  model: 'gemini-3-flash-preview',
+};
+
 function ChatContent() {
-  const { user, organizationId } = useAuth();
+  const { user, organizationId, refreshUser } = useAuth();
   const {
     currentConversationId,
     currentConversation,
@@ -44,23 +55,30 @@ function ChatContent() {
   // Track whether org has LLM configured (separate from user config)
   const [hasOrgLLM, setHasOrgLLM] = useState<boolean | null>(null);
 
+  // Check if user is on free_beta tier (gets shared LLM access)
+  const isFreeBeta = user?.tier === 'free_beta';
+
   // User-provided LLM config (loaded from localStorage on mount)
+  // For free_beta users, we use the shared config instead
   const [userLLMConfig, setUserLLMConfig] = useState<LLMConfig | null>(() => {
     const stored = loadUserLLMConfig();
     return stored ? toFullLLMConfig(stored) : null;
   });
 
+  // Effective LLM config: free_beta users get shared config, others use their own
+  const effectiveLLMConfig = isFreeBeta ? SHARED_BETA_LLM_CONFIG : userLLMConfig;
+
   // Check if org has LLM configured on mount
   useEffect(() => {
     getLLMConfig().then((orgConfig) => {
       setHasOrgLLM(!!orgConfig);
-      // If org has LLM and user doesn't have their own, we're good
-      // If org doesn't have LLM and user doesn't have their own, open sidebar
-      if (!orgConfig && !userLLMConfig) {
+      // If org has LLM, user is free_beta, or user has their own config - we're good
+      // Otherwise open sidebar to configure
+      if (!orgConfig && !isFreeBeta && !userLLMConfig) {
         setSidebarOpen(true);
       }
     });
-  }, []);
+  }, [isFreeBeta, userLLMConfig]);
 
   // Handle user LLM config change from sidebar
   const handleUserLLMConfigChange = useCallback((config: LLMConfig | null) => {
@@ -115,7 +133,7 @@ function ChatContent() {
     conversationId: currentConversationId,
     onConversationCreated: handleConversationCreated,
     onConversationsChanged: refreshConversations,
-    userLLMConfig,
+    userLLMConfig: effectiveLLMConfig,
   });
 
   const handleRunSkill = useCallback(async (skillSlug: string) => {
@@ -179,8 +197,8 @@ function ChatContent() {
     );
   }
 
-  // Show setup UI for non-org users without API key configured
-  if (!hasOrgLLM && !userLLMConfig) {
+  // Show setup UI for users without LLM access (no org LLM, not free_beta, no user config)
+  if (!hasOrgLLM && !isFreeBeta && !userLLMConfig) {
     return (
       <div className="flex flex-col h-[calc(100vh-2rem)] items-center justify-center p-8">
         <div className="max-w-lg w-full">
@@ -277,7 +295,11 @@ function ChatContent() {
         {/* Pay Intention Dialog for subscription */}
         <PayIntentionDialog
           open={payIntentionOpen}
-          onClose={() => setPayIntentionOpen(false)}
+          onClose={() => {
+            setPayIntentionOpen(false);
+            // Refresh user to get updated tier after pay intention confirmation
+            refreshUser();
+          }}
           triggerType="subscription"
           providerName="Skillomatic subscription"
         />
@@ -318,7 +340,9 @@ function ChatContent() {
               {currentConversation?.title || 'New Chat'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {userLLMConfig ? (
+              {isFreeBeta ? (
+                <>Beta access - powered by Gemini</>
+              ) : userLLMConfig ? (
                 <>Using your {llmConfig?.provider} API key.</>
               ) : (
                 <>For a better experience, try <a href="/desktop-chat" className="text-primary hover:underline">Desktop Chat</a>.</>

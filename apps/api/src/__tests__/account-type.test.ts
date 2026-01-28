@@ -231,6 +231,7 @@ describe('Account Type Selection', () => {
             accountTypeSelected: true,
             organizationId: undefined,
             onboardingStep: ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED,
+            tier: 'free' as const,
           },
           token: 'jwt-token-here',
         };
@@ -260,6 +261,7 @@ describe('Account Type Selection', () => {
             organizationId: 'org-123',
             organizationName: 'Acme Inc',
             onboardingStep: ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED,
+            tier: 'free' as const,
           },
           token: 'jwt-token-here',
         };
@@ -289,6 +291,7 @@ describe('Account Type Selection', () => {
             organizationId: 'org-123',
             organizationName: 'Acme Inc',
             onboardingStep: ONBOARDING_STEPS.ACCOUNT_TYPE_SELECTED,
+            tier: 'free' as const,
           },
           token: 'jwt-token-here',
         };
