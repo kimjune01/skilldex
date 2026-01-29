@@ -133,11 +133,11 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
     .where(eq(users.id, userId))
     .limit(1);
 
-  if (!user || !user.organizationId) {
+  if (!user) {
     return profile;
   }
 
-  // Get effective access levels (three-way intersection)
+  // Get effective access levels (works for both org users and individual users)
   const effectiveAccess = await getEffectiveAccessForUser(userId, user.organizationId);
   profile.effectiveAccess = effectiveAccess;
 
@@ -152,14 +152,19 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
     profile.skillomaticApiKey = apiKey.key;
   }
 
-  // Get organization's LLM config
-  const llmConfig = await getOrgLLMConfig(user.organizationId);
+  // Get LLM config (org-specific or env fallback)
+  const llmConfig = user.organizationId
+    ? await getOrgLLMConfig(user.organizationId)
+    : await getEnvLLMConfig();
   if (llmConfig) {
     profile.llm = llmConfig;
   }
 
   // Get integrations by category
-  const integrationsByCategory = await getUserIntegrationsByCategory(userId, user.organizationId);
+  // For individual users, get their direct integrations
+  const integrationsByCategory = user.organizationId
+    ? await getUserIntegrationsByCategory(userId, user.organizationId)
+    : await getIndividualIntegrationsByCategory(userId);
   const nango = getNangoClient();
 
   // Fetch tokens for each category based on effective access
@@ -224,19 +229,81 @@ export async function buildCapabilityProfile(userId: string): Promise<Capability
       continue;
     }
 
-    // Skip OAuth-based integrations without Nango connection
+    // Use subProvider if available (e.g., 'calendly' for calendar, 'gmail' for email)
+    const actualProvider = (metadata.subProvider as string) || integration.provider;
+
+    // Handle direct OAuth integrations (tokens stored in metadata)
+    // This is used when tokens come from direct Google OAuth instead of Nango
     if (!integration.nangoConnectionId) {
-      log.warn('integration_missing_nango', {
-        integrationId: integration.id,
-        provider: integration.provider,
-        category,
-        userId,
-      });
+      const directAccessToken = metadata.accessToken as string | undefined;
+
+      if (directAccessToken) {
+        // Direct OAuth - use token from metadata
+        switch (category) {
+          case 'ats': {
+            profile.ats = {
+              provider: atsProvider,
+              token: directAccessToken,
+              baseUrl: ATS_BASE_URLS[atsProvider] || ATS_BASE_URLS.greenhouse,
+            };
+            break;
+          }
+
+          case 'calendar': {
+            const calProvider = metadata.subProvider || 'google-calendar';
+            if (calProvider === 'calendly') {
+              profile.calendar = {
+                ...profile.calendar,
+                calendly: {
+                  token: directAccessToken,
+                  userUri: (metadata.userUri as string) || '',
+                  schedulingUrl: (metadata.schedulingUrl as string) || '',
+                },
+              };
+            }
+            // iCal doesn't need OAuth - URL stored directly in metadata
+            break;
+          }
+
+          case 'email': {
+            const emailProvider = actualProvider === 'email'
+              ? (metadata.subProvider as string) || 'gmail'
+              : actualProvider;
+            profile.email = {
+              provider: emailProvider as 'gmail' | 'outlook',
+              token: directAccessToken,
+            };
+            break;
+          }
+
+          default: {
+            log.unreachable('unknown_category_in_switch_direct', {
+              category,
+              integrationId: integration.id,
+              userId,
+            });
+          }
+        }
+
+        log.info('direct_oauth_token_used', {
+          integrationId: integration.id,
+          provider: actualProvider,
+          category,
+          userId,
+        });
+      } else {
+        // No Nango connection and no direct token - skip
+        log.warn('integration_missing_token', {
+          integrationId: integration.id,
+          provider: integration.provider,
+          category,
+          userId,
+        });
+      }
       continue;
     }
 
-    // Use subProvider if available (e.g., 'calendly' for calendar, 'gmail' for email)
-    const actualProvider = (metadata.subProvider as string) || integration.provider;
+    // Nango OAuth - fetch fresh token
     const providerConfigKey = PROVIDER_CONFIG_KEYS[actualProvider] || actualProvider;
 
     try {
@@ -398,6 +465,76 @@ function getEnvApiKey(provider: string): string | null {
     default:
       return null;
   }
+}
+
+/**
+ * Get LLM config from environment variables only (for individual users without org)
+ */
+async function getEnvLLMConfig(): Promise<{ provider: 'anthropic' | 'openai' | 'groq'; apiKey: string; model: string } | null> {
+  // Try providers in order of capability
+  const providerPriority: Array<'anthropic' | 'openai' | 'groq'> = ['anthropic', 'openai', 'groq'];
+
+  for (const provider of providerPriority) {
+    const envKey = getEnvApiKey(provider);
+    if (envKey) {
+      return {
+        provider,
+        apiKey: envKey,
+        model: LLM_DEFAULTS[provider]?.model || LLM_DEFAULT_MODELS.anthropic,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get individual user's integrations by category (no org)
+ * Similar to getUserIntegrationsByCategory but queries directly for user's integrations
+ */
+async function getIndividualIntegrationsByCategory(
+  userId: string
+): Promise<Record<'ats' | 'email' | 'calendar' | 'database' | 'docs', Array<{ id: string; provider: string; metadata: string | null }>>> {
+  const userIntegrations = await db
+    .select()
+    .from(integrations)
+    .where(
+      and(
+        eq(integrations.userId, userId),
+        eq(integrations.status, 'connected')
+      )
+    );
+
+  const byCategory: Record<'ats' | 'email' | 'calendar' | 'database' | 'docs', Array<{ id: string; provider: string; metadata: string | null }>> = {
+    ats: [],
+    email: [],
+    calendar: [],
+    database: [],
+    docs: [],
+  };
+
+  // Map provider to category - similar to providerToCategory in integration-permissions.ts
+  const categoryAliases: Record<string, 'ats' | 'email' | 'calendar' | 'database' | 'docs'> = {
+    ats: 'ats',
+    email: 'email',
+    calendar: 'calendar',
+    database: 'database',
+    'google-sheets': 'database',
+    'google-docs': 'docs',
+  };
+
+  for (const int of userIntegrations) {
+    const category = categoryAliases[int.provider];
+    if (category) {
+      byCategory[category].push({
+        id: int.id,
+        provider: int.provider,
+        metadata: int.metadata,
+      });
+    }
+  }
+
+  return byCategory;
 }
 
 /**

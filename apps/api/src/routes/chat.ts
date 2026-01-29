@@ -41,9 +41,11 @@ interface ChatRequest {
 
 /**
  * Check user's email capabilities based on the three-way intersection model
+ * Supports both org users and individual users (null organizationId)
  */
-async function getEmailCapability(userId: string, organizationId: string): Promise<EmailCapability> {
+async function getEmailCapability(userId: string, organizationId: string | null): Promise<EmailCapability> {
   // Get effective access using the three-way intersection model
+  // Works for both org users and individual users
   const effectiveAccess = await getEffectiveAccessForUser(userId, organizationId);
 
   // Check if user has read access to email
@@ -51,7 +53,7 @@ async function getEmailCapability(userId: string, organizationId: string): Promi
     return { hasEmail: false, canSendEmail: false };
   }
 
-  // Check if user has Gmail connected
+  // Check if user has Gmail connected (supports both Nango and direct OAuth)
   const gmail = await getGmailClientForUser(userId);
   if (!gmail) {
     return { hasEmail: false, canSendEmail: false };
@@ -266,10 +268,8 @@ chatRoutes.post('/action', async (c) => {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  // Get email capability for the user
-  const emailCapability = user.organizationId
-    ? await getEmailCapability(user.id, user.organizationId)
-    : undefined;
+  // Get email capability for the user (works for both org users and individual users)
+  const emailCapability = await getEmailCapability(user.id, user.organizationId ?? null);
 
   // Execute the action
   const result = await executeAction(body as ChatAction, user.id, emailCapability);
