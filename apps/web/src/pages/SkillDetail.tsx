@@ -53,6 +53,9 @@ import {
   Calendar,
   Mail,
   XCircle,
+  Share2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
 import { PayIntentionDialog } from '@/components/PayIntentionDialog';
@@ -103,6 +106,11 @@ export default function SkillDetail() {
   const [creatingAutomation, setCreatingAutomation] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+
+  // Share state
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -313,6 +321,46 @@ export default function SkillDetail() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Generate or retrieve share link
+  const handleShare = async () => {
+    if (!slug) return;
+
+    // If already shared, just show existing URL
+    if (skill?.shareUrl) {
+      setShareUrl(skill.shareUrl);
+      return;
+    }
+
+    setIsSharing(true);
+    setError('');
+
+    try {
+      const result = await skills.share(slug);
+      setShareUrl(result.shareUrl);
+      // Update skill with new share info
+      if (skill) {
+        setSkill({
+          ...skill,
+          shareCode: result.shareCode,
+          shareUrl: result.shareUrl,
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate share link');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // Copy share link to clipboard
+  const handleCopyShareLink = () => {
+    const url = shareUrl || skill?.shareUrl;
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (isLoading) {
@@ -866,7 +914,7 @@ export default function SkillDetail() {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               {!automation && !skill.requiresInput && (
                 <Button onClick={openAutomateDialog} size="lg">
                   <Timer className="h-4 w-4 mr-2" />
@@ -879,6 +927,38 @@ export default function SkillDetail() {
                   View Raw
                 </Link>
               </Button>
+
+              {/* Share button - only for owner's non-global skills */}
+              {skill.isOwner && !skill.isGlobal && (
+                <>
+                  {shareUrl || skill.shareUrl ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={shareUrl || skill.shareUrl || ''}
+                        readOnly
+                        className="font-mono text-sm w-64"
+                      />
+                      <Button variant="outline" size="icon" onClick={handleCopyShareLink}>
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button onClick={handleShare} variant="outline" size="lg" disabled={isSharing}>
+                      {isSharing ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Share
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           )}
         </CardContent>

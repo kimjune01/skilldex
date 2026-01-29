@@ -47,3 +47,6 @@ export { complaints } from './complaints';
 
 // Automations
 export { automations } from './automations';
+
+// Public shared skills (no auth required)
+export { shared } from './shared';

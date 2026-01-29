@@ -303,9 +303,46 @@ export interface SkillPublic {
   automationEnabled?: boolean;
   /** Whether the skill requires user input at runtime (cannot be automated) */
   requiresInput?: boolean;
+  /** Short code for public sharing (if shared) */
+  shareCode?: string;
+  /** Full public share URL (if shared) */
+  shareUrl?: string;
+  /** When the skill was first shared publicly */
+  sharedAt?: string;
 }
 
 export type SkillCategory = 'sourcing' | 'ats' | 'communication' | 'scheduling' | 'productivity' | 'system';
+
+/**
+ * Public view of a shared skill (no auth required)
+ * Minimal info for unauthenticated viewers
+ */
+export interface SharedSkillPublic {
+  shareCode: string;
+  name: string;
+  description: string;
+  category: SkillCategory;
+  version: string;
+  intent: string;
+  capabilities: string[];
+  requiredIntegrations: Record<string, SkillAccessLevel>;
+  /** Creator's display name (if available) */
+  creatorName?: string;
+  /** When the skill was shared */
+  sharedAt: string;
+}
+
+/** Response from POST /skills/:slug/share */
+export interface SkillShareResponse {
+  shareCode: string;
+  shareUrl: string;
+}
+
+/** Response from POST /skills/import */
+export interface SkillImportResponse {
+  skill: SkillPublic;
+  message: string;
+}
 
 export interface SkillMetadata {
   id: string;

@@ -156,6 +156,10 @@ function toSkillPublic(
     // Automation settings
     automationEnabled: skill.automationEnabled || false,
     requiresInput: skill.requiresInput || false,
+    // Public sharing
+    shareCode: skill.shareCode || undefined,
+    shareUrl: skill.shareCode ? `${process.env.WEB_URL || 'https://skillomatic.technology'}/s/${skill.shareCode}` : undefined,
+    sharedAt: skill.sharedAt?.toISOString(),
   };
 }
 
@@ -1140,6 +1144,180 @@ skillsRoutes.post('/:slug/deny-visibility', async (c) => {
   } catch (error) {
     console.error('[Skills] Error denying visibility request:', { slug, skillId: existingSkill.id, adminId: user.sub, error });
     return c.json({ error: { message: 'Failed to deny visibility request. Please try again.' } }, 500);
+  }
+});
+
+// ============ PUBLIC SHARING ============
+
+/**
+ * Generate a Base62 share code (8 characters)
+ * This gives ~218 trillion combinations (62^8)
+ */
+function generateShareCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => chars[b % 62])
+    .join('');
+}
+
+// POST /skills/:slug/share - Generate share link for a skill (owner only)
+skillsRoutes.post('/:slug/share', async (c) => {
+  const user = c.get('user');
+  const slug = c.req.param('slug');
+
+  // Find skill
+  const [skill] = await db
+    .select()
+    .from(skills)
+    .where(eq(skills.slug, slug))
+    .limit(1);
+
+  if (!skill) {
+    return c.json({ error: { message: 'Skill not found' } }, 404);
+  }
+
+  // Only owner can share
+  if (skill.userId !== user.sub) {
+    return c.json({ error: { message: 'Only the skill owner can share this skill' } }, 403);
+  }
+
+  // Cannot share system/global skills
+  if (skill.isGlobal) {
+    return c.json({ error: { message: 'System skills cannot be shared via link' } }, 400);
+  }
+
+  const webUrl = process.env.WEB_URL || 'https://skillomatic.technology';
+
+  // If already shared, return existing code
+  if (skill.shareCode) {
+    return c.json({
+      data: {
+        shareCode: skill.shareCode,
+        shareUrl: `${webUrl}/s/${skill.shareCode}`,
+      },
+    });
+  }
+
+  // Generate new share code (ensure uniqueness with retries)
+  let shareCode: string;
+  let attempts = 0;
+  do {
+    shareCode = generateShareCode();
+    const [existing] = await db
+      .select()
+      .from(skills)
+      .where(eq(skills.shareCode, shareCode))
+      .limit(1);
+    if (!existing) break;
+    attempts++;
+  } while (attempts < 5);
+
+  if (attempts >= 5) {
+    console.error('[Skills] Failed to generate unique share code after 5 attempts');
+    return c.json({ error: { message: 'Failed to generate share code. Please try again.' } }, 500);
+  }
+
+  // Update skill with share code
+  try {
+    const now = new Date();
+    await db
+      .update(skills)
+      .set({ shareCode, sharedAt: now, updatedAt: now })
+      .where(eq(skills.id, skill.id));
+
+    console.log('[Skills] Skill shared:', { slug, skillId: skill.id, shareCode, userId: user.sub });
+
+    return c.json({
+      data: {
+        shareCode,
+        shareUrl: `${webUrl}/s/${shareCode}`,
+      },
+    });
+  } catch (error) {
+    console.error('[Skills] Error sharing skill:', { slug, skillId: skill.id, userId: user.sub, error });
+    return c.json({ error: { message: 'Failed to share skill. Please try again.' } }, 500);
+  }
+});
+
+// POST /skills/import - Import a shared skill to user's account
+skillsRoutes.post('/import', async (c) => {
+  const user = c.get('user');
+  const body = await c.req.json<{ shareCode: string }>();
+
+  if (!body.shareCode) {
+    return c.json({ error: { message: 'Share code is required' } }, 400);
+  }
+
+  // Find shared skill
+  const [sourceSkill] = await db
+    .select()
+    .from(skills)
+    .where(eq(skills.shareCode, body.shareCode))
+    .limit(1);
+
+  if (!sourceSkill) {
+    return c.json({ error: { message: 'Shared skill not found' } }, 404);
+  }
+
+  // Generate unique slug for the imported skill
+  const baseSlug = slugify(sourceSkill.name);
+  const slug = await ensureUniqueSlug(baseSlug, user.sub);
+
+  // Create new skill as copy
+  const id = randomUUID();
+  const now = new Date();
+
+  try {
+    const [newSkill] = await db
+      .insert(skills)
+      .values({
+        id,
+        slug,
+        name: sourceSkill.name,
+        description: sourceSkill.description,
+        category: sourceSkill.category,
+        version: '1.0.0',
+        userId: user.sub,
+        organizationId: user.organizationId || null,
+        isGlobal: false,
+        visibility: 'private',
+        sourceType: 'user-generated',
+        intent: sourceSkill.intent,
+        capabilities: sourceSkill.capabilities,
+        instructions: sourceSkill.instructions,
+        requiredIntegrations: sourceSkill.requiredIntegrations,
+        requiredScopes: sourceSkill.requiredScopes,
+        requiresInput: sourceSkill.requiresInput,
+        isEnabled: true,
+        automationEnabled: false,
+        createdAt: now,
+        updatedAt: now,
+        // Note: shareCode and sharedAt are NOT copied - imported skill starts unshared
+      })
+      .returning();
+
+    console.log('[Skills] Skill imported:', {
+      sourceSlug: sourceSkill.slug,
+      newSlug: slug,
+      newSkillId: newSkill.id,
+      userId: user.sub,
+    });
+
+    return c.json({
+      data: {
+        skill: toSkillPublic(newSkill, { userId: user.sub }),
+        message: `Skill "${sourceSkill.name}" imported successfully as "${slug}"`,
+      },
+    }, 201);
+  } catch (error) {
+    console.error('[Skills] Error importing skill:', {
+      sourceSlug: sourceSkill.slug,
+      userId: user.sub,
+      error,
+    });
+    return c.json({ error: { message: 'Failed to import skill. Please try again.' } }, 500);
   }
 });
 

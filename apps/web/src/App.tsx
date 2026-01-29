@@ -72,6 +72,7 @@ import Jerbs from './pages/Jerbs';
 import Status from './pages/Status';
 import NotFound from './pages/NotFound';
 import Debug from './pages/Debug';
+import SharedSkill from './pages/SharedSkill';
 import AccountType from './pages/onboarding/AccountType';
 import GetApiKey from './pages/GetApiKey';
 import Profile from './pages/Profile';
@@ -314,6 +315,7 @@ export default function App() {
         <Route path="/onboarding/account-type" element={<AccountTypeRoute />} />
 
         {/* Public pages */}
+        <Route path="/s/:code" element={<SharedSkill />} />
         <Route path="/extension" element={<Extension />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />

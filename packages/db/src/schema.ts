@@ -304,11 +304,16 @@ export const skills = sqliteTable('skills', {
   // Whether the skill requires user input at runtime (cannot be automated)
   requiresInput: integer('requires_input', { mode: 'boolean' }).notNull().default(false),
 
+  // Public sharing via short links (/s/{shareCode})
+  shareCode: text('share_code').unique(), // 8-char Base62 code, null = not shared
+  sharedAt: integer('shared_at', { mode: 'timestamp' }), // When first shared publicly
+
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({
   userIdIdx: index('skills_user_id_idx').on(table.userId),
   visibilityIdx: index('skills_visibility_idx').on(table.visibility),
+  shareCodeIdx: index('skills_share_code_idx').on(table.shareCode),
 }));
 
 // ============ INTEGRATIONS ============

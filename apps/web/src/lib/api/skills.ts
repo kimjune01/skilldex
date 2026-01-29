@@ -8,6 +8,8 @@ import type {
   SkillCreateRequest,
   SkillUpdateRequest,
   SkillVisibility,
+  SkillShareResponse,
+  SkillImportResponse,
 } from '@skillomatic/shared';
 import type { RenderedSkill, ConfigSkill } from '../skills-client';
 import { request, API_BASE } from './request';
@@ -111,5 +113,18 @@ export const skills = {
   toggleHidden: (slug: string) =>
     request<{ hidden: boolean; hiddenSkills: string[] }>(`/skills/${slug}/toggle-hidden`, {
       method: 'POST',
+    }),
+
+  // Generate public share link for a skill (owner only)
+  share: (slug: string) =>
+    request<SkillShareResponse>(`/skills/${slug}/share`, {
+      method: 'POST',
+    }),
+
+  // Import a shared skill to current user's account
+  import: (shareCode: string) =>
+    request<SkillImportResponse>('/skills/import', {
+      method: 'POST',
+      body: JSON.stringify({ shareCode }),
     }),
 };

@@ -124,6 +124,10 @@ app.route('/webhooks', webhooksRoutes);    // External service webhooks (Nango, 
 app.route('/account-type', accountTypeRoutes); // Account type selection (individual vs org)
 app.route('/status', statusRoutes);        // Public system status (no auth)
 
+// Public shared skill routes (no auth required)
+import { sharedRoutes } from './routes/shared.js';
+app.route('/s', sharedRoutes);             // Public skill sharing (/s/:code)
+
 // ============ PROTECTED ROUTES (JWT Auth) ============
 // Used by the web UI - requires Authorization: Bearer <jwt-token>
 // Apply general rate limiting to all protected routes
