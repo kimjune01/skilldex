@@ -19,15 +19,14 @@ git diff --quiet && git diff --cached --quiet || echo "ERROR: Uncommitted change
 
 2. Check extension zip version matches manifest, rebuild if needed:
 ```bash
-MANIFEST_VERSION=$(grep '"version"' apps/skillomatic-scraper/manifest.json | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-ZIP_VERSION=$(unzip -p apps/web/public/skillomatic-scraper.zip manifest.json 2>/dev/null | grep '"version"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-if [ "$MANIFEST_VERSION" != "$ZIP_VERSION" ]; then
-  echo "Extension zip version [$ZIP_VERSION] doesn't match manifest [$MANIFEST_VERSION]. Rebuilding..."
-  cd apps/skillomatic-scraper && rm -f ../web/public/skillomatic-scraper.zip && zip -r ../web/public/skillomatic-scraper.zip . -x 'node_modules/*' -x '*.git*' -x '*.DS_Store' && cd ../..
-  echo "Rebuilt extension zip with version $MANIFEST_VERSION"
-else
-  echo "OK: Extension zip version matches [$MANIFEST_VERSION]"
-fi
+grep '"version"' apps/skillomatic-scraper/manifest.json | sed 's/.*"\([0-9]*\.[0-9]*\.[0-9]*\)".*/\1/'
+```
+```bash
+unzip -p apps/web/public/skillomatic-scraper.zip manifest.json 2>/dev/null | grep '"version"' | sed 's/.*"\([0-9]*\.[0-9]*\.[0-9]*\)".*/\1/'
+```
+If versions differ, rebuild the zip:
+```bash
+cd apps/skillomatic-scraper && rm -f ../web/public/skillomatic-scraper.zip && zip -r ../web/public/skillomatic-scraper.zip . -x 'node_modules/*' -x '*.git*' -x '*.DS_Store' && cd ../..
 ```
 
 3. Check what changed since last deploy:
@@ -61,8 +60,9 @@ pnpm typecheck
 
 5. Check Turso auth before schema push:
 ```bash
-turso auth whoami || (echo "ERROR: Not logged into Turso. Run 'turso auth login' first." && exit 1)
+turso auth whoami
 ```
+If not logged in, run `turso auth login` first.
 
 6. Push schema to prod (ALWAYS run - schema drift can occur even without local changes):
 ```bash
