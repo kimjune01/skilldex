@@ -15,7 +15,7 @@ import {
   getOrgDisabledSkills,
   getEffectiveAccessForUser,
   getUserIntegrationsByCategory,
-  PERMISSION_CATEGORIES,
+  isIntegrationCategory,
 } from '../lib/integration-permissions.js';
 import { getSkillStatus } from '../lib/skill-access.js';
 import {
@@ -245,7 +245,7 @@ skillsRoutes.get('/', async (c) => {
           for (const [key, value] of Object.entries(parsed)) {
             // Map 'sheets' to 'database' category for access check
             const category = key === 'sheets' ? 'database' : key;
-            if (PERMISSION_CATEGORIES.includes(category as any)) {
+            if (isIntegrationCategory(category)) {
               requirements[category] = value;
             }
           }
@@ -825,7 +825,7 @@ skillsRoutes.get('/:slug/access', combinedAuth, async (c) => {
       for (const [key, value] of Object.entries(parsed)) {
         // Map 'sheets' to 'database' category for access check
         const category = key === 'sheets' ? 'database' : key;
-        if (PERMISSION_CATEGORIES.includes(category as any)) {
+        if (isIntegrationCategory(category)) {
           requirements[category] = value;
         }
       }

@@ -47,6 +47,13 @@ export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'd
 export const PERMISSION_CATEGORIES: IntegrationCategory[] = ['ats', 'email', 'calendar', 'database', 'docs'];
 
 /**
+ * Type guard to check if a string is a valid IntegrationCategory
+ */
+export function isIntegrationCategory(value: string): value is IntegrationCategory {
+  return PERMISSION_CATEGORIES.includes(value as IntegrationCategory);
+}
+
+/**
  * Org-level integration permissions
  */
 export interface OrgIntegrationPermissions {

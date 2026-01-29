@@ -18,7 +18,7 @@ import {
   getOrgIntegrationPermissions,
   getOrgDisabledSkills,
   updateOrgIntegrationPermissions,
-  PERMISSION_CATEGORIES,
+  isIntegrationCategory,
   updateOrgDisabledSkills,
   type OrgIntegrationPermissions,
   type AccessLevel,
@@ -103,7 +103,7 @@ capabilityProfilesRoutes.put('/', requireOrgAdmin, async (c) => {
   const validLevels: AccessLevel[] = ['read-write', 'read-only', 'disabled'];
   if (body.integrations) {
     for (const [key, value] of Object.entries(body.integrations)) {
-      if (!PERMISSION_CATEGORIES.includes(key as any)) {
+      if (!isIntegrationCategory(key)) {
         return c.json(
           { error: { message: `Invalid integration category: ${key}` } },
           400
@@ -168,7 +168,7 @@ capabilityProfilesRoutes.put('/integrations', requireOrgAdmin, async (c) => {
   // Validate access levels
   const validLevels: AccessLevel[] = ['read-write', 'read-only', 'disabled'];
   for (const [key, value] of Object.entries(body)) {
-    if (!PERMISSION_CATEGORIES.includes(key as any)) {
+    if (!isIntegrationCategory(key)) {
       return c.json(
         { error: { message: `Invalid integration category: ${key}` } },
         400
