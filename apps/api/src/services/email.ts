@@ -10,6 +10,7 @@ import { integrations } from '@skillomatic/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { GmailClient } from '../lib/gmail.js';
 import { createLogger } from '../lib/logger.js';
+import { cleanupEmailBody } from '../lib/email-utils.js';
 
 const log = createLogger('EmailService');
 
@@ -247,7 +248,7 @@ export async function searchEmails(userId: string, query: string, maxResults: nu
         to: getHeader(m, 'To'),
         date: getHeader(m, 'Date'),
         snippet: m.snippet,
-        body: body || undefined,
+        body: body ? cleanupEmailBody(body) : undefined,
       };
     }),
     total: result.messages.length,
