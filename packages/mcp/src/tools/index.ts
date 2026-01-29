@@ -174,6 +174,32 @@ If scheduled, results are emailed to the user automatically.`,
   );
   registeredTools.push('create_skill');
 
+  server.tool(
+    'delete_skill',
+    'Delete a skill you created. Only works for your own skills, not system skills.',
+    { slug: z.string().describe('Skill slug to delete (from the catalog)') },
+    async (args) => {
+      try {
+        const result = await client.deleteSkill(args.slug);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: result.message || `Skill "${args.slug}" deleted successfully.`,
+            },
+          ],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text' as const, text: `Error deleting skill: ${message}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+  registeredTools.push('delete_skill');
+
   // ATS tools - only if ATS is connected
   if (profile.hasATS) {
     const atsProvider = profile.atsProvider || 'zoho-recruit';

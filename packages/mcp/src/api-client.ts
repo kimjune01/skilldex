@@ -165,6 +165,16 @@ export class SkillomaticClient {
   }
 
   /**
+   * Delete a skill by slug.
+   * Only the skill owner can delete their own skills.
+   */
+  async deleteSkill(slug: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/skills/${slug}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
    * Get user's capability profile (which integrations are connected).
    */
   async getCapabilities(): Promise<ConfigResponse> {
