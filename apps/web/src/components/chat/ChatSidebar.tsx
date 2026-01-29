@@ -105,6 +105,7 @@ export function ChatSidebar({
   const [skillsList, setSkillsList] = useState<SkillPublic[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'skills' | 'tools'>('skills');
+  const [availableTools, setAvailableTools] = useState<Array<{ name: string; description: string }>>([]);
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -129,14 +130,73 @@ export function ChatSidebar({
   const [apiKeyValidating, setApiKeyValidating] = useState(false);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
-  // Load skills when tools section is opened
+  // Load skills and tools when tools section is opened
   useEffect(() => {
     if (toolsOpen && skillsList.length === 0) {
       setSkillsLoading(true);
-      skills
-        .list({ includeAccess: true })
-        .then((data) => setSkillsList(data))
-        .catch(() => setSkillsList([]))
+
+      // Fetch both skills list and config (for available tools) in parallel
+      Promise.all([
+        skills.list({ includeAccess: true }),
+        skills.getConfig().catch(() => null),
+      ])
+        .then(([skillsData, config]) => {
+          setSkillsList(skillsData);
+
+          // Build available tools based on user's connected integrations
+          const tools: Array<{ name: string; description: string }> = [
+            // Always available
+            { name: 'load_skill', description: 'Load and execute a skill' },
+            { name: 'scrape_url', description: 'Extract content from a URL' },
+            { name: 'web_search', description: 'Search the web for information' },
+          ];
+
+          if (config?.profile) {
+            const p = config.profile;
+
+            // Email tools
+            if (p.hasEmail) {
+              tools.push(
+                { name: 'search_emails', description: 'Search your emails' },
+                { name: 'draft_email', description: 'Draft an email' },
+                { name: 'send_email', description: 'Send an email' }
+              );
+            }
+
+            // ATS tools (only if connected to real ATS)
+            if (p.hasATS && p.atsProvider) {
+              tools.push(
+                { name: 'search_candidates', description: `Search candidates in ${p.atsProvider}` },
+                { name: 'get_candidate', description: 'Get candidate details' },
+                { name: 'list_jobs', description: 'List open jobs' }
+              );
+            }
+
+            // Google Workspace tools
+            if (p.hasGoogleSheets) {
+              tools.push({ name: 'google_workspace', description: 'Google Sheets operations' });
+            }
+            if (p.hasGoogleDrive) {
+              tools.push({ name: 'google_workspace', description: 'Google Drive operations' });
+            }
+            if (p.hasGoogleDocs) {
+              tools.push({ name: 'google_workspace', description: 'Google Docs operations' });
+            }
+            if (p.hasGoogleCalendar || p.hasCalendar) {
+              tools.push({ name: 'calendar', description: 'Calendar operations' });
+            }
+          }
+
+          setAvailableTools(tools);
+        })
+        .catch(() => {
+          setSkillsList([]);
+          setAvailableTools([
+            { name: 'load_skill', description: 'Load and execute a skill' },
+            { name: 'scrape_url', description: 'Extract content from a URL' },
+            { name: 'web_search', description: 'Search the web for information' },
+          ]);
+        })
         .finally(() => setSkillsLoading(false));
     }
   }, [toolsOpen, skillsList.length]);
@@ -302,16 +362,6 @@ export function ChatSidebar({
     return new Date(timestamp).toLocaleDateString();
   };
 
-  const actions = [
-    { name: 'search_candidates', description: 'Search ATS for candidates' },
-    { name: 'get_candidate', description: 'Get candidate details' },
-    { name: 'create_candidate', description: 'Create a new candidate' },
-    { name: 'update_candidate', description: 'Update candidate info' },
-    { name: 'list_jobs', description: 'List open jobs' },
-    { name: 'get_job', description: 'Get job details' },
-    { name: 'update_application_stage', description: 'Move candidate through pipeline' },
-    { name: 'scrape_url', description: 'Scrape content from a URL' },
-  ];
 
   if (!isOpen) return null;
 
@@ -455,7 +505,7 @@ export function ChatSidebar({
                 <Wrench className="h-4 w-4" />
                 Tools & Skills
                 <span className="ml-auto text-xs bg-muted px-1.5 py-0.5 rounded">
-                  {actions.length + skillsList.length}
+                  {availableTools.length + skillsList.length}
                 </span>
               </button>
             </CollapsibleTrigger>
@@ -481,7 +531,7 @@ export function ChatSidebar({
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    Tools ({actions.length})
+                    Tools ({availableTools.length})
                   </button>
                 </div>
 
@@ -526,12 +576,20 @@ export function ChatSidebar({
                       })}
                     </div>
                   )
+                ) : skillsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : availableTools.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    No tools available. Connect integrations to unlock more.
+                  </p>
                 ) : (
                   <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {actions.map((action) => (
-                      <div key={action.name} className="p-2 rounded-md">
-                        <p className="text-xs font-medium font-mono">{action.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{action.description}</p>
+                    {availableTools.map((tool, idx) => (
+                      <div key={`${tool.name}-${idx}`} className="p-2 rounded-md">
+                        <p className="text-xs font-medium font-mono">{tool.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{tool.description}</p>
                       </div>
                     ))}
                   </div>

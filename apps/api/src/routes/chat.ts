@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { jwtAuth } from '../middleware/auth.js';
 import { streamChat, chat, type LLMChatMessage } from '../lib/llm.js';
-import { isDemoMode } from '../lib/demo-data.js';
 import {
   getSkillMetadataForUser,
   getAllSkillMetadata,
@@ -65,7 +64,6 @@ async function getEmailCapability(userId: string, organizationId: string): Promi
 chatRoutes.post('/', async (c) => {
   const body = await c.req.json<ChatRequest>();
   const { messages } = body;
-  const isDemo = isDemoMode(c.req.raw);
   const user = c.get('user');
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -133,7 +131,7 @@ chatRoutes.post('/', async (c) => {
         actionCount++;
 
         // Execute the action
-        const result = await executeAction(action, isDemo, user?.id, emailCapability);
+        const result = await executeAction(action, user?.id, emailCapability);
 
         // Send action result
         await stream.writeSSE({
@@ -198,7 +196,6 @@ chatRoutes.post('/', async (c) => {
 chatRoutes.post('/execute-skill', async (c) => {
   const body = await c.req.json<{ skillSlug: string; params?: Record<string, unknown> }>();
   const { skillSlug, params } = body;
-  const isDemo = isDemoMode(c.req.raw);
   const user = c.get('user');
 
   // Load skill using progressive disclosure
@@ -233,37 +230,7 @@ chatRoutes.post('/execute-skill', async (c) => {
     });
   }
 
-  // Execute based on skill type
-  if (skillSlug === 'ats-candidate-search') {
-    const result = await executeAction(
-      { action: 'search_candidates', query: (params?.query as string) || '' },
-      isDemo
-    );
-    return c.json({
-      data: {
-        type: 'execution_result',
-        skill: { slug: skill.slug, name: skill.name },
-        success: true,
-        result,
-      },
-    });
-  }
-
-  if (skillSlug === 'ats-candidate-crud') {
-    const result = await executeAction(
-      { action: 'create_candidate', data: (params?.candidate as Record<string, unknown>) || {} },
-      isDemo
-    );
-    return c.json({
-      data: {
-        type: 'execution_result',
-        skill: { slug: skill.slug, name: skill.name },
-        success: true,
-        result,
-      },
-    });
-  }
-
+  // Return skill instructions for execution via chat
   return c.json({
     data: {
       type: 'api_ready',

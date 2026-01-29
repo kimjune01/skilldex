@@ -3,11 +3,6 @@ import { db } from '@skillomatic/db';
 import { scrapeTasks, integrations } from '@skillomatic/db/schema';
 import { eq, and, gt, desc } from 'drizzle-orm';
 import { tavily } from '@tavily/core';
-import {
-  generateDemoCandidates,
-  generateDemoJobs,
-  generateDemoApplications,
-} from './demo-data.js';
 import { loadSkillBySlug, userCanAccessSkill, type SkillMetadata } from './skills.js';
 import { GmailClient, type EmailMessage } from './gmail.js';
 import { getNangoClient, PROVIDER_CONFIG_KEYS } from './nango.js';
@@ -425,98 +420,22 @@ export function parseAction(text: string): ChatAction | null {
  */
 export async function executeAction(
   action: ChatAction,
-  isDemo: boolean,
   userId?: string,
   emailCapability?: EmailCapability
 ): Promise<unknown> {
   switch (action.action) {
-    case 'search_candidates': {
-      let candidates = generateDemoCandidates();
-      if (action.query) {
-        const q = action.query.toLowerCase();
-        candidates = candidates.filter(
-          (c) =>
-            c.firstName.toLowerCase().includes(q) ||
-            c.lastName.toLowerCase().includes(q) ||
-            c.title.toLowerCase().includes(q) ||
-            c.company.toLowerCase().includes(q) ||
-            c.skills.some((s) => s.toLowerCase().includes(q))
-        );
-      }
-      if (action.status) {
-        candidates = candidates.filter((c) => c.status === action.status);
-      }
-      if (action.stage) {
-        candidates = candidates.filter((c) => c.stage === action.stage);
-      }
-      return { candidates, total: candidates.length, demo: isDemo };
-    }
-
-    case 'get_candidate': {
-      const candidates = generateDemoCandidates();
-      const candidate = candidates.find((c) => c.id === action.id);
-      return candidate ? { candidate, demo: isDemo } : { error: 'Candidate not found' };
-    }
-
-    case 'create_candidate': {
-      const newCandidate = {
-        id: `demo-cand-${Date.now()}`,
-        ...action.data,
-        status: 'active',
-        stage: 'New',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return { candidate: newCandidate, created: true, demo: isDemo };
-    }
-
-    case 'update_candidate': {
-      const candidates = generateDemoCandidates();
-      const candidate = candidates.find((c) => c.id === action.id);
-      if (!candidate) return { error: 'Candidate not found' };
-      const updated = { ...candidate, ...action.data, updatedAt: new Date().toISOString() };
-      return { candidate: updated, updated: true, demo: isDemo };
-    }
-
-    case 'list_jobs': {
-      const jobs = generateDemoJobs();
-      return { jobs, total: jobs.length, demo: isDemo };
-    }
-
-    case 'get_job': {
-      const jobs = generateDemoJobs();
-      const job = jobs.find((j) => j.id === action.id);
-      return job ? { job, demo: isDemo } : { error: 'Job not found' };
-    }
-
-    case 'list_applications': {
-      let applications = generateDemoApplications();
-      if (action.candidateId) {
-        applications = applications.filter((a) => a.candidateId === action.candidateId);
-      }
-      if (action.jobId) {
-        applications = applications.filter((a) => a.jobId === action.jobId);
-      }
-      if (action.stage) {
-        applications = applications.filter((a) => a.stage === action.stage);
-      }
-      return { applications, total: applications.length, demo: isDemo };
-    }
-
+    // ATS actions require a connected ATS integration
+    case 'search_candidates':
+    case 'get_candidate':
+    case 'create_candidate':
+    case 'update_candidate':
+    case 'list_jobs':
+    case 'get_job':
+    case 'list_applications':
     case 'update_application_stage': {
-      const applications = generateDemoApplications();
-      const application = applications.find((a) => a.id === action.id);
-      if (!application) return { error: 'Application not found' };
-      const updated = {
-        ...application,
-        stage: action.stage,
-        stageHistory: [
-          ...application.stageHistory,
-          { stage: action.stage, date: new Date().toISOString() },
-        ],
-        updatedAt: new Date().toISOString(),
+      return {
+        error: 'No ATS connected. Please connect an ATS integration (Greenhouse, Lever, etc.) in Settings to use recruiting features.',
       };
-      return { application: updated, updated: true, demo: isDemo };
     }
 
     case 'load_skill': {
