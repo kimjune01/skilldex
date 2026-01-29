@@ -17,7 +17,7 @@ import type { SkillPublic } from '@skillomatic/shared';
 import { PayIntentionDialog } from '@/components/PayIntentionDialog';
 import { useClientChat } from '@/hooks/useClientChat';
 import { ConversationProvider, useConversations } from '@/hooks/useConversations';
-import { executeAction, formatActionResult, type ActionType } from '@/lib/action-executor';
+import { useMcpClient } from '@/hooks/useMcpClient';
 import { useAuth } from '@/hooks/useAuth';
 import { loadUserLLMConfig, toFullLLMConfig } from '@/lib/user-llm-config';
 import type { LLMConfig } from '@/lib/llm-client';
@@ -85,45 +85,15 @@ function ChatContent() {
     });
   }, [isFreeBeta, userLLMConfig]);
 
-  // Fetch skills and tools for suggestions
+  // Fetch skills for suggestions (tools come from MCP)
   useEffect(() => {
-    Promise.all([
-      skills.list({ includeAccess: true }),
-      skills.getConfig().catch(() => null),
-    ]).then(([skillsData, config]) => {
-      setAvailableSkills(skillsData);
-
-      // Build available tools based on user's connected integrations
-      const tools: Array<{ name: string; description: string }> = [
-        { name: 'load_skill', description: 'Load and execute a skill' },
-        { name: 'scrape_url', description: 'Extract content from a URL' },
-        { name: 'web_search', description: 'Search the web for information' },
-      ];
-
-      if (config?.profile) {
-        const p = config.profile;
-        if (p.hasEmail) {
-          tools.push(
-            { name: 'search_emails', description: 'Search your emails' },
-            { name: 'draft_email', description: 'Draft an email' },
-            { name: 'send_email', description: 'Send an email' }
-          );
-        }
-        if (p.hasGoogleSheets) tools.push({ name: 'google-sheets', description: 'Create, read, update spreadsheets' });
-        if (p.hasGoogleDrive) tools.push({ name: 'google-drive', description: 'List, search, manage files' });
-        if (p.hasGoogleDocs) tools.push({ name: 'google-docs', description: 'Create, read, update documents' });
-        if (p.hasCalendar) tools.push({ name: 'calendar', description: 'View and manage calendar events' });
-      }
-
-      setAvailableTools(tools);
-    }).catch(() => {
-      setAvailableSkills([]);
-      setAvailableTools([
-        { name: 'load_skill', description: 'Load and execute a skill' },
-        { name: 'scrape_url', description: 'Extract content from a URL' },
-        { name: 'web_search', description: 'Search the web for information' },
-      ]);
-    });
+    skills.list({ includeAccess: true })
+      .then((skillsData) => {
+        setAvailableSkills(skillsData);
+      })
+      .catch(() => {
+        setAvailableSkills([]);
+      });
   }, []);
 
   // Handle user LLM config change from sidebar
@@ -140,14 +110,57 @@ function ChatContent() {
     window.dispatchEvent(new CustomEvent('open-mobile-menu'));
   }, []);
 
-  // Action handler for client-side execution
+  // MCP client for dynamic tool discovery and execution
+  const { isConnected: mcpConnected, tools: mcpTools, callTool } = useMcpClient();
+
+  // Action handler - uses MCP if connected, falls back to action executor
   const handleActionRequest = useCallback(
     async (action: string, params: Record<string, unknown>): Promise<string> => {
-      const result = await executeAction(action as ActionType, params);
-      return formatActionResult(result);
+      // If MCP is connected, use it for tool calls
+      if (mcpConnected) {
+        try {
+          const result = await callTool(action, params);
+          return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+        } catch (err) {
+          // If MCP call fails, return the error
+          return `Error: ${err instanceof Error ? err.message : 'Unknown error'}`;
+        }
+      }
+
+      // Fallback: forward to server via /chat/action endpoint
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/chat/action`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+          body: JSON.stringify({ action, ...params }),
+        });
+
+        const data = await response.json();
+        if (!response.ok || data.error) {
+          return `Error: ${data.error?.message || data.error || 'Action failed'}`;
+        }
+        return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      } catch (err) {
+        return `Error: ${err instanceof Error ? err.message : 'Failed to execute action'}`;
+      }
     },
-    []
+    [mcpConnected, callTool]
   );
+
+  // Update available tools from MCP when connected
+  useEffect(() => {
+    if (mcpConnected && mcpTools.length > 0) {
+      const tools = mcpTools.map((tool) => ({
+        name: tool.name,
+        description: tool.description || '',
+      }));
+      setAvailableTools(tools);
+    }
+  }, [mcpConnected, mcpTools]);
 
   // Build user context for LLM API calls (used for attribution/abuse prevention)
   const userContext = useMemo(() => {

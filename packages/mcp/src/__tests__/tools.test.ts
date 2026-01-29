@@ -70,17 +70,32 @@ describe('registerTools', () => {
   });
 
   describe('base tools registration', () => {
-    it('should always register scrape tools', async () => {
+    it('should register scrape tools when hasExtension is true', async () => {
       const profile: CapabilityProfile = {
         hasLLM: false,
         hasATS: false,
         hasCalendar: false,
         hasEmail: false,
+        hasExtension: true,
       };
 
       await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
 
       expect(registerScrapeTools).toHaveBeenCalledWith(mockServer, mockClient);
+    });
+
+    it('should not register scrape tools when hasExtension is false', async () => {
+      const profile: CapabilityProfile = {
+        hasLLM: false,
+        hasATS: false,
+        hasCalendar: false,
+        hasEmail: false,
+        hasExtension: false,
+      };
+
+      await registerTools(mockServer as any, mockClient as SkillomaticClient, profile);
+
+      expect(registerScrapeTools).not.toHaveBeenCalled();
     });
   });
 

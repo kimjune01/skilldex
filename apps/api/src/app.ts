@@ -48,6 +48,7 @@ import { scrapeRoutes } from './routes/scrape.js';
 import { payIntentionsRoutes } from './routes/pay-intentions.js';
 import { statusRoutes } from './routes/status.js';
 import { complaintsRoutes } from './routes/complaints.js';
+import { chatRoutes } from './routes/chat.js';
 
 // Skill API routes (API key auth) - called by Claude Code skills
 import { v1AtsRoutes } from './routes/v1/ats.js';
@@ -64,6 +65,7 @@ import { v1AutomationsRoutes } from './routes/v1/automations.js';
 
 // MCP routes (hosted MCP server for ChatGPT web/mobile)
 import { mcpRoutes } from './routes/mcp.js';
+import { mcpWebRoutes } from './routes/mcp-web.js';
 
 // WebSocket route handlers
 import { createWsScrapeHandler } from './routes/ws/scrape.js';
@@ -137,8 +139,10 @@ app.use('/capability-profiles/*', generalRateLimit);
 app.use('/scrape/*', generalRateLimit);
 app.use('/pay-intentions/*', generalRateLimit);
 app.use('/complaints/*', generalRateLimit);
+app.use('/chat/*', generalRateLimit);
 
 app.route('/skills', skillsRoutes);       // Browse/download skills
+app.route('/chat', chatRoutes);           // Web chat with action execution
 app.route('/api-keys', apiKeysRoutes);    // Manage API keys
 app.route('/integrations', integrationsRoutes);  // OAuth connections
 app.route('/users', usersRoutes);         // User management (admin)
@@ -173,6 +177,11 @@ app.route('/v1/automations', v1AutomationsRoutes);    // Scheduled skill automat
 // Hosted MCP server for ChatGPT web/mobile connections
 app.use('/mcp/*', apiKeyRateLimit);
 app.route('/mcp', mcpRoutes);
+
+// ============ MCP WEB ROUTES (JWT Auth) ============
+// MCP server for web chat (uses JWT instead of API key)
+app.use('/mcp-web/*', generalRateLimit);
+app.route('/mcp-web', mcpWebRoutes);
 
 // ============ WEBSOCKET ROUTES ============
 // Real-time updates for long-running operations

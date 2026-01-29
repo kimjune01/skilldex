@@ -4,59 +4,48 @@ description: Prepare for an upcoming meeting with full context - attendee info, 
 category: Meetings
 intent: I want to prepare for a meeting, prep me for my call, get ready for meeting
 capabilities:
-  - Pull meeting details from calendar
   - Gather email history with attendees
   - Find past meeting notes
   - Suggest talking points and agenda
 requires:
-  calendar: read-only
   email: read-only
   sheets: read-only
 requiresInput: true
-allowed-tools:
-  - Bash
-  - Read
 ---
 
 # Meeting Prep
 
 You help users walk into every meeting fully prepared with context on attendees, history, and suggested talking points.
 
-## Prerequisites
+## Required Tools
 
-- `SKILLOMATIC_API_KEY` environment variable set
-- Google Calendar and Gmail connected via Skillomatic dashboard
+- `search_emails` - Get email history with attendees
+- `google_workspace` (google-sheets) - Read notes and client data
 
 ## Workflow
 
 When the user asks to prep for a meeting:
 
 1. **Identify the meeting** - Time, title, or attendee name
-2. **Pull meeting details** - Time, attendees, any description/agenda
-3. **Get attendee context** - Email history, past interactions
-4. **Find related notes** - Previous meeting notes if any
-5. **Suggest talking points** - Based on recent communication
+2. **Get attendee context** - Email history, past interactions
+3. **Find related notes** - Previous meeting notes if any
+4. **Suggest talking points** - Based on recent communication
 
-## API Endpoints
+## Tool Usage
 
-### Get Meeting Details
-```bash
-curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  "{{SKILLOMATIC_API_URL}}/api/v1/calendar/events?date=today"
-```
-
-### Search Email History
-```bash
-curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  -H "Content-Type: application/json" \
-  "{{SKILLOMATIC_API_URL}}/api/v1/email/search" \
-  -d '{"query": "from:attendee@company.com OR to:attendee@company.com", "maxResults": 10}'
+### Search Email History with Attendee
+```json
+{"action": "search_emails", "query": "from:attendee@company.com OR to:attendee@company.com", "maxResults": 10}
 ```
 
 ### Get Notes from Sheets
-```bash
-curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  "{{SKILLOMATIC_API_URL}}/api/v1/sheets/read?spreadsheetId=...&range=Notes!A:E"
+```json
+{"action": "google_workspace", "provider": "google-sheets", "operation": "read_range", "params": {"spreadsheetId": "...", "range": "Notes!A:E"}}
+```
+
+### Get Client Info from Sheets
+```json
+{"action": "google_workspace", "provider": "google-sheets", "operation": "read_range", "params": {"spreadsheetId": "...", "range": "Clients!A:H"}}
 ```
 
 ## Output Format
@@ -66,7 +55,6 @@ curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
 
 **Time:** Today, 2:00 PM (in 45 minutes)
 **Duration:** 30 minutes
-**Location:** Zoom (link in calendar)
 
 ---
 
@@ -75,7 +63,7 @@ curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
 **Sarah Johnson** - VP of Marketing, Acme Corp
 - Primary contact for website project
 - Last spoke: Jan 22 (email about Phase 2)
-- Preference: Likes concise updates, decisions over discussion
+- Preference: Likes concise updates
 
 **Mike Chen** - (new attendee)
 - Title unknown - might want to ask about his role
@@ -89,10 +77,6 @@ curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
 - Jan 22: Sarah asked about Phase 2 timeline - you haven't replied yet
 - Jan 20: You sent invoice #1042 ($2,500, due Feb 1)
 - Jan 15: Positive feedback on wireframes
-
-**Project status:**
-- Website redesign Phase 1: 60% complete
-- Dev review milestone coming up Feb 5
 
 ---
 
@@ -108,8 +92,7 @@ curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
 
 1. **Project update** - Share Phase 1 progress (60% done, on track)
 2. **Phase 2 discussion** - Address their timeline question
-3. **Introduce Mike** - Ask about his role and involvement going forward
-4. **Invoice reminder** - Gentle mention of upcoming due date if appropriate
+3. **Introduce Mike** - Ask about his role
 
 ---
 
@@ -117,15 +100,6 @@ curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
 
 - "Mike, great to meet you - what's your role on this project?"
 - "For Phase 2, are you thinking Q2 or sooner?"
-- "Any concerns about the current timeline?"
-
----
-
-### Quick Reference
-
-- **Their company:** B2B SaaS, 50 employees, Series A
-- **How they found you:** LinkedIn post in March 2024
-- **Total revenue from them:** $10,000 to date
 
 Good luck with the call!
 ```
@@ -133,15 +107,14 @@ Good luck with the call!
 ## Finding the Right Meeting
 
 If user says "prep me for my 2pm":
-1. Look for meetings at 2:00 PM today
-2. If multiple, ask: "Which one? [2pm - Acme call] or [2pm - Team sync]?"
+1. Ask which meeting they mean
+2. If they say "meeting with Sarah", search emails for Sarah
 
 If user says "prep me for meeting with Sarah":
-1. Search today's calendar for meetings with Sarah
-2. If none today, check this week
-3. If found, proceed with prep
+1. Search emails for recent communication with Sarah
+2. Pull any client data from sheets
 
-## Minimal Prep (Quick Mode)
+## Quick Mode
 
 For a fast brief:
 

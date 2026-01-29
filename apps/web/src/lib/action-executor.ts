@@ -14,8 +14,8 @@
 
 import { loadRenderedSkill, clearMetadataCache } from './skills-client';
 
-// Action types
-export type ActionType =
+// Action types - local actions handled by frontend
+export type LocalActionType =
   | 'load_skill'
   | 'create_skill'
   | 'search_candidates'
@@ -28,6 +28,9 @@ export type ActionType =
   | 'scrape_url'
   | 'update_application_stage'
   | 'list_applications';
+
+// All action types including server-side ones
+export type ActionType = LocalActionType | string;
 
 // Action result
 export interface ActionResult {
@@ -537,11 +540,52 @@ export async function executeAction(
       );
 
     default:
+      // Forward unknown actions to backend for server-side execution
+      // This handles: search_emails, draft_email, send_email, google_workspace, web_search, etc.
+      return executeServerAction(action, params);
+  }
+}
+
+/**
+ * Execute action on the server via /chat/action endpoint
+ * Used for actions that require server-side credentials (email, Google Workspace, etc.)
+ */
+async function executeServerAction(
+  action: string,
+  params: Record<string, unknown>
+): Promise<ActionResult> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/chat/action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+      body: JSON.stringify({ action, ...params }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || data.error) {
       return {
         success: false,
-        action: action,
-        error: `Unknown action: ${action}`,
+        action: action as ActionType,
+        error: data.error || `Action failed (${response.status})`,
       };
+    }
+
+    return {
+      success: true,
+      action: action as ActionType,
+      data: data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: action as ActionType,
+      error: error instanceof Error ? error.message : 'Failed to execute action',
+    };
   }
 }
 

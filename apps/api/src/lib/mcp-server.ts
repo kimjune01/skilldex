@@ -15,6 +15,7 @@ import type { CapabilityProfile } from './skill-renderer.js';
 import { db } from '@skillomatic/db';
 import { skills, users } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
+import * as emailService from '../services/email.js';
 
 const log = createLogger('McpServer');
 
@@ -28,6 +29,7 @@ const MCP_VERSION = '0.1.0';
 interface McpApiClient {
   baseUrl: string;
   apiKey: string;
+  userId: string;
   getSkills(): Promise<SkillPublic[]>;
   getRenderedSkill(slug: string): Promise<{ instructions: string }>;
 }
@@ -62,8 +64,8 @@ interface McpCapabilityProfile {
 }
 
 /**
- * Create an API client that makes internal requests
- * Since we're running inside the API server, we can make direct DB calls
+ * Create an API client that makes direct DB calls
+ * Used for skill operations that don't need external API calls
  */
 function createInternalApiClient(userId: string, apiKey: string): McpApiClient {
   const baseUrl = process.env.SKILLOMATIC_API_URL || 'http://localhost:3000';
@@ -71,6 +73,7 @@ function createInternalApiClient(userId: string, apiKey: string): McpApiClient {
   return {
     baseUrl,
     apiKey,
+    userId,
 
     async getSkills(): Promise<SkillPublic[]> {
       // Get user's org to check skill visibility
@@ -193,6 +196,178 @@ async function registerTools(
   );
   registeredTools.push('get_skill');
 
+  // Alias for load_skill (used by system prompt) -> get_skill
+  server.tool(
+    'load_skill',
+    'Load detailed instructions for a specific automation workflow. Alias for get_skill.',
+    { slug: z.string().describe('Skill slug from the catalog') },
+    async (args: { slug: string }) => {
+      try {
+        const skill = await client.getRenderedSkill(args.slug);
+        return {
+          content: [{ type: 'text' as const, text: skill.instructions }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text' as const, text: `Error fetching skill: ${message}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+  registeredTools.push('load_skill');
+
+  // Email tools - only if email is connected
+  if (profile.hasEmail) {
+    const userId = client.userId;
+
+    server.tool(
+      'get_email_profile',
+      'Get information about the connected email account',
+      {},
+      async () => {
+        try {
+          const emailProfile = await emailService.getEmailProfile(userId);
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(emailProfile, null, 2) }],
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          return {
+            content: [{ type: 'text' as const, text: `Error fetching email profile: ${message}` }],
+            isError: true,
+          };
+        }
+      }
+    );
+    registeredTools.push('get_email_profile');
+
+    server.tool(
+      'search_emails',
+      'Search emails in the connected mailbox using Gmail search syntax',
+      {
+        query: z.string().describe('Gmail search query (e.g., "from:user@example.com", "subject:interview", "newer_than:1d")'),
+        maxResults: z.number().optional().default(10).describe('Maximum number of results (default: 10)'),
+      },
+      async (args: { query: string; maxResults?: number }) => {
+        try {
+          const result = await emailService.searchEmails(userId, args.query, args.maxResults);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ emails: result.emails, total: result.total, query: args.query }, null, 2),
+            }],
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          return {
+            content: [{ type: 'text' as const, text: `Error searching emails: ${message}` }],
+            isError: true,
+          };
+        }
+      }
+    );
+    registeredTools.push('search_emails');
+
+    server.tool(
+      'list_email_drafts',
+      'List email drafts in the connected mailbox',
+      {
+        maxResults: z.number().optional().default(10).describe('Maximum number of drafts to list (default: 10)'),
+      },
+      async (args: { maxResults?: number }) => {
+        try {
+          const result = await emailService.listDrafts(userId, args.maxResults);
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          return {
+            content: [{ type: 'text' as const, text: `Error listing drafts: ${message}` }],
+            isError: true,
+          };
+        }
+      }
+    );
+    registeredTools.push('list_email_drafts');
+
+    server.tool(
+      'draft_email',
+      'Create an email draft (saved to Gmail Drafts folder)',
+      {
+        to: z.string().describe('Recipient email address'),
+        subject: z.string().describe('Email subject line'),
+        body: z.string().describe('Email body text'),
+        cc: z.string().optional().describe('CC recipient email address'),
+        bcc: z.string().optional().describe('BCC recipient email address'),
+      },
+      async (args: { to: string; subject: string; body: string; cc?: string; bcc?: string }) => {
+        try {
+          const result = await emailService.createDraft(userId, args);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: true,
+                message: `Draft created successfully. You can find it in your Gmail Drafts folder.`,
+                draftId: result.draftId,
+                messageId: result.messageId,
+              }, null, 2),
+            }],
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          return {
+            content: [{ type: 'text' as const, text: `Error creating draft: ${message}` }],
+            isError: true,
+          };
+        }
+      }
+    );
+    registeredTools.push('draft_email');
+
+    server.tool(
+      'send_email',
+      'Send an email directly. Use with caution - confirm with the user before sending.',
+      {
+        to: z.string().describe('Recipient email address'),
+        subject: z.string().describe('Email subject line'),
+        body: z.string().describe('Email body text'),
+        cc: z.string().optional().describe('CC recipient email address'),
+        bcc: z.string().optional().describe('BCC recipient email address'),
+      },
+      async (args: { to: string; subject: string; body: string; cc?: string; bcc?: string }) => {
+        try {
+          const result = await emailService.sendEmail(userId, args);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: true,
+                message: `Email sent successfully to ${args.to}.`,
+                messageId: result.messageId,
+                threadId: result.threadId,
+              }, null, 2),
+            }],
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          return {
+            content: [{ type: 'text' as const, text: `Error sending email: ${message}` }],
+            isError: true,
+          };
+        }
+      }
+    );
+    registeredTools.push('send_email');
+
+    log.info('email_tools_registered');
+  } else {
+    log.info('email_tools_not_registered', { reason: 'no email integration connected' });
+  }
+
   // Log capability summary
   log.info('mcp_tools_registered', {
     toolCount: registeredTools.length,
@@ -207,10 +382,12 @@ async function registerTools(
 
 /**
  * Create a new MCP server instance for a user session
+ * @param userId - The user's ID
+ * @param apiKey - Optional API key (not needed for web chat which uses JWT)
  */
 export async function createMcpServer(
   userId: string,
-  apiKey: string
+  apiKey?: string
 ): Promise<McpServer> {
   log.info('mcp_server_creating', { userId });
 
@@ -219,7 +396,7 @@ export async function createMcpServer(
   const mcpProfile = toMcpProfile(profile);
 
   // Create internal API client
-  const client = createInternalApiClient(userId, apiKey);
+  const client = createInternalApiClient(userId, apiKey || '');
 
   // Create MCP server
   const server = new McpServer(

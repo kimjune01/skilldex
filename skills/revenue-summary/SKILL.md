@@ -4,58 +4,47 @@ description: Get a summary of revenue, expenses, and financial health. Use when 
 category: Finance
 intent: I want to check revenue, how did we do, monthly revenue, financial summary
 capabilities:
-  - Pull revenue from Stripe
+  - Check revenue from Sheets
   - Check expenses from Sheets
   - Calculate profit/margins
   - Compare to previous periods
 requires:
-  stripe: read-only
   sheets: read-only
-allowed-tools:
-  - Bash
-  - Read
 ---
 
 # Revenue Summary
 
 You help users get a quick financial health check - revenue, expenses, and trends.
 
-## Prerequisites
+## Required Tools
 
-- `SKILLOMATIC_API_KEY` environment variable set
-- Stripe and/or Google Sheets connected via Skillomatic dashboard
+- `google_workspace` (google-sheets) - Read revenue and expense data
 
 ## Workflow
 
 When the user asks about revenue:
 
 1. **Determine timeframe** - Week, month, quarter, or custom
-2. **Pull revenue data** - From Stripe and/or Sheets
+2. **Pull revenue data** - From Sheets
 3. **Pull expense data** - If tracked in Sheets
 4. **Calculate key metrics** - Total, average, comparison
 5. **Present summary** - Clear, scannable format
 
-## API Endpoints
+## Tool Usage
 
-### Get Stripe Revenue
-```bash
-# Get charges for a date range
-curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  "{{SKILLOMATIC_API_URL}}/api/v1/stripe/charges?startDate=2025-01-01&endDate=2025-01-31"
+### Read Revenue Sheet
+```json
+{"action": "google_workspace", "provider": "google-sheets", "operation": "read_range", "params": {"spreadsheetId": "...", "range": "Revenue!A:D"}}
 ```
 
-### Get Stripe Balance
-```bash
-curl -s -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  "{{SKILLOMATIC_API_URL}}/api/v1/stripe/balance"
+### Read Expenses Sheet
+```json
+{"action": "google_workspace", "provider": "google-sheets", "operation": "read_range", "params": {"spreadsheetId": "...", "range": "Expenses!A:D"}}
 ```
 
-### Query Expense Sheet
-```bash
-curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
-  -H "Content-Type: application/json" \
-  "{{SKILLOMATIC_API_URL}}/api/v1/sheets/query" \
-  -d '{"spreadsheetId": "...", "range": "Expenses!A:D"}'
+### Read Invoices for Revenue Tracking
+```json
+{"action": "google_workspace", "provider": "google-sheets", "operation": "read_range", "params": {"spreadsheetId": "...", "range": "Invoices!A:F"}}
 ```
 
 ## Output Format
@@ -73,12 +62,10 @@ curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
 
 | Source | Amount |
 |--------|--------|
-| Stripe payments | $4,200 |
-| Invoice payments | $1,500 |
+| Invoice payments | $5,700 |
 | **Total Revenue** | **$5,700** |
 
 **vs Last Week:** +$800 (+16%)
-**vs Same Week Last Month:** +$1,200 (+27%)
 
 ---
 
@@ -117,7 +104,7 @@ curl -s -X POST -H "Authorization: Bearer $SKILLOMATIC_API_KEY" \
 ### Insights
 
 - Best week in January so far
-- Acme Corp milestone payment helped - another milestone due Feb 15
+- Acme Corp milestone payment helped
 - Expenses in line with average
 
 Looking good this week!
@@ -143,17 +130,6 @@ Looking good this week!
 
 ---
 
-### Weekly Breakdown
-
-| Week | Revenue | Notes |
-|------|---------|-------|
-| Jan 1-5 | $3,200 | Slow start (holidays) |
-| Jan 6-12 | $4,100 | - |
-| Jan 13-19 | $5,500 | Acme payment |
-| Jan 20-26 | $5,700 | Strong finish |
-
----
-
 ### Top Clients (MTD)
 
 | Client | Revenue | % of Total |
@@ -164,53 +140,12 @@ Looking good this week!
 
 ---
 
-### Cash Position
-
-| Status | Amount |
-|--------|--------|
-| Available (Stripe) | $8,200 |
-| Pending (Stripe) | $2,500 |
-| Outstanding invoices | $4,800 |
-
----
-
 ### Key Takeaways
 
 1. **Strong month** - on track to beat December by 26%
 2. **Client concentration** - Acme + Tech Inc = 78% of revenue
 3. **Outstanding invoices** - $4,800 waiting to be collected
 ```
-
-## For Trades
-
-Simpler format for contractors/trades:
-
-```markdown
-## How'd You Do Last Month?
-
-**January 2025**
-
-| Jobs completed | 18 |
-| Total revenue | $12,400 |
-| Average per job | $689 |
-
-**vs December:** +$1,800 (you did 3 more jobs)
-
-**Best jobs:**
-- Kitchen remodel (Williams) - $2,800
-- Bathroom repair (Johnson) - $1,500
-
-**Still owed:** $1,200 from 2 jobs
-
-Not bad! Busiest January in a while.
-```
-
-## Elicitation
-
-Ask if needed:
-1. "What timeframe? (This week, last week, this month, last month)"
-2. "Do you track expenses somewhere? (Sheets, Wave, etc.)"
-3. "Any specific metrics you want to see?"
 
 ## Quick Mode
 
@@ -223,3 +158,10 @@ Ask if needed:
 
 Top client: Acme Corp ($7,500 this month)
 ```
+
+## Elicitation
+
+Ask if needed:
+1. "What timeframe? (This week, last week, this month, last month)"
+2. "Do you track expenses somewhere?"
+3. "Any specific metrics you want to see?"

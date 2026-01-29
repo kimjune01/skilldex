@@ -325,12 +325,44 @@ describe('action executor - general', () => {
     vi.clearAllMocks();
   });
 
-  it('should return error for unknown action', async () => {
+  it('should forward unknown actions to server and return error on failure', async () => {
     vi.resetModules();
+
+    // Mock fetch to return an error for unknown action
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'Unknown action: unknown_action' }),
+    });
+
     const { executeAction } = await import('../lib/action-executor');
     const result = await executeAction('unknown_action' as any, {});
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Unknown action: unknown_action');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/chat/action'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ action: 'unknown_action' }),
+      })
+    );
+  });
+
+  it('should forward unknown actions to server and return success on valid response', async () => {
+    vi.resetModules();
+
+    // Mock fetch to return success for a server-side action
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: { result: 'success' } }),
+    });
+
+    const { executeAction } = await import('../lib/action-executor');
+    const result = await executeAction('search_emails' as any, { query: 'test' });
+
+    expect(result.success).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalled();
   });
 });

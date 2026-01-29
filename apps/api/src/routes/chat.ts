@@ -22,6 +22,7 @@ import {
   getGoogleWorkspaceCapability,
   skillRequiresBrowser,
   type EmailCapability,
+  type ChatAction,
 } from '../lib/chat-actions.js';
 import { buildSystemPrompt, isExtensionActive } from '../lib/chat-prompts.js';
 import { db } from '@skillomatic/db';
@@ -254,4 +255,29 @@ chatRoutes.post('/execute-skill', async (c) => {
       params: params || {},
     },
   });
+});
+
+// POST /chat/action - Execute a single action (for frontend action forwarding)
+chatRoutes.post('/action', async (c) => {
+  const body = await c.req.json<{ action: string; [key: string]: unknown }>();
+  const user = c.get('user');
+
+  if (!user?.id) {
+    return c.json({ error: 'Authentication required' }, 401);
+  }
+
+  // Get email capability for the user
+  const emailCapability = user.organizationId
+    ? await getEmailCapability(user.id, user.organizationId)
+    : undefined;
+
+  // Execute the action
+  const result = await executeAction(body as ChatAction, user.id, emailCapability);
+
+  // Return the result directly (executeAction returns the appropriate shape)
+  if (result && typeof result === 'object' && 'error' in result) {
+    return c.json({ error: (result as { error: string }).error }, 400);
+  }
+
+  return c.json(result);
 });

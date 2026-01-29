@@ -32,10 +32,14 @@ export function buildSystemPrompt(
   let emailSection = '';
   if (emailCapability?.hasEmail) {
     const emailActions = emailCapability.canSendEmail
-      ? '**draft_email**, **send_email**, **search_emails**'
-      : '**search_emails**';
+      ? `
+  - \`{"action": "search_emails", "query": "<gmail query>"}\` - Search emails (use Gmail syntax: from:, to:, subject:, after:, before:)
+  - \`{"action": "draft_email", "to": "...", "subject": "...", "body": "..."}\` - Create draft
+  - \`{"action": "send_email", "to": "...", "subject": "...", "body": "..."}\` - Send email (confirm first)`
+      : `
+  - \`{"action": "search_emails", "query": "<gmail query>"}\` - Search emails (use Gmail syntax: from:, to:, subject:, after:, before:)`;
     emailSection = `
-**Email** (${sanitizeEmail(emailCapability.emailAddress || '')}): ${emailActions}${emailCapability.canSendEmail ? ' - Always confirm before sending.' : ' (send disabled by admin)'}`;
+- **Email** (${sanitizeEmail(emailCapability.emailAddress || '')}):${emailActions}`;
   }
 
   // Build Google services summary

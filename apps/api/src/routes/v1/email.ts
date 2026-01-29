@@ -5,147 +5,26 @@
  * Called by Claude Code skills to send/draft emails via user's Gmail.
  *
  * @see lib/gmail.ts for Gmail client implementation
+ * @see services/email.ts for shared email service
  */
 import { Hono } from 'hono';
-import { apiKeyAuth } from '../../middleware/apiKey.js';
+import { combinedAuth } from '../../middleware/combinedAuth.js';
+import type { AuthPayload } from '../../middleware/auth.js';
 import { db } from '@skillomatic/db';
-import { skillUsageLogs, skills, integrations } from '@skillomatic/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { skillUsageLogs, skills } from '@skillomatic/db/schema';
+import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import type { ErrorCode } from '@skillomatic/shared';
-import { GmailClient, GmailError, type EmailMessage, type EmailAddress } from '../../lib/gmail.js';
+import { GmailError, type EmailMessage, type EmailAddress } from '../../lib/gmail.js';
+import { getGmailClient } from '../../services/email.js';
 import { createLogger } from '../../lib/logger.js';
 
 const log = createLogger('Email');
 
 export const v1EmailRoutes = new Hono();
 
-// All routes require API key auth
-v1EmailRoutes.use('*', apiKeyAuth);
-
-/**
- * Get a Gmail client for the user.
- * Returns null if no Gmail integration is connected.
- *
- * Supports both:
- * - Direct Google OAuth (provider: 'email', tokens in metadata)
- * - Nango OAuth (provider: 'gmail', tokens via Nango) - legacy/future
- */
-async function getGmailClient(userId: string): Promise<GmailClient | null> {
-  // Find the user's email integration (Google OAuth stores as 'email' with subProvider: 'gmail')
-  const integration = await db
-    .select()
-    .from(integrations)
-    .where(and(eq(integrations.userId, userId), eq(integrations.provider, 'email')))
-    .limit(1);
-
-  if (integration.length === 0 || integration[0].status !== 'connected') {
-    return null;
-  }
-
-  const int = integration[0];
-
-  // Parse metadata to get tokens
-  let metadata: Record<string, unknown> = {};
-  try {
-    metadata = JSON.parse(int.metadata || '{}');
-  } catch {
-    log.error('metadata_parse_failed', { userId });
-    return null;
-  }
-
-  // Check if this is a Gmail integration (subProvider check)
-  if (metadata.subProvider !== 'gmail') {
-    // Not Gmail (could be Outlook), skip
-    return null;
-  }
-
-  let accessToken = metadata.accessToken as string | undefined;
-  const refreshToken = metadata.refreshToken as string | undefined;
-  const expiresAt = metadata.expiresAt as string | undefined;
-  const userEmail = metadata.gmailEmail as string | undefined;
-
-  // Check if token is expired and needs refresh
-  if (expiresAt && new Date(expiresAt) < new Date() && refreshToken) {
-    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-    const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-    const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
-
-    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      log.error('oauth_not_configured', { userId });
-      return null;
-    }
-
-    try {
-      const refreshResponse = await fetch(GOOGLE_TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: GOOGLE_CLIENT_ID,
-          client_secret: GOOGLE_CLIENT_SECRET,
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      if (refreshResponse.ok) {
-        const newTokens = await refreshResponse.json() as {
-          access_token: string;
-          expires_in?: number;
-        };
-        accessToken = newTokens.access_token;
-
-        // Update stored token in DB
-        metadata.accessToken = accessToken;
-        metadata.expiresAt = newTokens.expires_in
-          ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
-          : undefined;
-
-        await db
-          .update(integrations)
-          .set({
-            metadata: JSON.stringify(metadata),
-            lastSyncAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(integrations.id, int.id));
-
-        log.info('token_refreshed', { userId });
-      } else {
-        // Refresh failed - mark integration as error
-        await db
-          .update(integrations)
-          .set({ status: 'error', updatedAt: new Date() })
-          .where(eq(integrations.id, int.id));
-
-        log.error('token_refresh_failed', { userId });
-        return null;
-      }
-    } catch (error) {
-      log.error('token_refresh_error', { userId, error: error instanceof Error ? error.message : String(error) });
-      return null;
-    }
-  }
-
-  if (!accessToken) {
-    log.error('no_access_token', { userId });
-    return null;
-  }
-
-  // If we don't have user email cached, fetch it
-  if (!userEmail) {
-    try {
-      const tempClient = new GmailClient(accessToken, '');
-      const profile = await tempClient.getProfile();
-      return new GmailClient(accessToken, profile.emailAddress);
-    } catch (error) {
-      log.error('profile_fetch_failed', { userId, error: error instanceof Error ? error.message : String(error) });
-      return null;
-    }
-  }
-
-  return new GmailClient(accessToken, userEmail);
-}
+// Support both JWT (web chat) and API key (MCP/Claude Desktop) auth
+v1EmailRoutes.use('*', combinedAuth);
 
 /**
  * Classify a raw error into a standardized email error code.
@@ -176,7 +55,7 @@ function classifyEmailError(error: unknown): ErrorCode {
 // Helper to log skill usage
 async function logUsage(
   userId: string,
-  apiKeyId: string,
+  apiKeyId: string | undefined,
   skillSlug: string,
   status: 'success' | 'error' | 'partial',
   durationMs?: number,
@@ -189,7 +68,7 @@ async function logUsage(
         id: randomUUID(),
         skillId: skill[0].id,
         userId,
-        apiKeyId,
+        apiKeyId: apiKeyId ?? null,
         status,
         durationMs,
         errorMessage: errorCode,
@@ -225,7 +104,7 @@ function parseRecipients(input: unknown): EmailAddress[] {
 
 // GET /v1/email/profile - Get user's email profile
 v1EmailRoutes.get('/profile', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user') as AuthPayload;
   const startTime = Date.now();
 
   const gmail = await getGmailClient(user.id);
@@ -253,7 +132,7 @@ v1EmailRoutes.get('/profile', async (c) => {
 
 // GET /v1/email/labels - List Gmail labels
 v1EmailRoutes.get('/labels', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user') as AuthPayload;
 
   const gmail = await getGmailClient(user.id);
   if (!gmail) {
@@ -278,7 +157,7 @@ v1EmailRoutes.get('/labels', async (c) => {
 
 // POST /v1/email/search - Search emails
 v1EmailRoutes.post('/search', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user') as AuthPayload;
   const body = await c.req.json<{ query: string; maxResults?: number }>();
 
   if (!body.query) {
@@ -308,7 +187,7 @@ v1EmailRoutes.post('/search', async (c) => {
 
 // POST /v1/email/send - Send an email
 v1EmailRoutes.post('/send', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user') as AuthPayload;
   const startTime = Date.now();
   const body = await c.req.json<{
     to: unknown;
@@ -376,7 +255,7 @@ v1EmailRoutes.post('/send', async (c) => {
 
 // POST /v1/email/draft - Create a draft
 v1EmailRoutes.post('/draft', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user') as AuthPayload;
   const startTime = Date.now();
   const body = await c.req.json<{
     to: unknown;
@@ -445,7 +324,7 @@ v1EmailRoutes.post('/draft', async (c) => {
 
 // GET /v1/email/drafts - List drafts
 v1EmailRoutes.get('/drafts', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user') as AuthPayload;
   const maxResults = parseInt(c.req.query('maxResults') || '10');
 
   const gmail = await getGmailClient(user.id);
@@ -471,7 +350,7 @@ v1EmailRoutes.get('/drafts', async (c) => {
 
 // POST /v1/email/drafts/:id/send - Send a draft
 v1EmailRoutes.post('/drafts/:id/send', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user') as AuthPayload;
   const draftId = c.req.param('id');
   const startTime = Date.now();
 
@@ -508,7 +387,7 @@ v1EmailRoutes.post('/drafts/:id/send', async (c) => {
 
 // DELETE /v1/email/drafts/:id - Delete a draft
 v1EmailRoutes.delete('/drafts/:id', async (c) => {
-  const user = c.get('apiKeyUser');
+  const user = c.get('user') as AuthPayload;
   const draftId = c.req.param('id');
 
   const gmail = await getGmailClient(user.id);

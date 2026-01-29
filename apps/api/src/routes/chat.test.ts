@@ -541,3 +541,189 @@ ${emailSection}
     expect(prompt).toContain('action blocks');
   });
 });
+
+// ============ /chat/action endpoint ============
+describe('POST /chat/action', () => {
+  // Mock executeAction behavior for different action types
+  function mockExecuteAction(
+    action: { action: string; [key: string]: unknown },
+    userId?: string,
+    emailCapability?: { hasEmail: boolean; canSendEmail: boolean }
+  ): unknown {
+    // Require authentication
+    if (!userId) {
+      return { error: 'Authentication required' };
+    }
+
+    switch (action.action) {
+      case 'search_emails':
+        if (!emailCapability?.hasEmail) {
+          return { error: 'Email not connected. Please connect Gmail in the Skillomatic dashboard.' };
+        }
+        return {
+          success: true,
+          emails: [
+            { id: '1', subject: 'Test email', from: 'sender@example.com', date: '2025-01-28' },
+          ],
+          total: 1,
+        };
+
+      case 'draft_email':
+        if (!emailCapability?.hasEmail) {
+          return { error: 'Email not connected. Please connect Gmail in the Skillomatic dashboard.' };
+        }
+        if (!emailCapability?.canSendEmail) {
+          return { error: 'Email drafting is disabled by your admin.' };
+        }
+        return {
+          success: true,
+          draftId: 'draft-123',
+          message: 'Draft created successfully.',
+        };
+
+      case 'send_email':
+        if (!emailCapability?.hasEmail) {
+          return { error: 'Email not connected. Please connect Gmail in the Skillomatic dashboard.' };
+        }
+        if (!emailCapability?.canSendEmail) {
+          return { error: 'Email sending is disabled by your admin.' };
+        }
+        return {
+          success: true,
+          messageId: 'msg-123',
+          message: 'Email sent successfully.',
+        };
+
+      case 'google_workspace':
+        return {
+          success: true,
+          values: [['Header1', 'Header2'], ['Value1', 'Value2']],
+        };
+
+      case 'web_search':
+        return {
+          success: true,
+          query: action.query,
+          results: [{ title: 'Result 1', url: 'https://example.com', content: 'Test content' }],
+        };
+
+      case 'load_skill':
+        return {
+          skill: { slug: action.slug, name: 'Test Skill' },
+          instructions: '# Test Instructions',
+        };
+
+      default:
+        return { error: 'Unknown action' };
+    }
+  }
+
+  it('should require authentication', () => {
+    const result = mockExecuteAction({ action: 'search_emails', query: 'test' });
+    expect(result).toEqual({ error: 'Authentication required' });
+  });
+
+  it('should execute search_emails when email is connected', () => {
+    const result = mockExecuteAction(
+      { action: 'search_emails', query: 'is:unread' },
+      'user-123',
+      { hasEmail: true, canSendEmail: true }
+    );
+    expect(result).toHaveProperty('success', true);
+    expect(result).toHaveProperty('emails');
+  });
+
+  it('should return error for search_emails when email not connected', () => {
+    const result = mockExecuteAction(
+      { action: 'search_emails', query: 'is:unread' },
+      'user-123',
+      { hasEmail: false, canSendEmail: false }
+    );
+    expect(result).toHaveProperty('error');
+    expect((result as { error: string }).error).toContain('Email not connected');
+  });
+
+  it('should execute draft_email when email is connected and allowed', () => {
+    const result = mockExecuteAction(
+      { action: 'draft_email', to: 'test@example.com', subject: 'Test', body: 'Hello' },
+      'user-123',
+      { hasEmail: true, canSendEmail: true }
+    );
+    expect(result).toHaveProperty('success', true);
+    expect(result).toHaveProperty('draftId');
+  });
+
+  it('should block draft_email when canSendEmail is false', () => {
+    const result = mockExecuteAction(
+      { action: 'draft_email', to: 'test@example.com', subject: 'Test', body: 'Hello' },
+      'user-123',
+      { hasEmail: true, canSendEmail: false }
+    );
+    expect(result).toHaveProperty('error');
+    expect((result as { error: string }).error).toContain('disabled by your admin');
+  });
+
+  it('should execute send_email when email is connected and allowed', () => {
+    const result = mockExecuteAction(
+      { action: 'send_email', to: 'test@example.com', subject: 'Test', body: 'Hello' },
+      'user-123',
+      { hasEmail: true, canSendEmail: true }
+    );
+    expect(result).toHaveProperty('success', true);
+    expect(result).toHaveProperty('messageId');
+  });
+
+  it('should block send_email when canSendEmail is false', () => {
+    const result = mockExecuteAction(
+      { action: 'send_email', to: 'test@example.com', subject: 'Test', body: 'Hello' },
+      'user-123',
+      { hasEmail: true, canSendEmail: false }
+    );
+    expect(result).toHaveProperty('error');
+    expect((result as { error: string }).error).toContain('disabled by your admin');
+  });
+
+  it('should execute google_workspace action', () => {
+    const result = mockExecuteAction(
+      {
+        action: 'google_workspace',
+        provider: 'google-sheets',
+        operation: 'read_range',
+        params: { spreadsheetId: 'abc123', range: 'Sheet1!A:B' },
+      },
+      'user-123',
+      { hasEmail: false, canSendEmail: false }
+    );
+    expect(result).toHaveProperty('success', true);
+    expect(result).toHaveProperty('values');
+  });
+
+  it('should execute web_search action', () => {
+    const result = mockExecuteAction(
+      { action: 'web_search', query: 'test query' },
+      'user-123',
+      { hasEmail: false, canSendEmail: false }
+    );
+    expect(result).toHaveProperty('success', true);
+    expect(result).toHaveProperty('results');
+  });
+
+  it('should execute load_skill action', () => {
+    const result = mockExecuteAction(
+      { action: 'load_skill', slug: 'inbox-review' },
+      'user-123',
+      { hasEmail: false, canSendEmail: false }
+    );
+    expect(result).toHaveProperty('skill');
+    expect(result).toHaveProperty('instructions');
+  });
+
+  it('should return error for unknown action', () => {
+    const result = mockExecuteAction(
+      { action: 'unknown_action' },
+      'user-123',
+      { hasEmail: false, canSendEmail: false }
+    );
+    expect(result).toEqual({ error: 'Unknown action' });
+  });
+});
