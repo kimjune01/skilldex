@@ -39,21 +39,6 @@ export const calendlyManifest: ProviderManifest = {
       responseHints: ['uri', 'name', 'email', 'scheduling_url', 'timezone', 'current_organization'],
     },
 
-    {
-      id: 'get_user',
-      method: 'GET',
-      path: '/users/{uuid}',
-      access: 'read',
-      description: 'Get a specific user by their UUID.',
-      params: {
-        uuid: {
-          type: 'string',
-          description: 'User UUID',
-          required: true,
-        },
-      },
-    },
-
     // ==================== EVENT TYPES ====================
     {
       id: 'list_event_types',
@@ -91,51 +76,6 @@ export const calendlyManifest: ProviderManifest = {
         },
       },
       responseHints: ['uri', 'name', 'slug', 'scheduling_url', 'duration', 'kind', 'active'],
-    },
-
-    {
-      id: 'get_event_type',
-      method: 'GET',
-      path: '/event_types/{uuid}',
-      access: 'read',
-      description: 'Get detailed information about a specific event type.',
-      params: {
-        uuid: {
-          type: 'string',
-          description: 'Event type UUID',
-          required: true,
-        },
-      },
-    },
-
-    // ==================== EVENT TYPE AVAILABILITY ====================
-    {
-      id: 'get_event_type_available_times',
-      method: 'GET',
-      path: '/event_type_available_times',
-      access: 'read',
-      description: 'Get available time slots for scheduling an event type. Use this to find open slots for booking.',
-      params: {
-        event_type: {
-          type: 'string',
-          format: 'uri',
-          description: 'Event type URI (required)',
-          required: true,
-        },
-        start_time: {
-          type: 'string',
-          format: 'date-time',
-          description: 'Start of time range (ISO-8601)',
-          required: true,
-        },
-        end_time: {
-          type: 'string',
-          format: 'date-time',
-          description: 'End of time range (ISO-8601)',
-          required: true,
-        },
-      },
-      responseHints: ['status', 'start_time', 'invitees_remaining', 'scheduling_url'],
     },
 
     // ==================== SCHEDULED EVENTS ====================
@@ -194,21 +134,6 @@ export const calendlyManifest: ProviderManifest = {
     },
 
     {
-      id: 'get_scheduled_event',
-      method: 'GET',
-      path: '/scheduled_events/{uuid}',
-      access: 'read',
-      description: 'Get detailed information about a specific scheduled event including location and meeting link.',
-      params: {
-        uuid: {
-          type: 'string',
-          description: 'Scheduled event UUID',
-          required: true,
-        },
-      },
-    },
-
-    {
       id: 'cancel_scheduled_event',
       method: 'POST',
       path: '/scheduled_events/{uuid}/cancellation',
@@ -225,154 +150,6 @@ export const calendlyManifest: ProviderManifest = {
         reason: {
           type: 'string',
           description: 'Reason for cancellation (sent to invitees)',
-        },
-      },
-    },
-
-    // ==================== INVITEES ====================
-    {
-      id: 'list_event_invitees',
-      method: 'GET',
-      path: '/scheduled_events/{uuid}/invitees',
-      access: 'read',
-      description: 'List all invitees (attendees) for a scheduled event.',
-      params: {
-        uuid: {
-          type: 'string',
-          description: 'Scheduled event UUID',
-          required: true,
-        },
-        status: {
-          type: 'string',
-          description: 'Filter by invitee status',
-          enum: ['active', 'canceled'],
-        },
-        sort: {
-          type: 'string',
-          description: 'Sort order (e.g., created_at:asc)',
-        },
-        count: {
-          type: 'number',
-          description: 'Results per page',
-          default: 20,
-        },
-        page_token: {
-          type: 'string',
-          description: 'Pagination token',
-        },
-      },
-      responseHints: ['uri', 'email', 'name', 'status', 'timezone', 'questions_and_answers', 'tracking', 'created_at'],
-    },
-
-    {
-      id: 'get_invitee',
-      method: 'GET',
-      path: '/scheduled_events/{event_uuid}/invitees/{invitee_uuid}',
-      access: 'read',
-      description: 'Get detailed information about a specific invitee.',
-      params: {
-        event_uuid: {
-          type: 'string',
-          description: 'Scheduled event UUID',
-          required: true,
-        },
-        invitee_uuid: {
-          type: 'string',
-          description: 'Invitee UUID',
-          required: true,
-        },
-      },
-    },
-
-    // ==================== USER AVAILABILITY ====================
-    {
-      id: 'get_user_availability_schedules',
-      method: 'GET',
-      path: '/user_availability_schedules',
-      access: 'read',
-      description: 'List availability schedules for a user showing their working hours.',
-      params: {
-        user: {
-          type: 'string',
-          format: 'uri',
-          description: 'User URI (required)',
-          required: true,
-        },
-      },
-      responseHints: ['uri', 'name', 'default', 'timezone', 'rules'],
-    },
-
-    {
-      id: 'get_user_busy_times',
-      method: 'GET',
-      path: '/user_busy_times',
-      access: 'read',
-      description: 'Get a user\'s busy time periods from their connected calendars.',
-      params: {
-        user: {
-          type: 'string',
-          format: 'uri',
-          description: 'User URI (required)',
-          required: true,
-        },
-        start_time: {
-          type: 'string',
-          format: 'date-time',
-          description: 'Start of time range (ISO-8601)',
-          required: true,
-        },
-        end_time: {
-          type: 'string',
-          format: 'date-time',
-          description: 'End of time range (ISO-8601)',
-          required: true,
-        },
-      },
-      responseHints: ['type', 'start_time', 'end_time', 'buffered'],
-    },
-
-    // ==================== ORGANIZATION ====================
-    {
-      id: 'list_organization_memberships',
-      method: 'GET',
-      path: '/organization_memberships',
-      access: 'read',
-      description: 'List all members of an organization.',
-      params: {
-        organization: {
-          type: 'string',
-          format: 'uri',
-          description: 'Organization URI',
-        },
-        user: {
-          type: 'string',
-          format: 'uri',
-          description: 'User URI to filter by',
-        },
-        count: {
-          type: 'number',
-          description: 'Results per page',
-          default: 20,
-        },
-        page_token: {
-          type: 'string',
-          description: 'Pagination token',
-        },
-      },
-      responseHints: ['uri', 'role', 'user', 'organization', 'created_at', 'updated_at'],
-    },
-
-    {
-      id: 'get_organization_membership',
-      method: 'GET',
-      path: '/organization_memberships/{uuid}',
-      access: 'read',
-      description: 'Get a specific organization membership.',
-      params: {
-        uuid: {
-          type: 'string',
-          description: 'Membership UUID',
-          required: true,
         },
       },
     },
@@ -405,53 +182,6 @@ export const calendlyManifest: ProviderManifest = {
         },
       },
       responseHints: ['booking_url', 'owner', 'owner_type'],
-    },
-
-    // ==================== INVITEE NO SHOWS ====================
-    {
-      id: 'mark_invitee_no_show',
-      method: 'POST',
-      path: '/invitee_no_shows',
-      access: 'write',
-      description: 'Mark an invitee as a no-show for a scheduled event.',
-      body: {
-        invitee: {
-          type: 'string',
-          format: 'uri',
-          description: 'URI of the invitee to mark as no-show',
-          required: true,
-        },
-      },
-    },
-
-    {
-      id: 'unmark_invitee_no_show',
-      method: 'DELETE',
-      path: '/invitee_no_shows/{uuid}',
-      access: 'write',
-      description: 'Remove no-show status from an invitee.',
-      params: {
-        uuid: {
-          type: 'string',
-          description: 'No-show record UUID',
-          required: true,
-        },
-      },
-    },
-
-    {
-      id: 'get_invitee_no_show',
-      method: 'GET',
-      path: '/invitee_no_shows/{uuid}',
-      access: 'read',
-      description: 'Get details of a no-show record.',
-      params: {
-        uuid: {
-          type: 'string',
-          description: 'No-show record UUID',
-          required: true,
-        },
-      },
     },
   ],
 };
