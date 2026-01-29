@@ -56,6 +56,10 @@ function ChatContent() {
   // Track whether org has LLM configured (separate from user config)
   const [hasOrgLLM, setHasOrgLLM] = useState<boolean | null>(null);
 
+  // Skills and tools for suggestions and sidebar
+  const [availableSkills, setAvailableSkills] = useState<SkillPublic[]>([]);
+  const [availableTools, setAvailableTools] = useState<Array<{ name: string; description: string }>>([]);
+
   // Check if user is on free_beta tier (gets shared LLM access)
   const isFreeBeta = user?.tier === 'free_beta';
 
@@ -80,6 +84,47 @@ function ChatContent() {
       }
     });
   }, [isFreeBeta, userLLMConfig]);
+
+  // Fetch skills and tools for suggestions
+  useEffect(() => {
+    Promise.all([
+      skills.list({ includeAccess: true }),
+      skills.getConfig().catch(() => null),
+    ]).then(([skillsData, config]) => {
+      setAvailableSkills(skillsData);
+
+      // Build available tools based on user's connected integrations
+      const tools: Array<{ name: string; description: string }> = [
+        { name: 'load_skill', description: 'Load and execute a skill' },
+        { name: 'scrape_url', description: 'Extract content from a URL' },
+        { name: 'web_search', description: 'Search the web for information' },
+      ];
+
+      if (config?.profile) {
+        const p = config.profile;
+        if (p.hasEmail) {
+          tools.push(
+            { name: 'search_emails', description: 'Search your emails' },
+            { name: 'draft_email', description: 'Draft an email' },
+            { name: 'send_email', description: 'Send an email' }
+          );
+        }
+        if (p.hasGoogleSheets) tools.push({ name: 'google-sheets', description: 'Create, read, update spreadsheets' });
+        if (p.hasGoogleDrive) tools.push({ name: 'google-drive', description: 'List, search, manage files' });
+        if (p.hasGoogleDocs) tools.push({ name: 'google-docs', description: 'Create, read, update documents' });
+        if (p.hasCalendar) tools.push({ name: 'calendar', description: 'View and manage calendar events' });
+      }
+
+      setAvailableTools(tools);
+    }).catch(() => {
+      setAvailableSkills([]);
+      setAvailableTools([
+        { name: 'load_skill', description: 'Load and execute a skill' },
+        { name: 'scrape_url', description: 'Extract content from a URL' },
+        { name: 'web_search', description: 'Search the web for information' },
+      ]);
+    });
+  }, []);
 
   // Handle user LLM config change from sidebar
   const handleUserLLMConfigChange = useCallback((config: LLMConfig | null) => {
@@ -428,6 +473,8 @@ function ChatContent() {
           onRefreshAction={handleRefreshAction}
           llmLabel={llmConfig ? `${llmConfig.provider}/${llmConfig.model}` : undefined}
           isMobile={isMobile}
+          skills={availableSkills}
+          tools={availableTools}
         />
       )}
 
