@@ -14,7 +14,6 @@ import {
   getOrgIntegrationPermissions,
   getOrgDisabledSkills,
   getEffectiveAccessForUser,
-  getUserIntegrationsByCategory,
   isIntegrationCategory,
 } from '../lib/integration-permissions.js';
 import { getSkillStatus } from '../lib/skill-access.js';
@@ -308,29 +307,23 @@ skillsRoutes.get('/config', async (c) => {
         ? 'outlook-calendar'
         : undefined;
 
-  // Get connected integrations (org users use three-way model, individual users check directly)
-  let connectedIntegrations: { provider: string }[] = [];
+  // Get all connected integrations for this user
+  const allConnectedIntegrations = await db
+    .select()
+    .from(integrations)
+    .where(and(eq(integrations.userId, user.sub), eq(integrations.status, 'connected')));
+
+  // For database category, respect org permissions
   let allowAirtable = false;
-
-  if (user.organizationId) {
-    const integrationsByCategory = await getUserIntegrationsByCategory(user.sub, user.organizationId);
-    const databaseEnabled = effectiveAccess
-      ? effectiveAccess.database !== 'none' && effectiveAccess.database !== 'disabled'
-      : false;
-
-    if (databaseEnabled) {
-      connectedIntegrations = integrationsByCategory.database;
-      allowAirtable = true;
-    }
+  if (user.organizationId && effectiveAccess) {
+    const databaseEnabled = effectiveAccess.database !== 'none' && effectiveAccess.database !== 'disabled';
+    allowAirtable = databaseEnabled;
   } else {
-    connectedIntegrations = await db
-      .select()
-      .from(integrations)
-      .where(and(eq(integrations.userId, user.sub), eq(integrations.status, 'connected')));
+    allowAirtable = true; // Non-org users have full access
   }
 
   // Check which providers are connected
-  const hasProvider = (provider: string) => connectedIntegrations.some((int) => int.provider === provider);
+  const hasProvider = (provider: string) => allConnectedIntegrations.some((int) => int.provider === provider);
   const hasAirtable = allowAirtable && hasProvider('airtable');
   const hasGoogleSheets = hasProvider('google-sheets');
   const hasGoogleDrive = hasProvider('google-drive');
