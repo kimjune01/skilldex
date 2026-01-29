@@ -9,12 +9,16 @@ import { getNangoClient, PROVIDER_CONFIG_KEYS } from './nango.js';
 import { assignTaskToExtension } from './scrape-events.js';
 import { normalizeUrl, hashUrl, parseRecipients, waitForScrapeTask } from './chat-helpers.js';
 import { refreshGoogleToken, isGoogleTokenExpired } from './google-oauth.js';
+import { createLogger } from './logger.js';
+import { getGmailClient as getGmailClientFromService } from '../services/email.js';
 import {
   buildAuthHeader,
   isPathBlocked,
   getGoogleWorkspaceManifest,
   isGoogleWorkspaceProvider,
 } from '@skillomatic/shared';
+
+const log = createLogger('ChatActions');
 
 // ============ Action Types ============
 
@@ -351,72 +355,27 @@ function transformRequestBody(
  * Get a Gmail client for the user if they have email connected
  *
  * Supports two OAuth flows:
- * 1. Nango OAuth (provider: 'gmail', tokens via Nango)
- * 2. Direct Google OAuth (provider: 'email', tokens in metadata)
+ * 1. Direct Google OAuth (provider: 'email', tokens in metadata) - via shared email service
+ * 2. Nango OAuth (provider: 'gmail', tokens via Nango) - fallback
  */
 export async function getGmailClientForUser(
   userId: string
 ): Promise<{ client: GmailClient; emailAddress: string } | null> {
-  // First try direct Google OAuth (provider: 'email' with tokens in metadata)
-  const [directEmailInt] = await db
-    .select()
-    .from(integrations)
-    .where(and(eq(integrations.userId, userId), eq(integrations.provider, 'email'), eq(integrations.status, 'connected')))
-    .limit(1);
-
-  if (directEmailInt) {
-    try {
-      const metadata = directEmailInt.metadata ? JSON.parse(directEmailInt.metadata) : {};
-
-      // Check if this is a Gmail integration (subProvider check)
-      if (metadata.subProvider === 'gmail' && metadata.accessToken) {
-        let accessToken = metadata.accessToken as string;
-        const refreshToken = metadata.refreshToken as string | undefined;
-        const expiresAt = metadata.expiresAt as string | undefined;
-        const gmailEmail = metadata.gmailEmail as string | undefined;
-
-        // Check if token is expired and needs refresh
-        if (expiresAt && new Date(expiresAt) < new Date() && refreshToken) {
-          const refreshResult = await refreshGoogleToken(refreshToken, metadata);
-
-          if (refreshResult) {
-            accessToken = refreshResult.accessToken;
-            await db
-              .update(integrations)
-              .set({
-                metadata: JSON.stringify(refreshResult.metadata),
-                lastSyncAt: new Date(),
-                updatedAt: new Date(),
-              })
-              .where(eq(integrations.id, directEmailInt.id));
-          } else {
-            await db
-              .update(integrations)
-              .set({ status: 'error', updatedAt: new Date() })
-              .where(eq(integrations.id, directEmailInt.id));
-            return null;
-          }
-        }
-
-        // If we have the email cached, use it; otherwise fetch from Gmail API
-        if (gmailEmail) {
-          return {
-            client: new GmailClient(accessToken, gmailEmail),
-            emailAddress: gmailEmail,
-          };
-        }
-
-        // Fetch email from Gmail profile
-        const tempClient = new GmailClient(accessToken, '');
-        const profile = await tempClient.getProfile();
-        return {
-          client: new GmailClient(accessToken, profile.emailAddress),
-          emailAddress: profile.emailAddress,
-        };
-      }
-    } catch (error) {
-      console.error('Failed to get Gmail client from direct OAuth:', error);
+  // First try direct Google OAuth via shared email service
+  // This handles token refresh and all the complexity
+  try {
+    const client = await getGmailClientFromService(userId);
+    if (client) {
+      return {
+        client,
+        emailAddress: client.email,
+      };
     }
+  } catch (error) {
+    log.warn('gmail_client_direct_oauth_failed', {
+      userId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 
   // Fall back to Nango OAuth (provider: 'gmail')
@@ -444,7 +403,10 @@ export async function getGmailClientForUser(
       emailAddress: profile.emailAddress,
     };
   } catch (error) {
-    console.error('Failed to get Gmail client via Nango:', error);
+    log.warn('gmail_client_nango_failed', {
+      userId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }

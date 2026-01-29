@@ -35,6 +35,7 @@ import {
   getUserIntegrationsByCategory,
   canRead,
   canWrite,
+  providerToCategory,
   type EffectiveAccess,
   PERMISSION_CATEGORIES,
 } from './integration-permissions.js';
@@ -513,20 +514,11 @@ async function getIndividualIntegrationsByCategory(
     docs: [],
   };
 
-  // Map provider to category - similar to providerToCategory in integration-permissions.ts
-  const categoryAliases: Record<string, 'ats' | 'email' | 'calendar' | 'database' | 'docs'> = {
-    ats: 'ats',
-    email: 'email',
-    calendar: 'calendar',
-    database: 'database',
-    'google-sheets': 'database',
-    'google-docs': 'docs',
-  };
-
+  // Use centralized provider registry to map providers to categories
   for (const int of userIntegrations) {
-    const category = categoryAliases[int.provider];
-    if (category) {
-      byCategory[category].push({
+    const category = providerToCategory(int.provider);
+    if (category && category in byCategory) {
+      byCategory[category as keyof typeof byCategory].push({
         id: int.id,
         provider: int.provider,
         metadata: int.metadata,

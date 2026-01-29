@@ -161,6 +161,13 @@ export class GmailClient {
   }
 
   /**
+   * Get the email address associated with this client
+   */
+  get email(): string {
+    return this.userEmail;
+  }
+
+  /**
    * Make authenticated request to Gmail API
    */
   private async request<T>(
