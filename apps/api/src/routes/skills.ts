@@ -331,6 +331,9 @@ skillsRoutes.get('/config', async (c) => {
   const hasGoogleForms = hasProvider('google-forms');
   const hasGoogleContacts = hasProvider('google-contacts');
   const hasGoogleTasks = hasProvider('google-tasks');
+  // Email and calendar - check both profile (from capability) and direct integrations
+  const hasEmailIntegration = hasProvider('email') || hasProvider('gmail');
+  const hasCalendarIntegration = hasProvider('calendar') || hasProvider('google-calendar');
 
   return c.json({
     data: {
@@ -341,8 +344,8 @@ skillsRoutes.get('/config', async (c) => {
       profile: {
         hasLLM: !!profile.llm,
         hasATS: !!profile.ats,
-        hasCalendar: !!(profile.calendar?.ical || profile.calendar?.calendly),
-        hasEmail: !!profile.email,
+        hasCalendar: !!(profile.calendar?.ical || profile.calendar?.calendly) || hasCalendarIntegration,
+        hasEmail: !!profile.email || hasEmailIntegration,
         hasAirtable,
         hasGoogleSheets,
         hasGoogleDrive,
