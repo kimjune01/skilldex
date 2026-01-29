@@ -12,7 +12,7 @@
  * @see docs/EPHEMERAL_ARCHITECTURE.md
  */
 
-import { loadRenderedSkill } from './skills-client';
+import { loadRenderedSkill, clearMetadataCache } from './skills-client';
 
 // Action types
 export type ActionType =
@@ -118,6 +118,10 @@ async function executeCreateSkill(
         force: params.force ?? false,
       }),
     });
+
+    // Clear metadata cache so skills list refreshes immediately
+    clearMetadataCache();
+
     return {
       success: true,
       action: 'create_skill',
