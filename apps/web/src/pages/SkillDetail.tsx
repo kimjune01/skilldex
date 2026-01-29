@@ -947,6 +947,9 @@ export default function SkillDetail() {
               </div>
             )}
           </div>
+          <p className="text-xs text-muted-foreground">
+            Tip: You can also schedule automations by asking in chat, e.g. "run {skill?.name} every Monday at 9am"
+          </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAutomateDialogOpen(false)}>
               Cancel
