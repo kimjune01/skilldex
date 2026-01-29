@@ -60,6 +60,18 @@ const registeredClients = new Map<
   }
 >();
 
+// Pre-registered client for ChatGPT (for manual OAuth setup)
+// Users can use these credentials when ChatGPT asks for client ID/secret
+const CHATGPT_CLIENT_ID = 'chatgpt_skillomatic';
+const CHATGPT_CLIENT_SECRET = 'sk_chatgpt_oauth_secret_2024';
+registeredClients.set(CHATGPT_CLIENT_ID, {
+  clientId: CHATGPT_CLIENT_ID,
+  clientSecret: CHATGPT_CLIENT_SECRET,
+  redirectUris: ['https://chatgpt.com/connector_platform_oauth_redirect'],
+  clientName: 'ChatGPT',
+  createdAt: new Date(),
+});
+
 // Cleanup expired auth codes every minute
 setInterval(() => {
   const now = Date.now();

@@ -138,9 +138,37 @@ export default function MobileChat() {
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Authentication</p>
                       <p className="text-sm font-medium">OAuth</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Select "OAuth" or "Mixed" - you'll be redirected to sign in with your Skillomatic account
+                      <p className="text-xs text-muted-foreground mt-1 mb-2">
+                        Select "OAuth" and enter these credentials:
                       </p>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground w-24">Client ID:</span>
+                          <code className="flex-1 bg-background px-2 py-1 rounded text-xs font-mono">chatgpt_skillomatic</code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2"
+                            onClick={() => copyToClipboard('chatgpt_skillomatic', 'client-id')}
+                          >
+                            <Copy className="h-3 w-3" />
+                            {copied === 'client-id' ? ' Copied!' : ''}
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground w-24">Client Secret:</span>
+                          <code className="flex-1 bg-background px-2 py-1 rounded text-xs font-mono">sk_chatgpt_oauth_secret_2024</code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2"
+                            onClick={() => copyToClipboard('sk_chatgpt_oauth_secret_2024', 'client-secret')}
+                          >
+                            <Copy className="h-3 w-3" />
+                            {copied === 'client-secret' ? ' Copied!' : ''}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
