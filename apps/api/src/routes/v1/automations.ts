@@ -208,8 +208,13 @@ v1AutomationsRoutes.post('/', async (c) => {
   if (existingAutomations.length >= MAX_AUTOMATIONS_PER_USER) {
     return c.json({
       error: {
-        message: `You have reached the maximum of ${MAX_AUTOMATIONS_PER_USER} automations`,
-        code: 'LIMIT_EXCEEDED',
+        message: `You've reached the limit of ${MAX_AUTOMATIONS_PER_USER} automations. Upgrade for unlimited automations, or delete an existing one.`,
+        code: 'AUTOMATION_LIMIT_EXCEEDED',
+        upgradePrompt: {
+          triggerType: 'automation',
+          currentCount: existingAutomations.length,
+          limit: MAX_AUTOMATIONS_PER_USER,
+        },
       },
     }, 403);
   }

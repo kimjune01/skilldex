@@ -523,6 +523,28 @@ skillsRoutes.post('/', async (c) => {
     if (!cronValidation.valid) {
       return c.json({ error: { message: `Invalid cron expression: ${cronValidation.error}` } }, 400);
     }
+
+    // Check automation limit (max 3 per user)
+    const MAX_AUTOMATIONS_PER_USER = 3;
+    const existingAutomations = await db
+      .select()
+      .from(automations)
+      .where(eq(automations.userId, user.sub));
+
+    if (existingAutomations.length >= MAX_AUTOMATIONS_PER_USER) {
+      return c.json({
+        error: {
+          message: `You've reached the limit of ${MAX_AUTOMATIONS_PER_USER} automations. Upgrade for unlimited automations, or delete an existing one.`,
+          code: 'AUTOMATION_LIMIT_EXCEEDED',
+          upgradePrompt: {
+            triggerType: 'automation',
+            currentCount: existingAutomations.length,
+            limit: MAX_AUTOMATIONS_PER_USER,
+          },
+        },
+      }, 403);
+    }
+
     cronExpression = body.cron;
   }
 

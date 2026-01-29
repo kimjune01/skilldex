@@ -55,6 +55,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { getCategoryBadgeVariant } from '@/lib/utils';
+import { PayIntentionDialog } from '@/components/PayIntentionDialog';
 
 const CATEGORIES: SkillCategory[] = ['sourcing', 'ats', 'communication', 'scheduling', 'productivity', 'system'];
 
@@ -101,6 +102,7 @@ export default function SkillDetail() {
   const [parsingSchedule, setParsingSchedule] = useState(false);
   const [creatingAutomation, setCreatingAutomation] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -238,8 +240,15 @@ export default function SkillDetail() {
       setAutomateDialogOpen(false);
       setScheduleInput('');
       setParsedSchedule(null);
-    } catch (err) {
-      setScheduleError(err instanceof Error ? err.message : 'Failed to create automation');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create automation';
+      // Check if this is an automation limit error - show upgrade prompt
+      if (errorMessage.includes('limit') || errorMessage.includes('Upgrade')) {
+        setAutomateDialogOpen(false);
+        setShowUpgradeDialog(true);
+      } else {
+        setScheduleError(errorMessage);
+      }
     } finally {
       setCreatingAutomation(false);
     }
@@ -976,6 +985,14 @@ export default function SkillDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Upgrade Dialog for automation limit */}
+      <PayIntentionDialog
+        open={showUpgradeDialog}
+        onClose={() => setShowUpgradeDialog(false)}
+        triggerType="automation"
+        providerName="unlimited automations"
+      />
     </div>
   );
 }
