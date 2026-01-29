@@ -230,10 +230,14 @@ If scheduled, results are emailed to the user automatically.`,
     log.info('ATS tools not registered (no ATS integration connected)');
   }
 
-  // Scrape tools - always available (but require browser extension to work)
-  registerScrapeTools(server, client);
-  registeredTools.push('create_scrape_task', 'get_scrape_task', 'scrape_url');
-  log.info('Scrape tools registered');
+  // Scrape tools - only if browser extension is active (recently polled)
+  if (profile.hasExtension) {
+    registerScrapeTools(server, client);
+    registeredTools.push('create_scrape_task', 'get_scrape_task', 'scrape_url');
+    log.info('Scrape tools registered (extension active)');
+  } else {
+    log.info('Scrape tools not registered (browser extension not detected)');
+  }
 
   // Email tools - only if email is connected
   if (profile.hasEmail) {

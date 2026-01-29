@@ -92,6 +92,8 @@ export const users = sqliteTable('users', {
   tier: text('tier').notNull().default('free'),
   /** Skills the user has hidden from their view - JSON array of skill slugs */
   hiddenSkills: text('hidden_skills'),
+  /** Last time user's browser extension polled for scrape tasks */
+  lastExtensionPollAt: integer('last_extension_poll_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

@@ -14,10 +14,18 @@ declare module "sst" {
       "type": "sst.aws.Router"
       "url": string
     }
+    "AutomationWorker": {
+      "name": string
+      "type": "sst.aws.Function"
+    }
     "Email": {
       "configSet": string
       "sender": string
       "type": "sst.aws.Email"
+    }
+    "GeminiApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
     }
     "GithubToken": {
       "type": "sst.sst.Secret"

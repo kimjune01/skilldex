@@ -47,6 +47,8 @@ export interface CapabilityProfile {
   hasGoogleForms?: boolean;
   hasGoogleContacts?: boolean;
   hasGoogleTasks?: boolean;
+  /** Whether user's browser extension has polled recently (within 15 seconds) */
+  hasExtension?: boolean;
   isSuperAdmin?: boolean;
   llmProvider?: string;
   atsProvider?: string;

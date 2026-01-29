@@ -23,7 +23,10 @@ import {
   skillRequiresBrowser,
   type EmailCapability,
 } from '../lib/chat-actions.js';
-import { buildSystemPrompt } from '../lib/chat-prompts.js';
+import { buildSystemPrompt, isExtensionActive } from '../lib/chat-prompts.js';
+import { db } from '@skillomatic/db';
+import { users } from '@skillomatic/db/schema';
+import { eq } from 'drizzle-orm';
 import { wrapExternalResponse } from '../lib/prompt-sanitizer.js';
 
 export const chatRoutes = new Hono();
@@ -95,13 +98,25 @@ chatRoutes.post('/', async (c) => {
     disabledSkills = await getOrgDisabledSkills(user.organizationId);
   }
 
+  // Check if user's browser extension is active (recently polled)
+  let hasExtension = false;
+  if (user?.id) {
+    const [userData] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+    hasExtension = isExtensionActive(userData?.lastExtensionPollAt ?? null);
+  }
+
   // Build messages with skills metadata (progressive disclosure Level 1)
   const systemPrompt = buildSystemPrompt(
     skillsMetadata,
     emailCapability,
     effectiveAccess,
     disabledSkills,
-    googleWorkspaceCapability
+    googleWorkspaceCapability,
+    hasExtension
   );
   const chatMessages: LLMChatMessage[] = [
     { role: 'system', content: systemPrompt },

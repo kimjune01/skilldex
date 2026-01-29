@@ -3,6 +3,18 @@ import type { EmailCapability, GoogleWorkspaceCapability } from './chat-actions.
 import type { EffectiveAccess } from './integration-permissions.js';
 import { sanitizeEmail } from './prompt-sanitizer.js';
 
+/** Threshold for considering extension "active" - if polled within this time */
+const EXTENSION_ACTIVE_THRESHOLD_MS = 15 * 1000; // 15 seconds
+
+/**
+ * Check if user's extension was recently active (polled within threshold)
+ */
+export function isExtensionActive(lastPollAt: Date | null): boolean {
+  if (!lastPollAt) return false;
+  const timeSinceLastPoll = Date.now() - lastPollAt.getTime();
+  return timeSinceLastPoll < EXTENSION_ACTIVE_THRESHOLD_MS;
+}
+
 /**
  * Build the system prompt for the chat assistant
  */
@@ -11,7 +23,8 @@ export function buildSystemPrompt(
   emailCapability?: EmailCapability,
   effectiveAccess?: EffectiveAccess,
   disabledSkills?: string[],
-  googleWorkspaceCapability?: GoogleWorkspaceCapability
+  googleWorkspaceCapability?: GoogleWorkspaceCapability,
+  hasExtension?: boolean
 ): string {
   const skillsSection = buildSkillsPromptSection(skillsMetadata, effectiveAccess, disabledSkills);
 
@@ -28,13 +41,18 @@ export function buildSystemPrompt(
   // Build Google services summary
   const googleServices = buildGoogleServicesSummary(googleWorkspaceCapability);
 
+  // Build other actions list - scrape_url only available with extension
+  const otherActions = hasExtension
+    ? 'web_search, scrape_url'
+    : 'web_search';
+
   return `You are a helpful assistant. Match user requests to skills and tool calls.
 
 ${skillsSection}
 
 Execute with \`\`\`action blocks: \`{"action": "load_skill", "slug": "..."}\`
 
-Other actions: web_search, scrape_url${emailSection}${googleServices}`;
+Other actions: ${otherActions}${emailSection}${googleServices}`;
 }
 
 /**

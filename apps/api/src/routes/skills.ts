@@ -17,6 +17,7 @@ import {
   isIntegrationCategory,
 } from '../lib/integration-permissions.js';
 import { getSkillStatus } from '../lib/skill-access.js';
+import { isExtensionActive } from '../lib/chat-prompts.js';
 import {
   validateSkillContent,
   slugify,
@@ -329,6 +330,14 @@ skillsRoutes.get('/config', async (c) => {
   const hasEmailIntegration = hasProvider('email') || hasProvider('gmail');
   const hasCalendarIntegration = hasProvider('calendar') || hasProvider('google-calendar');
 
+  // Check if user's browser extension is active (recently polled)
+  const [userData] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, user.sub))
+    .limit(1);
+  const hasExtension = isExtensionActive(userData?.lastExtensionPollAt ?? null);
+
   return c.json({
     data: {
       slug: '_config',
@@ -347,6 +356,7 @@ skillsRoutes.get('/config', async (c) => {
         hasGoogleForms,
         hasGoogleContacts,
         hasGoogleTasks,
+        hasExtension,
         isSuperAdmin: !!user.isSuperAdmin,
         llmProvider: profile.llm?.provider,
         atsProvider: profile.ats?.provider,

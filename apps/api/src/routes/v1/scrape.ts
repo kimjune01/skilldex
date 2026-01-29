@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { apiKeyAuth } from '../../middleware/apiKey.js';
 import { db } from '@skillomatic/db';
 import { scrapeTasks, users, ONBOARDING_STEPS } from '@skillomatic/db/schema';
-import { eq, and, gt, desc, lt } from 'drizzle-orm';
+import { eq, and, gt, desc } from 'drizzle-orm';
 import { randomUUID, createHash } from 'crypto';
 import type {
   ScrapeTaskPublic,
@@ -239,21 +239,17 @@ v1ScrapeRoutes.get('/tasks', async (c) => {
 
   const now = new Date();
 
-  // If status=pending and claim=true, extension is polling - mark extension as installed
+  // If status=pending and claim=true, extension is polling - track activity
   if (status === 'pending' && claim) {
-    // Side effect: advance onboarding to EXTENSION_INSTALLED if not already there
+    // Side effect: update lastExtensionPollAt and advance onboarding if needed
     // This is fire-and-forget, we don't wait for it
     db.update(users)
       .set({
+        lastExtensionPollAt: now,
         onboardingStep: ONBOARDING_STEPS.EXTENSION_INSTALLED,
         updatedAt: now,
       })
-      .where(
-        and(
-          eq(users.id, user.id),
-          lt(users.onboardingStep, ONBOARDING_STEPS.EXTENSION_INSTALLED)
-        )
-      )
+      .where(eq(users.id, user.id))
       .catch(() => {
         // Ignore errors - this is a side effect
       });
