@@ -67,6 +67,9 @@ import { v1AutomationsRoutes } from './routes/v1/automations.js';
 import { mcpRoutes } from './routes/mcp.js';
 import { mcpWebRoutes } from './routes/mcp-web.js';
 
+// OAuth routes (for ChatGPT MCP connector authentication)
+import { oauthRoutes } from './routes/oauth.js';
+
 // WebSocket route handlers
 import { createWsScrapeHandler } from './routes/ws/scrape.js';
 
@@ -123,6 +126,7 @@ app.route('/onboarding', onboardingRoutes); // New user getting started guide
 app.route('/webhooks', webhooksRoutes);    // External service webhooks (Nango, etc.)
 app.route('/account-type', accountTypeRoutes); // Account type selection (individual vs org)
 app.route('/status', statusRoutes);        // Public system status (no auth)
+app.route('/', oauthRoutes);              // OAuth endpoints for ChatGPT MCP connector
 
 // Public shared skill routes (no auth required)
 import { sharedRoutes } from './routes/shared.js';

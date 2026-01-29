@@ -1,14 +1,11 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Smartphone, ExternalLink, CheckCircle2, ArrowRight, Globe, Monitor, Copy, RefreshCw } from 'lucide-react';
-import { apiKeys } from '../lib/api';
+import { Smartphone, ExternalLink, CheckCircle2, ArrowRight, Globe, Monitor, Copy, Shield } from 'lucide-react';
+import { useState } from 'react';
 
 export default function MobileChat() {
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
   // MCP endpoint URL - separate service in production, API endpoint in dev
@@ -16,45 +13,18 @@ export default function MobileChat() {
     (import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/mcp` :
     window.location.origin.replace(':5173', ':3000') + '/mcp');
 
-  useEffect(() => {
-    const fetchApiKey = async () => {
-      try {
-        const keys = await apiKeys.list();
-        if (keys.length > 0) {
-          setApiKey(keys[0].key);
-        }
-      } catch {
-        // Silently fail
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchApiKey();
-  }, []);
-
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          Loading...
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Mobile Chat</h1>
         <p className="text-muted-foreground mt-1">
-          Use Skillomatic skills from ChatGPT on your phone
+          Use Skillomatic tools from ChatGPT on your phone
         </p>
       </div>
 
@@ -165,34 +135,14 @@ export default function MobileChat() {
                         </Button>
                       </div>
                     </div>
-                    {apiKey && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Authentication</p>
-                        <p className="text-sm">Bearer Token</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <code className="flex-1 bg-background px-3 py-2 rounded text-xs font-mono break-all">
-                            {apiKey}
-                          </code>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => copyToClipboard(apiKey, 'api-key')}
-                          >
-                            <Copy className="h-3 w-3 mr-1" />
-                            {copied === 'api-key' ? 'Copied!' : 'Copy'}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Authentication</p>
+                      <p className="text-sm font-medium">OAuth</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Select "OAuth" or "Mixed" - you'll be redirected to sign in with your Skillomatic account
+                      </p>
+                    </div>
                   </div>
-                  {!apiKey && (
-                    <p className="text-xs text-amber-600">
-                      No API key found.{' '}
-                      <Link to="/desktop-chat" className="underline">
-                        Generate one first
-                      </Link>
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -201,6 +151,22 @@ export default function MobileChat() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
                     3
+                  </div>
+                  <span className="font-medium">Authorize and connect</span>
+                </div>
+                <div className="ml-8 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    After clicking "Create", you'll be redirected to Skillomatic to authorize the connection.
+                    Click "Authorize" to grant ChatGPT access to your tools.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                    4
                   </div>
                   <span className="font-medium">Open ChatGPT mobile app</span>
                 </div>
@@ -228,6 +194,15 @@ export default function MobileChat() {
                       Play Store
                     </a>
                   </div>
+                </div>
+              </div>
+
+              {/* Security note */}
+              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg p-3 mt-4">
+                <Shield className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">Secure OAuth connection</p>
+                  <p>Your credentials are never shared with ChatGPT. You can revoke access anytime from your API Keys settings.</p>
                 </div>
               </div>
             </TabsContent>
@@ -301,7 +276,7 @@ export default function MobileChat() {
                 </div>
                 <div className="ml-8">
                   <p className="text-sm text-muted-foreground">
-                    Sign in with the same account you used on desktop. Your Skillomatic connector syncs automatically — tap the <strong>+</strong> button in any chat to access your recruiting tools.
+                    Sign in with the same account you used on desktop. Your Skillomatic connector syncs automatically — tap the <strong>+</strong> button in any chat to access your tools.
                   </p>
                 </div>
               </div>

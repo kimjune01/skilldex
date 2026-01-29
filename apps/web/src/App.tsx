@@ -76,6 +76,7 @@ import SharedSkill from './pages/SharedSkill';
 import AccountType from './pages/onboarding/AccountType';
 import GetApiKey from './pages/GetApiKey';
 import Profile from './pages/Profile';
+import OAuthConsent from './pages/OAuthConsent';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAuth();
@@ -313,6 +314,9 @@ export default function App() {
 
         {/* Onboarding - Account Type Selection */}
         <Route path="/onboarding/account-type" element={<AccountTypeRoute />} />
+
+        {/* OAuth consent page for ChatGPT MCP connector */}
+        <Route path="/oauth/consent" element={<OAuthConsent />} />
 
         {/* Public pages */}
         <Route path="/s/:code" element={<SharedSkill />} />

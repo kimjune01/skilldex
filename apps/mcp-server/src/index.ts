@@ -99,6 +99,20 @@ app.use('*', cors({
 app.get('/', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION, gitHash: GIT_HASH }));
 app.get('/health', (c) => c.json({ status: 'ok', service: 'mcp-server', version: MCP_VERSION, gitHash: GIT_HASH }));
 
+// OAuth Protected Resource Metadata (required for ChatGPT MCP connector)
+// This tells ChatGPT where to find the authorization server
+app.get('/.well-known/oauth-protected-resource', (c) => {
+  const mcpUrl = process.env.MCP_URL || 'https://mcp.skillomatic.technology';
+  const apiUrl = API_URL.replace('http://', 'https://'); // Ensure https in production
+
+  return c.json({
+    resource: mcpUrl,
+    authorization_servers: [apiUrl],
+    scopes_supported: ['mcp:full'],
+    resource_documentation: 'https://skillomatic.technology/docs',
+  });
+});
+
 // Helper to get Node.js request/response from Hono context
 function getNodeReqRes(c: { env: unknown }): { req: IncomingMessage; res: ServerResponse } | null {
   const env = c.env as { incoming?: IncomingMessage; outgoing?: ServerResponse };

@@ -343,14 +343,14 @@ export default function ApiKeys() {
 
               {/* ChatGPT Setup */}
               <TabsContent value="chatgpt" className="space-y-4">
-                {isLocalDev && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      ChatGPT requires a remote server. The config below uses production URL since localhost won't work.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <Alert className="bg-blue-50 border-blue-200">
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    <strong>Using ChatGPT on the web or mobile?</strong>{' '}
+                    <a href="/mobile-chat" className="underline font-medium">Go to Mobile Chat setup</a> instead - it uses OAuth for easier connection.
+                    This page is for the ChatGPT Desktop app with local config files.
+                  </AlertDescription>
+                </Alert>
 
                 <div className="space-y-4">
                   <div>
@@ -360,7 +360,7 @@ export default function ApiKeys() {
                     </h4>
                     <ul className="text-sm text-muted-foreground ml-7 list-disc list-inside space-y-1">
                       <li>ChatGPT Plus, Pro, or Team subscription</li>
-                      <li>ChatGPT Desktop app (mobile syncs automatically)</li>
+                      <li>ChatGPT Desktop app (local config file method)</li>
                     </ul>
                   </div>
 
