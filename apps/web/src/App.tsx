@@ -43,7 +43,6 @@ import Usage from './pages/Usage';
 import AdminUsers from './pages/admin/Users';
 import AdminSkills from './pages/admin/Skills';
 import AdminAnalytics from './pages/admin/Analytics';
-import AdminProposals from './pages/admin/Proposals';
 import AdminSettings from './pages/admin/Settings';
 import AdminDeployment from './pages/admin/Deployment';
 import AdminOrganizations from './pages/admin/Organizations';
@@ -254,14 +253,6 @@ export default function App() {
             element={
               <AdminRoute>
                 <AdminAnalytics />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="admin/proposals"
-            element={
-              <AdminRoute>
-                <AdminProposals />
               </AdminRoute>
             }
           />

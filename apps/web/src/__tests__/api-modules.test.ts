@@ -116,7 +116,6 @@ describe('API modules', () => {
       expect(api.integrations).toBeDefined();
       expect(api.users).toBeDefined();
       expect(api.analytics).toBeDefined();
-      expect(api.proposals).toBeDefined();
       expect(api.scrape).toBeDefined();
       expect(api.settings).toBeDefined();
       expect(api.organizations).toBeDefined();
@@ -184,21 +183,4 @@ describe('API modules', () => {
     });
   });
 
-  describe('deprecated proposals module', () => {
-    it('should return empty array for list', async () => {
-      const { proposals } = await import('../lib/api/proposals');
-      const result = await proposals.list();
-      expect(result).toEqual([]);
-    });
-
-    it('should reject other methods with deprecation message', async () => {
-      const { proposals } = await import('../lib/api/proposals');
-
-      await expect(proposals.get('id')).rejects.toThrow('deprecated');
-      await expect(proposals.create({} as never)).rejects.toThrow('deprecated');
-      await expect(proposals.update('id', {} as never)).rejects.toThrow('deprecated');
-      await expect(proposals.delete('id')).rejects.toThrow('deprecated');
-      await expect(proposals.review('id', {} as never)).rejects.toThrow('deprecated');
-    });
-  });
 });

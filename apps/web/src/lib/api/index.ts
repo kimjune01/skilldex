@@ -24,9 +24,6 @@ export { users } from './users';
 // Analytics
 export { analytics, type UsageStats } from './analytics';
 
-// Proposals (deprecated)
-export { proposals } from './proposals';
-
 // Scrape Tasks
 export { scrape } from './scrape';
 
