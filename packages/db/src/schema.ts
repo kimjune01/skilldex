@@ -398,6 +398,27 @@ export const scrapeTasks = sqliteTable('scrape_tasks', {
   expiresAtIdx: index('scrape_tasks_expires_at_idx').on(table.expiresAt),
 }));
 
+// ============ OAUTH AUTH CODES ============
+
+/**
+ * OAuth authorization codes for ChatGPT MCP connector.
+ * Stored in DB because Lambda is stateless (can't use in-memory storage).
+ * Codes are short-lived (10 minutes) and single-use.
+ */
+export const oauthAuthCodes = sqliteTable('oauth_auth_codes', {
+  code: text('code').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: text('client_id').notNull(),
+  redirectUri: text('redirect_uri').notNull(),
+  codeChallenge: text('code_challenge').notNull(),
+  codeChallengeMethod: text('code_challenge_method').notNull().default('S256'),
+  scopes: text('scopes').notNull().default('mcp:full'), // space-separated
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+}, (table) => ({
+  expiresAtIdx: index('oauth_auth_codes_expires_at_idx').on(table.expiresAt),
+}));
+
 // ============ SKILL PROPOSALS ============
 
 export const skillProposals = sqliteTable('skill_proposals', {

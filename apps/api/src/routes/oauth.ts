@@ -24,7 +24,7 @@
 
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
-import { apiKeys } from '@skillomatic/db/schema';
+import { apiKeys, oauthAuthCodes } from '@skillomatic/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { createLogger } from '../lib/logger.js';
 import { generateApiKey } from '../lib/api-keys.js';
@@ -32,22 +32,7 @@ import { jwtAuth, type AuthPayload } from '../middleware/auth.js';
 
 const log = createLogger('OAuth');
 
-// In-memory store for auth codes (short-lived, 10 minutes)
-// In production, consider using Redis or database
-const authCodes = new Map<
-  string,
-  {
-    userId: string;
-    clientId: string;
-    redirectUri: string;
-    codeChallenge: string;
-    codeChallengeMethod: string;
-    scopes: string[];
-    expiresAt: Date;
-  }
->();
-
-// In-memory store for registered clients
+// In-memory store for registered clients (OK for Lambda - just config, not state)
 // ChatGPT uses dynamic client registration
 const registeredClients = new Map<
   string,
@@ -71,16 +56,6 @@ registeredClients.set(CHATGPT_CLIENT_ID, {
   clientName: 'ChatGPT',
   createdAt: new Date(),
 });
-
-// Cleanup expired auth codes every minute
-setInterval(() => {
-  const now = Date.now();
-  for (const [code, data] of authCodes) {
-    if (data.expiresAt.getTime() < now) {
-      authCodes.delete(code);
-    }
-  }
-}, 60 * 1000);
 
 // Environment config
 const getBaseUrl = () => process.env.API_URL || 'https://api.skillomatic.technology';
@@ -206,14 +181,15 @@ oauthRoutes.post('/oauth/approve', jwtAuth, async (c) => {
   // Generate auth code
   const code = `code_${crypto.randomUUID().replace(/-/g, '')}`;
 
-  // Store code with metadata (expires in 10 minutes)
-  authCodes.set(code, {
+  // Store code in database (Lambda is stateless, can't use in-memory)
+  await db.insert(oauthAuthCodes).values({
+    code,
     userId: user.id,
     clientId,
     redirectUri,
     codeChallenge,
     codeChallengeMethod: codeChallengeMethod || 'S256',
-    scopes: (scope || 'mcp:full').split(' '),
+    scopes: scope || 'mcp:full',
     expiresAt: new Date(Date.now() + 10 * 60 * 1000),
   });
 
@@ -280,15 +256,21 @@ oauthRoutes.post('/oauth/token', async (c) => {
     return c.json({ error: 'invalid_request', error_description: 'Missing code or code_verifier' }, 400);
   }
 
-  // Look up auth code
-  const authCode = authCodes.get(code);
+  // Look up auth code from database
+  const authCodeResults = await db
+    .select()
+    .from(oauthAuthCodes)
+    .where(eq(oauthAuthCodes.code, code))
+    .limit(1);
+
+  const authCode = authCodeResults[0];
   if (!authCode) {
     return c.json({ error: 'invalid_grant', error_description: 'Invalid or expired code' }, 400);
   }
 
   // Verify code hasn't expired
   if (authCode.expiresAt.getTime() < Date.now()) {
-    authCodes.delete(code);
+    await db.delete(oauthAuthCodes).where(eq(oauthAuthCodes.code, code));
     return c.json({ error: 'invalid_grant', error_description: 'Code expired' }, 400);
   }
 
@@ -311,8 +293,8 @@ oauthRoutes.post('/oauth/token', async (c) => {
     return c.json({ error: 'invalid_grant', error_description: 'redirect_uri mismatch' }, 400);
   }
 
-  // Delete used code
-  authCodes.delete(code);
+  // Delete used code (single-use)
+  await db.delete(oauthAuthCodes).where(eq(oauthAuthCodes.code, code));
 
   // Generate API key for this user (or reuse existing ChatGPT key)
   const existingKey = await db
@@ -344,7 +326,7 @@ oauthRoutes.post('/oauth/token', async (c) => {
     access_token: accessToken,
     token_type: 'Bearer',
     expires_in: 31536000, // 1 year (API keys don't expire)
-    scope: authCode.scopes.join(' '),
+    scope: authCode.scopes,
   });
 });
 
