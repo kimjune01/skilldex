@@ -139,6 +139,19 @@ export default function Login() {
     window.location.href = `${apiUrl}/auth/google`;
   };
 
+  // Show loading while checking auth (especially important for OAuth redirect flow)
+  const redirectParam = searchParams.get('redirect');
+  if (authLoading && redirectParam) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       {/* Back to home link */}
