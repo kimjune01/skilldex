@@ -236,18 +236,12 @@ skillsRoutes.get('/', async (c) => {
 
     // Add access info if requested
     if (includeAccess && effectiveAccess) {
-      // Parse requirements from requiredIntegrations (stored as {"ats": "read-only", "sheets": "read-write"})
-      const requirements: Record<string, string> = {};
+      // Parse raw requirements from requiredIntegrations (stored as {"ats": "read-only", "sheets": "read-write", "stripe": "read-only"})
+      // Pass the raw object to getSkillStatus - it will handle unsupported integrations (like 'stripe')
+      let rawRequirements: Record<string, string> | null = null;
       if (skill.requiredIntegrations) {
         try {
-          const parsed = JSON.parse(skill.requiredIntegrations) as Record<string, string>;
-          for (const [key, value] of Object.entries(parsed)) {
-            // Map 'sheets' to 'database' category for access check
-            const category = key === 'sheets' ? 'database' : key;
-            if (isIntegrationCategory(category)) {
-              requirements[category] = value;
-            }
-          }
+          rawRequirements = JSON.parse(skill.requiredIntegrations) as Record<string, string>;
         } catch {
           // Ignore parse errors
         }
@@ -255,7 +249,7 @@ skillsRoutes.get('/', async (c) => {
 
       const skillStatus = getSkillStatus(
         skill.slug,
-        Object.keys(requirements).length > 0 ? requirements : null,
+        rawRequirements,
         effectiveAccess,
         disabledSkills,
         user.isAdmin || false

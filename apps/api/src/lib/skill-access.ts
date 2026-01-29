@@ -46,16 +46,30 @@ export interface SkillStatusResult {
 
 /**
  * Check if a skill's requirements are satisfied by user's effective access
+ *
+ * @param requirements - The skill's parsed requirements (known categories only)
+ * @param userAccess - The user's effective access levels
+ * @param unsupportedIntegrations - List of integrations the skill requires that don't exist in the system
  */
 export function checkSkillRequirements(
   requirements: SkillRequirements | null,
-  userAccess: EffectiveAccess
+  userAccess: EffectiveAccess,
+  unsupportedIntegrations: string[] = []
 ): { satisfied: boolean; limitations: string[] } {
-  if (!requirements) {
-    return { satisfied: true, limitations: [] };
+  const limitations: string[] = [];
+
+  // First, add limitations for unsupported integrations
+  // These are integrations the skill references that don't exist in the platform
+  for (const integration of unsupportedIntegrations) {
+    limitations.push(`Requires ${integration} (not available)`);
   }
 
-  const limitations: string[] = [];
+  if (!requirements) {
+    return {
+      satisfied: limitations.length === 0,
+      limitations,
+    };
+  }
 
   // Check each required category
   for (const [category, requiredLevel] of Object.entries(requirements)) {
@@ -100,6 +114,9 @@ function generateGuidance(limitations: string[], isAdmin: boolean): string {
   const hasConnectionLimitation = limitations.some(
     (l) => l.includes('not connected')
   );
+  const hasUnsupportedIntegration = limitations.some(
+    (l) => l.includes('not available')
+  );
 
   const actions: string[] = [];
 
@@ -119,6 +136,11 @@ function generateGuidance(limitations: string[], isAdmin: boolean): string {
     }
   }
 
+  // Unsupported integrations have no actionable guidance - they're simply not available
+  if (hasUnsupportedIntegration && actions.length === 0) {
+    return 'Some required integrations are not yet supported.';
+  }
+
   if (actions.length === 0) {
     return '';
   }
@@ -134,7 +156,8 @@ function generateGuidance(limitations: string[], isAdmin: boolean): string {
  * Get the status of a skill for a user
  *
  * @param skillSlug - The skill's slug
- * @param requirements - Skill's declared requirements (from frontmatter)
+ * @param rawRequirements - Skill's raw requirements object (from frontmatter/DB)
+ *                         Can include unsupported integrations like 'stripe'
  * @param userAccess - User's effective access levels
  * @param disabledSkills - Org's disabled skills list
  * @param isAdmin - Whether the user is an admin (affects guidance)
@@ -142,7 +165,7 @@ function generateGuidance(limitations: string[], isAdmin: boolean): string {
  */
 export function getSkillStatus(
   skillSlug: string,
-  requirements: SkillRequirements | null,
+  rawRequirements: Record<string, string> | SkillRequirements | null,
   userAccess: EffectiveAccess,
   disabledSkills: string[],
   isAdmin: boolean = false
@@ -154,8 +177,11 @@ export function getSkillStatus(
     };
   }
 
-  // Check requirements
-  const { satisfied, limitations } = checkSkillRequirements(requirements, userAccess);
+  // Parse raw requirements to separate supported vs unsupported integrations
+  const { requirements, unsupportedIntegrations } = parseRawRequirements(rawRequirements);
+
+  // Check requirements (including unsupported integrations)
+  const { satisfied, limitations } = checkSkillRequirements(requirements, userAccess, unsupportedIntegrations);
 
   if (satisfied) {
     return {
@@ -171,6 +197,48 @@ export function getSkillStatus(
 }
 
 /**
+ * Parse raw requirements object into supported requirements and unsupported integrations
+ */
+function parseRawRequirements(
+  rawRequirements: Record<string, string> | SkillRequirements | null
+): ExtendedSkillRequirements {
+  if (!rawRequirements) {
+    return { requirements: null, unsupportedIntegrations: [] };
+  }
+
+  const result: SkillRequirements = {};
+  const unsupportedIntegrations: string[] = [];
+
+  for (const [key, value] of Object.entries(rawRequirements)) {
+    if (value !== 'read-write' && value !== 'read-only') {
+      continue;
+    }
+
+    // Map 'sheets' to 'database' category
+    const category = key === 'sheets' ? 'database' : key;
+    if (PERMISSION_CATEGORIES.includes(category as IntegrationCategory)) {
+      result[category as keyof SkillRequirements] = value;
+    } else {
+      // Track unsupported integrations (e.g., 'stripe', 'hubspot', etc.)
+      unsupportedIntegrations.push(key);
+    }
+  }
+
+  return {
+    requirements: Object.keys(result).length > 0 ? result : null,
+    unsupportedIntegrations,
+  };
+}
+
+/**
+ * Extended skill requirements that include unsupported integrations
+ */
+export interface ExtendedSkillRequirements {
+  requirements: SkillRequirements | null;
+  unsupportedIntegrations: string[];
+}
+
+/**
  * Parse skill requirements from SKILL.md frontmatter
  *
  * Expected format:
@@ -179,14 +247,25 @@ export function getSkillStatus(
  *   email: read-write
  *   ats: read-only
  * ```
+ *
+ * Returns both valid requirements and a list of unsupported integrations
+ * (integrations referenced that don't exist in the system)
  */
 export function parseSkillRequirements(frontmatter: Record<string, unknown>): SkillRequirements | null {
+  return parseSkillRequirementsExtended(frontmatter).requirements;
+}
+
+/**
+ * Parse skill requirements and also track unsupported integrations
+ */
+export function parseSkillRequirementsExtended(frontmatter: Record<string, unknown>): ExtendedSkillRequirements {
   const requires = frontmatter.requires;
   if (!requires || typeof requires !== 'object') {
-    return null;
+    return { requirements: null, unsupportedIntegrations: [] };
   }
 
   const result: SkillRequirements = {};
+  const unsupportedIntegrations: string[] = [];
   const requiresObj = requires as Record<string, unknown>;
 
   for (const [key, value] of Object.entries(requiresObj)) {
@@ -198,10 +277,16 @@ export function parseSkillRequirements(frontmatter: Record<string, unknown>): Sk
     const category = key === 'sheets' ? 'database' : key;
     if (PERMISSION_CATEGORIES.includes(category as IntegrationCategory)) {
       result[category as keyof SkillRequirements] = value;
+    } else {
+      // Track unsupported integrations (e.g., 'stripe', 'hubspot', etc.)
+      unsupportedIntegrations.push(key);
     }
   }
 
-  return Object.keys(result).length > 0 ? result : null;
+  return {
+    requirements: Object.keys(result).length > 0 ? result : null,
+    unsupportedIntegrations,
+  };
 }
 
 /**
