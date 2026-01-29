@@ -180,6 +180,13 @@ v1EmailRoutes.post('/search', async (c) => {
         400
       );
     }
+    // Log the actual error for debugging
+    log.error('email_search_failed', {
+      userId: user.id,
+      query: body.query,
+      maxResults: body.maxResults,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return c.json({ error: { message: 'Failed to search emails' } }, 502);
   }
 });

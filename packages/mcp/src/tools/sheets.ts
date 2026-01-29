@@ -20,6 +20,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SkillomaticClient } from '../api-client.js';
 import type { DerivedTab, TabsResponse } from '../types.js';
 
+// Track globally registered tools to prevent duplicate registration errors
+// This can happen when a table is deleted and recreated with the same name
+const globalRegisteredTools = new Set<string>();
+
 /**
  * Convert a tab title or column name to a slug for tool/field names.
  * "Contacts" → "contacts", "Job Applications" → "job_applications"
@@ -248,6 +252,18 @@ After creating a table, new tools will be available: {tablename}_add, {tablename
             isError: true,
           };
         }
+        // Handle "already exists" case with helpful suggestion
+        if (message.includes('already exists') || message.includes('TAB_ALREADY_EXISTS')) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Table "${args.title}" already exists. Use list_tables to see existing tables, or use the existing ${toSlug(args.title)}_add / ${toSlug(args.title)}_upsert tools to add data.`,
+              },
+            ],
+            isError: true,
+          };
+        }
         return {
           content: [{ type: 'text' as const, text: `Error creating table: ${message}` }],
           isError: true,
@@ -372,6 +388,14 @@ export function registerToolsForTab(
   slug: string
 ): string[] {
   const registeredTools: string[] = [];
+
+  // Check if tools for this slug are already registered (prevents duplicate registration errors)
+  const addToolName = `${slug}_add`;
+  if (globalRegisteredTools.has(addToolName)) {
+    // Tools already registered for this table slug, skip
+    return [addToolName, `${slug}_upsert`, `${slug}_list`, `${slug}_search`, `${slug}_update`, `${slug}_delete`];
+  }
+
   const purposeLine = tab.purpose ? `\nPurpose: ${tab.purpose}` : '';
   const pkInfo = tab.primaryKey ? ` (primary key: ${tab.primaryKey})` : '';
 
@@ -417,8 +441,12 @@ Columns: ${tab.columns.join(', ')}${pkInfo}`,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        // Add helpful hint if tab was not found (deleted/renamed)
+        const hint = message.includes('not found')
+          ? '\n\nThe table may have been renamed or deleted. Use list_tables to see current tables.'
+          : '';
         return {
-          content: [{ type: 'text' as const, text: `Error adding row: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error adding row: ${message}${hint}` }],
           isError: true,
         };
       }
@@ -524,8 +552,11 @@ Primary key: ${tab.primaryKey}`;
               isError: true,
             };
           }
+          const hint = message.includes('not found')
+            ? '\n\nThe table may have been renamed or deleted. Use list_tables to see current tables.'
+            : '';
           return {
-            content: [{ type: 'text' as const, text: `Error upserting row: ${message}` }],
+            content: [{ type: 'text' as const, text: `Error upserting row: ${message}${hint}` }],
             isError: true,
           };
         }
@@ -622,8 +653,11 @@ Columns: ${tab.columns.join(', ')}`;
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unknown error';
+          const hint = message.includes('not found')
+            ? '\n\nThe table may have been renamed or deleted. Use list_tables to see current tables.'
+            : '';
           return {
-            content: [{ type: 'text' as const, text: `Error upserting row: ${message}` }],
+            content: [{ type: 'text' as const, text: `Error upserting row: ${message}${hint}` }],
             isError: true,
           };
         }
@@ -679,8 +713,11 @@ ${purposeLine}`,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        const hint = message.includes('not found')
+          ? '\n\nThe table may have been renamed or deleted. Use list_tables to see current tables.'
+          : '';
         return {
-          content: [{ type: 'text' as const, text: `Error listing rows: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error listing rows: ${message}${hint}` }],
           isError: true,
         };
       }
@@ -733,8 +770,11 @@ Searches across all columns.`,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        const hint = message.includes('not found')
+          ? '\n\nThe table may have been renamed or deleted. Use list_tables to see current tables.'
+          : '';
         return {
-          content: [{ type: 'text' as const, text: `Error searching: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error searching: ${message}${hint}` }],
           isError: true,
         };
       }
@@ -793,8 +833,11 @@ Only fields you provide will be updated.`,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        const hint = message.includes('not found')
+          ? '\n\nThe table may have been renamed or deleted. Use list_tables to see current tables.'
+          : '';
         return {
-          content: [{ type: 'text' as const, text: `Error updating row: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error updating row: ${message}${hint}` }],
           isError: true,
         };
       }
@@ -824,14 +867,22 @@ WARNING: This permanently removes the row.`,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
+        const hint = message.includes('not found')
+          ? '\n\nThe table may have been renamed or deleted. Use list_tables to see current tables.'
+          : '';
         return {
-          content: [{ type: 'text' as const, text: `Error deleting row: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error deleting row: ${message}${hint}` }],
           isError: true,
         };
       }
     }
   );
   registeredTools.push(`${slug}_delete`);
+
+  // Mark all tools as globally registered to prevent duplicate registration
+  for (const toolName of registeredTools) {
+    globalRegisteredTools.add(toolName);
+  }
 
   return registeredTools;
 }

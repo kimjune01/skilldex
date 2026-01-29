@@ -725,6 +725,11 @@ v1SheetsRoutes.post('/tabs', async (c) => {
 
   if (!addSheetResponse.ok) {
     log.error('sheets_create_tab_failed', { userId: user.sub, error: addSheetResponse.error });
+    // Check for "already exists" error and return 409 Conflict
+    const errorMessage = addSheetResponse.error || '';
+    if (errorMessage.includes('already exists')) {
+      return c.json({ error: { message: `Tab "${tabTitle}" already exists`, code: 'TAB_ALREADY_EXISTS' } }, 409);
+    }
     return c.json({ error: { message: `Failed to create tab: ${addSheetResponse.error}` } }, 500);
   }
 

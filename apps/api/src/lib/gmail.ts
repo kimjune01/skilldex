@@ -7,7 +7,12 @@
  * @see https://developers.google.com/gmail/api/reference/rest
  */
 
+import pLimit from 'p-limit';
+
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1';
+
+// Limit concurrent Gmail API requests to avoid rate limiting
+const GMAIL_CONCURRENCY_LIMIT = 5;
 
 /**
  * Email address with optional display name
@@ -231,9 +236,10 @@ export class GmailClient {
       return { messages: [] };
     }
 
-    // Fetch full message details for each result
+    // Fetch full message details with concurrency limit to avoid Gmail API rate limiting
+    const limit = pLimit(GMAIL_CONCURRENCY_LIMIT);
     const messages = await Promise.all(
-      response.messages.slice(0, maxResults).map((m) => this.getMessage(m.id))
+      response.messages.slice(0, maxResults).map((m) => limit(() => this.getMessage(m.id)))
     );
 
     return { messages, nextPageToken: response.nextPageToken };
