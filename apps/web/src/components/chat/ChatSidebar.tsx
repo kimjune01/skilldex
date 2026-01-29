@@ -130,16 +130,21 @@ export function ChatSidebar({
   const [apiKeyValidating, setApiKeyValidating] = useState(false);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
-  // Load skills and tools when tools section is opened
-  useEffect(() => {
-    if (toolsOpen && skillsList.length === 0) {
-      setSkillsLoading(true);
+  // Load skills and tools on mount (for count display) and when section is opened
+  const [hasFetched, setHasFetched] = useState(false);
 
-      // Fetch both skills list and config (for available tools) in parallel
-      Promise.all([
-        skills.list({ includeAccess: true }),
-        skills.getConfig().catch(() => null),
-      ])
+  useEffect(() => {
+    if (hasFetched) return;
+    if (!isOpen && !toolsOpen) return; // Wait until sidebar is open
+
+    setHasFetched(true);
+    setSkillsLoading(true);
+
+    // Fetch both skills list and config (for available tools) in parallel
+    Promise.all([
+      skills.list({ includeAccess: true }),
+      skills.getConfig().catch(() => null),
+    ])
         .then(([skillsData, config]) => {
           setSkillsList(skillsData);
 
@@ -198,8 +203,7 @@ export function ChatSidebar({
           ]);
         })
         .finally(() => setSkillsLoading(false));
-    }
-  }, [toolsOpen, skillsList.length]);
+  }, [isOpen, toolsOpen, hasFetched]);
 
   // Handle provider change
   const handleApiKeyProviderChange = useCallback((newProvider: LLMProvider) => {
