@@ -141,20 +141,6 @@ export default function ApiKeys() {
     }, null, 2);
   };
 
-  // ChatGPT config (direct HTTP - requires remote server)
-  const getChatGPTConfig = (key: string) => {
-    return JSON.stringify({
-      mcpServers: {
-        skillomatic: {
-          url: isLocalDev ? 'https://mcp.skillomatic.technology/mcp' : mcpEndpoint,
-          headers: {
-            Authorization: `Bearer ${key}`
-          }
-        }
-      }
-    }, null, 2);
-  };
-
   // Other apps config (generic mcp-remote)
   const getOtherConfig = (key: string) => {
     const args = [
@@ -343,15 +329,6 @@ export default function ApiKeys() {
 
               {/* ChatGPT Setup */}
               <TabsContent value="chatgpt" className="space-y-4">
-                <Alert className="bg-blue-50 border-blue-200">
-                  <AlertCircle className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">
-                    <strong>Using ChatGPT on the web or mobile?</strong>{' '}
-                    <a href="/mobile-chat" className="underline font-medium">Go to Mobile Chat setup</a> instead - it uses OAuth for easier connection.
-                    This page is for the ChatGPT Desktop app with local config files.
-                  </AlertDescription>
-                </Alert>
-
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-medium mb-2 flex items-center gap-2">
@@ -360,7 +337,7 @@ export default function ApiKeys() {
                     </h4>
                     <ul className="text-sm text-muted-foreground ml-7 list-disc list-inside space-y-1">
                       <li>ChatGPT Plus, Pro, or Team subscription</li>
-                      <li>ChatGPT Desktop app (local config file method)</li>
+                      <li>ChatGPT Desktop or Web</li>
                     </ul>
                   </div>
 
@@ -370,32 +347,70 @@ export default function ApiKeys() {
                       Enable Developer Mode
                     </h4>
                     <p className="text-sm text-muted-foreground ml-7">
-                      Settings → Developer → Enable Developer Mode
+                      Settings → Connectors → Advanced → Enable Developer Mode
                     </p>
                   </div>
 
                   <div>
                     <h4 className="font-medium mb-2 flex items-center gap-2">
                       <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">3</span>
-                      Add MCP Server
+                      Create Connector
                     </h4>
-                    <div className="ml-7 space-y-2">
+                    <div className="ml-7 space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        Settings → Developer → Add MCP Server → "Add manually"
+                        Click "Create" and enter:
                       </p>
-                      <div className="relative">
-                        <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
-{getChatGPTConfig(activeKey.key)}
-                        </pre>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="absolute top-2 right-2"
-                          onClick={() => copyToClipboard(getChatGPTConfig(activeKey.key), 'chatgpt-config')}
-                        >
-                          <Copy className="h-3 w-3 mr-1" />
-                          {copied === 'chatgpt-config' ? 'Copied!' : 'Copy'}
-                        </Button>
+                      <div className="space-y-3 bg-muted/50 rounded-lg p-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Name</p>
+                          <p className="text-sm font-medium">Skillomatic</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Connector URL</p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 bg-background px-3 py-2 rounded text-sm font-mono">
+                              {mcpEndpoint}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => copyToClipboard(mcpEndpoint, 'mcp-url')}
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              {copied === 'mcp-url' ? 'Copied!' : 'Copy'}
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Authentication</p>
+                          <p className="text-sm font-medium">OAuth</p>
+                          <div className="mt-2 space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground w-24">Client ID:</span>
+                              <code className="flex-1 bg-background px-2 py-1 rounded text-xs font-mono">chatgpt_skillomatic</code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2"
+                                onClick={() => copyToClipboard('chatgpt_skillomatic', 'client-id')}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground w-24">Client Secret:</span>
+                              <code className="flex-1 bg-background px-2 py-1 rounded text-xs font-mono">sk_chatgpt_oauth_secret_2024</code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2"
+                                onClick={() => copyToClipboard('sk_chatgpt_oauth_secret_2024', 'client-secret')}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -403,10 +418,11 @@ export default function ApiKeys() {
                   <div>
                     <h4 className="font-medium mb-2 flex items-center gap-2">
                       <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">4</span>
-                      Works on mobile too
+                      Authorize
                     </h4>
                     <p className="text-sm text-muted-foreground ml-7">
-                      Once connected on desktop, Skillomatic syncs to ChatGPT mobile automatically
+                      Click "Create" and you'll be redirected to sign in with your Skillomatic account.
+                      Once connected, it syncs to ChatGPT mobile automatically.
                     </p>
                   </div>
                 </div>

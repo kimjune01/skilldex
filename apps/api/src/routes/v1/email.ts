@@ -16,7 +16,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import type { ErrorCode } from '@skillomatic/shared';
 import { GmailError, type EmailMessage, type EmailAddress } from '../../lib/gmail.js';
-import { getGmailClient } from '../../services/email.js';
+import { getGmailClient, searchEmails } from '../../services/email.js';
 import { createLogger } from '../../lib/logger.js';
 
 const log = createLogger('Email');
@@ -164,23 +164,22 @@ v1EmailRoutes.post('/search', async (c) => {
     return c.json({ error: { message: 'Query is required' } }, 400);
   }
 
-  const gmail = await getGmailClient(user.id);
-  if (!gmail) {
-    return c.json(
-      {
-        error: {
-          message: 'Gmail integration not connected. Please connect Gmail in the Skillomatic dashboard.',
-          code: 'GMAIL_NOT_CONNECTED',
-        },
-      },
-      400
-    );
-  }
-
   try {
-    const result = await gmail.searchMessages(body.query, body.maxResults || 10);
+    // Use the email service which returns { emails: [...], total: number }
+    const result = await searchEmails(user.id, body.query, body.maxResults || 10);
     return c.json({ data: result });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('not connected')) {
+      return c.json(
+        {
+          error: {
+            message: error.message,
+            code: 'GMAIL_NOT_CONNECTED',
+          },
+        },
+        400
+      );
+    }
     return c.json({ error: { message: 'Failed to search emails' } }, 502);
   }
 });
