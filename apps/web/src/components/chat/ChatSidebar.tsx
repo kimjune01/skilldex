@@ -177,18 +177,27 @@ export function ChatSidebar({
               );
             }
 
-            // Google Workspace tools
+            // Google Workspace tools - show each connected service
             if (p.hasGoogleSheets) {
-              tools.push({ name: 'google_workspace', description: 'Google Sheets operations' });
+              tools.push({ name: 'google-sheets', description: 'Create, read, update spreadsheets' });
             }
             if (p.hasGoogleDrive) {
-              tools.push({ name: 'google_workspace', description: 'Google Drive operations' });
+              tools.push({ name: 'google-drive', description: 'List, search, manage files' });
             }
             if (p.hasGoogleDocs) {
-              tools.push({ name: 'google_workspace', description: 'Google Docs operations' });
+              tools.push({ name: 'google-docs', description: 'Create, read, update documents' });
             }
-            if (p.hasGoogleCalendar || p.hasCalendar) {
-              tools.push({ name: 'calendar', description: 'Calendar operations' });
+            if (p.hasGoogleForms) {
+              tools.push({ name: 'google-forms', description: 'Create forms, get responses' });
+            }
+            if (p.hasGoogleContacts) {
+              tools.push({ name: 'google-contacts', description: 'Search, manage contacts' });
+            }
+            if (p.hasGoogleTasks) {
+              tools.push({ name: 'google-tasks', description: 'Manage task lists and tasks' });
+            }
+            if (p.hasCalendar) {
+              tools.push({ name: 'calendar', description: 'View and manage calendar events' });
             }
           }
 
