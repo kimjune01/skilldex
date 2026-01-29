@@ -7,7 +7,7 @@
 
 // ============ Types ============
 
-export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'docs' | 'scheduling' | 'time-tracking';
+export type IntegrationCategory = 'ats' | 'email' | 'calendar' | 'database' | 'docs' | 'scheduling' | 'time-tracking' | 'crm' | 'fintech';
 export type AuthType = 'bearer' | 'basic' | 'api-key';
 export type OAuthFlow = 'nango' | 'google-direct' | 'api-key' | 'none';
 

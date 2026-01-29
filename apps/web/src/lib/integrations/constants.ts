@@ -12,6 +12,8 @@ import {
   Users,
   ListTodo,
   Timer,
+  Building2,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react';
 import type { IntegrationProvider, IntegrationCategory } from '@skillomatic/shared';
@@ -33,6 +35,8 @@ export const providerIcons: Partial<Record<IntegrationProvider | string, LucideI
   'google-forms': ClipboardList,
   'google-contacts': Users,
   'google-tasks': ListTodo,
+  crm: Building2,
+  fintech: Landmark,
 };
 
 /**
@@ -113,6 +117,18 @@ export function buildProviderConfigs(): {
       name: 'ATS',
       description: 'Connect your Applicant Tracking System',
       subProviders: getSubProvidersForCategory('ats'),
+    },
+    {
+      id: 'crm',
+      name: 'CRM',
+      description: 'Manage customer relationships',
+      subProviders: getSubProvidersForCategory('crm'),
+    },
+    {
+      id: 'fintech',
+      name: 'Fintech',
+      description: 'Connect your financial tools',
+      subProviders: getSubProvidersForCategory('fintech'),
     },
   ];
 

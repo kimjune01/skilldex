@@ -373,7 +373,7 @@ export interface IntegrationPublic {
   accessLevel?: IntegrationAccessLevel;
 }
 
-export type IntegrationProvider = 'linkedin' | 'ats' | 'email' | 'calendar' | 'granola' | 'airtable' | 'google-sheets' | 'scheduling' | 'clockify';
+export type IntegrationProvider = 'linkedin' | 'ats' | 'email' | 'calendar' | 'granola' | 'airtable' | 'google-sheets' | 'scheduling' | 'clockify' | 'crm' | 'fintech';
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error';
 export type IntegrationAccessLevel = 'read-write' | 'read-only';
 
