@@ -42,9 +42,24 @@ export default function Login() {
   const [password, setPassword] = useState(isDev ? DEMO_PASSWORD : '');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, loginWithToken } = useAuth();
+  const { login, loginWithToken, isAuthenticated, isLoading: authLoading, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // If already authenticated and there's a redirect param, go there
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      const redirectParam = searchParams.get('redirect');
+      if (redirectParam) {
+        // Redirect to OAuth consent or other page
+        window.location.href = redirectParam;
+      } else if (user.accountTypeSelected) {
+        // No redirect param, go to default page
+        const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home';
+        navigate(redirectTo);
+      }
+    }
+  }, [authLoading, isAuthenticated, user, searchParams, navigate]);
 
   // Handle OAuth callback with token in URL
   useEffect(() => {
@@ -73,8 +88,14 @@ export default function Login() {
             navigate('/onboarding/account-type');
             return;
           }
-          const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home';
-          navigate(redirectTo);
+          // Check for redirect param (e.g., from OAuth consent page)
+          const redirectParam = searchParams.get('redirect');
+          const redirectTo = redirectParam || (isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home');
+          if (redirectParam) {
+            window.location.href = redirectParam; // Use full redirect for external URLs
+          } else {
+            navigate(redirectTo);
+          }
         })
         .catch((err) => {
           setError(err instanceof Error ? err.message : 'Login failed');
@@ -97,9 +118,14 @@ export default function Login() {
         navigate('/onboarding/account-type');
         return;
       }
-      // Redirect based on onboarding status
-      const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home';
-      navigate(redirectTo);
+      // Check for redirect param (e.g., from OAuth consent page)
+      const redirectParam = searchParams.get('redirect');
+      if (redirectParam) {
+        window.location.href = redirectParam; // Use full redirect for external URLs
+      } else {
+        const redirectTo = isOnboardingComplete(user.onboardingStep) ? '/chat' : '/home';
+        navigate(redirectTo);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
