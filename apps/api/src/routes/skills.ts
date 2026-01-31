@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '@skillomatic/db';
 import { skills, integrations, payIntentions, users, automations } from '@skillomatic/db/schema';
-import { eq, or, and, isNotNull } from 'drizzle-orm';
+import { eq, and, isNotNull } from 'drizzle-orm';
 import { combinedAuth } from '../middleware/combinedAuth.js';
 import type { SkillPublic, SkillAccessInfo, SkillCreateRequest, SkillVisibilityRequest } from '@skillomatic/shared';
 import {
@@ -195,32 +195,11 @@ skillsRoutes.get('/', async (c) => {
           isNotNull(skills.pendingVisibility)
         )
       );
-  } else if (organizationId) {
-    // User belongs to an organization: show global + org-wide + user's private skills
-    allSkills = await db
-      .select()
-      .from(skills)
-      .where(
-        or(
-          eq(skills.isGlobal, true),
-          and(
-            eq(skills.organizationId, organizationId),
-            eq(skills.visibility, 'organization')
-          ),
-          eq(skills.userId, user.sub)
-        )
-      );
   } else {
-    // No organization: show global skills + user's own private skills
+    // NOTE: Org restrictions removed - show all skills to everyone
     allSkills = await db
       .select()
-      .from(skills)
-      .where(
-        or(
-          eq(skills.isGlobal, true),
-          eq(skills.userId, user.sub)
-        )
-      );
+      .from(skills);
   }
 
   // Get access info if requested (works for both org and individual users)
@@ -382,17 +361,13 @@ skillsRoutes.get('/config', async (c) => {
 });
 
 // Helper: Check if user can access a skill
+// NOTE: For now, all skills are public - org restrictions removed
 function canAccessSkill(
-  skill: typeof skills.$inferSelect,
-  user: { organizationId?: string | null; isAdmin?: boolean }
+  _skill: typeof skills.$inferSelect,
+  _user: { organizationId?: string | null; isAdmin?: boolean }
 ): boolean {
-  // Global skills are accessible to everyone
-  if (skill.isGlobal) return true;
-
-  // Org-specific skills require matching organization
-  if (skill.organizationId && user.organizationId === skill.organizationId) return true;
-
-  return false;
+  // All skills are accessible to everyone (org restrictions removed for now)
+  return true;
 }
 
 // GET /skills/:slug - Get skill by slug
@@ -612,11 +587,8 @@ skillsRoutes.post('/', async (c) => {
   }
 
   // Determine visibility
-  // Admin-created skills default to org-wide, others default to private
-  let visibility: 'private' | 'organization' = body.visibility || 'private';
-  if (user.isAdmin && !body.visibility) {
-    visibility = 'organization';
-  }
+  // NOTE: Org restrictions removed - all skills are public/global by default
+  const visibility: 'private' | 'organization' = body.visibility || 'private';
 
   // Create the skill
   const id = randomUUID();
@@ -634,7 +606,7 @@ skillsRoutes.post('/', async (c) => {
         version: '1.0.0',
         userId: user.sub,
         organizationId: user.organizationId || null,
-        isGlobal: false,
+        isGlobal: true,  // All skills are public by default (org restrictions removed)
         visibility,
         sourceType: 'user-generated',
         intent: parsed.intent || null,
