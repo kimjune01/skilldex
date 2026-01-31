@@ -1,213 +1,48 @@
+/**
+ * Chat API Routes
+ *
+ * DEPRECATED: The streaming chat and action execution functionality in this file
+ * has been superseded by:
+ * - Client-side LLM calls via useClientChat hook (ephemeral architecture)
+ * - MCP server for tool execution (/mcp-web for web, /mcp for external clients)
+ * - Frontend action-executor.ts calling v1 endpoints directly
+ *
+ * These routes are kept for backwards compatibility but should not be used
+ * for new development.
+ */
 import { Hono } from 'hono';
-import { streamSSE } from 'hono/streaming';
 import { jwtAuth } from '../middleware/auth.js';
-import { streamChat, chat, type LLMChatMessage } from '../lib/llm.js';
 import {
-  getSkillMetadataForUser,
-  getAllSkillMetadata,
   loadSkillBySlug,
   userCanAccessSkill,
+  type SkillMetadata,
 } from '../lib/skills.js';
-import {
-  getEffectiveAccessForUser,
-  getOrgDisabledSkills,
-  canRead,
-  canWrite,
-  type EffectiveAccess,
-} from '../lib/integration-permissions.js';
-import {
-  executeAction,
-  parseAction,
-  getGmailClientForUser,
-  getGoogleWorkspaceCapability,
-  skillRequiresBrowser,
-  type EmailCapability,
-  type ChatAction,
-} from '../lib/chat-actions.js';
-import { buildSystemPrompt, isExtensionActive } from '../lib/chat-prompts.js';
-import { db } from '@skillomatic/db';
-import { users } from '@skillomatic/db/schema';
-import { eq } from 'drizzle-orm';
-import { wrapExternalResponse } from '../lib/prompt-sanitizer.js';
 
 export const chatRoutes = new Hono();
 
 // All routes require JWT auth
 chatRoutes.use('*', jwtAuth);
 
-interface ChatRequest {
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
-}
-
 /**
- * Check user's email capabilities based on the three-way intersection model
- * Supports both org users and individual users (null organizationId)
+ * Determine if a skill requires browser extension
  */
-async function getEmailCapability(userId: string, organizationId: string | null): Promise<EmailCapability> {
-  // Get effective access using the three-way intersection model
-  // Works for both org users and individual users
-  const effectiveAccess = await getEffectiveAccessForUser(userId, organizationId);
-
-  // Check if user has read access to email
-  if (!canRead(effectiveAccess.email)) {
-    return { hasEmail: false, canSendEmail: false };
-  }
-
-  // Check if user has Gmail connected (supports both Nango and direct OAuth)
-  const gmail = await getGmailClientForUser(userId);
-  if (!gmail) {
-    return { hasEmail: false, canSendEmail: false };
-  }
-
-  return {
-    hasEmail: true,
-    canSendEmail: canWrite(effectiveAccess.email),
-    emailAddress: gmail.emailAddress,
-  };
+function skillRequiresBrowser(skill: SkillMetadata): boolean {
+  const reqs = Object.keys(skill.requiredIntegrations || {});
+  return reqs.includes('linkedin') || reqs.includes('browser');
 }
 
-// POST /chat - Stream chat response with action execution
+// POST /chat - DEPRECATED: Use client-side LLM calls instead
+// The web app now uses useClientChat hook with direct LLM API calls
 chatRoutes.post('/', async (c) => {
-  const body = await c.req.json<ChatRequest>();
-  const { messages } = body;
-  const user = c.get('user');
-
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return c.json({ error: { message: 'Messages array is required' } }, 400);
-  }
-
-  // Fetch available skills for context (role-filtered, metadata only)
-  const skillsMetadata = user?.id
-    ? await getSkillMetadataForUser(user.id)
-    : await getAllSkillMetadata();
-
-  // Get email capability for the user (if authenticated)
-  const emailCapability =
-    user?.id && user?.organizationId
-      ? await getEmailCapability(user.id, user.organizationId)
-      : undefined;
-
-  // Get Google Workspace capability for the user
-  const googleWorkspaceCapability =
-    user?.id
-      ? await getGoogleWorkspaceCapability(user.id)
-      : undefined;
-
-  // Get effective access and disabled skills for skill status display
-  let effectiveAccess: EffectiveAccess | undefined;
-  let disabledSkills: string[] | undefined;
-  if (user?.id && user?.organizationId) {
-    effectiveAccess = await getEffectiveAccessForUser(user.id, user.organizationId);
-    disabledSkills = await getOrgDisabledSkills(user.organizationId);
-  }
-
-  // Check if user's browser extension is active (recently polled)
-  let hasExtension = false;
-  if (user?.id) {
-    const [userData] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, user.id))
-      .limit(1);
-    hasExtension = isExtensionActive(userData?.lastExtensionPollAt ?? null);
-  }
-
-  // Build messages with skills metadata (progressive disclosure Level 1)
-  const systemPrompt = buildSystemPrompt(
-    skillsMetadata,
-    emailCapability,
-    effectiveAccess,
-    disabledSkills,
-    googleWorkspaceCapability,
-    hasExtension
+  return c.json(
+    {
+      error: {
+        message: 'This endpoint is deprecated. Please use the MCP server or client-side LLM calls.',
+        code: 'ENDPOINT_DEPRECATED',
+      },
+    },
+    410 // Gone
   );
-  const chatMessages: LLMChatMessage[] = [
-    { role: 'system', content: systemPrompt },
-    ...messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-  ];
-
-  return streamSSE(c, async (stream) => {
-    try {
-      let fullResponse = '';
-
-      // Stream the initial response
-      for await (const chunk of streamChat(chatMessages)) {
-        fullResponse += chunk;
-        await stream.writeSSE({
-          data: JSON.stringify({ type: 'text', content: chunk }),
-        });
-      }
-
-      // Check for action in the response - support chained actions
-      let action = parseAction(fullResponse);
-      let actionCount = 0;
-      const maxActions = 5; // Prevent infinite loops
-      let currentMessages = [...chatMessages];
-      let currentResponse = fullResponse;
-
-      while (action && actionCount < maxActions) {
-        actionCount++;
-
-        // Execute the action
-        const result = await executeAction(action, user?.id, emailCapability);
-
-        // Send action result
-        await stream.writeSSE({
-          data: JSON.stringify({
-            type: 'action_result',
-            action: action.action,
-            result,
-          }),
-        });
-
-        // For load_skill, allow follow-up actions; for others, just summarize
-        const allowMoreActions = action.action === 'load_skill';
-
-        // Get a follow-up response from the LLM with the action result
-        // Wrap external API responses in code blocks to prevent injection
-        const wrappedResult = wrapExternalResponse(action.action, result);
-        const followUpMessages: LLMChatMessage[] = [
-          ...currentMessages,
-          { role: 'assistant', content: currentResponse },
-          {
-            role: 'user',
-            content: allowMoreActions
-              ? `[SYSTEM: ${wrappedResult}]\n\nNow execute the skill by using the appropriate action (e.g., scrape_url for LinkedIn searches). Include an action block.`
-              : `[SYSTEM: ${wrappedResult}]\n\nPlease summarize the results for the user in a helpful way. Do not include another action block.`,
-          },
-        ];
-
-        // Get follow-up
-        const followUp = await chat(followUpMessages, { maxTokens: 1000 });
-        if (followUp) {
-          await stream.writeSSE({
-            data: JSON.stringify({ type: 'text', content: '\n\n' + followUp }),
-          });
-
-          // Check if follow-up contains another action
-          if (allowMoreActions) {
-            action = parseAction(followUp);
-            currentMessages = followUpMessages;
-            currentResponse = followUp;
-          } else {
-            action = null;
-          }
-        } else {
-          action = null;
-        }
-      }
-
-      // Send done event
-      await stream.writeSSE({
-        data: JSON.stringify({ type: 'done' }),
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      await stream.writeSSE({
-        data: JSON.stringify({ type: 'error', message }),
-      });
-    }
-  });
 });
 
 // POST /chat/execute-skill - Execute a skill via API (uses progressive disclosure)
@@ -259,25 +94,13 @@ chatRoutes.post('/execute-skill', async (c) => {
   });
 });
 
-// POST /chat/action - Execute a single action (for frontend action forwarding)
+// POST /chat/action - DEPRECATED: Use MCP or v1 endpoints directly
+// This endpoint is no longer needed. Actions should be:
+// - Routed through MCP when connected (primary path)
+// - Or handled by frontend action-executor.ts calling v1 endpoints directly
 chatRoutes.post('/action', async (c) => {
-  const body = await c.req.json<{ action: string; [key: string]: unknown }>();
-  const user = c.get('user');
-
-  if (!user?.id) {
-    return c.json({ error: 'Authentication required' }, 401);
-  }
-
-  // Get email capability for the user (works for both org users and individual users)
-  const emailCapability = await getEmailCapability(user.id, user.organizationId ?? null);
-
-  // Execute the action
-  const result = await executeAction(body as ChatAction, user.id, emailCapability);
-
-  // Return the result directly (executeAction returns the appropriate shape)
-  if (result && typeof result === 'object' && 'error' in result) {
-    return c.json({ error: (result as { error: string }).error }, 400);
-  }
-
-  return c.json(result);
+  return c.json(
+    { error: 'This endpoint is deprecated. Please update your client to use MCP or v1 endpoints.' },
+    410 // Gone
+  );
 });

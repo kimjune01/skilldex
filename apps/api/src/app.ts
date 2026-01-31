@@ -62,6 +62,8 @@ import { v1DataRoutes } from './routes/v1/data.js';
 import { v1SheetsRoutes } from './routes/v1/sheets.js';
 import { v1TimeTrackingRoutes } from './routes/v1/time-tracking.js';
 import { v1AutomationsRoutes } from './routes/v1/automations.js';
+import { v1SearchRoutes } from './routes/v1/search.js';
+import { v1GoogleRoutes } from './routes/v1/google.js';
 
 // MCP routes (hosted MCP server for ChatGPT web/mobile)
 import { mcpRoutes } from './routes/mcp.js';
@@ -180,6 +182,8 @@ app.route('/v1/sheets', v1SheetsRoutes);      // Google Sheets tab management
 app.route('/v1/database', v1DatabaseRoutes);  // Database queries (super admin only)
 app.route('/v1/time-tracking', v1TimeTrackingRoutes);  // Time tracking operations (Clockify, etc.)
 app.route('/v1/automations', v1AutomationsRoutes);    // Scheduled skill automations
+app.route('/v1/search', v1SearchRoutes);              // Web search (Tavily)
+app.route('/v1/google', v1GoogleRoutes);              // Google Workspace operations
 
 // ============ MCP ROUTES (API Key Auth) ============
 // Hosted MCP server for ChatGPT web/mobile connections

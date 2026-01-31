@@ -325,44 +325,41 @@ describe('action executor - general', () => {
     vi.clearAllMocks();
   });
 
-  it('should forward unknown actions to server and return error on failure', async () => {
+  it('should return error for unknown actions without making a server call', async () => {
     vi.resetModules();
 
-    // Mock fetch to return an error for unknown action
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      json: () => Promise.resolve({ error: 'Unknown action: unknown_action' }),
-    });
+    // Mock fetch should NOT be called for unknown actions
+    globalThis.fetch = vi.fn();
 
     const { executeAction } = await import('../lib/action-executor');
     const result = await executeAction('unknown_action' as any, {});
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Unknown action: unknown_action');
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/chat/action'),
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ action: 'unknown_action' }),
-      })
-    );
+    expect(result.error).toContain('Unknown action: unknown_action');
+    expect(result.error).toContain('MCP connection');
+    // fetch should not be called for unknown actions
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  it('should forward unknown actions to server and return success on valid response', async () => {
+  it('should route email actions to v1/email endpoints', async () => {
     vi.resetModules();
 
-    // Mock fetch to return success for a server-side action
+    // Mock fetch to return success for email search
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: () => Promise.resolve({ data: { result: 'success' } }),
+      json: () => Promise.resolve({ data: { emails: [], total: 0 } }),
     });
 
     const { executeAction } = await import('../lib/action-executor');
     const result = await executeAction('search_emails' as any, { query: 'test' });
 
     expect(result.success).toBe(true);
-    expect(globalThis.fetch).toHaveBeenCalled();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/email/search'),
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
   });
 });

@@ -477,6 +477,178 @@ async function executeListApplications(
 }
 
 /**
+ * Execute search_emails action via v1/email/search endpoint
+ */
+async function executeSearchEmails(
+  params: { query: string; maxResults?: number }
+): Promise<ActionResult> {
+  try {
+    const result = await serverRequest<{ emails: unknown[]; total: number }>(
+      '/v1/email/search',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          query: params.query,
+          maxResults: params.maxResults || 10,
+        }),
+      }
+    );
+    return {
+      success: true,
+      action: 'search_emails',
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'search_emails',
+      error: error instanceof Error ? error.message : 'Failed to search emails',
+    };
+  }
+}
+
+/**
+ * Execute draft_email action via v1/email/draft endpoint
+ */
+async function executeDraftEmail(
+  params: { to: string; subject: string; body: string; cc?: string; bcc?: string }
+): Promise<ActionResult> {
+  try {
+    const result = await serverRequest<{ draftId: string; messageId: string }>(
+      '/v1/email/draft',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          to: params.to,
+          subject: params.subject,
+          body: params.body,
+          cc: params.cc,
+          bcc: params.bcc,
+          bodyType: 'text',
+        }),
+      }
+    );
+    return {
+      success: true,
+      action: 'draft_email',
+      data: {
+        ...result,
+        message: 'Draft created successfully. You can find it in your Gmail Drafts folder.',
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'draft_email',
+      error: error instanceof Error ? error.message : 'Failed to create draft',
+    };
+  }
+}
+
+/**
+ * Execute send_email action via v1/email/send endpoint
+ */
+async function executeSendEmail(
+  params: { to: string; subject: string; body: string; cc?: string; bcc?: string }
+): Promise<ActionResult> {
+  try {
+    const result = await serverRequest<{ messageId: string; threadId: string }>(
+      '/v1/email/send',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          to: params.to,
+          subject: params.subject,
+          body: params.body,
+          cc: params.cc,
+          bcc: params.bcc,
+          bodyType: 'text',
+        }),
+      }
+    );
+    return {
+      success: true,
+      action: 'send_email',
+      data: {
+        ...result,
+        message: `Email sent successfully to ${params.to}.`,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'send_email',
+      error: error instanceof Error ? error.message : 'Failed to send email',
+    };
+  }
+}
+
+/**
+ * Execute web_search action via v1/search endpoint
+ */
+async function executeWebSearch(
+  params: { query: string; maxResults?: number; topic?: string; includeAnswer?: boolean }
+): Promise<ActionResult> {
+  try {
+    const result = await serverRequest<{
+      query: string;
+      answer?: string;
+      results: Array<{ title: string; url: string; content: string; score: number }>;
+      total: number;
+    }>('/v1/search', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: params.query,
+        maxResults: params.maxResults || 5,
+        topic: params.topic || 'general',
+        includeAnswer: params.includeAnswer !== false,
+      }),
+    });
+    return {
+      success: true,
+      action: 'web_search',
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'web_search',
+      error: error instanceof Error ? error.message : 'Failed to search web',
+    };
+  }
+}
+
+/**
+ * Execute google_workspace action via v1/google endpoint
+ */
+async function executeGoogleWorkspace(
+  params: { provider: string; operation: string; params?: Record<string, unknown>; body?: Record<string, unknown> }
+): Promise<ActionResult> {
+  try {
+    const result = await serverRequest<unknown>('/v1/google/action', {
+      method: 'POST',
+      body: JSON.stringify({
+        provider: params.provider,
+        operation: params.operation,
+        params: params.params,
+        body: params.body,
+      }),
+    });
+    return {
+      success: true,
+      action: 'google_workspace',
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'google_workspace',
+      error: error instanceof Error ? error.message : 'Failed to execute Google Workspace action',
+    };
+  }
+}
+
+/**
  * Main action executor - routes actions to appropriate handlers
  */
 export async function executeAction(
@@ -539,53 +711,39 @@ export async function executeAction(
         context
       );
 
+    // Email actions - route to v1/email endpoints
+    case 'search_emails':
+      return executeSearchEmails(params as { query: string; maxResults?: number });
+
+    case 'draft_email':
+      return executeDraftEmail(
+        params as { to: string; subject: string; body: string; cc?: string; bcc?: string }
+      );
+
+    case 'send_email':
+      return executeSendEmail(
+        params as { to: string; subject: string; body: string; cc?: string; bcc?: string }
+      );
+
+    // Web search - route to v1/search endpoint
+    case 'web_search':
+      return executeWebSearch(
+        params as { query: string; maxResults?: number; topic?: string; includeAnswer?: boolean }
+      );
+
+    // Google Workspace - route to v1/google endpoint
+    case 'google_workspace':
+      return executeGoogleWorkspace(
+        params as { provider: string; operation: string; params?: Record<string, unknown>; body?: Record<string, unknown> }
+      );
+
     default:
-      // Forward unknown actions to backend for server-side execution
-      // This handles: search_emails, draft_email, send_email, google_workspace, web_search, etc.
-      return executeServerAction(action, params);
-  }
-}
-
-/**
- * Execute action on the server via /chat/action endpoint
- * Used for actions that require server-side credentials (email, Google Workspace, etc.)
- */
-async function executeServerAction(
-  action: string,
-  params: Record<string, unknown>
-): Promise<ActionResult> {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE}/chat/action`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-      body: JSON.stringify({ action, ...params }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || data.error) {
+      // Unknown action - not supported
       return {
         success: false,
         action: action as ActionType,
-        error: data.error || `Action failed (${response.status})`,
+        error: `Unknown action: ${action}. This action may only be available through MCP connection.`,
       };
-    }
-
-    return {
-      success: true,
-      action: action as ActionType,
-      data: data,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      action: action as ActionType,
-      error: error instanceof Error ? error.message : 'Failed to execute action',
-    };
   }
 }
 

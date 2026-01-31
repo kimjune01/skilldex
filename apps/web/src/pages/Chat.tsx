@@ -22,6 +22,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { loadUserLLMConfig, toFullLLMConfig } from '@/lib/user-llm-config';
 import type { LLMConfig } from '@/lib/llm-client';
 import { getLLMConfig } from '@/lib/skills-client';
+import { executeAction, formatActionResult } from '@/lib/action-executor';
 
 /**
  * Shared LLM config for free_beta users during beta period.
@@ -113,7 +114,7 @@ function ChatContent() {
   // MCP client for dynamic tool discovery and execution
   const { isConnected: mcpConnected, tools: mcpTools, callTool } = useMcpClient();
 
-  // Action handler - uses MCP if connected, falls back to action executor
+  // Action handler - uses MCP if connected, falls back to client-side action executor
   const handleActionRequest = useCallback(
     async (action: string, params: Record<string, unknown>): Promise<string> => {
       // If MCP is connected, use it for tool calls
@@ -127,23 +128,10 @@ function ChatContent() {
         }
       }
 
-      // Fallback: forward to server via /chat/action endpoint
+      // Fallback: use client-side action executor
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/chat/action`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: token ? `Bearer ${token}` : '',
-          },
-          body: JSON.stringify({ action, ...params }),
-        });
-
-        const data = await response.json();
-        if (!response.ok || data.error) {
-          return `Error: ${data.error?.message || data.error || 'Action failed'}`;
-        }
-        return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        const result = await executeAction(action, params);
+        return formatActionResult(result);
       } catch (err) {
         return `Error: ${err instanceof Error ? err.message : 'Failed to execute action'}`;
       }
