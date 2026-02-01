@@ -559,7 +559,6 @@ skillsRoutes.post('/', async (c) => {
             description: parsed.description,
             category: body.category || parsed.category || existing.category,
             intent: parsed.intent || null,
-            capabilities: parsed.capabilities ? JSON.stringify(parsed.capabilities) : null,
             instructions: extractInstructions(body.content),
             requiredIntegrations: parsed.requires ? JSON.stringify(parsed.requires) : null,
             requiresInput: parsed.requiresInput || false,
@@ -606,11 +605,10 @@ skillsRoutes.post('/', async (c) => {
         version: '1.0.0',
         userId: user.sub,
         organizationId: user.organizationId || null,
-        isGlobal: true,  // All skills are public by default (org restrictions removed)
+        isGlobal: false,  // User-created skills are not system skills (can be deleted)
         visibility,
         sourceType: 'user-generated',
         intent: parsed.intent || null,
-        capabilities: parsed.capabilities ? JSON.stringify(parsed.capabilities) : null,
         instructions: extractInstructions(body.content),
         requiredIntegrations: parsed.requires ? JSON.stringify(parsed.requires) : null,
         requiresInput: parsed.requiresInput || false,
@@ -702,7 +700,6 @@ skillsRoutes.put('/:slug', async (c) => {
     updates.name = parsed.name;
     updates.description = parsed.description;
     updates.intent = parsed.intent || null;
-    updates.capabilities = parsed.capabilities ? JSON.stringify(parsed.capabilities) : null;
     updates.instructions = extractInstructions(body.content);
     updates.requiredIntegrations = parsed.requires ? JSON.stringify(parsed.requires) : null;
     updates.requiresInput = parsed.requiresInput || false;
@@ -712,7 +709,6 @@ skillsRoutes.put('/:slug', async (c) => {
     if (body.name !== undefined) updates.name = body.name;
     if (body.description !== undefined) updates.description = body.description;
     if (body.intent !== undefined) updates.intent = body.intent;
-    if (body.capabilities !== undefined) updates.capabilities = JSON.stringify(body.capabilities);
   }
 
   // Category and isEnabled can be overridden separately

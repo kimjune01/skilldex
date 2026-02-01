@@ -99,82 +99,22 @@ export async function registerTools(
   registeredTools.push('get_skill');
 
   /**
-   * create_skill tool - Create or update a skill
+   * submit_skill tool - Submit a skill to the API
    *
    * SYNC: When updating params, see docs/architecture/SKILL_CREATION.md
    * for the full list of files that must be updated together.
    */
   server.tool(
-    'create_skill',
-    `Create or update a reusable skill (workflow template).
+    'submit_skill',
+    `Submit a skill to Skillomatic.
 
-WHEN TO USE: When user says "create a skill", "save this as a skill", "build a skill", "turn this into a skill", "automate this", or describes a repeatable workflow they want to save.
+IMPORTANT: Load 'compose-skill' first for validation rules, valid integrations, and examples.
 
-## PROCESS (Elicit → Generate → Verify)
-
-### 1. ELICIT - Gather comprehensive information BEFORE generating
-Ask clarifying questions to understand the full scope:
-- "What specific steps should this skill perform?"
-- "What inputs does it need from the user?"
-- "What should the output look like?"
-- "Are there edge cases or variations to handle?"
-- "What expertise or context should inform the instructions?"
-
-CRITICAL: If the conversation contains detailed advice, examples, or step-by-step guidance, PRESERVE ALL OF IT in the skill instructions. Do NOT summarize - the value is in the details.
-
-### 2. GENERATE - Create comprehensive skill content
-Include in the instructions:
-- All specific steps, tips, and examples from the conversation
-- Elicitation prompts for the skill to ask users (e.g., "First, ask the user for...")
-- Verification checkpoints (e.g., "Confirm with the user before...")
-- Edge cases and how to handle them
-
-### 3. VERIFY - Confirm before saving
-Show the full skill preview and ask: "Does this capture everything? Should I add more detail?"
-
-## SKILL FORMAT
-
-\`\`\`markdown
----
-name: [3-100 chars, action-oriented]
-description: [10-500 chars, one sentence]
-category: [Sourcing|Outreach|Screening|Interview|Analytics|Productivity|Admin]
-intent: [optional - phrases that trigger this skill]
-capabilities: [optional - list of things it can do]
-requires: [optional - integrations needed]
-  ats: read-only|read-write
-  email: read-only|read-write
-  calendar: read-only|read-write
----
-
-# [Skill Name]
-
-## Overview
-[Brief description of what this skill does and when to use it]
-
-## Elicitation
-[Questions to ask the user before starting, e.g.:]
-- Ask for [required input]
-- Clarify [ambiguous aspect]
-
-## Instructions
-[Detailed step-by-step instructions - be comprehensive, include all tips/examples]
-
-## Verification
-[Checkpoints to confirm with user before taking actions]
-\`\`\`
-
-## CRON SCHEDULING (optional)
-- "0 9 * * *" = Daily at 9am
-- "0 9 * * 1" = Every Monday at 9am
-- "0 9 * * 1-5" = Weekdays at 9am
-- "0 0 1 * *" = First of each month
-
-If scheduled, results are emailed to the user automatically.`,
+The API will validate the skill and return helpful errors if invalid.`,
     {
-      content: z.string().describe('Full skill markdown with YAML frontmatter. Must include name, description in frontmatter and instructions in body.'),
-      force: z.boolean().optional().describe('If true, overwrite existing skill with same slug. Use when updating an existing skill.'),
-      cron: z.string().optional().describe('Cron expression to schedule automatic runs (e.g., "0 9 * * 1" for Mondays at 9am). Results emailed to user.'),
+      content: z.string().describe('Full skill markdown with YAML frontmatter'),
+      force: z.boolean().optional().describe('Overwrite existing skill with same slug'),
+      cron: z.string().optional().describe('Cron expression for scheduled runs (e.g., "0 9 * * 1")'),
     },
     async (args) => {
       try {
@@ -191,13 +131,13 @@ If scheduled, results are emailed to the user automatically.`,
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return {
-          content: [{ type: 'text' as const, text: `Error creating skill: ${message}` }],
+          content: [{ type: 'text' as const, text: `Error creating skill: ${message}\n\nTo fix: Call get_skill with slug "compose-skill" to load the validation rules and correct format, then retry.` }],
           isError: true,
         };
       }
     }
   );
-  registeredTools.push('create_skill');
+  registeredTools.push('submit_skill');
 
   server.tool(
     'delete_skill',

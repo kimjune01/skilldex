@@ -322,21 +322,6 @@ async function seed() {
     skillBuilder: 'skill-skill-builder',
   };
 
-  // Create an example org-specific skill for Acme Corp
-  const acmeSkillId = 'skill-acme-internal';
-  await db.insert(skills).values({
-    id: acmeSkillId,
-    slug: 'acme-internal-process',
-    name: 'Acme Internal Process',
-    description: 'Acme Corp internal recruiting workflow and compliance checks',
-    category: 'custom',
-    requiredIntegrations: JSON.stringify([]),
-    requiredScopes: JSON.stringify([]),
-    isGlobal: false,
-    organizationId: acmeOrgId,
-  }).onConflictDoNothing();
-  console.log('Created org-specific skill for Acme Corp');
-
   // ============ ROLE-SKILL ASSIGNMENTS ============
 
   // Assign all discovered skills to admin and recruiter roles

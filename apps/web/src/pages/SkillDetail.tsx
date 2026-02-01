@@ -81,7 +81,6 @@ export default function SkillDetail() {
     description: '',
     category: '' as SkillCategory,
     intent: '',
-    capabilities: '',
     isEnabled: true,
   });
 
@@ -111,6 +110,10 @@ export default function SkillDetail() {
   const [isSharing, setIsSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Delete skill state
+  const [deleteSkillDialogOpen, setDeleteSkillDialogOpen] = useState(false);
+  const [isDeletingSkill, setIsDeletingSkill] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -289,7 +292,6 @@ export default function SkillDetail() {
       description: skill.description,
       category: skill.category,
       intent: skill.intent || '',
-      capabilities: skill.capabilities.join('\n'),
       isEnabled: skill.isEnabled,
     });
     setIsEditing(true);
@@ -311,7 +313,6 @@ export default function SkillDetail() {
         description: editForm.description,
         category: editForm.category,
         intent: editForm.intent,
-        capabilities: editForm.capabilities.split('\n').map((c) => c.trim()).filter(Boolean),
         isEnabled: editForm.isEnabled,
       });
       setSkill(updated);
@@ -361,6 +362,22 @@ export default function SkillDetail() {
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Delete skill
+  const handleDeleteSkill = async () => {
+    if (!slug) return;
+    setIsDeletingSkill(true);
+    setError('');
+
+    try {
+      await skills.delete(slug);
+      // Navigate back to skills list after deletion
+      window.location.href = '/skills';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete skill');
+      setIsDeletingSkill(false);
+    }
   };
 
   if (isLoading) {
@@ -514,32 +531,6 @@ export default function SkillDetail() {
               <p className="text-sm italic text-foreground bg-muted/50 px-3 py-2 rounded-md">
                 "{skill.intent}"
               </p>
-            )}
-          </div>
-
-          <Separator />
-
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
-              <CheckCircle2 className="h-4 w-4" />
-              Capabilities
-            </div>
-            {isEditing ? (
-              <textarea
-                value={editForm.capabilities}
-                onChange={(e) => setEditForm({ ...editForm, capabilities: e.target.value })}
-                placeholder="One capability per line"
-                className="w-full min-h-[100px] p-3 border rounded-md text-sm"
-              />
-            ) : (
-              <ul className="space-y-2">
-                {skill.capabilities.map((capability, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                    {capability}
-                  </li>
-                ))}
-              </ul>
             )}
           </div>
 
@@ -959,6 +950,19 @@ export default function SkillDetail() {
                   )}
                 </>
               )}
+
+              {/* Delete button - only for owner or admin of non-global skills */}
+              {(skill.isOwner || isAdmin) && !skill.isGlobal && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setDeleteSkillDialogOpen(true)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -1073,6 +1077,26 @@ export default function SkillDetail() {
         triggerType="automation"
         providerName="unlimited automations"
       />
+
+      {/* Delete Skill Dialog */}
+      <Dialog open={deleteSkillDialogOpen} onOpenChange={setDeleteSkillDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Skill</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{skill?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteSkillDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteSkill} disabled={isDeletingSkill}>
+              {isDeletingSkill ? 'Deleting...' : 'Delete Skill'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

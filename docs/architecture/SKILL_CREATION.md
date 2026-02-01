@@ -4,24 +4,36 @@ This document describes how skills are created through chat and optionally sched
 
 ## Overview
 
-Skills are created through a conversational interface. The `create_skill` MCP tool handles the entire flow - the LLM extracts requirements from the user's description, generates proper markdown with YAML frontmatter, and persists it. Optionally, skills can be scheduled to run automatically with results emailed to the user.
+Skills are created through a two-step process:
+
+1. **Composition** - LLM loads the `compose-skill` skill which provides validation rules, valid integration names, and examples
+2. **Submission** - LLM calls `submit_skill` to send the skill to the API, which validates and stores it
+
+This separation ensures the LLM has explicit guidance on valid values (deterministic rules) while the API provides a safety net with server-side validation.
 
 ## Data Flow
 
 ```
-User describes skill in chat
+User: "create a skill for X"
         ↓
-LLM extracts requirements from description
+LLM loads compose-skill via load_skill
         ↓
-Generates skill markdown with YAML frontmatter
+compose-skill provides:
+├─→ Valid integrations: email, sheets, calendar, ats
+├─→ Valid access levels: read-only, read-write
+├─→ Valid categories
+├─→ Complete example
+└─→ Validation checklist
         ↓
-Shows preview and asks user to confirm
+LLM drafts skill following the rules
         ↓
-Calls create_skill MCP tool
+LLM calls submit_skill(content)
         ↓
 POST /skills API endpoint
         ↓
-├─→ Validates markdown and cron expression
+├─→ Validates frontmatter (name, description, intent)
+├─→ Validates requires field (rejects unknown integrations)
+├─→ Validates cron expression
 ├─→ Creates skill record in database
 └─→ If cron provided:
     ├─→ Sets automationEnabled: true
@@ -30,26 +42,27 @@ POST /skills API endpoint
 
 ## Components
 
-### 1. MCP Tool: create_skill
+### 1. Composition Skill: compose-skill
+**File:** `skills/compose-skill/SKILL.md`
+
+A filesystem skill that provides:
+- List of valid integration names (email, sheets, calendar, ats)
+- Valid access levels (read-only, read-write)
+- Valid categories
+- Complete example of a valid skill
+- Validation checklist to verify before submission
+
+### 2. MCP Tool: submit_skill
 **File:** `packages/mcp/src/tools/index.ts`
 
-The MCP tool includes a comprehensive description that guides the LLM through skill creation:
-- When to use (trigger phrases like "create a skill", "save this as a skill")
-- Required fields (name, description, instructions)
-- Optional fields (category, intent, capabilities, requires)
-- YAML frontmatter format with examples
-- Common cron patterns for scheduling
+Simplified tool that just submits the skill to the API:
 
 ```typescript
 server.tool(
-  'create_skill',
-  `Create or update a reusable skill (workflow template).
+  'submit_skill',
+  `Submit a skill to Skillomatic.
 
-   WHEN TO USE: When user says "create a skill", "save this as a skill"...
-   SKILL FORMAT: [YAML frontmatter + markdown instructions]
-   REQUIRED FIELDS: name, description, instructions
-   PROCESS: Extract → Ask for missing → Generate → Preview → Save
-   CRON PATTERNS: [examples]`,
+   IMPORTANT: Load 'compose-skill' first for validation rules and examples.`,
   {
     content: z.string(),      // Full skill markdown with YAML frontmatter
     force: z.boolean(),       // Overwrite existing skill with same slug
@@ -59,7 +72,7 @@ server.tool(
 );
 ```
 
-### 2. API Client
+### 3. API Client
 **File:** `packages/mcp/src/api-client.ts`
 
 Sends the request to the API:
@@ -68,19 +81,27 @@ Sends the request to the API:
 async createSkill(content: string, force?: boolean, cron?: string): Promise<SkillPublic>
 ```
 
-### 3. API Endpoint
+### 4. API Endpoint
 **File:** `apps/api/src/routes/skills.ts`
 
 `POST /skills` handler:
 - Parses markdown and extracts YAML frontmatter
+- Validates required fields (name, description, intent)
+- Validates `requires` field - rejects unknown integrations with helpful error
 - Validates cron expression using `cron-parser`
 - Creates skill record with `automationEnabled` flag
-- If cron provided, creates automation record with:
-  - `outputEmail` inferred from user's email
-  - `nextRunAt` calculated from cron expression
-  - `cronTimezone` defaulting to UTC
+- If cron provided, creates automation record
 
-### 4. Shared Types
+### 5. Skill Validator
+**File:** `apps/api/src/lib/skill-validator.ts`
+
+Server-side validation includes:
+- Required fields: name (3-100 chars), description (10-500 chars), intent
+- Integration validation: only allows `email`, `sheets`, `calendar`, `ats`
+- Access level validation: only allows `read-only`, `read-write`
+- Returns helpful errors like: `Unknown integration 'linkedin_scraper'. Valid: email, sheets, calendar, ats`
+
+### 6. Shared Types
 **File:** `packages/shared/src/types.ts`
 
 ```typescript
@@ -120,14 +141,16 @@ When a skill is created with a `cron` parameter:
 
 ## Files That Must Stay In Sync
 
-When updating `create_skill` parameters, update ALL of these files:
+When updating skill submission parameters, update ALL of these files:
 
 | File | What to Update |
 |------|----------------|
+| `skills/compose-skill/SKILL.md` | Validation rules, valid integrations, examples |
 | `packages/shared/src/types.ts` | `SkillCreateRequest` interface |
 | `apps/api/src/routes/skills.ts` | POST /skills handler logic |
+| `apps/api/src/lib/skill-validator.ts` | `VALID_INTEGRATIONS`, `VALID_ACCESS_LEVELS` |
 | `packages/mcp/src/api-client.ts` | `createSkill()` method signature |
-| `packages/mcp/src/tools/index.ts` | `create_skill` tool registration (includes full usage guide) |
+| `packages/mcp/src/tools/index.ts` | `submit_skill` tool registration |
 
 Each file has a `SYNC` comment listing the related files.
 
@@ -157,7 +180,7 @@ for example, every Monday morning?
 
 User: Yes, run it Monday at 9am
 
-Claude: [Calls create_skill with cron: "0 9 * * 1"]
+Claude: [Calls submit_skill with cron: "0 9 * * 1"]
 
 Skill "Weekly Candidate Summary" created successfully.
 Scheduled: Every Monday at 9am

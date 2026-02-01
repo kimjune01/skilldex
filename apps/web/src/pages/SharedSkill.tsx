@@ -159,24 +159,6 @@ export default function SharedSkill() {
               </div>
             )}
 
-            {/* Capabilities */}
-            {skill.capabilities.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Capabilities
-                </div>
-                <ul className="space-y-1">
-                  {skill.capabilities.map((cap, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                      {cap}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
             {/* Required Integrations */}
             {Object.keys(skill.requiredIntegrations).length > 0 && (
               <div>

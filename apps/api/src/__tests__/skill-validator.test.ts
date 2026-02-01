@@ -14,9 +14,6 @@ name: Test Skill
 description: A valid test skill for testing purposes
 category: Productivity
 intent: test the validator
-capabilities:
-  - Testing validation
-  - Checking edge cases
 requires:
   ats: read-only
 ---
@@ -34,7 +31,6 @@ It includes enough content to pass the minimum instruction length requirement.`;
       expect(result.parsed?.description).toBe('A valid test skill for testing purposes');
       expect(result.parsed?.category).toBe('Productivity');
       expect(result.parsed?.intent).toBe('test the validator');
-      expect(result.parsed?.capabilities).toEqual(['Testing validation', 'Checking edge cases']);
       expect(result.parsed?.requires).toEqual({ ats: 'read-only' });
     });
 
@@ -59,6 +55,7 @@ It includes enough content to pass the minimum instruction length requirement.`;
     it('should reject content missing name field', () => {
       const content = `---
 description: A description
+intent: test intent
 ---
 
 # Content
@@ -72,6 +69,7 @@ Some instructions here that are long enough to pass validation.`;
     it('should reject content missing description field', () => {
       const content = `---
 name: Test Skill
+intent: test intent
 ---
 
 # Content
@@ -88,6 +86,7 @@ Some instructions here that are long enough to pass validation.`;
       const content = `---
 name:
 description: A valid description for testing
+intent: test intent
 ---
 
 # Content
@@ -104,6 +103,7 @@ Some instructions here that are long enough to pass validation.`;
       const content = `---
 name: Valid Name
 description:
+intent: test intent
 ---
 
 # Content
@@ -119,6 +119,7 @@ Some instructions here that are long enough to pass validation.`;
       const content = `---
 name: AB
 description: A valid description for testing
+intent: test intent
 ---
 
 # Content
@@ -134,6 +135,7 @@ Some instructions here that are long enough to pass validation.`;
       const content = `---
 name: ${longName}
 description: A valid description for testing
+intent: test intent
 ---
 
 # Content
@@ -148,6 +150,7 @@ Some instructions here that are long enough to pass validation.`;
       const content = `---
 name: Valid Name
 description: Short
+intent: test intent
 ---
 
 # Content
@@ -163,6 +166,7 @@ Some instructions here that are long enough to pass validation.`;
       const content = `---
 name: Valid Name
 description: ${longDescription}
+intent: test intent
 ---
 
 # Content
@@ -177,6 +181,7 @@ Some instructions here that are long enough to pass validation.`;
       const content = `---
 name: Valid Name
 description: A valid description for testing
+intent: test intent
 ---
 
 Short.`;
@@ -185,20 +190,33 @@ Short.`;
       expect(result.error).toContain(`at least ${VALIDATION.INSTRUCTIONS_MIN_LENGTH}`);
     });
 
-    it('should handle missing optional fields gracefully', () => {
+    it('should reject missing intent field', () => {
+      const content = `---
+name: Test Skill
+description: A skill without intent field
+---
+
+# Content
+
+Some instructions here that are long enough to pass validation.`;
+      const result = validateSkillContent(content);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('intent');
+    });
+
+    it('should handle optional fields gracefully', () => {
       const content = `---
 name: Minimal Skill
 description: A skill with only required fields
+intent: test the minimal skill
 ---
 
 # Minimal Skill
 
-This skill has no optional fields like intent, capabilities, or requires.
-It only includes the minimum required frontmatter fields.`;
+This skill has no optional fields like category or requires.
+It only includes the required frontmatter fields.`;
       const result = validateSkillContent(content);
       expect(result.valid).toBe(true);
-      expect(result.parsed?.intent).toBeUndefined();
-      expect(result.parsed?.capabilities).toBeUndefined();
       expect(result.parsed?.requires).toBeUndefined();
       expect(result.parsed?.category).toBeUndefined();
     });
@@ -220,63 +238,62 @@ Instructions that are long enough to pass the validation requirements.`;
       expect(result.parsed?.intent).toBe('Spaced intent');
     });
 
-    it('should parse all capability items including whitespace-only ones', () => {
-      // The simple regex parser captures the literal text after "- "
-      // It doesn't do advanced YAML string unquoting
-      const content = `---
-name: Test Skill
-description: A test skill description
-capabilities:
-  - Valid capability
-  - Another valid one
----
-
-# Content
-
-Instructions that are long enough to pass the validation requirements.`;
-      const result = validateSkillContent(content);
-      expect(result.valid).toBe(true);
-      expect(result.parsed?.capabilities).toEqual(['Valid capability', 'Another valid one']);
-    });
-
-    it('should trim capability items', () => {
-      const content = `---
-name: Test Skill
-description: A test skill description
-capabilities:
-  -   Spaced capability
-  - Normal one
----
-
-# Content
-
-Instructions that are long enough to pass the validation requirements.`;
-      const result = validateSkillContent(content);
-      expect(result.valid).toBe(true);
-      expect(result.parsed?.capabilities).toEqual(['Spaced capability', 'Normal one']);
-    });
-
     it('should parse requires object correctly', () => {
       const content = `---
-name: Integration Skill
-description: A skill that requires integrations
+name: Test Skill
+description: A test skill description
+intent: test intent
 requires:
   ats: read-write
   email: read-only
-  calendar: read-only
 ---
 
-# Integration Skill
+# Content
 
-This skill requires multiple integrations to function properly.
-It demonstrates the requires field with multiple entries.`;
+Instructions that are long enough to pass the validation requirements.`;
       const result = validateSkillContent(content);
       expect(result.valid).toBe(true);
       expect(result.parsed?.requires).toEqual({
         ats: 'read-write',
         email: 'read-only',
-        calendar: 'read-only',
       });
+    });
+
+    it('should reject unknown integration names', () => {
+      const content = `---
+name: Test Skill
+description: A test skill description
+intent: test intent
+requires:
+  linkedin_scraper: read-only
+---
+
+# Content
+
+Instructions that are long enough to pass the validation requirements.`;
+      const result = validateSkillContent(content);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Unknown integration 'linkedin_scraper'");
+      expect(result.error).toContain('email, sheets, calendar, ats');
+    });
+
+    it('should reject invalid access levels', () => {
+      const content = `---
+name: Test Skill
+description: A test skill description
+intent: test intent
+requires:
+  email: full-access
+---
+
+# Content
+
+Instructions that are long enough to pass the validation requirements.`;
+      const result = validateSkillContent(content);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Invalid access level 'full-access'");
+      expect(result.error).toContain('read-only');
+      expect(result.error).toContain('read-write');
     });
   });
 

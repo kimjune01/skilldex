@@ -17,7 +17,7 @@ import { loadRenderedSkill, clearMetadataCache } from './skills-client';
 // Action types - local actions handled by frontend
 export type LocalActionType =
   | 'load_skill'
-  | 'create_skill'
+  | 'submit_skill'
   | 'search_candidates'
   | 'get_candidate'
   | 'create_candidate'
@@ -103,7 +103,7 @@ async function executeLoadSkill(params: { slug: string }): Promise<ActionResult>
 }
 
 /**
- * Execute create_skill action
+ * Execute submit_skill action
  * Creates or updates a skill via the API
  */
 async function executeCreateSkill(
@@ -127,7 +127,7 @@ async function executeCreateSkill(
 
     return {
       success: true,
-      action: 'create_skill',
+      action: 'submit_skill',
       data: {
         slug: result.slug,
         name: result.name,
@@ -137,7 +137,7 @@ async function executeCreateSkill(
   } catch (error) {
     return {
       success: false,
-      action: 'create_skill',
+      action: 'submit_skill',
       error: error instanceof Error ? error.message : 'Failed to create skill',
     };
   }
@@ -660,7 +660,7 @@ export async function executeAction(
     case 'load_skill':
       return executeLoadSkill(params as { slug: string });
 
-    case 'create_skill':
+    case 'submit_skill':
       return executeCreateSkill(params as { content: string; force?: boolean });
 
     case 'search_candidates':
@@ -761,8 +761,8 @@ export function formatActionResult(result: ActionResult): string {
     return `Loaded skill "${data.name}":\n\n${data.instructions}`;
   }
 
-  // Special formatting for create_skill
-  if (result.action === 'create_skill' && result.data) {
+  // Special formatting for submit_skill
+  if (result.action === 'submit_skill' && result.data) {
     const data = result.data as { slug: string; name: string; message: string };
     return data.message;
   }

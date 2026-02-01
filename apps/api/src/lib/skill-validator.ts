@@ -28,8 +28,7 @@ export interface ValidationResult {
     name: string;
     description: string;
     category?: string;
-    intent?: string;
-    capabilities?: string[];
+    intent: string;
     requires?: Record<string, string>;
     requiresInput?: boolean;
   };
@@ -40,7 +39,6 @@ interface SkillFrontmatter {
   description?: unknown;
   category?: unknown;
   intent?: unknown;
-  capabilities?: unknown;
   requires?: unknown;
   requiresInput?: unknown;
 }
@@ -133,40 +131,24 @@ export function validateSkillContent(content: string): ValidationResult {
     return { valid: false, error: `Skill instructions must be at least ${VALIDATION.INSTRUCTIONS_MIN_LENGTH} characters` };
   }
 
-  // Parse optional fields
+  // Parse category (optional)
   const category = typeof frontmatter.category === 'string' && frontmatter.category.trim()
     ? frontmatter.category.trim()
     : undefined;
 
-  let intent: string | undefined;
-  if (typeof frontmatter.intent === 'string' && frontmatter.intent.trim()) {
-    const intentValue = frontmatter.intent.trim();
-    // Check for prompt injection patterns in intent
-    if (containsInjectionPatterns(intentValue)) {
-      return { valid: false, error: 'Skill intent contains invalid formatting' };
-    }
-    intent = intentValue;
+  // Parse and validate intent (required)
+  if (typeof frontmatter.intent !== 'string' || !frontmatter.intent.trim()) {
+    return { valid: false, error: 'Frontmatter must include an "intent" field (trigger phrases for matching user requests). Load the "compose-skill" skill first for the correct format.' };
+  }
+  const intent = frontmatter.intent.trim();
+  if (containsInjectionPatterns(intent)) {
+    return { valid: false, error: 'Skill intent contains invalid formatting' };
   }
 
-  // Parse capabilities (must be array of strings)
-  let capabilities: string[] | undefined;
-  if (Array.isArray(frontmatter.capabilities)) {
-    const validCaps = frontmatter.capabilities
-      .filter((c): c is string => typeof c === 'string')
-      .map(c => c.trim())
-      .filter(c => c.length > 0);
-    // Check for prompt injection patterns in capabilities
-    for (const cap of validCaps) {
-      if (containsInjectionPatterns(cap)) {
-        return { valid: false, error: 'Skill capabilities contain invalid formatting' };
-      }
-    }
-    if (validCaps.length > 0) {
-      capabilities = validCaps;
-    }
-  }
+  // Parse and validate requires (must be object with valid integration names and access levels)
+  const VALID_INTEGRATIONS = ['email', 'sheets', 'calendar', 'ats'];
+  const VALID_ACCESS_LEVELS = ['read-only', 'read-write'];
 
-  // Parse requires (must be object with string values)
   let requires: Record<string, string> | undefined;
   if (
     frontmatter.requires &&
@@ -176,7 +158,26 @@ export function validateSkillContent(content: string): ValidationResult {
     const validRequires: Record<string, string> = {};
     for (const [key, value] of Object.entries(frontmatter.requires)) {
       if (typeof value === 'string') {
-        validRequires[key] = value.trim();
+        const integration = key.trim();
+        const level = value.trim();
+
+        // Validate integration name
+        if (!VALID_INTEGRATIONS.includes(integration)) {
+          return {
+            valid: false,
+            error: `Unknown integration '${integration}'. Valid integrations: ${VALID_INTEGRATIONS.join(', ')}`,
+          };
+        }
+
+        // Validate access level
+        if (!VALID_ACCESS_LEVELS.includes(level)) {
+          return {
+            valid: false,
+            error: `Invalid access level '${level}' for ${integration}. Use 'read-only' or 'read-write'`,
+          };
+        }
+
+        validRequires[integration] = level;
       }
     }
     if (Object.keys(validRequires).length > 0) {
@@ -194,7 +195,6 @@ export function validateSkillContent(content: string): ValidationResult {
       description,
       category,
       intent,
-      capabilities,
       requires,
       requiresInput: requiresInput || undefined,
     },

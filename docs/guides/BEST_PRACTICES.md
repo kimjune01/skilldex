@@ -296,11 +296,11 @@ Features that work in web chat should also work in Claude Desktop (MCP). The pat
 ```typescript
 // ✅ Web action calls same API as MCP tool
 // action-executor.ts
-case 'create_skill':
+case 'submit_skill':
   return serverRequest('/skills', { method: 'POST', body: { content, force } });
 
 // packages/mcp/src/tools/index.ts
-server.tool('create_skill', ..., async (args) => {
+server.tool('submit_skill', ..., async (args) => {
   return client.createSkill(args.content, args.force);
 });
 

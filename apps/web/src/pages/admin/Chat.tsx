@@ -262,7 +262,6 @@ function generateMetaResponse(input: string, existingSkills: SkillPublic[]): str
         response += `- **Slug:** \`${skill.slug}\`\n`;
         response += `- **Category:** ${skill.category}\n`;
         response += `- **Description:** ${skill.description}\n`;
-        response += `- **Capabilities:** ${skill.capabilities.join(', ')}\n`;
         response += `- **Status:** ${skill.isEnabled ? 'Enabled' : 'Disabled'}\n\n`;
       }
       return response;
@@ -294,9 +293,6 @@ ${Object.entries(skillMatch.requiredIntegrations).map(([i, level]) => `- ${i} ($
 ### Required Scopes
 ${skillMatch.requiredScopes.map(s => `- \`${s}\``).join('\n')}
 
-### Capabilities
-${skillMatch.capabilities.map(c => `- ${c}`).join('\n')}
-
 Would you like me to help you modify this skill or create a similar one?`;
   }
 
@@ -316,18 +312,12 @@ requiredScopes:
   - linkedin:read_profile
   - linkedin:search
 intent: Find and extract candidate information from LinkedIn searches
-capabilities:
-  - Search LinkedIn by job title, location, and keywords
-  - Extract profile information (name, headline, experience)
-  - Save candidates to your ATS
-  - Track sourcing activity
 \`\`\`
 
 This skill requires the browser extension to be installed since it uses your LinkedIn session. Would you like me to:
 
-1. Add more capabilities?
-2. Generate the full skill implementation?
-3. Create a related skill for outreach?`;
+1. Generate the full skill implementation?
+2. Create a related skill for outreach?`;
   }
 
   // Creation: ATS sync
@@ -347,14 +337,9 @@ requiredScopes:
   - ats:write_candidates
   - ats:read_jobs
 intent: Keep candidate data synchronized across recruiting tools
-capabilities:
-  - Sync candidate profiles between systems
-  - Update application statuses
-  - Merge duplicate records
-  - Export data to CSV
 \`\`\`
 
-Should I expand on any of these capabilities or add error handling logic?`;
+Should I add error handling logic or generate the full implementation?`;
   }
 
   // Creation: Email outreach
@@ -373,11 +358,6 @@ requiredScopes:
   - email:send
   - email:read
 intent: Automate personalized candidate outreach at scale
-capabilities:
-  - Generate personalized email content
-  - Schedule email sequences
-  - Track opens and responses
-  - A/B test subject lines
 \`\`\`
 
 This skill works with Gmail and Outlook integrations. Want me to add template examples or sequence logic?`;
@@ -395,7 +375,6 @@ This skill works with Gmail and Outlook integrations. Want me to add template ex
 - "Generate a skill template for [use case]"
 
 **Modify skills:**
-- "Add capabilities to [skill name]"
 - "Update the description for [skill name]"
 
 What would you like to do?`;

@@ -21,7 +21,6 @@ describe('Skills Routes Integration', () => {
       description?: string;
       category?: string;
       intent?: string;
-      capabilities?: string[];
       requires?: Record<string, string>;
       body?: string;
     } = {}) => {
@@ -30,7 +29,6 @@ describe('Skills Routes Integration', () => {
         description = 'A valid test skill for creating skills via API',
         category = 'Productivity',
         intent = 'test creating skills',
-        capabilities = ['Create test data', 'Validate input'],
         requires,
         body = `# Test Skill
 
@@ -48,13 +46,6 @@ description: ${description}`;
 
       if (intent) {
         frontmatter += `\nintent: ${intent}`;
-      }
-
-      if (capabilities && capabilities.length > 0) {
-        frontmatter += '\ncapabilities:';
-        for (const cap of capabilities) {
-          frontmatter += `\n  - ${cap}`;
-        }
       }
 
       if (requires && Object.keys(requires).length > 0) {
@@ -80,7 +71,6 @@ description: ${description}`;
         expect(result.parsed?.description).toBe('A valid test skill for creating skills via API');
         expect(result.parsed?.category).toBe('Productivity');
         expect(result.parsed?.intent).toBe('test creating skills');
-        expect(result.parsed?.capabilities).toEqual(['Create test data', 'Validate input']);
       });
 
       it('should reject content without frontmatter', () => {
@@ -185,6 +175,7 @@ description: ${description}`;
       const originalContent = `---
 name: Original Skill
 description: The original skill description
+intent: test original skill
 ---
 
 # Original Instructions
@@ -194,6 +185,7 @@ This is the original skill with enough content to pass validation.`;
       const updatedContent = `---
 name: Updated Skill
 description: The updated skill description with changes
+intent: test updated skill
 ---
 
 # Updated Instructions
@@ -212,6 +204,7 @@ This is the updated skill content with modifications to test the update flow.`;
       const invalidUpdate = `---
 name: X
 description: Too short
+intent: test
 ---
 
 Short.`;
@@ -238,6 +231,7 @@ Short.`;
 name: ${category} Skill
 description: A skill in the ${category} category for testing
 category: ${category}
+intent: test ${category.toLowerCase()} category
 ---
 
 # ${category} Skill
@@ -254,6 +248,7 @@ This skill is categorized under ${category} and tests that category values are p
       const content = `---
 name: No Category Skill
 description: A skill without an explicit category
+intent: test no category
 ---
 
 # No Category Skill

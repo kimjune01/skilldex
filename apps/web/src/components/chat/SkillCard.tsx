@@ -158,24 +158,12 @@ export function SkillCard({
               )}
             </button>
 
-            {detailsExpanded && (
+            {detailsExpanded && skill.intent && (
               <div className="mt-3 pt-3 border-t space-y-2">
-                {skill.intent && (
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground">Intent:</span>
-                    <p className="text-sm">{skill.intent}</p>
-                  </div>
-                )}
-                {skill.capabilities && skill.capabilities.length > 0 && (
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground">Capabilities:</span>
-                    <ul className="text-sm list-disc list-inside">
-                      {skill.capabilities.map((cap, i) => (
-                        <li key={i}>{cap}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Intent:</span>
+                  <p className="text-sm">{skill.intent}</p>
+                </div>
               </div>
             )}
           </>
