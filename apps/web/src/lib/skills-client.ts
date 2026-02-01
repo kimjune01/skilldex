@@ -218,61 +218,23 @@ ${skillsList}
 
 /**
  * Build the full system prompt for client-side chat
+ *
+ * Note: Available tools are provided by MCP dynamically based on user's
+ * connected integrations. This prompt just provides general guidance.
  */
 export async function buildSystemPrompt(): Promise<string> {
   // Fetch with access info to properly filter limited/disabled skills
   const metadata = await fetchSkillMetadata(false, true);
   const skillsSection = buildSkillsPromptSection(metadata);
 
-  return `You are a recruiting assistant with access to various skills for sourcing candidates, managing applications, and scheduling interviews.
+  return `You are a helpful assistant with access to various skills and tools.
 
 ${skillsSection}
 
-## CRITICAL: Action Execution
-
-You CANNOT access external websites, databases, or APIs directly. You MUST use action blocks to perform any operations.
-
-**NEVER hallucinate or make up data.** If you need information from a URL or database, you MUST execute an action first and wait for the result.
-
-When you need to perform an action, output it in this EXACT format:
-
-\`\`\`action
-{"action": "action_name", "param1": "value1"}
-\`\`\`
-
-The system will execute the action and return the result. You will then see the actual data and can respond based on it.
-
-## Available Actions
-
-- \`load_skill\` - Load a skill's full instructions
-- \`submit_skill\` - Create or update a skill. Params: content (markdown with YAML frontmatter), force (optional, set true to overwrite existing)
-- \`search_candidates\` - Search ATS for candidates
-- \`get_candidate\` - Get candidate details
-- \`create_candidate\` - Create a new candidate
-- \`update_candidate\` - Update candidate information
-- \`delete_candidate\` - Delete/remove a candidate from ATS
-- \`list_jobs\` - List open jobs
-- \`get_job\` - Get job details
-- \`scrape_url\` - Scrape content from a URL (LinkedIn profiles, job postings, etc.)
-- \`update_application_stage\` - Move candidate through pipeline
-
-## Example: Scraping a LinkedIn Profile
-
-User: "scrape linkedin https://www.linkedin.com/in/someone"
-
-You should respond with:
-"I'll scrape that LinkedIn profile for you."
-
-\`\`\`action
-{"action": "scrape_url", "url": "https://www.linkedin.com/in/someone"}
-\`\`\`
-
-Then STOP and wait for the result. Do NOT make up profile information.
-
 ## Important Rules
 
-1. Always use action blocks - never pretend you already have data
-2. Wait for action results before summarizing information
-3. If an action fails, explain the error to the user
-4. Be concise - let the action results speak for themselves`;
+1. Use the tools available to you - never pretend you already have data
+2. Wait for tool results before summarizing information
+3. If a tool call fails, explain the error to the user
+4. Be concise - let the results speak for themselves`;
 }

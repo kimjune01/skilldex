@@ -611,9 +611,8 @@ export function ChatSidebar({
             </CollapsibleContent>
           </Collapsible>
 
-          {/* API Key Settings Section (only for non-org users) */}
-          {!hasOrgLLM && (
-            <Collapsible open={apiKeyOpen} onOpenChange={setApiKeyOpen}>
+          {/* API Key Settings Section */}
+          <Collapsible open={apiKeyOpen} onOpenChange={setApiKeyOpen}>
               <CollapsibleTrigger asChild>
                 <button className="flex items-center gap-2 w-full px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-t">
                   {apiKeyOpen ? (
@@ -755,7 +754,6 @@ export function ChatSidebar({
                 </div>
               </CollapsibleContent>
             </Collapsible>
-          )}
         </div>
       </div>
 

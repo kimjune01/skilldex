@@ -399,16 +399,6 @@ function ChatContent() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {userLLMConfig && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(true)}
-                title="API key settings"
-              >
-                <KeyRound className="h-4 w-4" />
-              </Button>
-            )}
             <Button
               variant="ghost"
               size="icon"
@@ -422,7 +412,7 @@ function ChatContent() {
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen(true)}
-              title="Chat history & tools"
+              title="Chat history & settings"
             >
               <MessageSquare className="h-4 w-4" />
             </Button>
