@@ -447,6 +447,14 @@ export function ActionResultCard({ action, result, onRefresh }: ActionResultCard
       const content = res.content as string;
       return `Page scraped (${(content.length / 1024).toFixed(1)} KB)`;
     }
+    if (res?.slug && res?.name) {
+      return `Skill created: ${res.name}`;
+    }
+    if (res?._raw && typeof res._raw === 'string') {
+      // For plain text results, show first line
+      const firstLine = (res._raw as string).split('\n')[0];
+      return firstLine.length > 60 ? firstLine.slice(0, 60) + '...' : firstLine;
+    }
     if (res?.error) {
       return `Error: ${res.error}`;
     }

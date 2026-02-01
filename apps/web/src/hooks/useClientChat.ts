@@ -362,34 +362,38 @@ export function useClientChat(options: UseClientChatOptions = {}): UseClientChat
 
         if (actionResults) {
           // Update the last assistant message with action results
-          let updatedMessage: ChatMessage | null = null;
-          setMessages((prev) => {
-            // Find last assistant message index (ES2023 findLastIndex not available)
-            let lastAssistantIdx = -1;
-            for (let i = prev.length - 1; i >= 0; i--) {
-              if (prev[i].role === 'assistant') {
-                lastAssistantIdx = i;
-                break;
+          // Use a promise to ensure we get the updated message after state update
+          const updatedMessage = await new Promise<ChatMessage | null>((resolve) => {
+            setMessages((prev) => {
+              // Find last assistant message index
+              let lastAssistantIdx = -1;
+              for (let i = prev.length - 1; i >= 0; i--) {
+                if (prev[i].role === 'assistant') {
+                  lastAssistantIdx = i;
+                  break;
+                }
               }
-            }
-            if (lastAssistantIdx >= 0) {
-              const updated = [...prev];
-              updated[lastAssistantIdx] = {
-                ...updated[lastAssistantIdx],
-                actionResult: {
-                  action: actions[0].action,
-                  result: actionResults,
-                },
-              };
-              updatedMessage = updated[lastAssistantIdx];
-              return updated;
-            }
-            return prev;
+              if (lastAssistantIdx >= 0) {
+                const updated = [...prev];
+                updated[lastAssistantIdx] = {
+                  ...updated[lastAssistantIdx],
+                  actionResult: {
+                    action: actions[0].action,
+                    result: actionResults,
+                  },
+                };
+                // Resolve with the updated message
+                setTimeout(() => resolve(updated[lastAssistantIdx]), 0);
+                return updated;
+              }
+              setTimeout(() => resolve(null), 0);
+              return prev;
+            });
           });
 
           // Persist the updated message with action results
           if (updatedMessage) {
-            persistMessageUpdate(updatedMessage);
+            await persistMessageUpdate(updatedMessage);
           }
 
           // Send tool results back to LLM for continuation

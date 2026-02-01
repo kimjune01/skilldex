@@ -45,7 +45,28 @@ setInterval(() => {
 
 export const mcpWebRoutes = new Hono();
 
-// Apply JWT auth to all routes
+/**
+ * OPTIONS /mcp-web - Handle CORS preflight requests
+ * Must be before JWT auth middleware to avoid auth errors on preflight
+ */
+mcpWebRoutes.options('/', (c) => {
+  const origin = c.req.header('origin');
+  if (origin && (origin.includes('localhost:5173') || origin.includes('localhost:4173'))) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+  return new Response(null, { status: 204 });
+});
+
+// Apply JWT auth to all routes (except OPTIONS which is handled above)
 mcpWebRoutes.use('*', jwtAuth);
 
 /**
@@ -65,6 +86,13 @@ mcpWebRoutes.get('/', async (c) => {
   if (!nodeRes) {
     log.error('mcp_web_no_node_response', { userId: user.id });
     return c.json({ error: { message: 'SSE not supported in this environment' } }, 500);
+  }
+
+  // Set CORS headers manually for SSE (Hono middleware doesn't apply to raw nodeRes)
+  const origin = c.req.header('origin');
+  if (origin && (origin.includes('localhost:5173') || origin.includes('localhost:4173'))) {
+    nodeRes.setHeader('Access-Control-Allow-Origin', origin);
+    nodeRes.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 
   try {
@@ -134,6 +162,13 @@ mcpWebRoutes.post('/', async (c) => {
 
   if (!nodeReq || !nodeRes) {
     return c.json({ error: { message: 'POST handling not supported in this environment' } }, 500);
+  }
+
+  // Set CORS headers manually for POST (Hono middleware doesn't apply to raw nodeRes)
+  const origin = c.req.header('origin');
+  if (origin && (origin.includes('localhost:5173') || origin.includes('localhost:4173'))) {
+    nodeRes.setHeader('Access-Control-Allow-Origin', origin);
+    nodeRes.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 
   try {

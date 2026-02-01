@@ -74,7 +74,7 @@ const PROVIDER_CONFIGS: Record<
 
       return {
         model,
-        max_tokens: 4096,
+        max_tokens: 8192,
         stream: true,
         system: systemMessage?.content,
         messages: chatMessages.map((m) => ({

@@ -219,8 +219,8 @@ ${skillsList}
 /**
  * Build the full system prompt for client-side chat
  *
- * Note: Available tools are provided by MCP dynamically based on user's
- * connected integrations. This prompt just provides general guidance.
+ * Note: The web chat uses action blocks (not native tool calling) because
+ * the LLM client streams text directly. MCP handles tool execution.
  */
 export async function buildSystemPrompt(): Promise<string> {
   // Fetch with access info to properly filter limited/disabled skills
@@ -231,10 +231,32 @@ export async function buildSystemPrompt(): Promise<string> {
 
 ${skillsSection}
 
-## Important Rules
+## Action Execution
 
-1. Use the tools available to you - never pretend you already have data
-2. Wait for tool results before summarizing information
-3. If a tool call fails, explain the error to the user
-4. Be concise - let the results speak for themselves`;
+When you need to perform an action, output it in this EXACT format:
+
+\`\`\`action
+{"action": "tool_name", "param1": "value1"}
+\`\`\`
+
+The system will execute the action and return the result. Then continue your response based on the result.
+
+**Important:** Never make up data. Always use an action to fetch real information first.
+
+## Common Actions
+
+- \`scrape_url\` - Scrape content from a URL. Params: url
+- \`load_skill\` - Load a skill's instructions. Params: slug
+- \`submit_skill\` - Create a new skill. Params: content (markdown with YAML frontmatter)
+
+## Example
+
+User: "scrape https://example.com"
+
+Response:
+I'll scrape that page for you.
+
+\`\`\`action
+{"action": "scrape_url", "url": "https://example.com"}
+\`\`\``;
 }

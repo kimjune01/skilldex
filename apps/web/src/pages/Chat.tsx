@@ -71,8 +71,8 @@ function ChatContent() {
     return stored ? toFullLLMConfig(stored) : null;
   });
 
-  // Effective LLM config: free_beta users get shared config, others use their own
-  const effectiveLLMConfig = isFreeBeta ? SHARED_BETA_LLM_CONFIG : userLLMConfig;
+  // Effective LLM config: user's own config takes priority, free_beta users get shared config as fallback
+  const effectiveLLMConfig = userLLMConfig || (isFreeBeta ? SHARED_BETA_LLM_CONFIG : null);
 
   // Check if org has LLM configured on mount
   useEffect(() => {
@@ -389,10 +389,10 @@ function ChatContent() {
               {currentConversation?.title || 'New Chat'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isFreeBeta ? (
-                <>Beta access - powered by Gemini</>
-              ) : userLLMConfig ? (
+              {userLLMConfig ? (
                 <>Using your {llmConfig?.provider} API key.</>
+              ) : isFreeBeta ? (
+                <>Beta access - powered by Gemini</>
               ) : (
                 <>For a better experience, try <a href="/desktop-chat" className="text-primary hover:underline">Desktop Chat</a>.</>
               )}

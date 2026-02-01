@@ -42,7 +42,7 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions, onRefresh
       <div className={cn('flex-1 space-y-2', isUser ? 'text-right' : 'text-left')}>
         <div
           className={cn(
-            'inline-block rounded-lg px-4 py-2 text-sm',
+            'inline-block rounded-lg px-4 py-2 text-sm max-w-full break-words',
             isUser
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted'
@@ -69,11 +69,11 @@ export function ChatMessage({ message, onRunSkill, onShowInstructions, onRefresh
                 code: ({ children, className }) => {
                   const isBlock = className?.includes('language-');
                   return isBlock ? (
-                    <pre className="bg-background/50 rounded p-2 my-2 overflow-x-auto">
+                    <pre className="bg-background/50 rounded p-2 my-2 overflow-x-auto whitespace-pre-wrap break-all">
                       <code className="text-xs">{children}</code>
                     </pre>
                   ) : (
-                    <code className="bg-background/50 rounded px-1 py-0.5 text-xs">{children}</code>
+                    <code className="bg-background/50 rounded px-1 py-0.5 text-xs break-all">{children}</code>
                   );
                 },
                 pre: ({ children }) => <>{children}</>,
