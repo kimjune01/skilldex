@@ -7,7 +7,6 @@ import { log } from './logger.js';
 import type {
   SkillPublic,
   RenderedSkill,
-  CapabilityProfile,
   ConfigResponse,
   Candidate,
   ScrapeTask,

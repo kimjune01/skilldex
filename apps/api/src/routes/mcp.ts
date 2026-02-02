@@ -76,7 +76,7 @@ mcpRoutes.get('/', async (c) => {
 
   try {
     // Create MCP server for this user
-    const server = await createMcpServer(user.id, c.req.header('Authorization')?.slice(7) || '');
+    const server = await createMcpServer(user.id);
 
     // Create SSE transport
     // The endpoint tells the client where to POST messages

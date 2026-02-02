@@ -1,14 +1,15 @@
 /**
  * MCP Server Factory for Hosted Endpoint
  *
- * Creates MCP server instances for ChatGPT web/mobile connections.
- * Reuses the same tool registration logic as the local MCP server (packages/mcp).
+ * Creates MCP server instances for ChatGPT web/mobile and web chat connections.
+ * Uses the shared tool registration from @skillomatic/mcp with an internal API client adapter.
  *
  * @see packages/mcp/src/tools/index.ts for tool implementations
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { registerTools } from '@skillomatic/mcp/tools';
+import type { SkillomaticClient as McpClientInterface, CapabilityProfile as McpCapabilityProfile } from '@skillomatic/mcp/api-client';
 import { createLogger } from './logger.js';
 import { buildCapabilityProfile } from './skill-renderer.js';
 import type { CapabilityProfile } from './skill-renderer.js';
@@ -16,67 +17,41 @@ import { db } from '@skillomatic/db';
 import { skills, users } from '@skillomatic/db/schema';
 import { eq } from 'drizzle-orm';
 import * as emailService from '../services/email.js';
+import { createSkillFromMarkdown, deleteSkill as deleteSkillService } from './skill-validator.js';
+import { createScrapeTaskInternal, getScrapeTaskInternal } from './scrape-service.js';
 
 const log = createLogger('McpServer');
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyClient = any; // We use a duck-typed client that implements only what we need
 
 // Version for the hosted MCP server
 const MCP_VERSION = '0.1.0';
 
 /**
- * API client interface for MCP tools
- * Matches the interface expected by tool implementations
+ * Create an internal API client adapter that implements the SkillomaticClient interface
+ * but makes direct DB/service calls instead of HTTP API calls.
+ *
+ * This allows the hosted MCP server (web chat, ChatGPT) to use the same tool registration
+ * as the Docker MCP server (Claude Desktop) without code duplication.
  */
-interface McpApiClient {
-  baseUrl: string;
-  apiKey: string;
-  userId: string;
-  getSkills(): Promise<SkillPublic[]>;
-  getRenderedSkill(slug: string): Promise<{ instructions: string }>;
-}
-
-interface SkillPublic {
-  slug: string;
-  name: string;
-  description: string;
-  intent?: string;
-  capabilities?: string[];
-  isEnabled: boolean;
-}
-
-/**
- * Capability profile for MCP tools (matches packages/mcp expectations)
- */
-interface McpCapabilityProfile {
-  hasLLM: boolean;
-  hasATS: boolean;
-  hasCalendar: boolean;
-  hasEmail: boolean;
-  hasAirtable: boolean;
-  isSuperAdmin: boolean;
-  atsProvider?: string;
-  calendarProvider?: string;
-  airtableProvider?: string;
-  effectiveAccess?: {
-    ats?: 'none' | 'read-only' | 'read-write';
-    calendar?: 'none' | 'read-only' | 'read-write';
-    database?: 'none' | 'read-only' | 'read-write';
-  };
-}
-
-/**
- * Create an API client that makes direct DB calls
- * Used for skill operations that don't need external API calls
- */
-function createInternalApiClient(userId: string, apiKey: string): McpApiClient {
+function createInternalApiClient(userId: string): AnyClient {
   const baseUrl = process.env.SKILLOMATIC_API_URL || 'http://localhost:3000';
 
-  return {
-    baseUrl,
-    apiKey,
-    userId,
+  // Create a partial implementation that supports the tools we need
+  // Methods throw if called but not implemented - fail fast if tools evolve
+  const notImplemented = (method: string) => () => {
+    throw new Error(`${method} not implemented in internal API client`);
+  };
 
-    async getSkills(): Promise<SkillPublic[]> {
-      // Get user's org to check skill visibility
+  return {
+    // Required by base class but not used directly
+    baseUrl,
+    apiKey: '',
+    timeoutMs: 30000,
+
+    // Skill operations - direct DB calls
+    async getSkills() {
       const [user] = await db
         .select()
         .from(users)
@@ -97,7 +72,7 @@ function createInternalApiClient(userId: string, apiKey: string): McpApiClient {
         }));
     },
 
-    async getRenderedSkill(slug: string): Promise<{ instructions: string }> {
+    async getSkill(slug: string) {
       const [skill] = await db
         .select()
         .from(skills)
@@ -108,295 +83,182 @@ function createInternalApiClient(userId: string, apiKey: string): McpApiClient {
         throw new Error(`Skill not found: ${slug}`);
       }
 
-      // For now, return raw instructions
-      // TODO: Render with user's credentials if needed
+      return {
+        slug: skill.slug,
+        name: skill.name,
+        description: skill.description || '',
+        intent: skill.intent || undefined,
+        capabilities: skill.capabilities ? JSON.parse(skill.capabilities) : undefined,
+        isEnabled: skill.isEnabled,
+      };
+    },
+
+    async getRenderedSkill(slug: string) {
+      const [skill] = await db
+        .select()
+        .from(skills)
+        .where(eq(skills.slug, slug))
+        .limit(1);
+
+      if (!skill) {
+        throw new Error(`Skill not found: ${slug}`);
+      }
+
       return { instructions: skill.instructions || `No instructions found for skill: ${slug}` };
     },
-  };
+
+    async createSkill(content: string, force?: boolean, cron?: string) {
+      const result = await createSkillFromMarkdown(content, userId, { force, cron });
+      return {
+        slug: result.slug,
+        name: result.name,
+        description: result.description || '',
+        isEnabled: result.isEnabled,
+      };
+    },
+
+    async deleteSkill(slug: string) {
+      const result = await deleteSkillService(slug, userId);
+      return { success: true, message: result.message };
+    },
+
+    async getCapabilities() {
+      const profile = await buildCapabilityProfile(userId);
+      return {
+        llm: profile.llm,
+        ats: profile.ats,
+        calendar: profile.calendar,
+        email: profile.email,
+      };
+    },
+
+    async verifyAuth() {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      return { id: user.id, email: user.email, name: user.name || '' };
+    },
+
+    // Scrape operations - direct service calls
+    async createScrapeTask(url: string) {
+      return createScrapeTaskInternal(userId, url);
+    },
+
+    async getScrapeTask(id: string) {
+      return getScrapeTaskInternal(userId, id);
+    },
+
+    async waitForScrapeResult(id: string, options?: { timeout?: number; interval?: number }) {
+      const timeout = options?.timeout || 60000;
+      const interval = options?.interval || 2000;
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < timeout) {
+        const task = await getScrapeTaskInternal(userId, id);
+        if (task.status === 'completed' || task.status === 'failed' || task.status === 'expired') {
+          return task;
+        }
+        await new Promise(resolve => setTimeout(resolve, interval));
+      }
+
+      throw new Error(`Scrape task ${id} timed out after ${timeout}ms`);
+    },
+
+    // Email operations - direct service calls
+    async getEmailProfile() {
+      return emailService.getEmailProfile(userId);
+    },
+
+    async createDraft(data: Parameters<typeof emailService.createDraft>[1]) {
+      return emailService.createDraft(userId, data);
+    },
+
+    async sendEmail(data: Parameters<typeof emailService.sendEmail>[1]) {
+      return emailService.sendEmail(userId, data);
+    },
+
+    async searchEmails(query: string, maxResults?: number) {
+      return emailService.searchEmails(userId, query, maxResults);
+    },
+
+    async listDrafts(maxResults?: number) {
+      return emailService.listDrafts(userId, maxResults);
+    },
+
+    // ATS operations - not supported in hosted MCP (use Claude Desktop for ATS)
+    searchCandidates: notImplemented('searchCandidates'),
+    getCandidate: notImplemented('getCandidate'),
+    createCandidate: notImplemented('createCandidate'),
+    updateCandidate: notImplemented('updateCandidate'),
+    proxyAtsRequest: notImplemented('proxyAtsRequest'),
+    proxyCalendarRequest: notImplemented('proxyCalendarRequest'),
+    proxyDataRequest: notImplemented('proxyDataRequest'),
+
+    // Database operations - not supported in hosted MCP
+    listDatabaseTables: notImplemented('listDatabaseTables'),
+    getTableSchema: notImplemented('getTableSchema'),
+    queryDatabase: notImplemented('queryDatabase'),
+    getDatabaseStats: notImplemented('getDatabaseStats'),
+
+    // Sheets operations - not supported in hosted MCP yet
+    listTabs: notImplemented('listTabs'),
+    createTab: notImplemented('createTab'),
+    updateTabSchema: notImplemented('updateTabSchema'),
+    deleteTab: notImplemented('deleteTab'),
+    readTabRows: notImplemented('readTabRows'),
+    appendTabRow: notImplemented('appendTabRow'),
+    updateTabRow: notImplemented('updateTabRow'),
+    deleteTabRow: notImplemented('deleteTabRow'),
+    searchTab: notImplemented('searchTab'),
+    upsertTabRow: notImplemented('upsertTabRow'),
+  } as unknown as McpClientInterface;
 }
 
 /**
- * Convert CapabilityProfile to McpCapabilityProfile format
+ * Convert internal CapabilityProfile to MCP CapabilityProfile format
  */
-function toMcpProfile(profile: CapabilityProfile & { effectiveAccess: unknown }): McpCapabilityProfile {
+function toMcpProfile(profile: CapabilityProfile & { effectiveAccess?: unknown }): McpCapabilityProfile {
   return {
     hasLLM: !!profile.llm,
-    hasATS: !!profile.ats,
+    hasATS: false, // ATS not supported in hosted MCP - use Claude Desktop
     hasCalendar: !!profile.calendar,
     hasEmail: !!profile.email,
-    hasAirtable: false, // TODO: Check Airtable integration
+    hasAirtable: false,
+    hasGoogleSheets: false,
+    hasGoogleDrive: false,
+    hasGoogleDocs: false,
+    hasGoogleForms: false,
+    hasGoogleContacts: false,
+    hasGoogleTasks: false,
+    hasExtension: true, // Enable scrape tools for web chat
     isSuperAdmin: false, // Super admin tools not exposed via hosted MCP
-    atsProvider: profile.ats?.provider,
+    atsProvider: undefined,
     calendarProvider: profile.calendar?.calendly ? 'calendly' : undefined,
+    airtableProvider: undefined,
     effectiveAccess: profile.effectiveAccess as McpCapabilityProfile['effectiveAccess'],
   };
 }
 
 /**
- * Register all tools on an MCP server instance
- */
-async function registerTools(
-  server: McpServer,
-  client: McpApiClient,
-  profile: McpCapabilityProfile
-): Promise<string[]> {
-  const registeredTools: string[] = [];
-
-  // Skill discovery tools - always register
-  server.tool(
-    'get_skill_catalog',
-    'Get available automation workflows and their intents. Call this FIRST when user asks about business tasks.',
-    {},
-    async () => {
-      try {
-        const skills = await client.getSkills();
-        const enabledSkills = skills.filter((s) => s.isEnabled);
-
-        const catalog = enabledSkills
-          .map((s) => {
-            const parts = [`## ${s.name} (${s.slug})`, s.description];
-            if (s.intent) parts.push(`**When to use:** ${s.intent}`);
-            if (s.capabilities?.length) parts.push(`**Capabilities:** ${s.capabilities.join(', ')}`);
-            return parts.join('\n');
-          })
-          .join('\n\n---\n\n');
-
-        return {
-          content: [{ type: 'text' as const, text: catalog || 'No skills available.' }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error fetching skill catalog: ${message}` }],
-          isError: true,
-        };
-      }
-    }
-  );
-  registeredTools.push('get_skill_catalog');
-
-  server.tool(
-    'get_skill',
-    'Get detailed instructions for a specific automation workflow.',
-    { slug: z.string().describe('Skill slug from the catalog') },
-    async (args: { slug: string }) => {
-      try {
-        const skill = await client.getRenderedSkill(args.slug);
-        return {
-          content: [{ type: 'text' as const, text: skill.instructions }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error fetching skill: ${message}` }],
-          isError: true,
-        };
-      }
-    }
-  );
-  registeredTools.push('get_skill');
-
-  // Alias for load_skill (used by system prompt) -> get_skill
-  server.tool(
-    'load_skill',
-    'Load detailed instructions for a specific automation workflow. Alias for get_skill.',
-    { slug: z.string().describe('Skill slug from the catalog') },
-    async (args: { slug: string }) => {
-      try {
-        const skill = await client.getRenderedSkill(args.slug);
-        return {
-          content: [{ type: 'text' as const, text: skill.instructions }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return {
-          content: [{ type: 'text' as const, text: `Error fetching skill: ${message}` }],
-          isError: true,
-        };
-      }
-    }
-  );
-  registeredTools.push('load_skill');
-
-  // Email tools - only if email is connected
-  if (profile.hasEmail) {
-    const userId = client.userId;
-
-    server.tool(
-      'get_email_profile',
-      'Get information about the connected email account',
-      {},
-      async () => {
-        try {
-          const emailProfile = await emailService.getEmailProfile(userId);
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify(emailProfile, null, 2) }],
-          };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          return {
-            content: [{ type: 'text' as const, text: `Error fetching email profile: ${message}` }],
-            isError: true,
-          };
-        }
-      }
-    );
-    registeredTools.push('get_email_profile');
-
-    server.tool(
-      'search_emails',
-      'Search emails in the connected mailbox using Gmail search syntax',
-      {
-        query: z.string().describe('Gmail search query (e.g., "from:user@example.com", "subject:interview", "newer_than:1d")'),
-        maxResults: z.number().optional().default(10).describe('Maximum number of results (default: 10)'),
-      },
-      async (args: { query: string; maxResults?: number }) => {
-        try {
-          const result = await emailService.searchEmails(userId, args.query, args.maxResults);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: JSON.stringify({ emails: result.emails, total: result.total, query: args.query }, null, 2),
-            }],
-          };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          return {
-            content: [{ type: 'text' as const, text: `Error searching emails: ${message}` }],
-            isError: true,
-          };
-        }
-      }
-    );
-    registeredTools.push('search_emails');
-
-    server.tool(
-      'list_email_drafts',
-      'List email drafts in the connected mailbox',
-      {
-        maxResults: z.number().optional().default(10).describe('Maximum number of drafts to list (default: 10)'),
-      },
-      async (args: { maxResults?: number }) => {
-        try {
-          const result = await emailService.listDrafts(userId, args.maxResults);
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
-          };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          return {
-            content: [{ type: 'text' as const, text: `Error listing drafts: ${message}` }],
-            isError: true,
-          };
-        }
-      }
-    );
-    registeredTools.push('list_email_drafts');
-
-    server.tool(
-      'draft_email',
-      'Create an email draft (saved to Gmail Drafts folder)',
-      {
-        to: z.string().describe('Recipient email address'),
-        subject: z.string().describe('Email subject line'),
-        body: z.string().describe('Email body text'),
-        cc: z.string().optional().describe('CC recipient email address'),
-        bcc: z.string().optional().describe('BCC recipient email address'),
-      },
-      async (args: { to: string; subject: string; body: string; cc?: string; bcc?: string }) => {
-        try {
-          const result = await emailService.createDraft(userId, args);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: JSON.stringify({
-                success: true,
-                message: `Draft created successfully. You can find it in your Gmail Drafts folder.`,
-                draftId: result.draftId,
-                messageId: result.messageId,
-              }, null, 2),
-            }],
-          };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          return {
-            content: [{ type: 'text' as const, text: `Error creating draft: ${message}` }],
-            isError: true,
-          };
-        }
-      }
-    );
-    registeredTools.push('draft_email');
-
-    server.tool(
-      'send_email',
-      'Send an email directly. Use with caution - confirm with the user before sending.',
-      {
-        to: z.string().describe('Recipient email address'),
-        subject: z.string().describe('Email subject line'),
-        body: z.string().describe('Email body text'),
-        cc: z.string().optional().describe('CC recipient email address'),
-        bcc: z.string().optional().describe('BCC recipient email address'),
-      },
-      async (args: { to: string; subject: string; body: string; cc?: string; bcc?: string }) => {
-        try {
-          const result = await emailService.sendEmail(userId, args);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: JSON.stringify({
-                success: true,
-                message: `Email sent successfully to ${args.to}.`,
-                messageId: result.messageId,
-                threadId: result.threadId,
-              }, null, 2),
-            }],
-          };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          return {
-            content: [{ type: 'text' as const, text: `Error sending email: ${message}` }],
-            isError: true,
-          };
-        }
-      }
-    );
-    registeredTools.push('send_email');
-
-    log.info('email_tools_registered');
-  } else {
-    log.info('email_tools_not_registered', { reason: 'no email integration connected' });
-  }
-
-  // Log capability summary
-  log.info('mcp_tools_registered', {
-    toolCount: registeredTools.length,
-    tools: registeredTools,
-    hasATS: profile.hasATS,
-    hasEmail: profile.hasEmail,
-    hasCalendar: profile.hasCalendar,
-  });
-
-  return registeredTools;
-}
-
-/**
  * Create a new MCP server instance for a user session
  * @param userId - The user's ID
- * @param apiKey - Optional API key (not needed for web chat which uses JWT)
  */
-export async function createMcpServer(
-  userId: string,
-  apiKey?: string
-): Promise<McpServer> {
+export async function createMcpServer(userId: string): Promise<McpServer> {
   log.info('mcp_server_creating', { userId });
 
   // Build capability profile
   const profile = await buildCapabilityProfile(userId);
   const mcpProfile = toMcpProfile(profile);
 
-  // Create internal API client
-  const client = createInternalApiClient(userId, apiKey || '');
+  // Create internal API client adapter
+  const client = createInternalApiClient(userId);
 
   // Create MCP server
   const server = new McpServer(
@@ -411,7 +273,7 @@ export async function createMcpServer(
     }
   );
 
-  // Register tools based on capabilities
+  // Register tools using the shared implementation from @skillomatic/mcp
   await registerTools(server, client, mcpProfile);
 
   log.info('mcp_server_created', { userId });

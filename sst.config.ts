@@ -106,45 +106,46 @@ export default $config({
     }) : undefined;
 
     // MCP Server - ECS Fargate for SSE support (Lambda doesn't support streaming)
-    const mcpDomain = `mcp.${domain}`;
+    // DISABLED: Commented out to save costs. Uncomment to restore.
+    // const mcpDomain = `mcp.${domain}`;
 
-    const vpc = new sst.aws.Vpc("McpVpc", {
-      nat: "ec2", // Use NAT instance instead of NAT Gateway ($45/mo → ~$3/mo)
-    });
+    // const vpc = new sst.aws.Vpc("McpVpc", {
+    //   nat: "ec2", // Use NAT instance instead of NAT Gateway ($45/mo → ~$3/mo)
+    // });
 
-    const cluster = new sst.aws.Cluster("McpCluster", { vpc });
+    // const cluster = new sst.aws.Cluster("McpCluster", { vpc });
 
-    const mcpService = new sst.aws.Service("McpService", {
-      cluster,
-      cpu: "0.25 vCPU",
-      memory: "0.5 GB",
-      scaling: { min: 1, max: 2 },
-      image: {
-        context: ".",
-        dockerfile: "apps/mcp-server/Dockerfile",
-      },
-      link: [tursoUrl, tursoToken],
-      environment: {
-        NODE_ENV: "production",
-        PORT: "3001",
-        GIT_HASH: process.env.GIT_HASH || "unknown",
-        // API URL for proxying tool calls
-        SKILLOMATIC_API_URL: useCustomDomain ? `https://${apiDomain}` : api.url,
-      },
-      loadBalancer: {
-        domain: useCustomDomain ? mcpDomain : undefined,
-        rules: [
-          { listen: "80/http", redirect: "443/https" },
-          { listen: "443/https", forward: "3001/http" },
-        ],
-      },
-      health: {
-        command: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"],
-        interval: "30 seconds",
-        timeout: "5 seconds",
-        startPeriod: "60 seconds",
-      },
-    });
+    // const mcpService = new sst.aws.Service("McpService", {
+    //   cluster,
+    //   cpu: "0.25 vCPU",
+    //   memory: "0.5 GB",
+    //   scaling: { min: 1, max: 2 },
+    //   image: {
+    //     context: ".",
+    //     dockerfile: "apps/mcp-server/Dockerfile",
+    //   },
+    //   link: [tursoUrl, tursoToken],
+    //   environment: {
+    //     NODE_ENV: "production",
+    //     PORT: "3001",
+    //     GIT_HASH: process.env.GIT_HASH || "unknown",
+    //     // API URL for proxying tool calls
+    //     SKILLOMATIC_API_URL: useCustomDomain ? `https://${apiDomain}` : api.url,
+    //   },
+    //   loadBalancer: {
+    //     domain: useCustomDomain ? mcpDomain : undefined,
+    //     rules: [
+    //       { listen: "80/http", redirect: "443/https" },
+    //       { listen: "443/https", forward: "3001/http" },
+    //     ],
+    //   },
+    //   health: {
+    //     command: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"],
+    //     interval: "30 seconds",
+    //     timeout: "5 seconds",
+    //     startPeriod: "60 seconds",
+    //   },
+    // });
 
     // Web - Static site on CloudFront
     const web = new sst.aws.StaticSite("Web", {
@@ -158,7 +159,8 @@ export default $config({
         // Use custom API domain in production, Lambda URL otherwise
         VITE_API_URL: useCustomDomain ? `https://${apiDomain}` : api.url,
         // MCP endpoint for ChatGPT web connector
-        VITE_MCP_URL: useCustomDomain ? `https://${mcpDomain}/mcp` : `${mcpService.url}/mcp`,
+        // DISABLED: MCP service commented out
+        // VITE_MCP_URL: useCustomDomain ? `https://${mcpDomain}/mcp` : `${mcpService.url}/mcp`,
       },
     });
 
@@ -185,7 +187,7 @@ export default $config({
     return {
       api: useCustomDomain ? `https://${apiDomain}` : api.url,
       web: web.url,
-      mcp: useCustomDomain ? `https://${mcpDomain}` : mcpService.url,
+      // mcp: useCustomDomain ? `https://${mcpDomain}` : mcpService.url,
       domain: useCustomDomain ? `https://${domain}` : "Custom domain not configured",
     };
   },

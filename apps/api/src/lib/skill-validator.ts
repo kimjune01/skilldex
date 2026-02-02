@@ -291,3 +291,149 @@ export function safeJsonParse<T>(json: string | null | undefined, fallback: T): 
     return fallback;
   }
 }
+
+// ============ Skill Create/Delete Service Functions ============
+
+import { randomUUID } from 'crypto';
+
+export interface CreateSkillOptions {
+  force?: boolean;
+  cron?: string;
+}
+
+export interface CreatedSkill {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  isEnabled: boolean;
+}
+
+/**
+ * Create a skill from markdown content.
+ * Used by both the API route and the MCP server.
+ */
+export async function createSkillFromMarkdown(
+  content: string,
+  userId: string,
+  options: CreateSkillOptions = {}
+): Promise<CreatedSkill> {
+  // Validate content
+  const validation = validateSkillContent(content);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  const parsed = validation.parsed!;
+  const baseSlug = slugify(parsed.name);
+
+  // Handle force upsert
+  if (options.force) {
+    const [existing] = await db
+      .select()
+      .from(skills)
+      .where(eq(skills.slug, baseSlug))
+      .limit(1);
+
+    if (existing && existing.userId === userId) {
+      const now = new Date();
+      const [updated] = await db
+        .update(skills)
+        .set({
+          name: parsed.name,
+          description: parsed.description,
+          category: parsed.category || existing.category,
+          intent: parsed.intent || null,
+          instructions: extractInstructions(content),
+          requiredIntegrations: parsed.requires ? JSON.stringify(parsed.requires) : null,
+          requiresInput: parsed.requiresInput || false,
+          updatedAt: now,
+        })
+        .where(eq(skills.id, existing.id))
+        .returning();
+
+      return {
+        id: updated.id,
+        slug: updated.slug,
+        name: updated.name,
+        description: updated.description || '',
+        isEnabled: updated.isEnabled,
+      };
+    }
+  }
+
+  // Generate unique slug
+  const slug = await ensureUniqueSlug(baseSlug, userId);
+
+  // Create new skill
+  const id = randomUUID();
+  const now = new Date();
+
+  const [newSkill] = await db
+    .insert(skills)
+    .values({
+      id,
+      slug,
+      name: parsed.name,
+      description: parsed.description,
+      category: parsed.category || 'Productivity',
+      version: '1.0.0',
+      userId,
+      organizationId: null,
+      isGlobal: false,
+      visibility: 'private',
+      sourceType: 'user-generated',
+      intent: parsed.intent || null,
+      instructions: extractInstructions(content),
+      requiredIntegrations: parsed.requires ? JSON.stringify(parsed.requires) : null,
+      requiresInput: parsed.requiresInput || false,
+      isEnabled: true,
+      automationEnabled: !!options.cron,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  // TODO: Handle cron scheduling if options.cron is provided
+
+  return {
+    id: newSkill.id,
+    slug: newSkill.slug,
+    name: newSkill.name,
+    description: newSkill.description || '',
+    isEnabled: newSkill.isEnabled,
+  };
+}
+
+/**
+ * Delete a skill by slug.
+ * Returns success message or throws an error.
+ */
+export async function deleteSkill(
+  slug: string,
+  userId: string
+): Promise<{ success: boolean; message: string }> {
+  const [existingSkill] = await db
+    .select()
+    .from(skills)
+    .where(eq(skills.slug, slug))
+    .limit(1);
+
+  if (!existingSkill) {
+    throw new Error('Skill not found');
+  }
+
+  // Only creator can delete their own skills
+  if (existingSkill.userId !== userId) {
+    throw new Error('You do not have permission to delete this skill');
+  }
+
+  // Cannot delete system skills
+  if (existingSkill.isGlobal) {
+    throw new Error('Cannot delete system skills');
+  }
+
+  await db.delete(skills).where(eq(skills.id, existingSkill.id));
+
+  return { success: true, message: 'Skill deleted' };
+}
