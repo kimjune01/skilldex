@@ -66,7 +66,7 @@ export default $config({
     // API - Hono on Lambda with custom domain
     const api = new sst.aws.Function("Api", {
       handler: "apps/api/src/lambda.handler",
-      runtime: "nodejs20.x",
+      runtime: "nodejs22.x",
       timeout: "30 seconds",
       memory: "1024 MB", // Increased for faster cold starts
       url: {
@@ -168,7 +168,7 @@ export default $config({
     // Processes scheduled skill automations via Gemini 3 Flash
     const automationWorker = new sst.aws.Function("AutomationWorker", {
       handler: "apps/api/src/jobs/automation-worker.handler",
-      runtime: "nodejs20.x",
+      runtime: "nodejs22.x",
       timeout: "60 seconds", // Individual automation can take up to 60s
       memory: "512 MB",
       nodejs: {
